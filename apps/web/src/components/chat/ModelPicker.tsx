@@ -29,10 +29,21 @@ import {
   useRef,
   useState,
 } from "react";
-import type { BillingStatus } from "../../lib/billing";
-import { fetchBillingStatus, formatPlanEndDate, openBillingPortal } from "../../lib/billing";
+import type { BillingStatus, BillingUsage } from "../../lib/billing";
+import {
+  fetchBillingStatus,
+  fetchBillingUsage,
+  formatPlanEndDate,
+  openBillingPortal,
+} from "../../lib/billing";
 import { getChatClient } from "../../lib/chat-client";
 import { resolveModelHealth, resolveProviderRow } from "./model-picker-selection";
+import {
+  MODEL_PRESET_EVENT,
+  readModelPreset,
+  type WebModelPreset,
+  writeModelPreset,
+} from "./model-preset";
 
 // Fired by the free-model nudge (FreeModelNudge, SK-PREMIUM-004) to ask this
 // picker to open + scroll into view. The picker owns its open state; the nudge
@@ -50,13 +61,18 @@ interface ModelPickerProps {
   // lets the picker tell whether that answer predates the current credential
   // (a just-switched key has no answer of its own yet — #948).
   lastAnswer?: { id: string; model: string } | null;
+  // The id of the most recent settled reply that FAILED on a model/key-quality
+  // code, or null. A BYOLLM lane fails loud with no trace (SK-LLM-016), so this
+  // is the only signal that a stored key was just rejected — the picker uses it
+  // to warn "your key isn't answering" (same stale-evidence gating as #948).
+  lastFailedId?: string | null;
 }
 
 // The (provider, model) the user is keying for — set when a model is picked and
 // cleared once the key is saved or cancelled.
 type KeyTarget = { provider: CatalogProvider; option: CatalogModelOption };
 
-export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
+export default function ModelPicker({ apiBase, lastAnswer, lastFailedId }: ModelPickerProps) {
   const [open, setOpen] = useState(false);
   const [catalog, setCatalog] = useState<ModelCatalog | null>(null);
   // True when the last `GET /v1/models` attempt failed. Surfaced as an inline
@@ -69,6 +85,13 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
   // picker open, not once per page load: the popover re-checks after the
   // checkout→webhook race resolves.
   const [billing, setBilling] = useState<BillingStatus | null>(null);
+  // Current-period hosted-premium allowance (SK-PREMIUM-009), shown as
+  // "consumed/included credits" on the premium built-in row. Null until fetched
+  // (or on failure) — progressive enhancement, like billing.
+  const [usage, setUsage] = useState<BillingUsage | null>(null);
+  // The web-session model preset (SK-PREMIUM-014). `fast` lets a paid user pin
+  // the free chain over their included premium model.
+  const [preset, setPreset] = useState<WebModelPreset>(() => readModelPreset());
   // True when the deployment can't store BYOLLM keys (KEK unset → 503). We still
   // show the picker (Free works) but disable the add-key affordance.
   const [byollmDisabled, setByollmDisabled] = useState(false);
@@ -121,11 +144,31 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
     setBilling(await fetchBillingStatus(apiBase));
   }, [apiBase]);
 
-  // Re-check billing each time the popover opens — this is how the "activating"
-  // state (SK-PREMIUM-009 webhook race) self-heals into the active-plan state.
+  // `fetchBillingUsage` never throws (returns null on failure), so a usage
+  // outage just hides the credits line rather than breaking the picker.
+  const refreshUsage = useCallback(async () => {
+    setUsage(await fetchBillingUsage(apiBase));
+  }, [apiBase]);
+
+  // Re-check billing + usage each time the popover opens — self-heals the
+  // "activating" state (SK-PREMIUM-009 webhook race) and refreshes the credits
+  // count after a query spends one.
   useEffect(() => {
-    if (open) void refreshBilling();
-  }, [open, refreshBilling]);
+    if (open) {
+      void refreshBilling();
+      void refreshUsage();
+    }
+  }, [open, refreshBilling, refreshUsage]);
+
+  // Keep the local preset in sync if another instance changes it.
+  useEffect(() => {
+    function onPreset(e: Event) {
+      const d = (e as CustomEvent<{ preset: WebModelPreset }>).detail;
+      if (d?.preset) setPreset(d.preset);
+    }
+    window.addEventListener(MODEL_PRESET_EVENT, onPreset);
+    return () => window.removeEventListener(MODEL_PRESET_EVENT, onPreset);
+  }, []);
 
   const onManageBilling = useCallback(() => {
     void openBillingPortal(apiBase).then((outcome) => {
@@ -140,19 +183,32 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
     // free-chain broadcast reflect a paid plan's auto-routed premium model
     // before the user ever opens the picker (SK-PREMIUM-020 / SK-PREMIUM-013).
     void refreshBilling();
-  }, [loadCatalog, refreshStatus, refreshBilling]);
+    void refreshUsage();
+  }, [loadCatalog, refreshStatus, refreshBilling, refreshUsage]);
 
   const credential = status?.configured ? status.credential : null;
 
-  // A paid, active plan on a live-premium deployment auto-routes every query to
-  // the hosted-premium model (SK-PREMIUM-009) when the user brought no BYOLLM
-  // key. That, not "Free", is the built-in lane they're actually on — the bug
-  // this fixes is the pill claiming "Free" for a paying customer whose queries
-  // ran on Claude Sonnet 4.6.
+  // A paid, active plan on a live-premium deployment is ENTITLED to the
+  // hosted-premium model (SK-PREMIUM-009). Entitlement is independent of whether
+  // a BYOLLM key is also stored, so the premium built-in row stays listed even
+  // when a frontier key is active (#5 — it used to vanish, then reappear and
+  // steal the selection when the user picked Free).
   const isPaidActive =
     (billing?.plan === "hobby" || billing?.plan === "pro") && billing?.status === "active";
+  const premiumEntitled = isPaidActive && (catalog?.premium?.live ?? false);
   const premiumLiveModel = catalog?.premium?.models.find((m) => m.status === "live") ?? null;
-  const premiumActive = isPaidActive && (catalog?.premium?.live ?? false) && !credential;
+  const planLabel = billing?.plan === "pro" ? "Pro" : "Hobby";
+  // The only way a paying customer can choose "Free": `fast` pins the free chain
+  // over the premium entitlement (SK-PREMIUM-014). They have no API key to hang
+  // a per-key default on (SK-PREMIUM-019), so it's a per-browser preference.
+  const freePinned = preset === "fast";
+  // The built-in lane live right now. A stored BYOLLM key wins (a frontier
+  // provider row is active, neither built-in is); else `fast` pins Free; else a
+  // paid user is on premium; else Free. `premiumActive` (broadcast to the chat
+  // panel) is exactly "on the premium lane" so the free-model nudge fires again
+  // when a paid user has pinned Free.
+  const premiumBuiltinActive = premiumEntitled && !credential && !freePinned;
+  const freeBuiltinActive = !credential && !premiumBuiltinActive;
 
   // Broadcast the resolved BYOLLM status so the chat panel can gate the nudge.
   // `premiumActive` rides along so a paid user (auto-routed to the premium
@@ -162,10 +218,10 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
     if (!status) return;
     window.dispatchEvent(
       new CustomEvent(BYOLLM_STATUS_EVENT, {
-        detail: { configured: status.configured, premiumActive },
+        detail: { configured: status.configured, premiumActive: premiumBuiltinActive },
       }),
     );
-  }, [status, premiumActive]);
+  }, [status, premiumBuiltinActive]);
 
   // Open (and scroll to) the picker when the free-model nudge requests it.
   useEffect(() => {
@@ -207,14 +263,15 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
   // plan, else match the stored BYOLLM credential against the catalog; fall
   // back to the raw provider·model if it isn't listed.
   const activeLabel = useMemo(() => {
-    if (!credential) return premiumActive ? (premiumLiveModel?.label ?? "Included model") : "Free";
+    if (!credential)
+      return premiumBuiltinActive ? (premiumLiveModel?.label ?? "Included model") : "Free";
     for (const p of catalog?.providers ?? []) {
       if (p.provider !== credential.provider) continue;
       const hit = p.models.find((m) => m.model === credential.model);
       if (hit) return hit.label;
     }
     return `${credential.provider} · ${credential.model}`;
-  }, [catalog, credential, premiumActive, premiumLiveModel]);
+  }, [catalog, credential, premiumBuiltinActive, premiumLiveModel]);
 
   const lastModel = lastAnswer?.model ?? null;
   // Is the configured key actually answering? When it isn't (e.g. the account
@@ -230,8 +287,23 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
     lastModel,
     lastModelUnderCurrentCredential,
   );
+  // A BYOLLM key that hard-failed the last ask (SK-LLM-016 fail-loud, no trace
+  // to reconcile). Only counts a failure produced *after* the current key was
+  // selected — same stale-evidence gating as the trace-based degrade (#948).
+  const keyFailed =
+    credential != null && lastFailedId != null && lastFailedId !== staleEvidenceIdRef.current;
+  // Either signal — a silent free-chain degrade (trace mismatch) or a hard
+  // failure — means the pill must not keep claiming a healthy key.
+  const showKeyWarning = health.degraded || keyFailed;
 
-  async function selectFree() {
+  // Switch to a built-in lane. `nextPreset` records the preset the chat sends on
+  // later asks: `fast` pins the free chain (the paid user's only route to Free,
+  // SK-PREMIUM-014); `auto` lets the server route (premium for a paid user).
+  // Clearing any stored BYOLLM key is part of choosing a built-in lane, so the
+  // pill and the effective lane can never disagree.
+  async function selectBuiltin(nextPreset: WebModelPreset) {
+    writeModelPreset(nextPreset);
+    setPreset(nextPreset);
     if (!credential) {
       closePopover();
       return;
@@ -248,6 +320,12 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
       setBusy(false);
     }
   }
+
+  // Free is `fast` only for a paid user (pins free over their premium
+  // entitlement); a free user has nothing to pin, so it's plain `auto` — that
+  // way a later upgrade isn't silently stuck on the free chain.
+  const selectFree = () => selectBuiltin(premiumEntitled ? "fast" : "auto");
+  const selectPremium = () => selectBuiltin("auto");
 
   function onPickModel(provider: CatalogProvider, option: CatalogModelOption) {
     // Already the active model — nothing to do.
@@ -276,6 +354,10 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
         model: keyTarget.option.model,
         key,
       });
+      // A `fast` pin would override the key the user just chose (SK-PREMIUM-014),
+      // so choosing a frontier model clears it back to `auto`.
+      writeModelPreset("auto");
+      setPreset("auto");
       // The key just changed. Whatever answer stands now was produced by the
       // *previous* model, so it can't tell us whether this new key answers —
       // remember it, and only a later reply (a new id) proves the new key.
@@ -305,7 +387,7 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
     <div className="model-picker" ref={rootRef}>
       <button
         type="button"
-        className={`model-picker__pill${health.degraded ? " model-picker__pill--degraded" : ""}`}
+        className={`model-picker__pill${showKeyWarning ? " model-picker__pill--degraded" : ""}`}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => {
@@ -315,12 +397,14 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
         title={
           health.degraded
             ? `Your ${activeLabel} key isn't answering — the last answer ran on ${health.ranOn} (free chain). Check your key.`
-            : "Choose which model answers your questions"
+            : keyFailed
+              ? `Your ${activeLabel} key returned an error on the last question — check that it's valid.`
+              : "Choose which model answers your questions"
         }
       >
         <span className="model-picker__pill-label">Model</span>
         <span className="model-picker__pill-value">{activeLabel}</span>
-        {health.degraded ? (
+        {showKeyWarning ? (
           <span className="model-picker__pill-warn" aria-hidden="true" title="Key not active">
             ⚠
           </span>
@@ -333,46 +417,52 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
       {open ? (
         <div className="model-picker__panel" role="menu">
           <p className="model-picker__section">Built-in</p>
-          {premiumActive ? (
-            // Paid plan, no BYOLLM key → queries auto-route to the hosted-premium
-            // model (SK-PREMIUM-009). Shown as the active built-in lane; clicking
-            // just closes (it's already active — there's nothing to switch to).
+          {premiumEntitled ? (
+            // Paid plan → the hosted-premium model is an included lane
+            // (SK-PREMIUM-009). Always listed (even with a BYOLLM key active, #5);
+            // active only when it's the live lane. Clicking pins `auto` and drops
+            // any stored key so queries route here.
             <button
               type="button"
               role="menuitemradio"
-              aria-checked={true}
+              aria-checked={premiumBuiltinActive}
               className="model-picker__option"
-              onClick={closePopover}
+              onClick={() => void selectPremium()}
+              disabled={busy}
             >
               <span className="model-picker__option-main">
                 <span className="model-picker__option-label">
                   {premiumLiveModel?.label ?? "Included model"}
                 </span>
-                <span className="model-picker__option-note">
-                  Included with your {billing?.plan === "pro" ? "Pro" : "Hobby"} plan — queries
-                  route here automatically, no key needed.
+                <span className="model-picker__option-note model-picker__option-note--wrap">
+                  Included with your {planLabel} plan — no key needed.
                 </span>
+                {usage ? (
+                  <span className="model-picker__credits">
+                    {usage.consumed} / {usage.included} credits used this month
+                  </span>
+                ) : null}
               </span>
-              <span className="model-picker__active">● Active</span>
+              {premiumBuiltinActive ? <span className="model-picker__active">● Active</span> : null}
             </button>
           ) : null}
           <button
             type="button"
             role="menuitemradio"
-            aria-checked={!credential && !premiumActive}
+            aria-checked={freeBuiltinActive}
             className="model-picker__option"
-            onClick={selectFree}
+            onClick={() => void selectFree()}
             disabled={busy}
           >
             <span className="model-picker__option-main">
               <span className="model-picker__option-label">{catalog?.free.label ?? "Free"}</span>
               <span className="model-picker__option-note">
-                {catalog?.free.note ?? "Built-in models — no key needed."}
+                {premiumEntitled
+                  ? "Built-in models — skips your premium credits."
+                  : (catalog?.free.note ?? "Built-in models — no key needed.")}
               </span>
             </span>
-            {!credential && !premiumActive ? (
-              <span className="model-picker__active">● Active</span>
-            ) : null}
+            {freeBuiltinActive ? <span className="model-picker__active">● Active</span> : null}
           </button>
 
           <p className="model-picker__section">Frontier models · bring your key</p>
@@ -492,6 +582,12 @@ export default function ModelPicker({ apiBase, lastAnswer }: ModelPickerProps) {
               Your {activeLabel} key isn't answering — the last answer ran on{" "}
               <strong>{health.ranOn}</strong> (free chain). Check that the key is valid, or the
               deployment may not have a frontier lane configured.
+            </p>
+          ) : keyFailed ? (
+            <p className="model-picker__degraded" role="alert">
+              Your {activeLabel} key returned an error on the last question. Bring-your-own-key
+              models aren't retried on the free chain — check the key is valid and has quota, or
+              switch to a built-in model above.
             </p>
           ) : lastModel ? (
             <p className="model-picker__last">Last answer used {lastModel}.</p>

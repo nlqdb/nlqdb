@@ -604,6 +604,21 @@
   white-space: nowrap;
 }
 
+/* Built-in rows carry a full sentence, not a model id, so let it wrap instead
+   of clipping to a meaningless "Included with your Hobby plan — …". */
+.model-picker__option-note--wrap {
+  overflow: visible;
+  white-space: normal;
+}
+
+/* Included-credits counter on the premium built-in row (SK-PREMIUM-009). */
+.model-picker__credits {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-muted);
+  margin-top: 2px;
+}
+
 .model-picker__active {
   font-family: var(--mono);
   font-size: 11px;

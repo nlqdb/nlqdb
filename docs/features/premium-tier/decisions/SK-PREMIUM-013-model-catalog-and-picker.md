@@ -52,17 +52,27 @@ lanes a user-facing home.
   - `packages/mcp` — `queryOutputShape.trace.model` + `traceOf` now surface
     the model (un-stripped) so an MCP host can answer "which model?".
   - `apps/web` — `components/chat/ModelPicker.tsx`: the header pill (active
-    model) + popover (Free + named frontier) + inline masked-key form via
+    model) + popover (Built-in + named frontier) + inline masked-key form via
     `setByollm`, wired into `ChatPanel`. No model string in the file — all
-    from the wire catalog.
+    from the wire catalog. The **Built-in** section lists, for a paid+active
+    entitled user, the hosted-premium model (SK-PREMIUM-009) alongside Free —
+    always listed (even with a BYOLLM key active) so the entitlement can't
+    vanish and then steal the selection. Its "consumed/included credits" comes
+    from `GET /v1/billing/usage`. Selecting Free is the paid user's only route
+    off premium: no per-key default to set (SK-PREMIUM-019 is `sk_*`-only), so
+    it persists a per-browser `model-preset.ts` preference the chat sends as
+    `model: "fast"` (pins the free chain over the entitlement, SK-PREMIUM-014).
+    A BYOLLM key that hard-fails an ask (fail-loud, no free fallback per
+    SK-LLM-016) is reflected on the pill as a degraded warning (`lastFailedId`),
+    since the trace-mismatch degrade detector can't see a no-trace hard error.
 - **Surface-parity gaps (GLOBAL-003 — tracked):**
   - ~~The `model` preset param on `/v1/ask` + its routing; SDK `model`, CLI
     `--model`, `<nlq-data model>`, MCP `model`~~ — shipped per
     `SK-PREMIUM-014` (parent feature): `fast` pins free, `best` fails loud
-    (`model_unavailable`) until a frontier lane exists. Interactive
-    `auto|fast|best` buttons in the web picker still wait on the
-    hosted-premium lane (a knob routing to a §6-dark lane alone would be
-    dishonest UX for keyless users).
+    (`model_unavailable`) until a frontier lane exists. Now that the
+    hosted-premium lane is live (SK-PREMIUM-009), the web picker's Built-in
+    rows *are* the honest `auto` (premium) vs `fast` (free) knob for a paid
+    user — surfaced as model choices, not raw preset buttons.
   - Per-provider key storage + keyless model-switch within a provider
     (SK-PREMIUM-012 is one row/account today, so switching models re-enters
     the key).
