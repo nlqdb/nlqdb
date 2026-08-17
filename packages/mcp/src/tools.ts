@@ -80,8 +80,9 @@ export const rememberInputShape = {
   db: z
     .string()
     .min(1)
+    .optional()
     .describe(
-      "The agent_memory_v1 database id (db_agent_memory_v1_…). Provision one with db.create { preset: 'agent_memory_v1' }; a non-memory DB is rejected with wrong_preset.",
+      "Optional. The agent_memory_v1 database id (db_agent_memory_v1_…). Omit on first use and this tool will find (or provision) your account's memory DB automatically and return the new dbId in the result — pass that on subsequent calls. A non-memory DB is rejected with wrong_preset and the recovery is the same: omit `db` to auto-provision.",
     ),
   kind: z
     .enum(["fact", "episode", "entity"])
@@ -116,6 +117,18 @@ export const rememberOutputShape = {
   kind: z.enum(["fact", "episode", "entity"]),
   materialised_at: z.string().describe("Server timestamp the row was written."),
   expires_at: z.string().optional().describe("Present only when a fact TTL was set."),
+  dbId: z
+    .string()
+    .optional()
+    .describe(
+      "The agent_memory_v1 database the row landed in. Present when this tool resolved the DB for you (input `db` omitted, adopted an existing memory DB, or auto-provisioned a new one). Pass it as `db` on subsequent calls to skip the resolution step.",
+    ),
+  db_created: z
+    .boolean()
+    .optional()
+    .describe(
+      "True when this call provisioned a new agent_memory_v1 database because the account had none.",
+    ),
 };
 
 export type RememberOutput = z.infer<z.ZodObject<typeof rememberOutputShape>>;
@@ -339,19 +352,90 @@ export async function handleDescribe(
   }
 }
 
+// A memory DB id is the deterministic marker the server uses to gate
+// `/v1/memory/remember` (`isAgentMemoryV1Db` in
+// `apps/api/src/db-create/presets/agent-memory-v1.ts` — a DB id counts
+// iff it starts with `db_agent_memory_v1_`). Mirroring the check here
+// lets the MCP tool find an existing memory DB and skip the create.
+function isAgentMemoryDbId(id: string): boolean {
+  return id.startsWith("db_agent_memory_v1_");
+}
+
+// Founder dogfood 2026-08-18: an agent connected to the hosted MCP
+// server and called `nlqdb_remember` on an account that had DBs but no
+// memory DB. The server returned `wrong_preset` with the recovery
+// instruction "db.create { preset: 'agent_memory_v1' }" — but the MCP
+// surface exposes no `db.create` tool. Auto-create was gated on
+// zero-DB accounts, so the agent dead-ended.
+//
+// Fix: `nlqdb_remember` self-provisions. When `db` is omitted, or the
+// caller-supplied `db` is not a memory DB (or does not exist), this
+// handler:
+//   1. lists databases and adopts the first `db_agent_memory_v1_*` it
+//      finds (idempotent across sessions);
+//   2. if none exists, calls `createDatabase({ preset: 'agent_memory_v1' })`
+//      — the server-side path already accepts sk_mcp keys under the
+//      `MEMORY_PRESET` flag (SK-HDC-020 / SK-HDC-021);
+//   3. re-runs the write against the resolved DB and returns `dbId`
+//      (and `db_created: true` on a fresh provision) so the agent can
+//      pin the id on the next call.
 export async function handleRemember(
   client: NlqClient,
   input: RememberInput,
   ctx: HandlerContext = {},
 ): Promise<ToolResult<RememberOutput>> {
+  const opts: { signal?: AbortSignal } = {};
+  if (ctx.signal) opts.signal = ctx.signal;
+
+  // Fast path: caller pinned a plausible memory DB. Try it once.
+  let firstAttemptErr: unknown | undefined;
+  if (input.db && isAgentMemoryDbId(input.db)) {
+    const direct = await tryRemember(client, input, input.db, opts);
+    if (direct.kind === "ok") return { ok: direct.value };
+    if (!isResolvableDbError(direct.err)) return { err: mapSdkError(direct.err) };
+    firstAttemptErr = direct.err;
+  } else if (input.db) {
+    // Non-memory-shaped id → try it once so a real error (auth, invalid
+    // payload, rate limit) surfaces before we start creating databases.
+    const direct = await tryRemember(client, input, input.db, opts);
+    if (direct.kind === "ok") return { ok: direct.value };
+    if (!isResolvableDbError(direct.err)) return { err: mapSdkError(direct.err) };
+    firstAttemptErr = direct.err;
+  }
+
+  // Auto-resolve: find an existing memory DB, else provision one. When
+  // resolve itself fails and we had a first-attempt error, surface the
+  // first error — it's typically more actionable (the mapped
+  // wrong_preset / db_not_found action already names the recovery).
+  const resolved = await resolveMemoryDb(client, opts);
+  if (resolved.kind === "err") {
+    return { err: mapSdkError(firstAttemptErr ?? resolved.err) };
+  }
+
+  const attempt = await tryRemember(client, input, resolved.dbId, opts);
+  if (attempt.kind === "ok") {
+    return {
+      ok: {
+        ...attempt.value,
+        dbId: resolved.dbId,
+        ...(resolved.created ? { db_created: true } : {}),
+      },
+    };
+  }
+  return { err: mapSdkError(attempt.err) };
+}
+
+type TryRememberOutcome = { kind: "ok"; value: RememberOutput } | { kind: "err"; err: unknown };
+
+async function tryRemember(
+  client: NlqClient,
+  input: RememberInput,
+  dbId: string,
+  opts: { signal?: AbortSignal },
+): Promise<TryRememberOutcome> {
   try {
-    const opts: { signal?: AbortSignal } = {};
-    if (ctx.signal) opts.signal = ctx.signal;
-    // The server (`memory/remember.ts`) is the source of truth for the
-    // per-kind payload shape; the flat tool schema keeps `payload` loose
-    // and lets that validation report a one-sentence reason.
     const req = {
-      db: input.db,
+      db: dbId,
       kind: input.kind,
       payload: input.payload,
       ...(input.endUserId !== undefined ? { endUserId: input.endUserId } : {}),
@@ -359,15 +443,53 @@ export async function handleRemember(
       ...(input.ttlSeconds !== undefined ? { ttlSeconds: input.ttlSeconds } : {}),
     } as RememberRequest;
     const res = await client.remember(req, opts);
-    const out: RememberOutput = {
+    const value: RememberOutput = {
       id: res.id,
       kind: res.kind,
       materialised_at: res.materialised_at,
       ...(res.expires_at ? { expires_at: res.expires_at } : {}),
     };
-    return { ok: out };
+    return { kind: "ok", value };
   } catch (err) {
-    return { err: mapSdkError(err) };
+    return { kind: "err", err };
+  }
+}
+
+// An error we can recover from by locating (or creating) the memory DB
+// and retrying. Anything else is a real failure the caller should see
+// verbatim (auth, forbidden, rate limit, invalid payload, …).
+function isResolvableDbError(err: unknown): boolean {
+  const apiErr = err as NlqdbApiError | undefined;
+  const code = apiErr?.code;
+  return code === "wrong_preset" || code === "db_not_found";
+}
+
+type ResolveOutcome =
+  | { kind: "ok"; dbId: string; created: boolean }
+  | { kind: "err"; err: unknown };
+
+async function resolveMemoryDb(
+  client: NlqClient,
+  opts: { signal?: AbortSignal },
+): Promise<ResolveOutcome> {
+  try {
+    const list = await client.listDatabases(opts);
+    const existing = list.databases.find((d) => isAgentMemoryDbId(d.id));
+    if (existing) return { kind: "ok", dbId: existing.id, created: false };
+  } catch (err) {
+    return { kind: "err", err };
+  }
+
+  try {
+    // SK-HDC-020 — deterministic preset create; server pins engine=postgres.
+    // `name` gives the DB a human-legible label in the account rail.
+    const created = await client.createDatabase({
+      preset: "agent_memory_v1",
+      name: "Agent memory",
+    });
+    return { kind: "ok", dbId: created.dbId, created: true };
+  } catch (err) {
+    return { kind: "err", err };
   }
 }
 
@@ -451,7 +573,7 @@ const ERROR_COPY = {
   db_not_found: {
     message: "No database matched that id for this account.",
     action:
-      "Call nlqdb_list_databases for valid ids; for agent memory, first create one with db.create { preset: 'agent_memory_v1' }.",
+      "Call nlqdb_list_databases for valid ids; for agent memory, re-call nlqdb_remember without `db` and it will adopt (or provision) the memory DB automatically.",
   },
   db_unreachable: {
     message: "nlqdb couldn't reach that database.",
@@ -685,7 +807,7 @@ export function mapSdkError(err: unknown): ToolError {
       message:
         "That database isn't an agent-memory database, so it has no facts/episodes/entities tables.",
       action:
-        "Provision one with the agent_memory_v1 preset (db.create { preset: 'agent_memory_v1' }), then remember into it.",
+        "Re-call nlqdb_remember without `db` — it adopts your existing agent_memory_v1 database, or provisions one for you if none exists.",
     };
   }
   if (code === "aborted") {
