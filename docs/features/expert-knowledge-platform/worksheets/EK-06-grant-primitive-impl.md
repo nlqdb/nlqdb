@@ -42,13 +42,28 @@ safe: `REVOKE ALL … FROM` the role precedes the re-`GRANT`, so a re-scope
 that drops a table removes its SELECT; the idempotent DO-block create means
 mint and every re-scope run the identical batch. Fail-closed on an empty
 scope or an unsafe schema/table identifier (SK-HDC-009 re-check before
-interpolation). Still box 2's open work: (b) the granted-exec step builder
-(the `buildHostedExecSteps` analogue:
-audit-only `app.*` GUCs → grant `statement_timeout` → `SET LOCAL ROLE
-"grant_…"` → user statement) — its `app.tenant_id`/`app.agent_id` values
-against the `agent_memory_v1` `agent_isolation` RLS policy need **live PG
-verification** (owner rows returned, nothing else), so it lands with (c) the
-live `/v1/ask` route wiring + the RLS-bypass kill-test.
+interpolation).
+**Box 2 — granted-exec step builder shipped 2026-08-18 (sub-piece b):**
+`apps/api/src/grant-exec.ts` (`buildGrantExecSteps`) — the pure,
+unit-tested `buildHostedExecSteps` analogue that assembles the granted
+read's transaction (`app.*` GUCs → grant `statement_timeout` → `SET LOCAL
+ROLE "grant_…"` → user statement). The load-bearing statement ORDER moved
+to a new pure module `apps/api/src/ask/exec-steps.ts` (`buildExecSteps`)
+that both the hosted path (`buildHostedExecSteps`) and the grant path
+delegate to, so the two can never drift (the `grant-role.ts` single-source
+rationale, applied to the exec batch). The grant path's two deliberate
+differences: it asserts the `grant_<hex>` role name (`assertGrantRoleName`,
+fail-closed on a `tenant_` or unsafe name) and pins `statement_timeout` to
+`GRANT_STATEMENT_TIMEOUT` (the SK-EKP-008 in-flight revocation bound), never
+the 10 s request cap. The `app.tenant_id`/`app.agent_id` GUCs carry the
+**owner's** identity so the owner's `agent_isolation` policy returns the
+owner's published rows (full-tenant visibility via the tenant-literal arm);
+buyer identity drives metering attribution at the app layer
+(`grant-usage.ts`), not a GUC — so no buyer-side GUC is set. Still box 2's
+open work: (c) the live `/v1/ask` route wiring that runs this batch, whose
+`app.*` GUC values against the `agent_memory_v1` `agent_isolation` RLS
+policy get their **live PG verification** (owner rows returned, nothing
+else) alongside the RLS-bypass kill-test.
 
 ## Goal
 
@@ -101,9 +116,13 @@ satisfy):
       SELECT-only role, fail-closed on missing). Provisioning DDL builder
       shipped 2026-08-17 — `grant-provision.ts` `buildGrantRoleDdl`
       (SELECT-only on exactly the scope, `WITH SET TRUE`, FORCE RLS,
-      re-scope-safe REVOKE, unit-tested). RLS-bypass kill-test + granted-exec
-      step builder + live route wiring await the rest of the DB-role half;
-      see header.)*
+      re-scope-safe REVOKE, unit-tested). Granted-exec step builder shipped
+      2026-08-18 — `grant-exec.ts` `buildGrantExecSteps` (the
+      `buildHostedExecSteps` analogue: grant role asserted, in-flight
+      `statement_timeout` pinned to the revocation bound, owner-scoped RLS
+      GUCs; load-bearing order shared via `ask/exec-steps.ts` so hosted and
+      grant paths can't drift; unit-tested). RLS-bypass kill-test + live
+      `/v1/ask` route wiring await the rest of the DB-role half; see header.)*
 - [ ] Usage records emitted per granted query, idempotent under retry.
       *(Meter primitive shipped 2026-08-10 — migration `0028_grant_usage.sql`
       + `apps/api/src/grant-usage.ts` `recordGrantUsage`: one row per
