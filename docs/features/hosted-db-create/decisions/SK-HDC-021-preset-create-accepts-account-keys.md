@@ -53,8 +53,8 @@
 
 ## Remaining (tracked)
 
-- **GLOBAL-003 surface parity (SDK / CLI):** `CreateDatabaseRequest` does not
-  yet expose `preset`, so the widened capability is reachable via the raw
-  HTTP body but not through a typed `client.createDatabase({ preset })` /
-  `nlq db create --preset`. Tracked here as a follow-on slice; MCP already
-  provisions via the preset on the authed surface and elements never create.
+- **GLOBAL-003 surface parity (CLI):** `CreateDatabaseRequest` now exposes
+  `preset` (typed `client.createDatabase({ preset: "agent_memory_v1" })`), so
+  MCP's `nlqdb_remember` self-provisions through the SDK; the remaining gap is
+  `nlq db create --preset`, still unshipped. Tracked here as a follow-on slice;
+  elements never create.

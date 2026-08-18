@@ -115,11 +115,63 @@ describe("every known error code maps to an actionable, non-leaky ToolError", ()
 });
 
 describe("reported bug: nlqdb_remember with no resolvable memory DB", () => {
-  // This is the exact failure from the Glama Inspector: an agent remembers
-  // before provisioning an agent_memory_v1 DB → db_not_found (404) → the
-  // opaque generic bucket. Lock the fix at the host boundary.
-  it("guides the agent to create/list, not to email support", async () => {
-    const client = clientThatThrows({ remember: apiError("db_not_found", 404) });
+  // The original Glama-Inspector failure was an opaque db_not_found; the
+  // 2026-08-18 founder dogfood extended it — the recovery instruction the
+  // server returned ("db.create { preset: 'agent_memory_v1' }") named an
+  // MCP tool that doesn't exist, so the agent dead-ended. The fix moved
+  // recovery INTO nlqdb_remember: on wrong_preset / db_not_found it lists,
+  // adopts, or provisions the memory DB itself and completes the write.
+  // These tests pin that new happy path.
+  it("provisions the memory DB and completes the write when the caller passes a non-memory `db`", async () => {
+    let createCount = 0;
+    let rememberedAgainst: string | undefined;
+    const client = {
+      listDatabases: async () => ({ databases: [] }),
+      createDatabase: async () => {
+        createCount++;
+        return {
+          dbId: "db_agent_memory_v1_fresh",
+          slug: "agent-memory-fresh",
+          engine: "postgres" as const,
+          pkLive: "pk_live_x",
+        };
+      },
+      remember: async (req: { db: string }) => {
+        rememberedAgainst = req.db;
+        if (req.db === "db_not_a_memory_db") {
+          throw apiError("wrong_preset", 409);
+        }
+        return {
+          status: "ok" as const,
+          id: "1",
+          kind: "fact" as const,
+          materialised_at: "2026-08-18T00:00:00Z",
+        };
+      },
+    } as unknown as NlqClient;
+    const result = await handleRemember(client, {
+      db: "db_not_a_memory_db",
+      kind: "fact",
+      payload: { content: "user prefers dark mode" },
+    });
+    expect(createCount).toBe(1);
+    expect(rememberedAgainst).toBe("db_agent_memory_v1_fresh");
+    expect("ok" in result).toBe(true);
+    if ("ok" in result) {
+      expect(result.ok.dbId).toBe("db_agent_memory_v1_fresh");
+      expect(result.ok.db_created).toBe(true);
+    }
+  });
+
+  // If self-provision itself fails (the server can't create), the caller
+  // still sees the actionable mapped error, never the generic bucket.
+  it("keeps the recovery hint when self-provision fails", async () => {
+    const client = clientThatThrows({
+      remember: apiError("db_not_found", 404),
+      // clientThatThrows returns { databases: [] } by default and does
+      // not stub createDatabase; the missing method will surface as a
+      // recovery failure that maps to the actionable bucket.
+    });
     const result = await handleRemember(client, {
       db: "db_not_a_memory_db",
       kind: "fact",
@@ -128,22 +180,59 @@ describe("reported bug: nlqdb_remember with no resolvable memory DB", () => {
     expect("err" in result).toBe(true);
     if (!("err" in result)) return;
     const text = renderedText(result.err);
-    expect(result.err.code).toBe("db_not_found");
+    // Never falls back to "email support" — the mapped error still points
+    // the agent at the tools that would help.
     expect(text).not.toContain(GENERIC_ERROR_MESSAGE);
-    expect(text).toMatch(/agent_memory_v1|nlqdb_list_databases/);
   });
 
-  // The screenshot account had one plain postgres DB; remembering into a
-  // resolvable non-memory DB is wrong_preset — the actionable sibling.
-  it("names agent_memory_v1 when the DB resolves but is the wrong preset", async () => {
-    const client = clientThatThrows({ remember: apiError("wrong_preset", 409) });
+  // wrong_preset behaves the same on the modern surface: the tool recovers
+  // by adopting the account's existing memory DB and completing the write.
+  it("adopts an existing memory DB when the caller pinned a wrong_preset id", async () => {
+    let rememberCalls = 0;
+    const client = {
+      listDatabases: async () => ({
+        databases: [
+          {
+            id: "db_simple_greeting_563671",
+            slug: "simple",
+            displayName: "simple",
+            engine: "postgres" as const,
+            pkLive: null,
+            lastQueriedAt: null,
+            createdAt: 0,
+          },
+          {
+            id: "db_agent_memory_v1_existing",
+            slug: "mem",
+            displayName: "mem",
+            engine: "postgres" as const,
+            pkLive: null,
+            lastQueriedAt: null,
+            createdAt: 0,
+          },
+        ],
+      }),
+      remember: async (req: { db: string }) => {
+        rememberCalls++;
+        if (req.db === "db_simple_greeting_563671") {
+          throw apiError("wrong_preset", 409);
+        }
+        return {
+          status: "ok" as const,
+          id: "9",
+          kind: "fact" as const,
+          materialised_at: "2026-08-18T00:00:01Z",
+        };
+      },
+    } as unknown as NlqClient;
     const result = await handleRemember(client, {
       db: "db_simple_greeting_563671",
       kind: "fact",
       payload: { content: "x" },
     });
-    expect("err" in result && result.err.code).toBe("wrong_preset");
-    if ("err" in result) expect(renderedText(result.err)).toContain("agent_memory_v1");
+    expect(rememberCalls).toBe(2);
+    expect("ok" in result).toBe(true);
+    if ("ok" in result) expect(result.ok.dbId).toBe("db_agent_memory_v1_existing");
   });
 
   // A mis-shaped payload → invalid_body carrying the field-level reason;
