@@ -20,7 +20,7 @@ func TestRenderClarifyWithOptions(t *testing.T) {
 	cmd.SetOut(buf)
 
 	renderClarify(cmd, &api.APIError{
-		Status:        "clarify_required",
+		Code:          "clarify_required",
 		Clarification: "destructive_ambiguous",
 		Reason:        "Clearing the whole database could mean a few things.",
 		Options: []api.ClarifyOption{
@@ -51,22 +51,58 @@ func TestRenderClarifyNoOptionsFallsBack(t *testing.T) {
 	cmd.SetErr(buf)
 	cmd.SetOut(buf)
 
-	renderClarify(cmd, &api.APIError{Status: "clarify_required", Clarification: "create_or_query_pinned"})
+	renderClarify(cmd, &api.APIError{Code: "clarify_required", Clarification: "create_or_query_pinned"})
 	if !strings.Contains(buf.String(), "without `--db`") {
 		t.Errorf("expected create-path hint, got %q", buf.String())
 	}
 }
 
-func TestSQLRejectedMessage(t *testing.T) {
-	cases := map[string]string{
-		"delete_without_where": "delete every row",
-		"multi_statement":      "one thing at a time",
-		"drop_statement":       "start a new database",
-		"brand_new_reason":     "that query was rejected",
-	}
-	for reason, want := range cases {
-		if got := sqlRejectedMessage(reason); !strings.Contains(got, want) {
-			t.Errorf("sqlRejectedMessage(%q) = %q, want it to contain %q", reason, got, want)
+// SK-ERR-001 — the CLI no longer keeps its own copy of the SQL-allowlist reject
+// reasons (or of any other code's wording). It prints the server-rendered
+// message + action, lower-cased into the CLI's voice. This is the test that the
+// hand-written table used to need, now aimed at the pass-through.
+func TestPrintWireErrorRendersServerCopy(t *testing.T) {
+	buf := &bytes.Buffer{}
+	cmd := &cobra.Command{}
+	cmd.SetErr(buf)
+	cmd.SetOut(buf)
+
+	printWireError(cmd, &api.APIError{
+		HTTPStatus: 400,
+		Code:       "sql_rejected",
+		Message:    "That would delete every row in the table.",
+		Action:     "Add a filter naming which rows to remove, then ask again.",
+	})
+
+	out := buf.String()
+	for _, want := range []string{"that would delete every row", "Add a filter naming"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("wire error output missing %q\n---\n%s", want, out)
 		}
+	}
+}
+
+// An older deployment that sends no copy must still say something specific
+// rather than nothing (GLOBAL-012).
+func TestPrintWireErrorFallsBackToCode(t *testing.T) {
+	buf := &bytes.Buffer{}
+	cmd := &cobra.Command{}
+	cmd.SetErr(buf)
+	cmd.SetOut(buf)
+
+	printWireError(cmd, &api.APIError{HTTPStatus: 502, Code: "llm_failed"})
+	if !strings.Contains(buf.String(), "llm_failed") {
+		t.Errorf("expected the code in the fallback, got %q", buf.String())
+	}
+}
+
+// A proper noun or an all-caps verb the server named on purpose must survive
+// the CLI's lower-casing.
+func TestLowerFirstKeepsProperNouns(t *testing.T) {
+	if got := lowerFirst("OpenRouter rejected the key."); got != "OpenRouter rejected the key." {
+		t.Errorf("lowerFirst mangled a proper noun: %q", got)
+	}
+	if got := lowerFirst("That would delete every row."); got != "that would delete every row." {
+		t.Errorf("lowerFirst(%q) = %q", "That would…", got)
 	}
 }

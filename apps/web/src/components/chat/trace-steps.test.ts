@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { displayTraceSteps } from "./trace-steps";
+import { displayTraceSteps, markStepsFailed } from "./trace-steps";
 
 const seededPending = [
   { name: "cache_lookup", status: "pending" as const },
@@ -62,5 +62,31 @@ describe("displayTraceSteps", () => {
 
   test("fully-settled ok stream is unchanged (filter is a no-op)", () => {
     expect(displayTraceSteps(allOk, "ok")).toEqual(allOk);
+  });
+});
+
+describe("markStepsFailed", () => {
+  test("only the in-flight step fails; the rest are skipped (2026-08-17)", () => {
+    // The bug: every pending step was stamped with the error code, so a
+    // BYOLLM auth failure rendered as five separate failures and hid the fact
+    // that the pipeline stopped at `plan`.
+    const midFlight = [
+      { name: "cache_lookup", status: "ok" as const },
+      { name: "plan", status: "pending" as const },
+      { name: "validate", status: "pending" as const },
+      { name: "exec", status: "pending" as const },
+      { name: "summarize", status: "pending" as const },
+    ];
+    expect(markStepsFailed(midFlight, "llm_failed")).toEqual([
+      { name: "cache_lookup", status: "ok" },
+      { name: "plan", status: "error", detail: "llm_failed" },
+      { name: "validate", status: "skipped" },
+      { name: "exec", status: "skipped" },
+      { name: "summarize", status: "skipped" },
+    ]);
+  });
+
+  test("an error after every step finished changes nothing", () => {
+    expect(markStepsFailed(allOk, "db_unreachable")).toEqual(allOk);
   });
 });

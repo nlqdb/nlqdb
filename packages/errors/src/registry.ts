@@ -103,10 +103,18 @@ const constraintParams = z.object({
   kind: z.enum(CONSTRAINT_KINDS).optional().catch(undefined),
   constraint: slug(120),
   table: slug(120),
+  column: slug(120),
 });
 
 const onTable = (p: { table?: string }) => (p.table ? ` on ${p.table}` : "");
+const onColumn = (p: { column?: string }) => (p.column ? ` (${p.column})` : "");
 const named = (p: { constraint?: string }) => (p.constraint ? ` (${p.constraint})` : "");
+
+// SK-TRUST-008 — an approved write that changed nothing. Which hop it happened
+// on decides the honest sentence: a preview that found no matching rows is
+// "nothing would change", a commit that reports 0 rows means the data moved
+// under the preview.
+const WRITE_PHASES = ["preview", "commit"] as const;
 
 export const REGISTRY = {
   // ── Target database ────────────────────────────────────────────────────
@@ -153,10 +161,10 @@ export const REGISTRY = {
         ? `Ask about one of its tables instead: ${p.schemaTables.slice(0, 5).join(", ")}${p.schemaTables.length > 5 ? ` (+${p.schemaTables.length - 5} more)` : ""}.`
         : "Rephrase using a table this database has, or create a new database for it.",
   }),
-  // SK-ASK-027 — Postgres SQLSTATE class 23. Deterministic: the write is
+  // SK-ASK-030 — Postgres SQLSTATE class 23. Deterministic: the write is
   // wrong, not the connection. Retrying replays it, which is exactly the
   // 2026-08-18 `23503` incident that surfaced as "couldn't reach the database".
-  constraint_violation: defineError({
+  write_constraint: defineError({
     httpStatus: 409,
     recoverability: "clarify",
     params: constraintParams,
@@ -167,7 +175,7 @@ export const REGISTRY = {
         case "unique":
           return `A row with those values already exists${onTable(p)}${named(p)}.`;
         case "not_null":
-          return `A required column${onTable(p)} was left empty.`;
+          return `A required column${onTable(p)}${onColumn(p)} was left empty.`;
         case "check":
           return `That write failed a validation rule${onTable(p)}${named(p)}.`;
         default:
@@ -187,7 +195,28 @@ export const REGISTRY = {
       }
     },
   }),
-  // SK-ASK-027 — SQLSTATE class 22 (data exception): bad cast, out of range,
+  // SK-TRUST-008 — the write ran (or previewed) and matched nothing. GLOBAL-011:
+  // say so plainly instead of rendering an empty success that reads as "done".
+  write_no_rows: defineError({
+    httpStatus: 409,
+    recoverability: "clarify",
+    params: z.object({
+      phase: z.enum(WRITE_PHASES).optional().catch(undefined),
+      verb: slug(20),
+      table: slug(120),
+    }),
+    message: (p) => {
+      const what = `${p.verb ? `That ${p.verb.toUpperCase()}` : "That write"}${onTable(p)}`;
+      return p.phase === "commit"
+        ? `${what} matched no rows when it ran, so nothing changed.`
+        : `${what} matches no rows right now, so it would change nothing.`;
+    },
+    action: (p) =>
+      p.phase === "commit"
+        ? "Check the rows still match — something may have changed them since the preview — then ask again."
+        : "Widen or correct the filter, then ask again.",
+  }),
+  // SK-ASK-030 — SQLSTATE class 22 (data exception): bad cast, out of range,
   // division by zero. Deterministic like class 23.
   invalid_value: defineError({
     httpStatus: 409,
@@ -310,8 +339,11 @@ export const REGISTRY = {
   model_unavailable: defineError({
     httpStatus: 409,
     recoverability: "user_config",
-    params: NONE,
-    message: () => 'The "best" model needs a frontier lane this account doesn\'t have.',
+    // SK-PREMIUM-013 — `link` deep-links the page that resolves it, so a
+    // non-interactive surface can print a URL rather than stranding the caller.
+    params: z.object({ link: z.string().max(300).optional().catch(undefined) }),
+    message: () =>
+      'The "best" preset needs a frontier model, and this account has no provider key or paid plan.',
     action: () => `Add your own provider key at ${KEYS_URL}, or drop the model preset.`,
   }),
   invalid_model: defineError({
@@ -763,5 +795,10 @@ const SQL_REJECT_COPY: Record<string, [string, string]> = {
   write_via_repair: [
     "A retry of that query tried to change data, which the read path won't run.",
     "Ask for the change explicitly so it goes through the preview gate.",
+  ],
+  // SK-TRUST-008 — the preview couldn't be built, so the write is not offered.
+  preview_unavailable: [
+    "nlqdb couldn't preview what that write would change, so it didn't run it.",
+    "Rephrase the change more specifically, then ask again.",
   ],
 };

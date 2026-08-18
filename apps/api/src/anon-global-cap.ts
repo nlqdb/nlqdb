@@ -8,7 +8,7 @@
 //   - 10,000/month
 //
 // When any of the three trips, the route returns 401 with
-// `{ error: { status: "auth_required", signInUrl } }`. The web
+// `{ error: { code: "auth_required", signInUrl } }`. The web
 // surface (CreateForm.tsx, marketing hero) interprets that envelope
 // as "stash the prompt, redirect to sign-in" — SK-ANON-011 covers
 // the prompt-persistence half. Per-IP limiters (apps/api/src/anon-

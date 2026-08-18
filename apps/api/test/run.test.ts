@@ -39,7 +39,9 @@ describe("POST /v1/run — body parse", () => {
       body: JSON.stringify({ db: "db_x" }),
     });
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "sql_required" });
+    expect(await res.json()).toMatchObject({
+      error: { code: "sql_required", message: expect.any(String), action: expect.any(String) },
+    });
   });
 
   it("returns 400 sql_required on whitespace-only sql", async () => {
@@ -52,7 +54,9 @@ describe("POST /v1/run — body parse", () => {
       body: JSON.stringify({ db: "db_x", sql: "   " }),
     });
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "sql_required" });
+    expect(await res.json()).toMatchObject({
+      error: { code: "sql_required", message: expect.any(String), action: expect.any(String) },
+    });
   });
 
   it("returns 400 db_required when db is missing for non-pk_live principals", async () => {
@@ -65,7 +69,9 @@ describe("POST /v1/run — body parse", () => {
       body: JSON.stringify({ sql: "SELECT 1" }),
     });
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "db_required" });
+    expect(await res.json()).toMatchObject({
+      error: { code: "db_required", message: expect.any(String), action: expect.any(String) },
+    });
   });
 
   it("returns 400 sql_too_long when sql exceeds the cap", async () => {
@@ -79,9 +85,14 @@ describe("POST /v1/run — body parse", () => {
       body: JSON.stringify({ db: "db_x", sql: huge }),
     });
     expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string; maxLength: number };
-    expect(body.error).toBe("sql_too_long");
-    expect(body.maxLength).toBeGreaterThan(0);
+    const body = (await res.json()) as {
+      error: { code: string; message: string; params?: { maxLength?: number } };
+    };
+    expect(body.error.code).toBe("sql_too_long");
+    // The cap rides `params` and the message names it, so a caller doesn't have
+    // to know the number to explain the failure.
+    expect(body.error.params?.maxLength).toBeGreaterThan(0);
+    expect(body.error.message).toContain("character limit");
   });
 
   it("returns 400 invalid_json on malformed body", async () => {
@@ -94,6 +105,8 @@ describe("POST /v1/run — body parse", () => {
       body: "not json",
     });
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "invalid_json" });
+    expect(await res.json()).toMatchObject({
+      error: { code: "invalid_json", message: expect.any(String), action: expect.any(String) },
+    });
   });
 });

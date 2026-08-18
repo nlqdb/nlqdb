@@ -46,11 +46,18 @@ export type AskSuccess = {
   diff?: AskDiff;
 };
 
-// API errors mirror `apps/api/src/ask/types.ts AskError` plus the bare
-// string forms the handler emits for `goal_required` / `dbId_required`
-// / `invalid_json`. Kept loose (`unknown` payload) so adding a variant
-// to AskError doesn't ripple a type bump through the CDN bundle.
-export type ApiErrorBody = { status: string; [k: string]: unknown };
+// SK-ERR-001 — the API renders `message` + `action` server-side from the error
+// registry, so this element renders them verbatim instead of keeping a copy
+// table of its own. `code` and `params` stay available for consumers branching
+// on the `nlq-data:error` event. Kept loose (`unknown` payload) so a new error
+// code never ripples a type bump through the CDN bundle.
+export type ApiErrorBody = {
+  code: string;
+  message?: string;
+  action?: string;
+  retryable?: boolean;
+  [k: string]: unknown;
+};
 export type AskFailure =
   | { kind: "network"; message: string }
   | { kind: "auth"; status: number }

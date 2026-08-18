@@ -20,7 +20,9 @@ describe("POST /v1/ask — principal gate", () => {
       body: JSON.stringify({ goal: "anything" }),
     });
     expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "unauthorized" });
+    expect(await res.json()).toMatchObject({
+      error: { code: "unauthorized", message: expect.any(String), action: expect.any(String) },
+    });
   });
 
   it("returns 401 when the Authorization header is not an anon_ bearer", async () => {
@@ -61,7 +63,9 @@ describe("POST /v1/ask — principal gate", () => {
       body: JSON.stringify({}),
     });
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "goal_required" });
+    expect(await res.json()).toMatchObject({
+      error: { code: "goal_required", message: expect.any(String), action: expect.any(String) },
+    });
   });
 
   it('anon + model "best" is 409 model_unavailable — never rides the free create path (SK-PREMIUM-014)', async () => {
@@ -81,7 +85,8 @@ describe("POST /v1/ask — principal gate", () => {
     expect(await res.json()).toMatchObject({
       error: {
         code: "model_unavailable",
-        link: "https://app.nlqdb.com/app/keys",
+        // SK-PREMIUM-013 — the deep link rides `params` alongside the sentence.
+        params: { link: "https://app.nlqdb.com/app/keys" },
       },
     });
   });
@@ -96,9 +101,10 @@ describe("POST /v1/ask — principal gate", () => {
       body: JSON.stringify({ goal: "count the orders", model: "claude-opus-4-8" }),
     });
     expect(res.status).toBe(400);
+    // SK-ERR-001 — the allowed presets are named in the sentence itself rather
+    // than in a bespoke `allowed` field only the SDK knew how to read.
     expect(await res.json()).toMatchObject({
-      error: "invalid_model",
-      allowed: ["auto", "fast", "best"],
+      error: { code: "invalid_model", message: "`model` must be one of auto, fast, or best." },
     });
   });
 

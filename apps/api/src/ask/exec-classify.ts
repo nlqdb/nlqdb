@@ -59,7 +59,7 @@ export function classifyExecError(err: unknown): ExecClassification {
     return {
       kind: "deterministic",
       error: {
-        code: "constraint_violation",
+        code: "write_constraint",
         ...(constraintKind !== undefined ? { kind: constraintKind } : {}),
         ...withKey("constraint", identifier(e.constraint)),
         ...withKey("table", identifier(e.table)),

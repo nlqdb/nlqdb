@@ -85,7 +85,7 @@ async function handleFetch(req: Request, env: Env, ctx: ExecutionContext): Promi
   // health, OAuth) so a rejected origin never reaches the agent.
   if (!isOriginAllowed(req, env)) {
     return Response.json(
-      { error: { status: "forbidden", message: "Origin not allowed." } },
+      { error: { code: "forbidden", message: "Origin not allowed." } },
       { status: 403 },
     );
   }

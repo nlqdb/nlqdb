@@ -13,7 +13,8 @@
 // dbId being optional.
 
 import { ALLOWED_ENGINES, type Engine, isAllowedEngine } from "@nlqdb/db";
-import { isModelPreset, MODEL_PRESETS, type ModelPreset } from "@nlqdb/llm";
+import { isModelPreset, type ModelPreset } from "@nlqdb/llm";
+import type { ErrorCode } from "@nlqdb/errors";
 import type { Context } from "hono";
 
 export { ALLOWED_ENGINES, isAllowedEngine };
@@ -85,52 +86,13 @@ export function sanitizeAskSource(value: unknown): AskSource | undefined {
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-// `invalid_engine` carries the offending value + the allowed list so
-// SDK / CLI consumers can render a precise message ("`mysql` is not a
-// supported engine; allowed values: postgres, clickhouse") without
-// re-fetching the docs. GLOBAL-012 — error message renders as one
-// sentence with the next action.
-export type InvalidEngineBody = {
-  error: "invalid_engine";
-  value: unknown;
-  allowed: Engine[];
-};
-
-// `invalid_model` mirrors `invalid_engine` for the SK-PREMIUM-003 preset
-// knob — offending value + allowed presets, renderable as one sentence
-// (GLOBAL-012).
-export type InvalidModelBody = {
-  error: "invalid_model";
-  value: unknown;
-  allowed: ModelPreset[];
-};
-
-// `goal_too_long` carries maxLength so SDK / CLI consumers can render
-// a precise message without hard-coding the limit.
-export type GoalTooLongBody = { error: "goal_too_long"; maxLength: number };
-
-// `sql_too_long` mirrors `goal_too_long` for the `/v1/run` shape.
-export type SqlTooLongBody = { error: "sql_too_long"; maxLength: number };
-
-export type ParseErrorBody =
-  | {
-      error:
-        | "invalid_json"
-        | "goal_required"
-        | "dbId_required"
-        | "sql_required"
-        | "db_required"
-        // E-03 — a non-string `agentId` / `endUserId` / `threadId`.
-        | "invalid_scope";
-    }
-  | GoalTooLongBody
-  | SqlTooLongBody
-  | InvalidEngineBody
-  | InvalidModelBody;
-
+// SK-ERR-001 — a parse failure is just a registry code plus that code's declared
+// params. The HTTP status and the copy come from the registry, so this module no
+// longer restates either: `invalid_engine` used to carry its own `allowed` list
+// AND its own sentence, in a shape only the SDK knew how to read.
 export type ParseError = {
-  status: 400;
-  body: ParseErrorBody;
+  code: ErrorCode;
+  params?: Record<string, unknown>;
 };
 
 // Materialised list mirror of ALLOWED_ENGINES for the wire envelope.
@@ -138,29 +100,26 @@ export type ParseError = {
 // keeps the per-request path allocation-free.
 const ALLOWED_ENGINES_LIST: Engine[] = [...ALLOWED_ENGINES];
 
-export function invalidEngineError(value: unknown): ParseError {
-  return {
-    status: 400,
-    body: { error: "invalid_engine", value, allowed: ALLOWED_ENGINES_LIST },
-  };
+export function invalidEngineError(): ParseError {
+  return { code: "invalid_engine", params: { allowed: ALLOWED_ENGINES_LIST } };
 }
 
 export type ParseResult<T> = { ok: true; body: T } | { ok: false; error: ParseError };
 
 export async function parseGoalDbBody(c: Context): Promise<ParseResult<GoalDbBody>> {
   const raw = await parseJsonBody<{ goal?: unknown; dbId?: unknown }>(c);
-  if (!raw.ok) return { ok: false, error: { status: 400, body: { error: "invalid_json" } } };
+  if (!raw.ok) return { ok: false, error: { code: "invalid_json" } };
   if (typeof raw.body.goal !== "string" || raw.body.goal.trim().length === 0) {
-    return { ok: false, error: { status: 400, body: { error: "goal_required" } } };
+    return { ok: false, error: { code: "goal_required" } };
   }
   if (raw.body.goal.length > MAX_GOAL_LENGTH) {
     return {
       ok: false,
-      error: { status: 400, body: { error: "goal_too_long", maxLength: MAX_GOAL_LENGTH } },
+      error: { code: "goal_too_long", params: { maxLength: MAX_GOAL_LENGTH } },
     };
   }
   if (typeof raw.body.dbId !== "string" || raw.body.dbId.length === 0) {
-    return { ok: false, error: { status: 400, body: { error: "dbId_required" } } };
+    return { ok: false, error: { code: "dbId_required" } };
   }
   return { ok: true, body: { goal: raw.body.goal, dbId: raw.body.dbId } };
 }
@@ -185,14 +144,14 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
     endUserId?: unknown;
     threadId?: unknown;
   }>(c);
-  if (!raw.ok) return { ok: false, error: { status: 400, body: { error: "invalid_json" } } };
+  if (!raw.ok) return { ok: false, error: { code: "invalid_json" } };
   if (typeof raw.body.goal !== "string" || raw.body.goal.trim().length === 0) {
-    return { ok: false, error: { status: 400, body: { error: "goal_required" } } };
+    return { ok: false, error: { code: "goal_required" } };
   }
   if (raw.body.goal.length > MAX_GOAL_LENGTH) {
     return {
       ok: false,
-      error: { status: 400, body: { error: "goal_too_long", maxLength: MAX_GOAL_LENGTH } },
+      error: { code: "goal_too_long", params: { maxLength: MAX_GOAL_LENGTH } },
     };
   }
   const body: AskBody = { goal: raw.body.goal };
@@ -201,7 +160,7 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
   }
   if (raw.body.engine !== undefined) {
     if (!isAllowedEngine(raw.body.engine)) {
-      return { ok: false, error: invalidEngineError(raw.body.engine) };
+      return { ok: false, error: invalidEngineError() };
     }
     body.engine = raw.body.engine;
   }
@@ -216,10 +175,7 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
     if (!isModelPreset(raw.body.model)) {
       return {
         ok: false,
-        error: {
-          status: 400,
-          body: { error: "invalid_model", value: raw.body.model, allowed: [...MODEL_PRESETS] },
-        },
+        error: { code: "invalid_model" },
       };
     }
     body.model = raw.body.model;
@@ -238,7 +194,7 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
     const value = raw.body[key];
     if (value === undefined || value === "") continue;
     if (typeof value !== "string") {
-      return { ok: false, error: { status: 400, body: { error: "invalid_scope" } } };
+      return { ok: false, error: { code: "invalid_scope" } };
     }
     body[key] = value;
   }
@@ -254,19 +210,19 @@ export async function parseRunBody(
   opts: { dbOptional?: boolean } = {},
 ): Promise<ParseResult<RunBody>> {
   const raw = await parseJsonBody<{ sql?: unknown; db?: unknown }>(c);
-  if (!raw.ok) return { ok: false, error: { status: 400, body: { error: "invalid_json" } } };
+  if (!raw.ok) return { ok: false, error: { code: "invalid_json" } };
   if (typeof raw.body.sql !== "string" || raw.body.sql.trim().length === 0) {
-    return { ok: false, error: { status: 400, body: { error: "sql_required" } } };
+    return { ok: false, error: { code: "sql_required" } };
   }
   if (raw.body.sql.length > MAX_SQL_LENGTH) {
     return {
       ok: false,
-      error: { status: 400, body: { error: "sql_too_long", maxLength: MAX_SQL_LENGTH } },
+      error: { code: "sql_too_long", params: { maxLength: MAX_SQL_LENGTH } },
     };
   }
   const dbProvided = typeof raw.body.db === "string" && raw.body.db.length > 0;
   if (!dbProvided && !opts.dbOptional) {
-    return { ok: false, error: { status: 400, body: { error: "db_required" } } };
+    return { ok: false, error: { code: "db_required" } };
   }
   return { ok: true, body: { sql: raw.body.sql, db: dbProvided ? (raw.body.db as string) : "" } };
 }

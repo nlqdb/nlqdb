@@ -54,17 +54,28 @@ func (c *Client) WithByollm(header string) *Client {
 	return c
 }
 
-// APIError carries the API's typed `status` discriminant plus the
-// sub-discriminant `code` (e.g. `auth_required` + `anon_device_cap`).
+// APIError carries the API's typed `code` discriminant plus the server-rendered
+// copy that goes with it (SK-ERR-001): `Message` is one sentence naming what
+// happened, `Action` is the single next step, and `Retryable` is derived from the
+// code's recoverability so this client never has to guess.
 // HTTPStatus == 0 signals transport-level failure (DNS, timeout, abort).
 type APIError struct {
 	HTTPStatus int
-	Status     string
 	Code       string
 	Action     string
 	Message    string
-	Path       string
-	Raw        json.RawMessage
+	// Retryable comes from the server. False means replaying the request
+	// replays the failure — a deterministic constraint violation, a rejected
+	// key — so `do`'s retry loop must not burn attempts on it.
+	Retryable bool
+	// retryableSet distinguishes "the server said false" from "no envelope",
+	// so a pre-SK-ERR-001 response still falls back to HTTP-status heuristics.
+	retryableSet bool
+	Path         string
+	Raw          json.RawMessage
+	// Params carries the code's declared cause fields (bounded enums, slugs) —
+	// e.g. `cap` on auth_required, `reason` on sql_rejected.
+	Params map[string]json.RawMessage
 	// SK-ASK-026 — populated on a `clarify_required` envelope. `Reason` is
 	// the one-sentence prompt; `Clarification` distinguishes the SK-ASK-014
 	// create-vs-query shape from the SK-ASK-026 destructive one; `Options`
@@ -76,9 +87,26 @@ type APIError struct {
 
 func (e *APIError) Error() string {
 	if e.Message != "" {
-		return fmt.Sprintf("%s: %s (%d)", e.Status, e.Message, e.HTTPStatus)
+		return fmt.Sprintf("%s: %s (%d)", e.Code, e.Message, e.HTTPStatus)
 	}
-	return fmt.Sprintf("%s (%d)", e.Status, e.HTTPStatus)
+	return fmt.Sprintf("%s (%d)", e.Code, e.HTTPStatus)
+}
+
+// Cap reports which anonymous budget an `auth_required` names
+// (`anon_device_cap` / `anon_global_cap`), or "" when neither.
+func (e *APIError) Cap() string { return e.param("cap") }
+
+// param returns a string field from the envelope's `params`, or "".
+func (e *APIError) param(name string) string {
+	raw, ok := e.Params[name]
+	if !ok {
+		return ""
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return ""
+	}
+	return s
 }
 
 func (c *Client) do(ctx context.Context, method, path string, body any, out any) error {
@@ -140,7 +168,7 @@ func (c *Client) send(ctx context.Context, method, path string, body []byte, ide
 	}
 	req, err := http.NewRequestWithContext(ctx, method, c.BaseURL+path, reader)
 	if err != nil {
-		return &APIError{Status: "request_build_error", Message: err.Error(), Path: path}
+		return &APIError{Code: "request_build_error", Message: err.Error(), Path: path}
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", c.UserAgent)
@@ -159,13 +187,13 @@ func (c *Client) send(ctx context.Context, method, path string, body []byte, ide
 
 	res, err := c.HTTP.Do(req)
 	if err != nil {
-		return &APIError{Status: "network_error", Message: err.Error(), Path: path}
+		return &APIError{Code: "network_error", Message: err.Error(), Path: path}
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		return &APIError{HTTPStatus: res.StatusCode, Status: "network_error", Message: err.Error(), Path: path}
+		return &APIError{HTTPStatus: res.StatusCode, Code: "network_error", Message: err.Error(), Path: path}
 	}
 
 	if res.StatusCode >= 200 && res.StatusCode < 300 {
@@ -175,7 +203,7 @@ func (c *Client) send(ctx context.Context, method, path string, body []byte, ide
 		if err := json.Unmarshal(data, out); err != nil {
 			return &APIError{
 				HTTPStatus: res.StatusCode,
-				Status:     "non_json_response",
+				Code:       "non_json_response",
 				Message:    fmt.Sprintf("decode 2xx body: %v", err),
 				Path:       path,
 				Raw:        data,
@@ -187,15 +215,15 @@ func (c *Client) send(ctx context.Context, method, path string, body []byte, ide
 	return extractError(res.StatusCode, path, data)
 }
 
-// extractError handles the two envelope shapes the API emits — the
-// object form (`{error: {status, code, action}}`) and the string form
-// (`{error: "invalid_json"}`) — so callers can switch on `err.Status`
-// without parsing strings.
+// extractError handles the two envelope shapes the API emits — the SK-ERR-001
+// object form (`{error: {code, message, action, retryable, params}}`) and the
+// legacy string form (`{error: "invalid_json"}`) — so callers can switch on
+// `err.Code` and print `err.Message` / `err.Action` without parsing strings.
 func extractError(status int, path string, data []byte) *APIError {
 	out := &APIError{HTTPStatus: status, Path: path, Raw: data}
 
 	if len(data) == 0 {
-		out.Status = "unknown_error"
+		out.Code = "unknown_error"
 		return out
 	}
 
@@ -203,61 +231,83 @@ func extractError(status int, path string, data []byte) *APIError {
 		Error json.RawMessage `json:"error"`
 	}
 	if err := json.Unmarshal(data, &generic); err != nil {
-		out.Status = "non_json_response"
+		out.Code = "non_json_response"
 		out.Message = fmt.Sprintf("body: %s", trimRaw(data))
 		return out
 	}
 
 	var asString string
 	if err := json.Unmarshal(generic.Error, &asString); err == nil && asString != "" {
-		out.Status = asString
+		out.Code = asString
 		return out
 	}
 
 	var asObject struct {
-		Status        string          `json:"status"`
-		Code          string          `json:"code"`
-		Action        string          `json:"action"`
-		Message       string          `json:"message"`
+		Code      string                     `json:"code"`
+		Action    string                     `json:"action"`
+		Message   string                     `json:"message"`
+		Retryable *bool                      `json:"retryable"`
+		Params    map[string]json.RawMessage `json:"params"`
+		// Pre-envelope fields some endpoints still send at the top level.
 		Reason        string          `json:"reason"`
 		Clarification string          `json:"clarification"`
 		Options       []ClarifyOption `json:"options"`
 	}
-	if err := json.Unmarshal(generic.Error, &asObject); err == nil && asObject.Status != "" {
-		out.Status = asObject.Status
+	if err := json.Unmarshal(generic.Error, &asObject); err == nil && asObject.Code != "" {
 		out.Code = asObject.Code
 		out.Action = asObject.Action
-		out.Reason = asObject.Reason
-		out.Clarification = asObject.Clarification
+		out.Message = asObject.Message
+		out.Params = asObject.Params
+		if asObject.Retryable != nil {
+			out.Retryable = *asObject.Retryable
+			out.retryableSet = true
+		}
+		out.Reason = firstNonEmpty(asObject.Reason, out.param("reason"))
+		out.Clarification = firstNonEmpty(asObject.Clarification, out.param("clarification"))
 		out.Options = asObject.Options
-		switch {
-		case asObject.Message != "":
-			out.Message = asObject.Message
-		case asObject.Reason != "":
-			out.Message = asObject.Reason
+		if len(out.Options) == 0 {
+			if raw, ok := out.Params["options"]; ok {
+				_ = json.Unmarshal(raw, &out.Options)
+			}
+		}
+		if out.Message == "" && out.Reason != "" {
+			out.Message = out.Reason
 		}
 		return out
 	}
 
-	out.Status = "unknown_error"
+	out.Code = "unknown_error"
 	out.Message = trimRaw(data)
 	return out
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 func recoverable(e *APIError) bool {
 	if e == nil {
 		return false
 	}
-	if e.HTTPStatus == 0 && e.Status != "network_error" {
+	if e.Code == "network_error" {
+		return true
+	}
+	if e.HTTPStatus == 0 {
 		return false
 	}
-	if e.Status == "network_error" {
-		return true
+	// SK-ERR-001 — the server already classified this. A 502 `llm_failed` from a
+	// rejected BYOLLM key and a 502 from a provider blip look identical by HTTP
+	// status; only `retryable` tells them apart, and retrying the former burns
+	// three round-trips to reprint the same error.
+	if e.retryableSet {
+		return e.Retryable
 	}
-	if e.HTTPStatus >= 500 && e.HTTPStatus < 600 {
-		return true
-	}
-	return false
+	return e.HTTPStatus >= 500 && e.HTTPStatus < 600
 }
 
 // jitteredBackoff returns base × 2^(attempt-1) plus equal-jitter

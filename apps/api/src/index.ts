@@ -126,7 +126,13 @@ import {
   parseRunBody,
   sanitizeAskSource,
 } from "./http.ts";
-import { errorEnvelope, errorResponse, fail, failUnknown } from "./error-envelope.ts";
+import {
+  errorEnvelope,
+  errorResponse,
+  fail,
+  failUnknown,
+  type PipelineError,
+} from "./error-envelope.ts";
 import { httpsRedirectTarget, withHsts } from "./https-enforce.ts";
 import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
@@ -724,7 +730,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     const parsed = await parseAskBody(c);
     if (!parsed.ok) {
       span.end();
-      return c.json(parsed.error.body, parsed.error.status);
+      return errorResponse(c, parsed.error as PipelineError);
     }
     span.setAttribute("nlqdb.ask.goal_preview", redactPii(parsed.body.goal).slice(0, 200));
 
@@ -1049,8 +1055,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     const modelUnavailable = () => {
       span.setAttribute("nlqdb.ask.outcome", "model_unavailable");
       span.end();
-      return fail(c, "model_unavailable", { message:
-              'model "best" needs a frontier model: add your own provider key (BYOLLM) or a paid plan — pick one under /app/keys.', link: "https://app.nlqdb.com/app/keys" });
+      return fail(c, "model_unavailable", { link: "https://app.nlqdb.com/app/keys" });
     };
     // Anon principals can never hold a frontier lane (BYOLLM is
     // signed-in-only, paid plans need an account), so `best` fails loud
@@ -1799,8 +1804,8 @@ app.post("/v1/run", requirePrincipal, async (c) => {
 
       const parsed = await parseRunBody(c, { dbOptional: principal.kind === "pk_live" });
       if (!parsed.ok) {
-        span.setAttribute("nlqdb.run.outcome", parsed.error.body.error);
-        return c.json(parsed.error.body, parsed.error.status);
+        span.setAttribute("nlqdb.run.outcome", parsed.error.code);
+        return errorResponse(c, parsed.error as PipelineError);
       }
       if (principal.kind === "pk_live" && !parsed.body.db) {
         parsed.body.db = principal.dbId;
@@ -2040,7 +2045,7 @@ app.post("/v1/events/wishlist", async (c) => {
       );
       if (result.status === 400) {
         span.setAttribute("nlqdb.events.outcome", result.reason);
-        return c.json({ error: { status: result.reason } }, 400);
+        return failUnknown(c, result.reason);
       }
       if (result.status === 429) {
         span.setAttribute("nlqdb.events.outcome", "rate_limited");
@@ -2091,7 +2096,7 @@ app.post("/v1/events/pricing", async (c) => {
       );
       if (result.status === 400) {
         span.setAttribute("nlqdb.events.outcome", result.reason);
-        return c.json({ error: { status: result.reason } }, 400);
+        return failUnknown(c, result.reason);
       }
       if (result.status === 429) {
         span.setAttribute("nlqdb.events.outcome", "rate_limited");
@@ -2141,7 +2146,7 @@ app.post("/v1/events/eval", async (c) => {
       }
       if (result.status === 400) {
         span.setAttribute("nlqdb.events.outcome", result.reason);
-        return c.json({ error: { status: result.reason } }, 400);
+        return failUnknown(c, result.reason);
       }
       span.setAttribute("nlqdb.events.outcome", "accepted");
       span.setAttribute("nlqdb.events.emitted", result.emitted);
@@ -2468,15 +2473,10 @@ app.post("/v1/anon/adopt", requireSession, async (c) => {
     // `internal` reason describes a server-side failure mode the
     // client can't act on; surface it as `adopt_failed` so external
     // dashboards / docs don't have to track infra detail.
-    const publicStatus =
-      result.reason === "invalid_token"
-        ? "invalid_token"
-        : result.reason === "token_taken"
-          ? "token_taken"
-          : "adopt_failed";
-    const httpStatus =
-      result.reason === "invalid_token" ? 400 : result.reason === "token_taken" ? 409 : 500;
-    return c.json({ error: { status: publicStatus } }, httpStatus);
+    // The `internal` reason describes a server-side failure the client can't
+    // act on; surface it as `adopt_failed` so external dashboards / docs don't
+    // have to track infra detail.
+    return failUnknown(c, result.reason === "internal" ? "adopt_failed" : result.reason);
   }
   // SK-ANON-014 — `dbId` echoes the adopted DB so callers can pin it
   // synchronously (e.g. the post-signin landing appends `?db=<id>`).
@@ -2961,7 +2961,7 @@ app.post("/v1/packs/imports", async (c) => {
         // The draft survives every rejection so a retry resumes it; the
         // status is advisory, never a lost import.
         return c.json(
-          { import: importView(draft), error: { status: preflight.reason } },
+          { import: importView(draft), ...errorEnvelope({ code: "source_required" }).body },
           preflight.reason === "source_unavailable" ? 422 : 500,
         );
       }
@@ -3127,7 +3127,11 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
           // `auth_required` / `db_required` are journey states, not failures:
           // the draft is intact and the client's next action resumes it.
           const status = outcome.reason === "source_unavailable" ? 422 : 409;
-          return c.json({ import: importView(settled), error: { status: outcome.reason } }, status);
+          const code = outcome.reason === "source_unavailable" ? "source_required" : "import_busy";
+          return c.json(
+            { import: importView(settled), ...errorEnvelope({ code }).body },
+            status,
+          );
         }
         span.setAttribute("nlqdb.pack.import.outcome", "ok");
         const body = { import: importView(settled) };
@@ -4124,10 +4128,7 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
               : ("invalid_request" as const);
         span.setAttribute("nlqdb.db.connect.outcome", code);
         span.end();
-        return c.json(
-          { error: { status: code, message: result.message } },
-          result.status as 400 | 502 | 503,
-        );
+        return fail(c, code, { message: result.message });
       }
       span.setAttribute("nlqdb.db.connect.outcome", "ok");
       span.setAttribute("nlqdb.db.connect.db_id", result.dbId);
@@ -4249,7 +4250,7 @@ app.post("/v1/chat/messages", requireSession, async (c) => {
     if (!parsed.ok) {
       span.setAttribute("nlqdb.chat.outcome", "invalid_request");
       span.end();
-      return c.json(parsed.error.body, parsed.error.status);
+      return errorResponse(c, parsed.error as PipelineError);
     }
 
     // TEMPORARY (Slice 11 retires): `dbId="demo"` short-circuits to
@@ -4483,9 +4484,7 @@ app.post("/api/auth/anon-adopt-now", requireSession, async (c) => {
         return c.json({ adopted: result.adopted, dbId: result.dbId });
       }
       span.setAttribute("nlqdb.anon.adopt.outcome", result.reason);
-      const httpStatus =
-        result.reason === "invalid_token" ? 400 : result.reason === "token_taken" ? 409 : 500;
-      return c.json({ error: { status: result.reason } }, httpStatus);
+      return failUnknown(c, result.reason === "internal" ? "adopt_failed" : result.reason);
     } finally {
       span.end();
     }

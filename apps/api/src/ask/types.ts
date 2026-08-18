@@ -187,7 +187,7 @@ export type AskError =
   | { code: "schema_mismatch"; referencedTables: string[]; schemaTables: string[] }
   // SK-ASK-027 — deterministic exec failures the catch-all used to bucket as
   // `db_unreachable`, costing three pointless retries and wrong copy.
-  | { code: "constraint_violation"; kind?: ConstraintKind; constraint?: string; table?: string }
+  | { code: "write_constraint"; kind?: ConstraintKind; constraint?: string; table?: string }
   | { code: "invalid_value"; pgCode?: string }
   | ClarifyRequired;
 

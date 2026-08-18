@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/spf13/cobra"
 
@@ -135,23 +136,27 @@ func formatFor(g *globalFlags) output.Format {
 	return output.FormatHuman
 }
 
+// renderAPIError prints a failed call. SK-ERR-001 — the API already renders one
+// sentence + the next action from the shared error registry, so the default is to
+// print those. What stays here is the sparse set of codes where the CLI's next
+// action is a *command*, not a click: no server-side copy can tell a terminal
+// user to run `nlq byollm set`.
+//
+// This replaced a parallel copy table (including a full duplicate of the SQL
+// allowlist reject reasons) that had already drifted from the web's and MCP's.
 func renderAPIError(cmd *cobra.Command, err error) error {
 	var apiErr *api.APIError
 	if !errors.As(err, &apiErr) {
 		printErr(cmd, "%v", err)
 		return err
 	}
-	switch apiErr.Status {
-	case "ambiguous_db":
-		printErr(cmd, "the goal matches multiple databases — re-run with `--db=<id>` to pin one.")
+	switch apiErr.Code {
 	case "clarify_required":
 		renderClarify(cmd, apiErr)
-	case "sql_rejected":
-		printErr(cmd, "%s", sqlRejectedMessage(apiErr.Reason))
+	case "ambiguous_db":
+		printErr(cmd, "the goal matches multiple databases — re-run with `--db=<id>` to pin one.")
 	case "db_not_found":
 		printErr(cmd, "database not found — try `nlq db list` to see what's available.")
-	case "rate_limited":
-		printErr(cmd, "rate-limited — wait a moment, then retry.")
 	case "byollm_requires_session":
 		printErr(cmd, "%s", byollmNeedsSession)
 	case "invalid_byollm_key":
@@ -165,9 +170,42 @@ func renderAPIError(cmd *cobra.Command, err error) error {
 	case "auth_required", "unauthorized":
 		renderAuthRequired(cmd, apiErr)
 	default:
-		printErr(cmd, "%s", apiErr.Error())
+		printWireError(cmd, apiErr)
 	}
 	return err
+}
+
+// printWireError prints the server's message + action, lower-cased to match the
+// CLI's voice. Falls back to the code when an older deployment sends no copy.
+func printWireError(cmd *cobra.Command, apiErr *api.APIError) {
+	if apiErr.Message == "" {
+		printErr(cmd, "%s", apiErr.Error())
+		return
+	}
+	line := lowerFirst(apiErr.Message)
+	if apiErr.Action != "" {
+		line += " " + apiErr.Action
+	}
+	printErr(cmd, "%s", line)
+}
+
+func lowerFirst(s string) string {
+	first, _, _ := strings.Cut(s, " ")
+	r := []rune(first)
+	if len(r) == 0 || !unicode.IsUpper(r[0]) {
+		return s
+	}
+	// Leave the first word alone when it carries a capital past position 0 —
+	// a proper noun ("OpenRouter"), an identifier, or an all-caps SQL verb the
+	// message names on purpose ("DELETE").
+	for _, c := range r[1:] {
+		if unicode.IsUpper(c) {
+			return s
+		}
+	}
+	out := []rune(s)
+	out[0] = unicode.ToLower(out[0])
+	return string(out)
 }
 
 // renderClarify prints a 409 clarify_required. SK-ASK-026's
@@ -195,48 +233,16 @@ func renderClarify(cmd *cobra.Command, apiErr *api.APIError) {
 	}
 }
 
-// sqlRejectedMessage turns the API's specific allowlist reject reason
-// (SK-ASK-026, `body.reason`) into honest, actionable copy. The
-// destructive-ambiguous family normally arrives as `clarify_required` with
-// options; this covers the remaining reject reasons.
-func sqlRejectedMessage(reason string) string {
-	switch reason {
-	case "drop_statement":
-		return "dropping tables isn't supported from `ask` — start a new database instead."
-	case "truncate_statement":
-		return "emptying a whole table isn't a one-shot `ask` — delete rows with a filter."
-	case "delete_without_where":
-		return "that would delete every row — add a filter, or say which rows to remove."
-	case "update_without_where":
-		return "that would update every row — add a filter (e.g. \"… where status = 'open'\")."
-	case "grant_or_revoke":
-		return "changing database permissions isn't supported from `ask`."
-	case "alter_statement":
-		return "changing a table's structure isn't supported from `ask`."
-	case "disallowed_verb":
-		return "that kind of statement isn't allowed here — ask in plain English."
-	case "disallowed_function":
-		return "that query uses a function that isn't allowed here."
-	case "multi_statement":
-		return "ask one thing at a time — that came through as multiple statements."
-	case "parse_failed", "empty":
-		return "couldn't turn that into a valid query — try rephrasing."
-	default:
-		return "that query was rejected — try rephrasing."
-	}
-}
-
+// renderAuthRequired prints the sign-in wall. The server's action says "sign in",
+// which a terminal user can't click — so the CLI names the credential to set.
+// `params.cap` distinguishes the two anonymous budgets (SK-ANON-010/012).
 func renderAuthRequired(cmd *cobra.Command, apiErr *api.APIError) {
-	switch apiErr.Code {
+	switch apiErr.Cap() {
 	case "anon_device_cap":
 		printErr(cmd, "anonymous device cap hit — sign in to keep building (set NLQDB_API_KEY or run `nlq login` once device-flow ships).")
 	case "anon_global_cap":
 		printErr(cmd, "anonymous global quota hit — sign in to keep going (set NLQDB_API_KEY or run `nlq login` once device-flow ships).")
 	default:
-		if apiErr.Action != "" {
-			printErr(cmd, "auth required — %s", apiErr.Action)
-			return
-		}
 		printErr(cmd, "auth required — set `NLQDB_API_KEY` or run `nlq login` (device-flow ships in the next slice).")
 	}
 }

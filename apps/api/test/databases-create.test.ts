@@ -25,8 +25,8 @@ const URL = "https://example.com/v1/databases";
 const JSON_HEADERS = { "content-type": "application/json" };
 
 async function bodyStatus(res: Response): Promise<string | undefined> {
-  const body = (await res.json()) as { error?: { status?: string } };
-  return body.error?.status;
+  const body = (await res.json()) as { error?: { code?: string } };
+  return body.error?.code;
 }
 
 describe("POST /v1/databases — create auth boundary (SK-HDC-021)", () => {

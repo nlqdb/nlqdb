@@ -19,5 +19,5 @@ type _SdkCoversRegistry = AssertNever<Exclude<ErrorCode, SdkCode>>;
 it("exposes every registry code as a plain list", () => {
   expect(ERROR_CODES.length).toBe(new Set(ERROR_CODES).size);
   expect(ERROR_CODES).toContain("llm_failed");
-  expect(ERROR_CODES).toContain("constraint_violation");
+  expect(ERROR_CODES).toContain("write_constraint");
 });

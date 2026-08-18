@@ -40,8 +40,8 @@ describe("POST /v1/db/connect — principal gate", () => {
       body: JSON.stringify({ engine: "clickhouse", connection_url: CONN_URL }),
     });
     expect(res.status).toBe(403);
-    const body = (await res.json()) as { error?: { status?: string } };
-    expect(body.error?.status).toBe("connect_requires_account");
+    const body = (await res.json()) as { error?: { code?: string } };
+    expect(body.error?.code).toBe("connect_requires_account");
   });
 
   it("rejects a pk_live bearer (db-scoped, not an account)", async () => {

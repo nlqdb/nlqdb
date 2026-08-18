@@ -14,13 +14,18 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 // params that code declares. Typed loosely on purpose — each pipeline's own
 // union (`AskError`, `RunError`, …) is the precise contract; this is the
 // boundary that renders whatever they produced.
+// Two equivalent spellings, because both read naturally at their call sites:
+// the orchestrators return the params flat next to `code` (`{code:"sql_rejected",
+// reason}`), while the body parsers nest them (`{code, params:{maxLength}}`).
+// Either way the registry sees one params object.
 export type PipelineError = { code: ErrorCode } & Record<string, unknown>;
 
 export function errorEnvelope(error: PipelineError): {
   body: { error: ReturnType<typeof renderError> };
   httpStatus: ContentfulStatusCode;
 } {
-  const { code, ...params } = error;
+  const { code, params: nested, ...flat } = error;
+  const params = (nested as Record<string, unknown> | undefined) ?? flat;
   const { httpStatus, recoverability: _r, ...wire } = renderError(code, params);
   return {
     body: { error: wire as ReturnType<typeof renderError> },

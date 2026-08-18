@@ -166,7 +166,7 @@ func renderRememberError(cmd *cobra.Command, err error) error {
 		printErr(cmd, "%v", err)
 		return err
 	}
-	switch apiErr.Status {
+	switch apiErr.Code {
 	case "wrong_preset":
 		printErr(cmd, "that database isn't an agent_memory_v1 preset — `nlq remember` only writes to memory-preset databases (create one via the SDK/MCP `db.create` preset).")
 		return err

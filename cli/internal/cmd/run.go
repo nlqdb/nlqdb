@@ -90,7 +90,7 @@ func renderRunError(cmd *cobra.Command, err error) error {
 		printErr(cmd, "%v", err)
 		return err
 	}
-	switch apiErr.Status {
+	switch apiErr.Code {
 	case "sql_rejected":
 		reason := apiErr.Message
 		if reason == "" {

@@ -55,7 +55,7 @@ describe("createClient", () => {
 
   it("throws NlqdbApiError on non-ok with structured envelope", async () => {
     const fakeFetch: FetchLike = async () =>
-      new Response(JSON.stringify({ error: { status: "rate_limited", limit: 100, count: 101 } }), {
+      new Response(JSON.stringify({ error: { code: "rate_limited", limit: 100, count: 101 } }), {
         status: 429,
         headers: { "content-type": "application/json" },
       });
@@ -122,7 +122,7 @@ describe("createClient", () => {
       const e = err as NlqdbApiError;
       expect(e.code).toBe("invalid_json");
       expect(e.httpStatus).toBe(400);
-      expect(e.body?.status).toBe("invalid_json");
+      expect(e.body?.code).toBe("invalid_json");
     }
   });
 
@@ -234,7 +234,7 @@ describe("createClient", () => {
 
   it("deleteDatabase: surfaces a typed NlqdbApiError on 404 db_not_found", async () => {
     const fakeFetch: FetchLike = async () =>
-      new Response(JSON.stringify({ error: { status: "db_not_found" } }), {
+      new Response(JSON.stringify({ error: { code: "db_not_found" } }), {
         status: 404,
         headers: { "content-type": "application/json" },
       });
@@ -410,7 +410,7 @@ describe("createClient", () => {
     expect(capturedInit?.signal).toBe(controller.signal);
     if (out.assistant.role !== "assistant") expect.fail("expected assistant");
     if (out.assistant.result.kind !== "error") expect.fail("expected error result");
-    expect(out.assistant.result.status).toBe("sql_rejected");
+    expect(out.assistant.result.code).toBe("sql_rejected");
   });
 
   // GLOBAL-022 — SDK wire-layer retry. Three attempts on transport
@@ -422,7 +422,7 @@ describe("createClient", () => {
     let calls = 0;
     const fakeFetch: FetchLike = async () => {
       calls++;
-      return new Response(JSON.stringify({ error: { status: "unknown_error" } }), { status: 503 });
+      return new Response(JSON.stringify({ error: { code: "unknown_error" } }), { status: 503 });
     };
     const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
     await expect(client.ask({ goal: "x", dbId: "y" })).rejects.toThrow();
@@ -460,7 +460,7 @@ describe("createClient", () => {
     let calls = 0;
     const fakeFetch: FetchLike = async () => {
       calls++;
-      return new Response(JSON.stringify({ error: { status: "rate_limited" } }), { status: 429 });
+      return new Response(JSON.stringify({ error: { code: "rate_limited" } }), { status: 429 });
     };
     const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
     await expect(client.ask({ goal: "x", dbId: "y" })).rejects.toThrow();
@@ -492,7 +492,7 @@ describe("createClient", () => {
       const headers = (init?.headers ?? {}) as Record<string, string>;
       seenKeys.push(headers["idempotency-key"] ?? "");
       if (calls < 3) {
-        return new Response(JSON.stringify({ error: { status: "unknown_error" } }), {
+        return new Response(JSON.stringify({ error: { code: "unknown_error" } }), {
           status: 502,
         });
       }
@@ -528,7 +528,7 @@ describe("createClient", () => {
       const headers = (init?.headers ?? {}) as Record<string, string>;
       seenKeys.push(headers["idempotency-key"] ?? "");
       if (calls < 2) {
-        return new Response(JSON.stringify({ error: { status: "unknown_error" } }), {
+        return new Response(JSON.stringify({ error: { code: "unknown_error" } }), {
           status: 502,
         });
       }
@@ -695,7 +695,7 @@ describe("createClient", () => {
 
   it("revokeKey: surfaces 404 key_not_found as NlqdbApiError", async () => {
     const fakeFetch: FetchLike = async () =>
-      new Response(JSON.stringify({ error: { status: "key_not_found" } }), {
+      new Response(JSON.stringify({ error: { code: "key_not_found" } }), {
         status: 404,
         headers: { "content-type": "application/json" },
       });
@@ -775,7 +775,7 @@ describe("createClient", () => {
   it("runSql: surfaces 400 sql_rejected as NlqdbApiError", async () => {
     const fakeFetch: FetchLike = async () =>
       new Response(
-        JSON.stringify({ error: { status: "sql_rejected", reason: "drop_statement" } }),
+        JSON.stringify({ error: { code: "sql_rejected", reason: "drop_statement" } }),
         { status: 400, headers: { "content-type": "application/json" } },
       );
     const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
@@ -793,7 +793,7 @@ describe("createClient", () => {
   it("runSql: surfaces 403 forbidden as NlqdbApiError (pk_live write)", async () => {
     const fakeFetch: FetchLike = async () =>
       new Response(
-        JSON.stringify({ error: { status: "forbidden", reason: "read_only_principal" } }),
+        JSON.stringify({ error: { code: "forbidden", reason: "read_only_principal" } }),
         { status: 403, headers: { "content-type": "application/json" } },
       );
     const client = createClient({ apiKey: "pk_live_test", fetch: fakeFetch });
@@ -1209,7 +1209,7 @@ describe("createClient", () => {
     const fakeFetch: FetchLike = async () =>
       new Response(
         JSON.stringify({
-          error: { status: "invalid_byollm_key", message: 'provider "cohere" is not supported.' },
+          error: { code: "invalid_byollm_key", message: 'provider "cohere" is not supported.' },
         }),
         { status: 400, headers: { "content-type": "application/json" } },
       );
@@ -1232,7 +1232,7 @@ describe("createClient", () => {
     const fakeFetch: FetchLike = async () =>
       new Response(
         JSON.stringify({
-          error: { status: "byollm_unavailable", message: "BYOLLM key storage is not configured." },
+          error: { code: "byollm_unavailable", message: "BYOLLM key storage is not configured." },
         }),
         { status: 503, headers: { "content-type": "application/json" } },
       );
@@ -1356,7 +1356,7 @@ describe("createClient", () => {
     const fakeFetch: FetchLike = async () =>
       new Response(
         JSON.stringify({
-          error: { status: "connect_requires_account", message: "Sign in to connect a database." },
+          error: { code: "connect_requires_account", message: "Sign in to connect a database." },
         }),
         { status: 403, headers: { "content-type": "application/json" } },
       );
@@ -1380,7 +1380,7 @@ describe("createClient", () => {
     const fakeFetch: FetchLike = async () =>
       new Response(
         JSON.stringify({
-          error: { status: "invalid_request", message: "Connection host is not reachable." },
+          error: { code: "invalid_request", message: "Connection host is not reachable." },
         }),
         { status: 400, headers: { "content-type": "application/json" } },
       );
@@ -1400,7 +1400,7 @@ describe("createClient", () => {
   it("databases.connect: maps 502 introspection_failed and 503 sealing_unconfigured", async () => {
     const make = (status: number, code: string) => {
       const fakeFetch: FetchLike = async () =>
-        new Response(JSON.stringify({ error: { status: code, message: "x" } }), {
+        new Response(JSON.stringify({ error: { code: code, message: "x" } }), {
           status,
           headers: { "content-type": "application/json" },
         });

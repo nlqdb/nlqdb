@@ -47,7 +47,7 @@ describe("remember (E-02)", () => {
 
   it("surfaces 409 wrong_preset as NlqdbApiError", async () => {
     const fakeFetch: FetchLike = async () =>
-      new Response(JSON.stringify({ error: { status: "wrong_preset" } }), {
+      new Response(JSON.stringify({ error: { code: "wrong_preset" } }), {
         status: 409,
         headers: { "content-type": "application/json" },
       });
@@ -165,7 +165,7 @@ describe("401 handling on a withCredentials client", () => {
     let calls = 0;
     const fakeFetch: FetchLike = async () => {
       calls++;
-      return new Response(JSON.stringify({ error: { status: "unauthorized" } }), {
+      return new Response(JSON.stringify({ error: { code: "unauthorized" } }), {
         status: 401,
         headers: { "content-type": "application/json" },
       });

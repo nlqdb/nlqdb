@@ -67,18 +67,12 @@ function errorHtml(failure: AskFailure, label: string): string {
 <button type="button" class="nlq-action-btn" data-action-state="retry" data-action="retry">${escapeHtml(label)}</button>`;
 }
 
+// SK-ERR-001 — wire copy, rendered as-is (see `render.ts` for the rationale).
 function errorMessage(failure: AskFailure): string {
   if (failure.kind === "network") return `Network error: ${failure.message}`;
   if (failure.kind === "auth") return "Sign in required to make changes.";
   const err = failure.error;
-  const slug = typeof err === "string" ? err : err.status;
-  if (
-    slug === "rate_limited" &&
-    typeof err === "object" &&
-    typeof err["limit"] === "number" &&
-    typeof err["count"] === "number"
-  ) {
-    return `Rate limit reached (${err["count"] as number} of ${err["limit"] as number} used). Wait a moment, then retry.`;
-  }
-  return `Error ${failure.status}: ${slug}`;
+  if (typeof err === "string") return `Error ${failure.status}: ${err}`;
+  if (err.message) return err.action ? `${err.message} ${err.action}` : err.message;
+  return `Error ${failure.status}: ${err.code}`;
 }

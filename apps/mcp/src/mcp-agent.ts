@@ -100,7 +100,7 @@ function makeKeyRevokedError(): NlqdbApiError {
     "unauthorized",
     "/v1/keys/:hash/status",
     {
-      status: "unauthorized",
+      code: "unauthorized",
       message:
         "This MCP key was revoked. Sign in again: run `nlq mcp install` or paste the connector URL into your host's settings.",
     },

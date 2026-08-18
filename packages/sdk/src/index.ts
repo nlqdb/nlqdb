@@ -339,7 +339,8 @@ export type ApiErrorCode =
   | "schema_mismatch"
   // SK-ASK-027 — deterministic exec failures the old catch-all mislabeled as
   // `db_unreachable`: Postgres SQLSTATE class 23 and class 22 respectively.
-  | "constraint_violation"
+  | "write_constraint"
+  | "write_no_rows"
   | "invalid_value"
   // The plan's confidence sat below the tier floor.
   | "low_confidence"

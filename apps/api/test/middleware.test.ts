@@ -31,7 +31,9 @@ describe("requireSession middleware", () => {
     });
     const res = await app.request("/protected");
     expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "unauthorized" });
+    expect(await res.json()).toMatchObject({
+      error: { code: "unauthorized", message: expect.any(String), action: expect.any(String) },
+    });
   });
 
   it("returns 401 + session_revoked when the token is in the revocation set", async () => {

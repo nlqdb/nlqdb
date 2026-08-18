@@ -44,7 +44,9 @@ describe("requirePrincipal middleware", () => {
     });
     const res = await app.request("/protected");
     expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "unauthorized" });
+    expect(await res.json()).toMatchObject({
+      error: { code: "unauthorized", message: expect.any(String), action: expect.any(String) },
+    });
   });
 
   it("resolves a user principal when the cookie session is valid", async () => {

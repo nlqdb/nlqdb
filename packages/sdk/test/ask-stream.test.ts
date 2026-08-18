@@ -95,7 +95,7 @@ describe("askStream", () => {
   it("throws the API error carried on an SSE `error` event (httpStatus 200)", async () => {
     const frames =
       `event: plan\ndata: ${JSON.stringify({ trace: TRACE })}\n\n` +
-      `event: error\ndata: ${JSON.stringify({ error: { status: "llm_failed", message: "boom" } })}\n\n`;
+      `event: error\ndata: ${JSON.stringify({ error: { code: "llm_failed", message: "boom" } })}\n\n`;
     const fakeFetch: FetchLike = async () => sseResponse([frames]);
 
     const client = createClient({ withCredentials: true, fetch: fakeFetch });
@@ -126,7 +126,7 @@ describe("askStream", () => {
 
   it("maps a non-2xx JSON error returned before the stream opens", async () => {
     const fakeFetch: FetchLike = async () =>
-      new Response(JSON.stringify({ error: { status: "rate_limited", limit: 5, count: 6 } }), {
+      new Response(JSON.stringify({ error: { code: "rate_limited", limit: 5, count: 6 } }), {
         status: 429,
         headers: { "content-type": "application/json" },
       });
