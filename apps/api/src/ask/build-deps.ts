@@ -37,6 +37,7 @@ import { makeConfirmStash } from "./confirm-stash.ts";
 import { makeKvDiagSink } from "./diag.ts";
 import { buildExecSteps, type HostedExecStep } from "./exec-steps.ts";
 import { makeFirstQueryTracker } from "./first-query.ts";
+import { withLazyTtlSweep } from "./memory-exec-steps.ts";
 import type { OrchestrateDeps } from "./orchestrate.ts";
 import { makePlanCache } from "./plan-cache.ts";
 import { makeRateLimiter } from "./rate-limit.ts";
@@ -531,7 +532,7 @@ export async function buildMemoryExec(
   // INSERT runs as the tenant role (RLS enforced, no cross-schema reach),
   // not the shared owner. The INSERT itself stays parameterised.
   const roleName = await tenantRoleName(db.tenantId);
-  const steps = buildHostedExecSteps(
+  const baseSteps = buildHostedExecSteps(
     schemaName,
     db.tenantId,
     roleName,
@@ -541,6 +542,8 @@ export async function buildMemoryExec(
     // it would not be allowed to read back.
     plan.scope,
   );
+
+  const steps = withLazyTtlSweep(baseSteps, plan);
 
   return tracer.startActiveSpan(
     "nlqdb.memory.remember",

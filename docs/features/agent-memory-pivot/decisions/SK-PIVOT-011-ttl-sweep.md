@@ -9,6 +9,15 @@
   ships ahead of the cron wiring (a `wrangler.toml` `[triggers]` entry +
   `scheduled()` branch — plain code) and the read-side TTL-invisibility
   clause on E-03's `facts` RLS `USING` policy (E-03-gated).
+- **Lazy on-write variant (interim, `apps/api/src/ask/memory-exec-steps.ts`):**
+  until the cron lands, every memory INSERT splices the same
+  `DELETE FROM facts WHERE expires_at IS NOT NULL AND expires_at < now()` into
+  its transaction — **owner-scoped (before `SET LOCAL ROLE`)** for the same
+  reason the cron is (the RLS TTL arm hides expired rows from the tenant role),
+  and **capped to 200 rows/call** so the write pays a fixed ceiling, not the
+  expired backlog. Same trust boundary (server-built, `facts`-only,
+  schema-scoped by `search_path`; rolls back with the INSERT). `idx_facts__expires_at`
+  (partial) keeps it an index scan.
 - **Core value:** Bullet-proof, Honest, Simple
 - **Why:** Same trust boundary as the write verb (SK-PIVOT-008) — the only
   thing consulted is `facts.expires_at` and the cutoff is a bound param, so the

@@ -187,6 +187,11 @@ export function agentMemoryV1Ddl(schemaName: string): string[] {
     `CREATE INDEX "idx_facts__scope" ON ${q("facts")} ("agent_id", "end_user_id", "thread_id", "created_at" DESC);`,
     `CREATE INDEX "idx_episodes__scope" ON ${q("episodes")} ("agent_id", "end_user_id", "thread_id", "occurred_at" DESC);`,
     `CREATE INDEX "idx_facts__tags" ON ${q("facts")} USING GIN ("tags");`,
+    // TTL index: the E-04 sweeps (lazy on-write + cron) and the RLS TTL
+    // read arm all filter `facts` on `expires_at`. Partial (TTL rows are
+    // the minority) so the common no-TTL write pays nothing and the sweep
+    // is an index scan, not a per-write seq scan.
+    `CREATE INDEX "idx_facts__expires_at" ON ${q("facts")} ("expires_at") WHERE "expires_at" IS NOT NULL;`,
     `CREATE INDEX "idx_entity_facts__fact_id" ON ${q("entity_facts")} ("fact_id");`,
   ];
 }
