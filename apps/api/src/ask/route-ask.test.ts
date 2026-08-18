@@ -72,16 +72,11 @@ describe("routeAsk — deterministic short-circuits (no LLM)", () => {
     expect(route).not.toHaveBeenCalled();
   });
 
-  it("recent-table substring without verb → falls through to LLM", async () => {
-    const route = vi.fn(
-      async (): Promise<RouteResponse> => ({
-        kind: "query",
-        targetDbId: "db1",
-        referencedTables: ["orders"],
-        confidence: 0.9,
-        reason: "ok",
-      }),
-    );
+  it("recent-table substring without a verb → kind=query deterministically, no LLM call", async () => {
+    // A bare reference to a table the user already has ("members", "orders")
+    // is a read — it must not fall through to the LLM's "unknown table →
+    // create" bias and dead-end on the create-a-new-DB clarify.
+    const route = vi.fn();
     const out = await routeAsk(
       { llm: llmStub({ route }) },
       {
@@ -90,8 +85,42 @@ describe("routeAsk — deterministic short-circuits (no LLM)", () => {
         recentTables: [rt("db1", "orders")],
       },
     );
-    expect(route).toHaveBeenCalledTimes(1);
     expect(out.kind).toBe("query");
+    expect(out.targetDbId).toBe("db1");
+    expect(out.reason).toBe("recent_table_match");
+    expect(route).not.toHaveBeenCalled();
+  });
+
+  it("singular goal matches a plural recent table (member → members) + verb → write, no LLM call", async () => {
+    const route = vi.fn();
+    const out = await routeAsk(
+      { llm: llmStub({ route }) },
+      {
+        goal: "add a member drogo",
+        dbs: [{ id: "db1", slug: "members-a4f" }],
+        recentTables: [rt("db1", "members")],
+      },
+    );
+    expect(out.kind).toBe("write");
+    expect(out.targetDbId).toBe("db1");
+    expect(out.referencedTables).toEqual(["members"]);
+    expect(out.reason).toBe("recent_table_match");
+    expect(route).not.toHaveBeenCalled();
+  });
+
+  it("plural goal matches a singular recent table (categories → category)", async () => {
+    const route = vi.fn();
+    const out = await routeAsk(
+      { llm: llmStub({ route }) },
+      {
+        goal: "show me the categories",
+        dbs: [{ id: "db1", slug: "catalog-a4f" }],
+        recentTables: [rt("db1", "category")],
+      },
+    );
+    expect(out.kind).toBe("query");
+    expect(out.referencedTables).toEqual(["category"]);
+    expect(route).not.toHaveBeenCalled();
   });
 });
 

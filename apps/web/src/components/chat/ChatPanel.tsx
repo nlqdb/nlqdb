@@ -575,6 +575,14 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
     void startSend(goal, { replyId, forceNoPin: true });
   }
 
+  // SK-ASK-014: clicking "Query <db>" re-sends the SAME goal pinned to the
+  // DB the classifier flagged — the intended read the create/rephrase
+  // dead-end used to force the user to retype. The recent-table fast-path
+  // (SK-ASK-009) routes a table reference to query on the re-send.
+  function acceptClarifyQuery(replyId: string, goal: string, dbId: string) {
+    void startSend(goal, { replyId, dbIdOverride: dbId });
+  }
+
   // SK-ASK-026 — clicking a destructive-clarify option re-sends its goal.
   // `forceNoPin` routes to the create path (the "start fresh" option);
   // otherwise the goal re-plans against the pinned DB (the per-table
@@ -870,6 +878,7 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
                   onCancel={cancelDiff}
                   onPickCandidate={(dbId) => pickCandidate(msg.reply.id, msg.reply.goal, dbId)}
                   onClarifyCreate={() => acceptClarifyCreate(msg.reply.id, msg.reply.goal)}
+                  onClarifyQuery={(dbId) => acceptClarifyQuery(msg.reply.id, msg.reply.goal, dbId)}
                   onClarifyCancel={() => cancelClarify(msg.reply.id)}
                   onClarifyOption={(option) => pickClarifyOption(msg.reply.id, option.goal, option)}
                 />
@@ -936,6 +945,7 @@ function ReplyView({
   onCancel,
   onPickCandidate,
   onClarifyCreate,
+  onClarifyQuery,
   onClarifyCancel,
   onClarifyOption,
 }: {
@@ -955,6 +965,8 @@ function ReplyView({
   // goal without any pin so the API takes the create path;
   // `onClarifyCancel` dismisses the reply with a "rephrase" hint.
   onClarifyCreate: () => void;
+  // SK-ASK-014: re-send the goal as a read against the pinned DB.
+  onClarifyQuery: (dbId: string) => void;
   onClarifyCancel: () => void;
   // SK-ASK-026: clicking a destructive-clarify option re-sends its goal.
   onClarifyOption: (option: ClarifyOption) => void;
@@ -1062,6 +1074,17 @@ function ReplyView({
             }
             choices={[
               { label: "Create new database", onSelect: onClarifyCreate, variant: "accent" },
+              ...(clarify.pinnedDb
+                ? [
+                    {
+                      label: `Query ${displayName(clarify.pinnedDb.id)}`,
+                      onSelect: (
+                        (id: string) => () =>
+                          onClarifyQuery(id)
+                      )(clarify.pinnedDb.id),
+                    },
+                  ]
+                : []),
               { label: "Cancel", onSelect: onClarifyCancel },
             ]}
           />
