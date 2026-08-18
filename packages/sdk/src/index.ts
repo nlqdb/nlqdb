@@ -204,6 +204,13 @@ export type CreateDatabaseRequest = {
   // per `GLOBAL-020`. The API rejects unknown engines with
   // `invalid_engine` (400).
   engine?: Engine;
+  // SK-HDC-020 — opt-in preset that pins a deterministic schema (no
+  // goal-inference, no LLM). Currently the only allowed value is
+  // `"agent_memory_v1"` — the four-table memory schema `nlqdb_remember`
+  // writes into. Mutually exclusive with `engine` (the preset pins
+  // postgres). Server rejects with `preset_disabled` (deployment flag
+  // off), `invalid_preset`, or `preset_engine_conflict` (400).
+  preset?: "agent_memory_v1";
 };
 
 // Response from `client.createDatabase()` — surfaces the new dbId, the resolved engine, and the publishable per-DB key.

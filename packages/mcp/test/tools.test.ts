@@ -105,6 +105,24 @@ function stubClient(overrides: Partial<NlqClient> & { connect?: ConnectFn } = {}
   };
 }
 
+function makeDbSummary(overrides: {
+  id: string;
+  engine: "postgres" | "clickhouse";
+  slug?: string;
+  displayName?: string;
+}) {
+  const slug = overrides.slug ?? overrides.id.replace(/^db_/, "").replace(/_/g, "-");
+  return {
+    id: overrides.id,
+    slug,
+    displayName: overrides.displayName ?? slug,
+    engine: overrides.engine,
+    pkLive: null,
+    lastQueriedAt: null,
+    createdAt: 0,
+  };
+}
+
 describe("handleQuery", () => {
   it("returns rows + trace on success", async () => {
     const client = stubClient({
@@ -492,9 +510,16 @@ describe("handleRemember", () => {
     });
   });
 
-  it("maps wrong_preset to an actionable tool error", async () => {
+  it("maps wrong_preset to an actionable tool error when the input db was not a memory DB", async () => {
+    // Non-memory-shaped db id → self-provision path is not tried; the
+    // server's wrong_preset surfaces to the caller with the recovery
+    // that actually works from MCP (omit `db`, we auto-adopt).
     const client = stubClient({
       remember: async () => {
+        throw new NlqdbApiError("wrong preset", 409, "wrong_preset", "/v1/memory/remember", null);
+      },
+      listDatabases: async () => ({ databases: [] }),
+      createDatabase: async () => {
         throw new NlqdbApiError("wrong preset", 409, "wrong_preset", "/v1/memory/remember", null);
       },
     });
@@ -504,7 +529,161 @@ describe("handleRemember", () => {
       payload: { content: "x" },
     });
     expect("err" in result && result.err.code).toBe("wrong_preset");
-    expect("err" in result && result.err.action).toContain("agent_memory_v1");
+    expect("err" in result && result.err.action).toMatch(/without `db`|nlqdb_remember/);
+  });
+
+  // Founder dogfood 2026-08-18: a cold agent called nlqdb_remember on
+  // an account that had non-memory DBs and no memory DB. The tool must
+  // find or create the memory DB itself and complete the write in the
+  // same call, echoing dbId (+ db_created on a fresh provision) so the
+  // agent can pin it next time — the wrong_preset dead-end goes away.
+  it("adopts an existing agent_memory_v1 DB when the caller omits `db`", async () => {
+    let rememberedAgainst: string | undefined;
+    const client = stubClient({
+      listDatabases: async () => ({
+        databases: [
+          makeDbSummary({ id: "db_orders_x", engine: "postgres" }),
+          makeDbSummary({ id: "db_agent_memory_v1_abc123", engine: "postgres" }),
+        ],
+      }),
+      remember: async (req) => {
+        rememberedAgainst = req.db;
+        return {
+          status: "ok",
+          id: "77",
+          kind: "fact",
+          materialised_at: "2026-08-18T00:00:00Z",
+        };
+      },
+      createDatabase: async () => {
+        throw new Error("must not create when a memory DB already exists");
+      },
+    });
+    const result = await handleRemember(client, {
+      kind: "fact",
+      payload: { content: "prefers dark mode" },
+    });
+    expect(rememberedAgainst).toBe("db_agent_memory_v1_abc123");
+    expect("ok" in result).toBe(true);
+    if ("ok" in result) {
+      expect(result.ok.dbId).toBe("db_agent_memory_v1_abc123");
+      expect(result.ok.db_created).toBeUndefined();
+    }
+  });
+
+  it("provisions an agent_memory_v1 DB when the account has none, then completes the write", async () => {
+    let createdCount = 0;
+    let rememberedAgainst: string | undefined;
+    const client = stubClient({
+      listDatabases: async () => ({
+        databases: [makeDbSummary({ id: "db_orders_x", engine: "postgres" })],
+      }),
+      createDatabase: async (req) => {
+        createdCount++;
+        expect(req.preset).toBe("agent_memory_v1");
+        return {
+          dbId: "db_agent_memory_v1_new999",
+          slug: "agent-memory-new999",
+          engine: "postgres",
+          pkLive: "pk_live_xxx",
+        };
+      },
+      remember: async (req) => {
+        rememberedAgainst = req.db;
+        return {
+          status: "ok",
+          id: "1",
+          kind: "fact",
+          materialised_at: "2026-08-18T00:00:01Z",
+        };
+      },
+    });
+    const result = await handleRemember(client, {
+      kind: "fact",
+      payload: { content: "my agent's first memory" },
+    });
+    expect(createdCount).toBe(1);
+    expect(rememberedAgainst).toBe("db_agent_memory_v1_new999");
+    expect("ok" in result).toBe(true);
+    if ("ok" in result) {
+      expect(result.ok.dbId).toBe("db_agent_memory_v1_new999");
+      expect(result.ok.db_created).toBe(true);
+    }
+  });
+
+  it("recovers a wrong_preset on a caller-supplied non-memory `db` by self-provisioning", async () => {
+    // Reproduces the exact founder dead-end: caller passes an existing
+    // non-memory DB id, server returns wrong_preset. Instead of
+    // surfacing that as an error, the tool should adopt (or create) the
+    // memory DB and complete the write.
+    let rememberCalls = 0;
+    let lastRememberedAgainst: string | undefined;
+    const client = stubClient({
+      listDatabases: async () => ({
+        databases: [
+          makeDbSummary({ id: "db_agentic_memory_d3ddf8", engine: "postgres" }),
+          makeDbSummary({ id: "db_agent_memory_v1_existing", engine: "postgres" }),
+        ],
+      }),
+      remember: async (req) => {
+        rememberCalls++;
+        lastRememberedAgainst = req.db;
+        if (req.db === "db_agentic_memory_d3ddf8") {
+          throw new NlqdbApiError("wrong preset", 409, "wrong_preset", "/v1/memory/remember", null);
+        }
+        return {
+          status: "ok",
+          id: "9",
+          kind: "fact",
+          materialised_at: "2026-08-18T00:00:02Z",
+        };
+      },
+    });
+    const result = await handleRemember(client, {
+      // Founder's real DB id from the 2026-08-18 dogfood — server returns
+      // wrong_preset on the write, which the tool recovers by adopting
+      // the existing memory DB and re-issuing.
+      db: "db_agentic_memory_d3ddf8",
+      kind: "fact",
+      payload: { content: "founder-remembered fact" },
+    });
+    expect(rememberCalls).toBe(2);
+    expect(lastRememberedAgainst).toBe("db_agent_memory_v1_existing");
+    expect("ok" in result).toBe(true);
+    if ("ok" in result) {
+      expect(result.ok.dbId).toBe("db_agent_memory_v1_existing");
+    }
+  });
+
+  it("recovers when a caller-pinned memory-shaped `db` is wrong_preset (server disagrees)", async () => {
+    // A memory-shaped id that the server rejects — hits the fast path,
+    // fails with wrong_preset, then falls through to resolve.
+    let rememberCalls = 0;
+    const client = stubClient({
+      listDatabases: async () => ({
+        databases: [makeDbSummary({ id: "db_agent_memory_v1_real", engine: "postgres" })],
+      }),
+      remember: async (req) => {
+        rememberCalls++;
+        if (req.db === "db_agent_memory_v1_stale") {
+          throw new NlqdbApiError("wrong preset", 409, "wrong_preset", "/v1/memory/remember", null);
+        }
+        return {
+          status: "ok",
+          id: "3",
+          kind: "fact",
+          materialised_at: "2026-08-18T00:00:03Z",
+        };
+      },
+    });
+    const result = await handleRemember(client, {
+      db: "db_agent_memory_v1_stale",
+      kind: "fact",
+      payload: { content: "fact" },
+    });
+    expect(rememberCalls).toBe(2);
+    expect("ok" in result).toBe(true);
+    if ("ok" in result) expect(result.ok.dbId).toBe("db_agent_memory_v1_real");
   });
 
   it("maps a read-only forbidden to the user-scoped-key hint", async () => {
@@ -523,11 +702,18 @@ describe("handleRemember", () => {
 
   // The reported regression: remembering into a db that doesn't resolve
   // (e.g. no memory DB provisioned yet) returned db_not_found (404), which
-  // had no branch in mapSdkError and surfaced as the opaque generic bucket
-  // — the worst possible first-run message ("email support"). It must now
-  // tell the agent how to self-serve.
+  // had no branch in mapSdkError and surfaced as the opaque generic bucket.
+  // With self-provision, this now falls through to resolve — but when
+  // list+create both fail with db_not_found, the mapped error still tells
+  // the agent how to self-serve (never the generic bucket).
   it("maps db_not_found to a create/list hint, not the generic bucket", async () => {
     const client = stubClient({
+      listDatabases: async () => ({ databases: [] }),
+      createDatabase: async () => {
+        throw new NlqdbApiError("nope", 404, "db_not_found", "/v1/databases", {
+          status: "db_not_found",
+        });
+      },
       remember: async () => {
         throw new NlqdbApiError("nope", 404, "db_not_found", "/v1/memory/remember", {
           status: "db_not_found",
@@ -543,7 +729,7 @@ describe("handleRemember", () => {
     if ("err" in result) {
       expect(result.err.code).toBe("db_not_found");
       expect(result.err.message).not.toBe("An unexpected error occurred.");
-      expect(result.err.action).toMatch(/agent_memory_v1|nlqdb_list_databases/);
+      expect(result.err.action).toMatch(/agent_memory_v1|nlqdb_list_databases|nlqdb_remember/);
     }
   });
 

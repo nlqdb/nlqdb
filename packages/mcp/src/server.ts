@@ -139,7 +139,7 @@ export function createServer(opts: ServerOptions): McpServer {
     {
       title: "Remember something in your agent's memory",
       description:
-        "Write a typed row into your agent's memory database — a fact to recall later, a conversation episode, or an entity (person/project/thing). Materialises directly into the agent_memory_v1 schema with no LLM in the loop, so it's deterministic. The DB must be an agent_memory_v1 preset; query it back later with nlqdb_query (which can GROUP BY / aggregate over what you remembered). Set kind + tags on facts — they are the columns those aggregates group by.",
+        "Write a typed row into your agent's memory database — a fact to recall later, a conversation episode, or an entity (person/project/thing). Materialises directly into the agent_memory_v1 schema with no LLM in the loop, so it's deterministic. Omit `db` on first use and this tool will find (or provision) the agent_memory_v1 database for you and echo `dbId` (and `db_created: true` on a fresh provision) in the result — pin that id on subsequent calls. Query it back later with nlqdb_query (which can GROUP BY / aggregate over what you remembered). Set kind + tags on facts — they are the columns those aggregates group by.",
       inputSchema: rememberInputShape,
       // Writes new rows; never deletes or overwrites another row (entity
       // re-writes upsert the same row). Read+write hint stays false-destructive.
