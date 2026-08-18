@@ -19,7 +19,16 @@ import {
   PLAN_FEW_SHOT,
   PLAN_SYSTEM,
   ROUTE_SYSTEM,
+  SUMMARIZE_SYSTEM,
 } from "../src/prompts.ts";
+
+describe("SUMMARIZE_SYSTEM (SK-ASK-005 anti-fabrication guard)", () => {
+  it("forbids claims beyond the rows, invented actions, and date characterization", () => {
+    expect(SUMMARIZE_SYSTEM).toMatch(/Describe only the rows given/);
+    expect(SUMMARIZE_SYSTEM).toMatch(/that any action was taken/);
+    expect(SUMMARIZE_SYSTEM).toMatch(/whether a date is past or future/);
+  });
+});
 
 describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
   it("names the dialect-strict, single-statement contract", () => {
@@ -195,6 +204,18 @@ describe("buildPlanUser (SK-LLM-018 retry framing)", () => {
     expect(out).toMatch(/Diagnose the error first, then change only what the error names/);
     // The pre-SK-LLM-018 "different shape" phrasing must be gone — it invited over-correction.
     expect(out).not.toMatch(/different SQL shape/);
+  });
+
+  it("adds the write-intent directive only when intent is write (SK-ASK-009)", () => {
+    const read = buildPlanUser(baseReq);
+    expect(read).not.toMatch(/Intent:/);
+
+    const write = buildPlanUser({ ...baseReq, intent: "write" });
+    expect(write).toMatch(/Intent: this goal modifies data/);
+    expect(write).toMatch(/emit an INSERT, UPDATE, or DELETE, not a SELECT/);
+
+    // Read intent is the default — no directive, SELECT stays implicit.
+    expect(buildPlanUser({ ...baseReq, intent: "query" })).not.toMatch(/Intent:/);
   });
 
   it("omits the SQL line when previousAttempt carries an error but no SQL (LLM-throw case)", () => {

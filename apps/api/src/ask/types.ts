@@ -62,6 +62,12 @@ export type AskRequest = {
   // is no bypass on `/v1/ask` — the escape hatch for power users is
   // `/v1/run` (GLOBAL-015).
   confirm?: boolean;
+  // SK-ASK-009 — the routed `kind`, carried into orchestration. `"write"`
+  // reaches the planner (so it emits a data-modifying statement) and is
+  // enforced post-plan: a write goal that plans as a read is re-planned, not
+  // silently executed as a SELECT. Absent ⇒ read intent (default). Non-route
+  // callers (chat, internal helpers) omit it and keep the read default.
+  intent?: "query" | "write";
   // SK-TRUST-004 — originating surface, threaded from the route so the
   // orchestrator can slice the destructive-op retry-rate instrument
   // (`feature.destructive.*`) by surface. Optional: non-route callers

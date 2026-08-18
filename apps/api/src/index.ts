@@ -1549,6 +1549,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // SK-TRUST-004 — thread the surface so the orchestrator can slice
       // the destructive-op retry-rate instrument (`feature.destructive.*`).
       surface,
+      // SK-ASK-009 — carry the routed kind so a write goal reaches the planner
+      // as a write and is enforced as one. `create` never lands here (handled
+      // above); map query→query, write→write.
+      intent: routeOutput.kind === "write" ? ("write" as const) : ("query" as const),
       ...(parsed.body.confirm ? { confirm: true as const } : {}),
     };
 
