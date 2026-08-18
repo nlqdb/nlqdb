@@ -53,6 +53,7 @@ import FreeModelNudge from "./FreeModelNudge";
 import { freeChainStruggled } from "./free-model-nudge-gate";
 import LeftRail from "./LeftRail";
 import ModelPicker, { BYOLLM_STATUS_EVENT } from "./ModelPicker";
+import { readModelPreset } from "./model-preset";
 import Palette, { type PaletteAction } from "./Palette";
 import PmfSurveyCard from "./PmfSurveyCard";
 import ReplyChoices from "./ReplyChoices";
@@ -375,10 +376,16 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
 
       const client = getChatClient(apiBase);
 
+      // SK-PREMIUM-014 — the web session's model preset. Only `fast` is sent
+      // (pins the free chain for a paid user who chose "Free" in the picker);
+      // `auto` is the server default, so it's omitted.
+      const preset = readModelPreset();
+      const modelField = preset === "fast" ? { model: "fast" as const } : {};
+
       try {
         if (pinnedDbId) {
           const result = await client.askStream(
-            { goal, dbId: pinnedDbId, ...(opts.confirm ? { confirm: true } : {}) },
+            { goal, dbId: pinnedDbId, ...modelField, ...(opts.confirm ? { confirm: true } : {}) },
             { signal: ac.signal, onTrace },
           );
           if (result.requires_confirm && result.diff) {
@@ -413,7 +420,7 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
         // touch → omit the field (create stays `untracked`, never 400s).
         const source = firstTouchSource();
         const result = await client.ask(
-          { goal, ...(source ? { source } : {}) },
+          { goal, ...modelField, ...(source ? { source } : {}) },
           { signal: ac.signal },
         );
         if ("kind" in result) {
@@ -755,6 +762,25 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
     return null;
   }, [messages]);
 
+  // SK-PREMIUM-013 — the id of the most recent settled reply that FAILED on a
+  // model/key-quality code (llm_failed / sql_rejected). A BYOLLM lane has no
+  // fallback (SK-LLM-016 — your key, fail loud), so a bad key surfaces as a hard
+  // error with no trace to reconcile — the picker's silent-degrade detection
+  // can't see it. This lets the picker flag "your key isn't answering" from the
+  // error alone. Only the most recent assistant reply counts: a later ok/pending
+  // reply means the key recovered (or a switch is in flight).
+  const lastFailedId = useMemo<string | null>(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m?.role !== "assistant") continue;
+      const st = m.reply.state;
+      return st.kind === "error" && (st.code === "llm_failed" || st.code === "sql_rejected")
+        ? m.reply.id
+        : null;
+    }
+    return null;
+  }, [messages]);
+
   // SK-PREMIUM-004 — whether the user is on the free chain, learned from the
   // ModelPicker's BYOLLM status broadcast. Gates the free-model nudge below
   // struggled replies. Defaults to false (assume frontier) so a BYOLLM user
@@ -820,7 +846,7 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
             {activeDb?.displayName ?? (activeDbId ? displayName(activeDbId) : "All databases")}
           </h1>
           <div className="chat-main__meta">
-            <ModelPicker apiBase={apiBase} lastAnswer={lastAnswer} />
+            <ModelPicker apiBase={apiBase} lastAnswer={lastAnswer} lastFailedId={lastFailedId} />
             <span className="chat-main__hint">
               <kbd>Cmd</kbd>+<kbd>K</kbd> commands · <kbd>Cmd</kbd>+<kbd>/</kbd> trace
             </span>
