@@ -6,7 +6,7 @@
 import type { SchemaPlan } from "@nlqdb/db/types";
 import type { LLMRouter, SchemaInferResponse } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
-import { inferSchema, slugifyName } from "./infer-schema.ts";
+import { inferSchema, relaxSpeculativeForeignKeys, slugifyName } from "./infer-schema.ts";
 
 function stubLLM(result: SchemaInferResponse | Error): {
   llm: LLMRouter;
@@ -85,6 +85,84 @@ const ORDERS_PLAN: SchemaPlan = {
   ],
 };
 
+// The production shape that dead-ended the creator (D1 registry row
+// db_ideas_db_1ec135, 2026-08-14): `ideas.user_id` NOT NULL + FK to a
+// speculatively normalized `users` table, and a `idea_tags` link table keyed on
+// both parents. SK-HDC-022 relaxes the first and must leave the second alone.
+const IDEAS_PLAN: SchemaPlan = {
+  slug_hint: "ideas_db",
+  description: "An ideas tracker.",
+  tables: [
+    {
+      name: "users",
+      description: "People who submit ideas.",
+      columns: [
+        { name: "id", type: "uuid", nullable: false, description: "Primary key." },
+        { name: "name", type: "text", nullable: false, description: "Display name." },
+      ],
+      primary_key: ["id"],
+    },
+    {
+      name: "ideas",
+      description: "One row per idea.",
+      columns: [
+        { name: "id", type: "uuid", nullable: false, description: "Primary key." },
+        { name: "user_id", type: "uuid", nullable: false, description: "Owner." },
+        { name: "title", type: "text", nullable: false, description: "Idea title." },
+      ],
+      primary_key: ["id"],
+    },
+    {
+      name: "tags",
+      description: "Tag vocabulary.",
+      columns: [
+        { name: "id", type: "uuid", nullable: false, description: "Primary key." },
+        { name: "label", type: "text", nullable: false, description: "Tag label." },
+      ],
+      primary_key: ["id"],
+    },
+    {
+      name: "idea_tags",
+      description: "Which tags an idea carries.",
+      columns: [
+        { name: "idea_id", type: "uuid", nullable: false, description: "Idea." },
+        { name: "tag_id", type: "uuid", nullable: false, description: "Tag." },
+      ],
+      primary_key: ["idea_id", "tag_id"],
+    },
+  ],
+  foreign_keys: [
+    {
+      from_table: "ideas",
+      from_columns: ["user_id"],
+      to_table: "users",
+      to_columns: ["id"],
+      on_delete: "cascade",
+    },
+    {
+      from_table: "idea_tags",
+      from_columns: ["idea_id"],
+      to_table: "ideas",
+      to_columns: ["id"],
+      on_delete: "cascade",
+    },
+    {
+      from_table: "idea_tags",
+      from_columns: ["tag_id"],
+      to_table: "tags",
+      to_columns: ["id"],
+      on_delete: "cascade",
+    },
+  ],
+  metrics: [],
+  dimensions: [],
+  sample_rows: [],
+};
+
+function column(plan: SchemaPlan, table: string, name: string) {
+  return plan.tables.find((t) => t.name === table)?.columns.find((c) => c.name === name);
+}
+
 function planResponse(plan: SchemaPlan | Record<string, unknown>): SchemaInferResponse {
   return { plan: plan as Record<string, unknown>, model: "fake-model", confidence: 1.0 };
 }
@@ -113,7 +191,61 @@ describe("slugifyName", () => {
   });
 });
 
+describe("relaxSpeculativeForeignKeys (SK-HDC-022)", () => {
+  it("makes a NOT NULL owner FK column nullable so 'add an idea' is possible", () => {
+    const out = relaxSpeculativeForeignKeys(IDEAS_PLAN);
+    expect(column(out, "ideas", "user_id")?.nullable).toBe(true);
+  });
+
+  it("keeps non-FK NOT NULL columns and the FK constraint itself untouched", () => {
+    const out = relaxSpeculativeForeignKeys(IDEAS_PLAN);
+    expect(column(out, "ideas", "title")?.nullable).toBe(false);
+    expect(column(out, "ideas", "id")?.nullable).toBe(false);
+    expect(out.foreign_keys).toEqual(IDEAS_PLAN.foreign_keys);
+  });
+
+  it("leaves a link table's primary-key FK columns NOT NULL (nullable PK is illegal)", () => {
+    const out = relaxSpeculativeForeignKeys(IDEAS_PLAN);
+    expect(column(out, "idea_tags", "idea_id")?.nullable).toBe(false);
+    expect(column(out, "idea_tags", "tag_id")?.nullable).toBe(false);
+  });
+
+  it("is a no-op on a plan with no foreign keys", () => {
+    expect(relaxSpeculativeForeignKeys(ORDERS_PLAN)).toBe(ORDERS_PLAN);
+  });
+
+  it("does not mutate the input plan", () => {
+    const before = structuredClone(IDEAS_PLAN);
+    relaxSpeculativeForeignKeys(IDEAS_PLAN);
+    expect(IDEAS_PLAN).toEqual(before);
+  });
+
+  it("ignores a foreign key whose from_table is not in the plan", () => {
+    const plan: SchemaPlan = {
+      ...ORDERS_PLAN,
+      foreign_keys: [
+        {
+          from_table: "ghosts",
+          from_columns: ["order_id"],
+          to_table: "orders",
+          to_columns: ["id"],
+          on_delete: "cascade",
+        },
+      ],
+    };
+    expect(relaxSpeculativeForeignKeys(plan)).toBe(plan);
+  });
+});
+
 describe("inferSchema", () => {
+  it("returns the relaxed plan on the inferred path (SK-HDC-022)", async () => {
+    const { llm } = stubLLM(planResponse(IDEAS_PLAN));
+    const out = await inferSchema({ llm }, { goal: "a database of ideas" });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(column(out.plan, "ideas", "user_id")?.nullable).toBe(true);
+  });
+
   it("returns ok with a valid plan for a clear goal", async () => {
     const { llm, schemaInferMock } = stubLLM(planResponse(ORDERS_PLAN));
     const out = await inferSchema({ llm }, { goal: "an orders tracker for my coffee shop" });
