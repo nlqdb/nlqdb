@@ -18,13 +18,7 @@ body in git history). Earliest drafts: [archive](./distribution-queue-archive.md
 
 ## Drafts — unpublished, newest first
 
-- **we-ran-our-own-ops-on-our-own-agent-memory** · venues: `/blog` · dev.to · r/SQL (human) · Show HN
-  (human, launch-gated). **Gist:** nlqdb's own agent queried nlqdb's own `docs/` over the public MCP
-  endpoint (13 facts / 9 entities; 12 NL questions). 10/10 first-ten right — but one silently returned **0**
-  vs true **11** (model guessed `kind='question'`; we store `open_question`). Lesson: **a success-rate metric
-  can't see a semantically-wrong answer** — you need a separate wrong-answer check and value-level schema
-  knowledge. Verbatim numbers + SQL: the `D-04-first-corpus-sync.md` Run log. Unflattering by design
-  (`SK-PIVOT-019`).
+_(none — the dogfood-run draft shipped run 179 as `/blog/success-rate-cant-see-a-wrong-answer/`.)_
 
 ## Published — canonical `/blog` copies live; venue variants pending
 
@@ -34,6 +28,7 @@ removed by hand. Delete the whole line once no venues remain.
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
+- run 179 — **https://nlqdb.com/blog/success-rate-cant-see-a-wrong-answer/** — dev.to (#ai #sql #testing) + r/SQL (human) + Show HN (human, launch-gated) · measurement/engine lesson (the D-04 dogfood run — a first-10 success counter scores an ask "ok" when its SQL is valid, executes, and returns a row, so a confident wrong answer passes silently; query #8 compiled `kind='question'` against stored `open_question` → 0 rows, true 11, `confidence:1`; the fix is a separate wrong-answer judgement plus declaring the categorical domain in DDL (`CHECK`/enum) so value-linking is legitimate schema egress, not data egress — `E-09`/`GLOBAL-037`)
 - run 171 — **https://nlqdb.com/blog/link-checker-cant-see-your-javascript/** — dev.to (#testing #webdev #frontend) + r/webdev + lobste.rs (`web`) · testing/UX-integrity lesson (`SK-WEB-022` — a built-HTML dead-link sweep is blind to `location.assign("/path")` JS-string navigations; move the invariant to a source-level test matching the string-literal argument of a real navigation)
 - run 169 — **https://nlqdb.com/blog/restrictive-rls-agent-memory-scoping/** — dev.to (#postgres #security #ai) + r/PostgreSQL + lobste.rs (`databases`, `security`) · security lesson (`SK-PIVOT-009` — Postgres RLS policies are `PERMISSIVE` by default and OR-combine, so a per-agent `agent_isolation` policy beside the schema's `tenant_isolation` widens access instead of narrowing it; `AS RESTRICTIVE` AND-combines and is the load-bearing keyword; four traps — link table inherits scope, a `FOR ALL` TTL arm blinds your own cleanup DELETE, model SQL can re-arm the GUC, and "unset" is `nullif(current_setting,'') IS NULL` not `IS NULL` on a pooled backend)
 - run 151 — **https://nlqdb.com/blog/guard-advertised-capabilities-against-code/** — dev.to (#api #testing #devrel) + r/ExperiencedDevs + lobste.rs (`practices`) · integrity/testing lesson (run-62→64 arc — advertised `nlqdb_recall`, a verb never built, so a new user's first call hit "tool not found"; the drift-guard had the same bug; derive the allow-set from the shipped artifact, closed-world, every surface)
@@ -62,7 +57,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 68 — **https://nlqdb.com/blog/offline-llm-eval-rate-limits/** — lobste.rs · dev.to posted 2026-08-08: https://dev.to/omer_hochman/your-offline-llm-eval-isnt-measuring-your-model-its-measuring-your-rate-limits-2ph0
 - run 69 — **https://nlqdb.com/blog/sitemap-advertising-redirects/** — lobste.rs · dev.to posted 2026-07-21: https://dev.to/omer_hochman/your-sitemap-is-advertising-redirects-and-your-canonical-tag-points-at-one-2860
 - run 109 — **https://nlqdb.com/blog/text-to-sql-build-vs-buy/** — r/SaaS + r/ExperiencedDevs · dev.to ✓ https://dev.to/omer_hochman/the-text-to-sql-demo-takes-an-afternoon-the-other-90-is-why-you-should-buy-it-4iko · `/solve/add-ask-your-data-feature-without-building-text-to-sql`
-- run 119 — **https://nlqdb.com/blog/find-duplicate-rows-you-re-google-every-time/** — dev.to + r/SQL + r/analytics · `/solve/find-duplicate-rows-in-my-data`
+- run 119 — **https://nlqdb.com/blog/find-duplicate-rows-you-re-google-every-time/** — r/SQL + r/analytics · `/solve/find-duplicate-rows-in-my-data` · dev.to posted 2026-08-18: https://dev.to/omer_hochman/the-duplicate-rows-query-you-re-google-every-six-weeks-39km
 - run 110 — **https://nlqdb.com/blog/your-bi-tool-got-acquired-data-layer/** — dev.to + r/dataengineering + r/BusinessIntelligence · `/vs/mode`
 - run 131 — **https://nlqdb.com/blog/top-n-rows-per-group/** — r/SQL + r/PostgreSQL · `/solve/find-top-n-rows-per-group` · dev.to posted 2026-07-27 (tags `sql,database,webdev`; queue line named none): https://dev.to/omer_hochman/top-n-per-group-is-the-query-limit-cant-write-57eb
 - run 7 — **https://nlqdb.com/blog/http-200-error-in-body/** — r/LocalLLaMA + lobste.rs · engine lesson (res.ok necessary not sufficient) · dev.to posted 2026-08-12: https://dev.to/omer_hochman/your-text-to-sql-eval-is-lying-the-gateway-returns-http-200-with-the-error-in-the-body-4i8i

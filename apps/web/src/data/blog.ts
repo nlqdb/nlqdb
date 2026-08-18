@@ -49,6 +49,73 @@ export type BlogPost = {
 // Newest first — the index page and llms.txt render in array order.
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "success-rate-cant-see-a-wrong-answer",
+    title: "Our success rate said 100%. One of the answers was quietly wrong.",
+    description:
+      "Our agent queried our own docs-memory over public MCP: 12 questions, 12 answered, 10/10 first-ten. One returned 0 with confidence 1 — the true count was 11. Why a success rate can't see it.",
+    date: "2026-08-18",
+    anchor: {
+      label: "Conditional counts in SQL (COUNTIF / SUMIF)",
+      path: "/solve/countif-sumif-conditional-aggregate-in-sql",
+    },
+    body: [
+      {
+        kind: "p",
+        text: "We spent a while telling everyone the agent-memory product was a bet. Then we pointed it at ourselves. nlqdb's own operating agents wrote nlqdb's own `docs/` into a real, production memory database and queried it back — every write through the public `/v1/memory/remember` endpoint, every question through the published `@nlqdb/mcp` server a stranger would `npx`. No internal binding, no privileged path. The corpus: **9 entities and 13 facts**, 22 writes, zero failures. Then twelve natural-language questions. Ten of the first ten came back right. Twelve of twelve were answered. The scoreboard read a clean 100%.",
+      },
+      {
+        kind: "p",
+        text: "One of those answers was wrong, and nothing on the scoreboard could tell.",
+      },
+      { kind: "h2", text: "The question that broke" },
+      {
+        kind: "p",
+        text: "Question #8 was *how many open questions are there across all features*. The planner compiled it to this, ran it, and returned a single row:",
+      },
+      {
+        kind: "code",
+        lang: "sql",
+        code: "SELECT COUNT(*) FROM \"facts\"\nWHERE kind = 'question'\n  AND (expires_at IS NULL OR expires_at > NOW());\n-- → 0",
+      },
+      {
+        kind: "p",
+        text: "Zero. The true answer is **11**. We store open questions with `kind = 'open_question'`; the model guessed `'question'`, matched nothing, and counted it. The ask came back `status: ok` with `confidence: 1`. Valid SQL, executed cleanly, returned a row. By every signal our success metric watches, it passed.",
+      },
+      { kind: "h2", text: "A success rate measures the wrong thing" },
+      {
+        kind: "p",
+        text: "Our first-10 success counter scores an ask as good when the generated SQL is valid, executes, and returns a result. Query #8 was all three. The result it returned happened to be `0` instead of `11`, but `0` is a perfectly valid count — a row came back, so the counter ticked. The metric was never measuring whether the answer was right. It was measuring whether the query ran. Those are different questions, and the gap between them is exactly where a confident wrong answer hides.",
+      },
+      {
+        kind: "p",
+        text: "This is a failure shape a green number cannot surface: not an error, not a timeout, not an empty crash — a plausible answer, delivered with confidence, that is simply false. A retry doesn't help. An error-rate dashboard stays green. The only thing that catches it is a separate judgement over the actual answer, made by something that knows the true value — which a pass-on-execution counter, by construction, does not.",
+      },
+      { kind: "h2", text: "Why the model guessed a value it had never seen" },
+      {
+        kind: "p",
+        text: "The interesting part is why it missed, because it wasn't a dumb model. When the planner writes SQL it sees the schema — table names, column names, types — but not the data. It saw a `kind` column on `facts` and had to invent a filter value. For *open questions*, `kind = 'question'` is an excellent guess. It is just not the token we happen to store. The value set of a low-cardinality categorical column — the handful of strings that actually appear in `kind` — is invisible to a planner working from DDL alone.",
+      },
+      {
+        kind: "p",
+        text: "You cannot fix that by feeding the model your column values. Streaming arbitrary cell contents into an LLM prompt is a data-egress hole, not a feature — the whole point of a database you query in English is that your data never has to leave to answer a question about it. So the legitimate channel is the one place a value can live and still be schema rather than data: the column's declared domain. A `CHECK (kind IN ('open_question','blocked'))` constraint or a Postgres enum puts the allowed values into the DDL itself, where a planner is entitled to read them. Declare the domain and the guess stops being a guess.",
+      },
+      { kind: "h2", text: "What carries over" },
+      {
+        kind: "ol",
+        items: [
+          "**A success rate that scores execution is blind to correctness.** Valid SQL that runs and returns a row is not the same as a right answer. If your only quality signal is pass-or-fail-on-execution, a confident wrong answer scores as a pass — put a separate correctness judgement over the real answers, or you are grading the wrong exam.",
+          "**The dangerous failure is confident, not loud.** A crash, a timeout, an empty error all trip something. A plausible false answer delivered with `confidence: 1` trips nothing. Design your checks around the answer that looks fine and isn't, because that is the one that ships.",
+          "**A planner working from DDL alone will guess categorical values.** It sees the `kind` column, not the strings inside it, so `'question'` for open questions is a reasonable, wrong guess. This is a schema-value-linking gap — structural, not a model defect.",
+          "**Put the values where the schema is, not where the data is.** You can't leak column contents into a prompt to fix the guess. Declare the categorical domain in DDL — a `CHECK` constraint or an enum — so the allowed values travel as schema, the one representation the planner may legitimately read.",
+        ],
+      },
+      {
+        kind: "p",
+        text: "We shipped this run's numbers with the wrong answer left in, because the wrong answer is the point: it is the exact bug our own product exists to make impossible, caught by running our own product against ourselves. nlqdb is a database you query in plain English — and the discipline that keeps those answers honest is one we point first at our own.",
+      },
+    ],
+  },
+  {
     slug: "link-checker-cant-see-your-javascript",
     title: "Your link checker can't see your JavaScript.",
     description:
