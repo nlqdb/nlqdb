@@ -4,10 +4,19 @@ name: E2E MCP
 
 on:
   workflow_dispatch:
+  # Hermetic (in-memory transport, no Neon/LLM/secrets) ⇒ safe to PR-trigger on its own
+  # surface, mirroring e2e-cli.yml. The staging/LLM path (opencheck) stays dispatch-only.
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/mcp/**"
+      - "apps/mcp/**"
+      - "tests/e2e/mcp/**"
+      - ".github/workflows/e2e-mcp.yml"
 
 concurrency:
-  group: e2e-mcp
-  cancel-in-progress: false
+  group: e2e-mcp-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions: {}
 

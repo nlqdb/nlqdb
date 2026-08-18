@@ -10,11 +10,20 @@ on:
         required: false
         type: boolean
         default: false
+  # PR runs exercise only the hermetic `playwright` job (the live jobs gate on `inputs.live`,
+  # which is empty on pull_request ⇒ they skip). The staging/LLM path stays dispatch-only.
+  pull_request:
+    branches: [main]
+    paths:
+      - "examples/**"
+      - "tests/e2e/examples/**"
+      - ".github/workflows/e2e-examples.yml"
 
 concurrency:
-  # Shared with e2e-opencheck.yml — both write to the same Neon branch + Workers preview alias.
-  group: e2e-staging
-  cancel-in-progress: false
+  # A live dispatch shares the e2e-staging Neon/Workers group with e2e-opencheck.yml (queue,
+  # never cancel). Hermetic PR/dispatch runs are ref-scoped and cancel superseded runs.
+  group: ${{ inputs.live && 'e2e-staging' || format('e2e-examples-{0}', github.ref) }}
+  cancel-in-progress: ${{ !inputs.live }}
 
 permissions: {}
 

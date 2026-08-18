@@ -19,7 +19,7 @@
 # past the probe gate: 13 straight failures 07-02 → 07-10, then 216s agent starvation on 07-11);
 # FALLBACK2 = a 3rd independent $0 pool (SambaNova by default, FALLBACK2_LLM_API_KEY) walked only when
 # BOTH lanes above flap simultaneously (the run-29298056709 dual-saturation window). Unset → disabled.
-# On OpenRouter ONLY a `:free` slug is $0 — a bare slug is PAID (2026-05-21: ~$14 burned).
+# Free-only is enforced structurally by _e2e-opencheck.yml's "Assert free-only" step (fail-closed).
 # Engine (app-side /v1/ask) = the cerebras-led free chain (SK-LLM-023), NOT Groq; check the DAILY
 # (TPD/RPD) budget of the head before triggering — per-minute headers lie (opencheck-operations.md).
 # Free-model table + switching guide: docs/features/e2e-coverage/opencheck-operations.md
