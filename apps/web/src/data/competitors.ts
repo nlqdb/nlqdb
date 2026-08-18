@@ -77,7 +77,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "supabase",
     name: "Supabase",
-    url: "https://supabase.com",
+    url: "https://supabase.com/",
     tagline: "Open-source Firebase alternative — Postgres, auth, storage, edge functions.",
     persona: "P1 solo builder",
     oneLiner:
@@ -156,7 +156,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "neon",
     name: "Neon",
-    url: "https://neon.com",
+    url: "https://neon.com/",
     // P1 marquee — the other "scariest direct P1 competitor" alongside
     // Supabase (docs/competitors.md §1 + Gap analysis). Facts web-verified
     // 2026-07-01 (neon.com/pricing + neon.com/docs/ai/neon-mcp-server +
@@ -278,7 +278,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "vanna",
     name: "Vanna AI",
-    url: "https://vanna.ai",
+    url: "https://vanna.ai/",
     tagline: "Open-source text-to-SQL trained on your schema and prior queries.",
     persona: "P3 analyst",
     oneLiner:
@@ -353,7 +353,7 @@ export const COMPETITORS: Competitor[] = [
     metaDescription:
       "Pick Mem0 for an opinionated add/search/forget memory primitive. Pick nlqdb if your agent also needs to query structured data and run reports.",
     name: "Mem0",
-    url: "https://mem0.ai",
+    url: "https://mem0.ai/",
     tagline: "Purpose-built memory layer for AI agents.",
     persona: "P2 agent builder",
     oneLiner:
@@ -753,7 +753,7 @@ export const COMPETITORS: Competitor[] = [
     metaDescription:
       "Pick Zep for a temporal knowledge graph tuned for conversation. Pick nlqdb if your agent must also aggregate memory: GROUP BY, JOIN, HAVING in English.",
     name: "Zep",
-    url: "https://www.getzep.com",
+    url: "https://www.getzep.com/",
     // Agent-memory cluster anchored in docs/competitors.md §4 (verified 2026-06-19).
     // Built on Graphiti (OSS temporal knowledge-graph core); hosted platform is commercial.
     tagline:
@@ -860,7 +860,7 @@ export const COMPETITORS: Competitor[] = [
     metaDescription:
       "Pick Letta for a stateful agent runtime that manages memory like an OS. Pick nlqdb if your agent must also aggregate it: GROUP BY, JOIN, HAVING in English.",
     name: "Letta",
-    url: "https://www.letta.com",
+    url: "https://www.letta.com/",
     // Agent-memory cluster anchored in docs/competitors.md §4 (verified 2026-06-19);
     // facts re-checked via web search 2026-06-19. Apache-2.0 agent runtime out of the
     // 2023 Berkeley MemGPT paper; OS-style memory tiers; self-host or hosted.
@@ -1072,7 +1072,7 @@ export const COMPETITORS: Competitor[] = [
     metaDescription:
       "Pinecone finds the similar via nearest-neighbour search; nlqdb counts, groups, and ranks typed rows your agent provisions and queries in plain English.",
     name: "Pinecone",
-    url: "https://www.pinecone.io",
+    url: "https://www.pinecone.io/",
     // Agent-memory cluster (vector-store wing) anchored in docs/competitors.md
     // §Pinecone. Facts verified via web search 2026-06-22: serverless is the
     // 2026 default; Starter (free, 1 index / ~2GB) · Builder $20/mo · Standard
@@ -1178,7 +1178,7 @@ export const COMPETITORS: Competitor[] = [
     metaDescription:
       "Chroma finds the similar with an open-source vector store; nlqdb counts, groups, and ranks typed rows your agent provisions and queries in plain English.",
     name: "Chroma",
-    url: "https://www.trychroma.com",
+    url: "https://www.trychroma.com/",
     // Agent-memory cluster (vector-store wing, OSS-first) anchored in
     // docs/competitors.md §Chroma. Facts verified via web search + the
     // official pricing page 2026-06-22: Apache-2.0 open-source, runs
@@ -1400,7 +1400,7 @@ export const COMPETITORS: Competitor[] = [
     metaDescription:
       "Qdrant ranks the relevant with fast quantized vector search; nlqdb counts, groups, and reports over typed rows your agent provisions in plain English.",
     name: "Qdrant",
-    url: "https://qdrant.tech",
+    url: "https://qdrant.tech/",
     // Agent-memory cluster (vector-store wing, Rust/performance + permissive
     // license) anchored in docs/competitors.md §Qdrant. Facts verified via web
     // search + the official pricing page + the qdrant/mcp-server-qdrant repo
@@ -1514,7 +1514,7 @@ export const COMPETITORS: Competitor[] = [
     metaDescription:
       "Cognee recalls by reasoning over a knowledge graph; nlqdb counts, groups, and reports over typed rows your agent provisions and queries in English.",
     name: "Cognee",
-    url: "https://www.cognee.ai",
+    url: "https://www.cognee.ai/",
     // Agent-memory cluster (knowledge-graph wing — the "not a vector store"
     // headline of the GLOBAL-036 pivot, distinct from the vector cluster
     // Pinecone/Chroma/Weaviate/Qdrant). Anchored in docs/competitors.md §Cognee.
@@ -1629,7 +1629,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "julius",
     name: "Julius AI",
-    url: "https://julius.ai",
+    url: "https://julius.ai/",
     // P3 analyst slot (the pre-pivot slate the comparison-pages FEATURE names
     // now the top-tier vector-DB cluster is closed; highest keyword volume +
     // most on-message of Retool AI / Julius AI / Basedash). Anchored in
@@ -1754,7 +1754,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "retool",
     name: "Retool",
-    url: "https://retool.com",
+    url: "https://retool.com/",
     // P4 backend-engineer slot — the internal-tools incumbent with the
     // strongest distribution moat in docs/competitors.md §3 ("already
     // installed; distribution moat"), the natural next slice after Julius (P3)
@@ -1881,7 +1881,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "basedash",
     name: "Basedash",
-    url: "https://www.basedash.com",
+    url: "https://www.basedash.com/",
     // P3 analyst slot — Basedash repositioned from "admin UI" (the stale
     // docs/competitors.md read) to an "AI-native Business Intelligence
     // platform": NL → dashboards, an AI data analyst with daily briefings
@@ -2000,7 +2000,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "metabase",
     name: "Metabase",
-    url: "https://www.metabase.com",
+    url: "https://www.metabase.com/",
     // P3 analyst/BI slot — the comparison-pages FEATURE names Metabase Metabot
     // as the next slice after Basedash by the persona-weighted threat ×
     // keyword-volume rule: it carries the strongest OSS-distribution moat in
@@ -2124,7 +2124,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "hex",
     name: "Hex",
-    url: "https://hex.tech",
+    url: "https://hex.tech/",
     // P3 analyst slot — the notebook-AI cluster the comparison-pages FEATURE
     // named as the next slice after the P2 agent-memory wing closed (Cognee,
     // 2026-06-24). Hex is the highest-keyword brand of the notebook-first AI BI
@@ -2384,7 +2384,7 @@ export const COMPETITORS: Competitor[] = [
     metaDescription:
       "Pick Supermemory for a best-in-class memory API. Pick nlqdb if your agent also needs analytical queries — counts, group-bys, reports — over what it stores.",
     name: "Supermemory",
-    url: "https://supermemory.ai",
+    url: "https://supermemory.ai/",
     tagline:
       "The memory + context API for the AI era — recall, RAG, and user profiles in one graph.",
     persona: "P2 agent builder",
@@ -2463,7 +2463,7 @@ export const COMPETITORS: Competitor[] = [
     metaDescription:
       "Pick Honcho to model how each user reasons for personalization. Pick nlqdb if your agent also needs analytical queries over the rows it remembers.",
     name: "Honcho",
-    url: "https://honcho.dev",
+    url: "https://honcho.dev/",
     tagline:
       "Reasoning-first memory infrastructure that models how each user thinks — theory-of-mind context for stateful agents.",
     persona: "P2 agent builder",
@@ -2672,7 +2672,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "fabi",
     name: "Fabi.ai",
-    url: "https://www.fabi.ai",
+    url: "https://www.fabi.ai/",
     // P3 analyst slot — completes the notebook-first AI BI cluster the
     // comparison-pages FEATURE named after Hex + Mode (2026-06-29):
     // Hex / Mode AI / Fabi.ai / Count (docs/competitors.md §"notebook-first AI
@@ -2798,7 +2798,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "count",
     name: "Count",
-    url: "https://count.co",
+    url: "https://count.co/",
     // P3 analyst slot — the last uncovered member of the notebook-first AI
     // BI cluster the comparison-pages FEATURE named after Hex + Mode + Fabi.ai
     // (docs/competitors.md §"notebook-first AI BI"). Facts web-verified
@@ -3052,7 +3052,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "langchain-sql-agent",
     name: "LangChain SQL agent",
-    url: "https://python.langchain.com",
+    url: "https://docs.langchain.com/oss/python/langchain/overview",
     // P4 backend-engineer slot — the OSS text2sql-framework cluster
     // (docs/competitors.md §6, "the build-it-yourself alternative for P2 and
     // technically-inclined P4s"). Persona is P4, NOT P2: like MindsDB, the P2
@@ -3178,7 +3178,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "llamaindex",
     name: "LlamaIndex",
-    url: "https://www.llamaindex.ai",
+    url: "https://www.llamaindex.ai/",
     // P4 backend-engineer slot — the OSS text2sql-framework cluster
     // (docs/competitors.md §6, the LlamaIndex wing of "build-it-yourself").
     // Persona P4 like langchain-sql-agent, NOT P2: LlamaIndex is a general
@@ -3413,7 +3413,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "pandasai",
     name: "PandasAI",
-    url: "https://pandas-ai.com",
+    url: "https://pandas-ai.com/",
     // P3-analyst slot, the "chat with data you already have" member of the §6
     // build-it-yourself / OSS cluster (Vanna, Dataherald, langchain-sql-agent).
     // Persona stays P3 to match the OSS-engine analogs: PandasAI is
