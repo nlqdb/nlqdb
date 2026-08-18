@@ -108,7 +108,7 @@ When `GET /v1/billing/status` reports `cancelAtPeriodEnd`, the `/pricing` curren
 ### SK-WEB-014 — Homepage declares its brand entity: Organization + WebSite JSON-LD, no SearchAction
 
 **Body:** [`decisions/SK-WEB-014-site-entity-json-ld.md`](./decisions/SK-WEB-014-site-entity-json-ld.md).
-`nlqdb.com/` (root only) emits `Organization` + `WebSite` JSON-LD (`apps/web/src/lib/site-jsonld.ts`) with stable `@id`s; every page's `SoftwareApplication` names that Organization as `publisher` by `@id` so crawlers consolidate one brand entity. No `SearchAction` — the goal-first hero (`SK-WEB-002`) has no GET `q` entrypoint.
+`nlqdb.com/` (root only) emits `Organization` + `WebSite` JSON-LD (`apps/web/src/lib/site-jsonld.ts`) with stable `@id`s; blog posts (`BlogPosting`) name that Organization as `author`/`publisher` by `@id`, so crawlers consolidate one brand entity. No per-page `SoftwareApplication` node. No `SearchAction` — the goal-first hero (`SK-WEB-002`) has no GET `q` entrypoint.
 
 ### SK-WEB-015 — Three-beat homepage + quiet-brutalism token system
 
@@ -125,7 +125,7 @@ A shared MCP-install surface (host descriptors in `lib/mcp-install.ts`) renders 
 
 **Status:** superseded in part by [`SK-WEB-018`](./decisions/SK-WEB-018-two-door-home.md) — the connect-first vertical hero on `/` is replaced by the two-door chooser; SK-WEB-017's `<McpInstall>`-primacy is **absorbed into Door A**.
 
-**Body:** [`decisions/SK-WEB-017-connect-first-hero.md`](./decisions/SK-WEB-017-connect-first-hero.md) (superseded in part; `<McpInstall>`-primacy absorbed into Door A per SK-WEB-018).
+**Body:** [`decisions/SK-WEB-017-connect-first-hero.md`](./decisions/SK-WEB-017-connect-first-hero.md).
 
 ### SK-WEB-018 — Two-door home: agent-memory door + question-your-ClickHouse door
 
@@ -155,7 +155,7 @@ Every client-side navigation to an internal page path ends in `/` (`trailingSlas
 ### SK-WEB-023 — IndexNow push on every web deploy; robots + sitemap stay index-open
 
 **Body:** [`decisions/SK-WEB-023-indexnow-push-on-deploy.md`](./decisions/SK-WEB-023-indexnow-push-on-deploy.md).
-Every deploy pushes the sitemap URL list to IndexNow (`continue-on-error` step in `deploy-web.yml`, `scripts/submit-indexnow.ts`). Index-open posture: `Allow: /` robots, self-referential canonicals (only `/auth/*` is `noindex`), `<lastmod>` on blog posts only.
+Every deploy pushes the sitemap URL list to IndexNow (`continue-on-error` step in `deploy-web.yml`, `scripts/submit-indexnow.ts`). Index-open posture: `Allow: /` robots, self-referential canonicals (only JS-shell pages `noindex`: `/auth/*`, `/app/*`, `/oauth/*`), `<lastmod>` on blog posts only.
 
 ### SK-WEB-024 — PostHog client capture on the product `/app` surfaces only, with the conversation region masked
 
