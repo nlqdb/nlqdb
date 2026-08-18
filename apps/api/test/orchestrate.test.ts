@@ -113,7 +113,7 @@ describe("orchestrateAsk", () => {
       dbId: "db_missing",
       userId: "user_1",
     });
-    expect(out).toEqual({ ok: false, error: { status: "db_not_found" } });
+    expect(out).toEqual({ ok: false, error: { code: "db_not_found" } });
   });
 
   it("rate-limits by rateLimitBucketKey (SK-MCP-009 per-key bucket), not userId", async () => {
@@ -142,7 +142,7 @@ describe("orchestrateAsk", () => {
       makeDeps({ resolveDb: vi.fn(async () => stubDb({ schemaHash: null })) }),
       { goal: "anything", dbId: "db_1", userId: "user_1" },
     );
-    expect(out).toEqual({ ok: false, error: { status: "schema_unavailable" } });
+    expect(out).toEqual({ ok: false, error: { code: "schema_unavailable" } });
   });
 
   it("calls LLM + writes cache on a cold-cache request", async () => {
@@ -195,8 +195,8 @@ describe("orchestrateAsk", () => {
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("clarify_required");
-    if (out.error.status !== "clarify_required") return;
+    expect(out.error.code).toBe("clarify_required");
+    if (out.error.code !== "clarify_required") return;
     expect(out.error.clarification).toBe("destructive_ambiguous");
     // Options derive from the DB's tables (stubDb → "orders") plus the
     // deterministic "start fresh" create; no LLM hop involved.
@@ -222,7 +222,7 @@ describe("orchestrateAsk", () => {
     // them (GLOBAL-012).
     expect(out).toEqual({
       ok: false,
-      error: { status: "llm_failed" },
+      error: { code: "llm_failed" },
     });
   });
 
@@ -236,7 +236,7 @@ describe("orchestrateAsk", () => {
     // Postgres / connection-string fragments are stripped — status only.
     expect(out).toEqual({
       ok: false,
-      error: { status: "db_unreachable" },
+      error: { code: "db_unreachable" },
     });
   });
 
@@ -249,7 +249,7 @@ describe("orchestrateAsk", () => {
       dbId: "db_1",
       userId: "user_1",
     });
-    expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
+    expect(out).toEqual({ ok: false, error: { code: "db_unreachable" } });
     expect(record).toHaveBeenCalledWith({
       event: "exec_db_unreachable",
       pgCode: "42501",
@@ -271,7 +271,7 @@ describe("orchestrateAsk", () => {
       userId: "user_1",
     });
     expect(record).toHaveBeenCalled();
-    expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
+    expect(out).toEqual({ ok: false, error: { code: "db_unreachable" } });
   });
 
   it("SK-ASK-015: cache miss + exec failure → no plan.write", async () => {
@@ -293,7 +293,7 @@ describe("orchestrateAsk", () => {
       dbId: "db_1",
       userId: "user_1",
     });
-    expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
+    expect(out).toEqual({ ok: false, error: { code: "db_unreachable" } });
     expect(cache.write).not.toHaveBeenCalled();
     expect(cache.lookup).toHaveBeenCalledTimes(1);
   });
@@ -372,7 +372,7 @@ describe("orchestrateAsk", () => {
     // captured server-side via OTel and not echoed to the client.
     expect(out).toEqual({
       ok: false,
-      error: { status: "db_misconfigured" },
+      error: { code: "db_misconfigured" },
     });
   });
 
@@ -388,7 +388,7 @@ describe("orchestrateAsk", () => {
     expect(out).toEqual({
       ok: false,
       error: {
-        status: "schema_mismatch",
+        code: "schema_mismatch",
         referencedTables: ["users"],
         schemaTables: ["orders"],
       },
@@ -414,7 +414,7 @@ describe("orchestrateAsk", () => {
     );
     expect(out).toEqual({
       ok: false,
-      error: { status: "schema_mismatch", referencedTables: [], schemaTables: [] },
+      error: { code: "schema_mismatch", referencedTables: [], schemaTables: [] },
     });
     // Nonrecoverable wrapping means SK-ASK-013's 3-attempt retry stops
     // after the first failure — no point re-running the same SQL.
@@ -512,7 +512,7 @@ describe("orchestrateAsk", () => {
       dbId: "db_1",
       userId: "user_1",
     });
-    expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
+    expect(out).toEqual({ ok: false, error: { code: "db_unreachable" } });
     // One initial exec + one repaired exec, then stop — no unbounded loop.
     expect(plan).toHaveBeenCalledTimes(2);
     expect(exec).toHaveBeenCalledTimes(2);
@@ -541,7 +541,7 @@ describe("orchestrateAsk", () => {
     });
     expect(out).toEqual({
       ok: false,
-      error: { status: "sql_rejected", reason: "write_via_repair" },
+      error: { code: "sql_rejected", reason: "write_via_repair" },
     });
     // The repaired DELETE never reached exec (only the failed SELECT did).
     expect(exec).toHaveBeenCalledTimes(1);
@@ -571,7 +571,7 @@ describe("orchestrateAsk", () => {
       );
       expect(out).toEqual({
         ok: false,
-        error: { status: "schema_mismatch", referencedTables: [], schemaTables: [] },
+        error: { code: "schema_mismatch", referencedTables: [], schemaTables: [] },
       });
       // Same Nonrecoverable wrapping as 42P01 — no retry on missing schema.
       expect(exec).toHaveBeenCalledTimes(1);
@@ -609,7 +609,7 @@ describe("orchestrateAsk", () => {
       );
       expect(out.ok).toBe(false);
       if (out.ok) throw new Error("unreachable");
-      expect(out.error.status).toBe("schema_mismatch");
+      expect(out.error.code).toBe("schema_mismatch");
       expect(exec).toHaveBeenCalledTimes(1);
       const logged = JSON.parse(errorSpy.mock.calls[0]?.[0] as string);
       expect(logged).toMatchObject({ reason: "schema_missing", pg_code: "msg_match" });
@@ -642,7 +642,7 @@ describe("orchestrateAsk", () => {
       );
       expect(out).toEqual({
         ok: false,
-        error: { status: "schema_mismatch", referencedTables: [], schemaTables: [] },
+        error: { code: "schema_mismatch", referencedTables: [], schemaTables: [] },
       });
       // Measured delta: 0 durable diag rows on this path → exactly one, with
       // the SQLSTATE that disambiguates orphaned-schema from wrong-table.
@@ -681,7 +681,7 @@ describe("orchestrateAsk", () => {
       expect(record).toHaveBeenCalled();
       expect(out).toEqual({
         ok: false,
-        error: { status: "schema_mismatch", referencedTables: [], schemaTables: [] },
+        error: { code: "schema_mismatch", referencedTables: [], schemaTables: [] },
       });
     } finally {
       errorSpy.mockRestore();
@@ -806,7 +806,7 @@ describe("orchestrateAsk", () => {
     });
     expect(out).toEqual({
       ok: false,
-      error: { status: "rate_limited", limit: 60, count: 60, resetAt: 0 },
+      error: { code: "rate_limited", limit: 60, count: 60, resetAt: 0 },
     });
     expect(llm.plan).not.toHaveBeenCalled();
     expect(exec).not.toHaveBeenCalled();
@@ -1052,8 +1052,8 @@ describe("orchestrateAsk", () => {
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("clarify_required");
-    if (out.error.status !== "clarify_required") return;
+    expect(out.error.code).toBe("clarify_required");
+    if (out.error.code !== "clarify_required") return;
     expect(out.error.clarification).toBe("destructive_ambiguous");
     expect(calls).toBe(3);
   });
@@ -1085,7 +1085,7 @@ describe("orchestrateAsk", () => {
       dbId: "db_1",
       userId: "user_1",
     });
-    expect(out).toEqual({ ok: false, error: { status: "db_misconfigured" } });
+    expect(out).toEqual({ ok: false, error: { code: "db_misconfigured" } });
     expect(calls).toBe(1);
   });
 

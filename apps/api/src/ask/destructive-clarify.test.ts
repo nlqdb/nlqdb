@@ -39,7 +39,7 @@ describe("destructiveClarify", () => {
   it("builds a destructive_ambiguous clarify for the clear-db family", () => {
     for (const reason of ["drop_statement", "truncate_statement", "delete_without_where"]) {
       const out = destructiveClarify(reason, stubDb('CREATE TABLE "s"."users" (id int);'));
-      expect(out?.status).toBe("clarify_required");
+      expect(out?.code).toBe("clarify_required");
       expect(out?.clarification).toBe("destructive_ambiguous");
       expect(out?.pinned_db).toBeNull();
       expect(out?.reason).toMatch(/could mean a few things/);

@@ -87,7 +87,7 @@ describe("orchestrateAsk — write-intent enforcement (SK-ASK-009)", () => {
     );
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error).toEqual({ status: "sql_rejected", reason: "expected_data_modification" });
+    expect(out.error).toEqual({ code: "sql_rejected", reason: "expected_data_modification" });
   });
 
   it("write intent passes through to the planner request", async () => {

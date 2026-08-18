@@ -2,6 +2,7 @@
 // the surfaces tests + the handler need.
 
 import type { QueryResult } from "@nlqdb/db";
+import type { ConstraintKind, FailoverReasonParam as FailoverReason, LlmLane } from "@nlqdb/errors";
 import type { NlqSurface } from "@nlqdb/events";
 
 export type DbRecord = {
@@ -153,7 +154,7 @@ export type ClarifyOption = {
 // Both replace the cryptic `disallowed_verb`/`sql_rejected` a destructive
 // or create goal would otherwise dead-end on.
 export type ClarifyRequired = {
-  status: "clarify_required";
+  code: "clarify_required";
   clarification: "create_or_query_pinned" | "destructive_ambiguous";
   pinned_db: { id: string; slug: string } | null;
   reason: string;
@@ -162,20 +163,32 @@ export type ClarifyRequired = {
   options?: ClarifyOption[];
 };
 
+// SK-ERR-001 — the discriminant is `code`, and each variant's remaining fields
+// are exactly the params its registry entry declares (`@nlqdb/errors`). The
+// route handler hands the whole object to `askErrorEnvelope`, which renders the
+// message + action + retryable, so adding a code needs one registry entry and
+// no handler edit.
 export type AskError =
-  | { status: "db_not_found" }
-  | { status: "schema_unavailable" }
-  | { status: "db_misconfigured" }
-  | { status: "db_unreachable" }
-  | { status: "sql_rejected"; reason: string }
-  | { status: "llm_failed" }
-  | { status: "rate_limited"; limit: number; count: number; resetAt: number }
+  | { code: "db_not_found" }
+  | { code: "schema_unavailable" }
+  | { code: "db_misconfigured" }
+  | { code: "db_unreachable" }
+  | { code: "sql_rejected"; reason: string }
+  // SK-LLM-050 — the bounded, secret-free cause the router already computed.
+  // Discarding it is what made a rejected BYOLLM key read as "try rephrasing"
+  // (2026-08-17). Raw provider text stays on the `llm.plan` span.
+  | { code: "llm_failed"; reason?: FailoverReason; lane?: LlmLane; provider?: string; model?: string }
+  | { code: "rate_limited"; limit: number; count: number; resetAt: number }
   // SK-ASK-016 — the LLM-emitted SQL references a table not present in
   // the target DB's schema. Pre-flight catches it before exec; the 42P01
   // exec backstop catches the cases pre-flight misses. HTTP 409 — the
   // goal was valid but aimed at the wrong DB; the surface can offer
   // "create a fresh DB instead" without dead-ending on a generic 502.
-  | { status: "schema_mismatch"; referencedTables: string[]; schemaTables: string[] }
+  | { code: "schema_mismatch"; referencedTables: string[]; schemaTables: string[] }
+  // SK-ASK-027 — deterministic exec failures the catch-all used to bucket as
+  // `db_unreachable`, costing three pointless retries and wrong copy.
+  | { code: "constraint_violation"; kind?: ConstraintKind; constraint?: string; table?: string }
+  | { code: "invalid_value"; pgCode?: string }
   | ClarifyRequired;
 
 // Thrown by `exec` callbacks when a DB row's `connection_secret_ref`

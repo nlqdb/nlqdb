@@ -111,7 +111,7 @@ export type RememberResult = {
   expires_at?: string;
 };
 
-export type RememberError = AskError | { status: "wrong_preset" };
+export type RememberError = AskError | { code: "wrong_preset" };
 
 export type RememberOutcome =
   | { ok: true; result: RememberResult }
@@ -370,7 +370,7 @@ export async function orchestrateRemember(
     return {
       ok: false,
       error: {
-        status: "rate_limited",
+        code: "rate_limited",
         limit: decision.limit,
         count: decision.count,
         resetAt: decision.resetAt,
@@ -379,8 +379,8 @@ export async function orchestrateRemember(
   }
 
   const db = await deps.resolveDb(req.args.db, req.userId);
-  if (!db) return { ok: false, error: { status: "db_not_found" } };
-  if (!isAgentMemoryV1Db(db.id)) return { ok: false, error: { status: "wrong_preset" } };
+  if (!db) return { ok: false, error: { code: "db_not_found" } };
+  if (!isAgentMemoryV1Db(db.id)) return { ok: false, error: { code: "wrong_preset" } };
 
   const plan = buildRememberInsert(req.args, {
     agentId: req.agentId,
@@ -391,8 +391,8 @@ export async function orchestrateRemember(
   try {
     result = await deps.execMemory(db, plan);
   } catch (err) {
-    if (err instanceof DbConfigError) return { ok: false, error: { status: "db_misconfigured" } };
-    return { ok: false, error: { status: "db_unreachable" } };
+    if (err instanceof DbConfigError) return { ok: false, error: { code: "db_misconfigured" } };
+    return { ok: false, error: { code: "db_unreachable" } };
   }
 
   const row = (result.rows[0] ?? {}) as Record<string, unknown>;

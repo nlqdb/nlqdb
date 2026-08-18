@@ -1,0 +1,22 @@
+{
+  "name": "@nlqdb/errors",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@nlqdb/sdk": "workspace:*",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.0"
+  }
+}

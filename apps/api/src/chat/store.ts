@@ -159,7 +159,7 @@ function flattenMessage(msg: ChatMessage): FlatRow {
     rows_truncated: null,
     cached: null,
     summary: null,
-    error_status: msg.result.status,
+    error_status: msg.result.code,
     error_message: msg.result.message ?? null,
   };
 }
@@ -185,7 +185,7 @@ function rowToMessage(row: Row): ChatMessage {
   if (row.error_status !== null) {
     const result: AssistantChatMessage["result"] = {
       kind: "error",
-      status: row.error_status as AskError["status"],
+      code: row.error_status as AskError["code"],
       ...(row.error_message !== null ? { message: row.error_message } : {}),
     };
     return { ...base, role: "assistant", result };

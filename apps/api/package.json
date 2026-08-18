@@ -21,6 +21,7 @@
     "@nlqdb/db": "workspace:*",
     "@nlqdb/docs-memory": "workspace:*",
     "@nlqdb/email": "workspace:*",
+    "@nlqdb/errors": "workspace:*",
     "@nlqdb/events": "workspace:*",
     "@nlqdb/llm": "workspace:*",
     "@nlqdb/otel": "workspace:*",

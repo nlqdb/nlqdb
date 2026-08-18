@@ -27,7 +27,7 @@ function makeRecorder(): { emitter: EventEmitter; ctx: WaitUntilCtx; emitted: Pr
 describe("emitFeatureSignal", () => {
   it("emits feature.requested.ddl_via_ask on sql_rejected with a DDL reason", async () => {
     const { emitter, ctx, emitted } = makeRecorder();
-    const error: AskError = { status: "sql_rejected", reason: "drop_statement" };
+    const error: AskError = { code: "sql_rejected", reason: "drop_statement" };
 
     emitFeatureSignal(emitter, ctx, "anon:abc", "hero", error);
     await new Promise((r) => setTimeout(r, 0));
@@ -44,7 +44,7 @@ describe("emitFeatureSignal", () => {
   it("SK-ASK-026: emits ddl_via_ask on a destructive_ambiguous clarify (drop/truncate rerouted here)", async () => {
     const { emitter, ctx, emitted } = makeRecorder();
     const error: AskError = {
-      status: "clarify_required",
+      code: "clarify_required",
       clarification: "destructive_ambiguous",
       pinned_db: null,
       reason: "Clearing the whole database could mean a few things.",
@@ -66,7 +66,7 @@ describe("emitFeatureSignal", () => {
   it("does NOT emit on a create_or_query_pinned clarify (SK-ASK-014 is not a demand signal)", async () => {
     const { emitter, ctx, emitted } = makeRecorder();
     const error: AskError = {
-      status: "clarify_required",
+      code: "clarify_required",
       clarification: "create_or_query_pinned",
       pinned_db: { id: "db_1", slug: "orders" },
       reason: "Create a new database, or query orders?",
@@ -85,7 +85,7 @@ describe("emitFeatureSignal", () => {
       "disallowed_verb",
     ]) {
       const { emitter, ctx, emitted } = makeRecorder();
-      emitFeatureSignal(emitter, ctx, "u_1", "chat", { status: "sql_rejected", reason });
+      emitFeatureSignal(emitter, ctx, "u_1", "chat", { code: "sql_rejected", reason });
       await new Promise((r) => setTimeout(r, 0));
       expect(emitted[0]?.name).toBe("feature.requested.ddl_via_ask");
     }
@@ -94,7 +94,7 @@ describe("emitFeatureSignal", () => {
   it("does NOT emit on sql_rejected with non-DDL reasons (parse_failed, empty, delete_without_where)", async () => {
     for (const reason of ["parse_failed", "empty", "delete_without_where"]) {
       const { emitter, ctx, emitted } = makeRecorder();
-      emitFeatureSignal(emitter, ctx, "u_1", "chat", { status: "sql_rejected", reason });
+      emitFeatureSignal(emitter, ctx, "u_1", "chat", { code: "sql_rejected", reason });
       await new Promise((r) => setTimeout(r, 0));
       expect(emitted).toHaveLength(0);
     }
@@ -103,7 +103,7 @@ describe("emitFeatureSignal", () => {
   it("emits feature.requested.larger_account on rate_limited (authed per-account trip, SK-EVENTS-010)", async () => {
     const { emitter, ctx, emitted } = makeRecorder();
     const error: AskError = {
-      status: "rate_limited",
+      code: "rate_limited",
       limit: 60,
       count: 61,
       resetAt: 1_700_000_000,
@@ -125,12 +125,12 @@ describe("emitFeatureSignal", () => {
 
   it("does not emit on other error shapes (db_not_found, llm_failed, schema_mismatch)", async () => {
     const errors: AskError[] = [
-      { status: "db_not_found" },
-      { status: "llm_failed" },
-      { status: "schema_mismatch", referencedTables: ["x"], schemaTables: ["y"] },
-      { status: "db_unreachable" },
-      { status: "db_misconfigured" },
-      { status: "schema_unavailable" },
+      { code: "db_not_found" },
+      { code: "llm_failed" },
+      { code: "schema_mismatch", referencedTables: ["x"], schemaTables: ["y"] },
+      { code: "db_unreachable" },
+      { code: "db_misconfigured" },
+      { code: "schema_unavailable" },
     ];
     for (const error of errors) {
       const { emitter, ctx, emitted } = makeRecorder();

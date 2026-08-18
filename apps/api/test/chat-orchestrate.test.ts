@@ -140,7 +140,7 @@ describe("postChatMessage — persist path", () => {
       async () =>
         ({
           ok: false,
-          error: { status: "db_unreachable" },
+          error: { code: "db_unreachable" },
         }) satisfies OrchestrateOutcome,
     );
     const deps = makeDeps(ask);
@@ -149,7 +149,7 @@ describe("postChatMessage — persist path", () => {
       throw new Error("expected persisted error");
     }
     expect(deps.store.rows).toHaveLength(2);
-    expect(out.assistant.result.status).toBe("db_unreachable");
+    expect(out.assistant.result.code).toBe("db_unreachable");
     // Postgres / connection-string fragments stay server-side
     // (GLOBAL-012); the persisted row carries status only.
     expect(out.assistant.result.message).toBeUndefined();
@@ -197,7 +197,7 @@ describe("postChatMessage — persist path", () => {
     // `errorStatus()` mapper without a new variant. The thrown error's
     // message is captured by the OTel span server-side; it must not
     // leak into the persisted row (GLOBAL-012).
-    expect(out.assistant.result.status).toBe("llm_failed");
+    expect(out.assistant.result.code).toBe("llm_failed");
     expect(out.assistant.result.message).toBeUndefined();
   });
 });
@@ -209,7 +209,7 @@ describe("postChatMessage — reject path (no persist)", () => {
         ({
           ok: false,
           error: {
-            status: "rate_limited" as const,
+            code: "rate_limited" as const,
             limit: 60,
             count: 61,
             resetAt: 0,
@@ -223,7 +223,7 @@ describe("postChatMessage — reject path (no persist)", () => {
     expect(deps.store.rows).toHaveLength(0); // critical: no DB write
     expect(deps.store.append).not.toHaveBeenCalled();
     if (out.ok) return;
-    expect(out.error.status).toBe("rate_limited");
+    expect(out.error.code).toBe("rate_limited");
   });
 
   it("returns Rejected without writing anything when db_not_found", async () => {
@@ -231,7 +231,7 @@ describe("postChatMessage — reject path (no persist)", () => {
       async () =>
         ({
           ok: false,
-          error: { status: "db_not_found" as const },
+          error: { code: "db_not_found" as const },
         }) satisfies OrchestrateOutcome,
     );
     const deps = makeDeps(ask);
@@ -246,11 +246,11 @@ describe("postChatMessage — reject path (no persist)", () => {
 
   it("does NOT reject for sql_rejected, db_unreachable, llm_failed, schema_unavailable, db_misconfigured", async () => {
     const persistableErrors = [
-      { status: "sql_rejected" as const, reason: "DELETE without WHERE" },
-      { status: "db_unreachable" as const, message: "neon down" },
-      { status: "llm_failed" as const, message: "groq timeout" },
-      { status: "schema_unavailable" as const },
-      { status: "db_misconfigured" as const, message: "secret_ref unbound" },
+      { code: "sql_rejected" as const, reason: "DELETE without WHERE" },
+      { code: "db_unreachable" as const, message: "neon down" },
+      { code: "llm_failed" as const, message: "groq timeout" },
+      { code: "schema_unavailable" as const },
+      { code: "db_misconfigured" as const, message: "secret_ref unbound" },
     ];
     for (const error of persistableErrors) {
       const deps = makeDeps(async () => ({ ok: false, error }) satisfies OrchestrateOutcome);

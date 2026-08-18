@@ -68,7 +68,7 @@ export const MAX_PERSIST_ROWS = 50;
 // Errors that mean "we never engaged" — don't pollute chat history
 // with these. Centralized here (not in the handler) so any future
 // caller of postChatMessage gets the same semantics.
-const REJECT_WITHOUT_PERSIST: ReadonlySet<AskError["status"]> = new Set([
+const REJECT_WITHOUT_PERSIST: ReadonlySet<AskError["code"]> = new Set([
   "rate_limited",
   "db_not_found",
 ]);
@@ -96,10 +96,10 @@ export async function postChatMessage(
     // to the client; the OTel span on this orchestrator captures
     // the root cause server-side.
     void err;
-    outcome = { ok: false, error: { status: "llm_failed" } };
+    outcome = { ok: false, error: { code: "llm_failed" } };
   }
 
-  if (!outcome.ok && REJECT_WITHOUT_PERSIST.has(outcome.error.status)) {
+  if (!outcome.ok && REJECT_WITHOUT_PERSIST.has(outcome.error.code)) {
     return { ok: false, error: outcome.error };
   }
 
@@ -145,8 +145,8 @@ function buildSuccess(result: AskResult): AssistantChatMessage["result"] {
 }
 
 function buildError(error: AskError): AssistantChatMessage["result"] {
-  // No AskError variant carries a `message` field anymore — provider
-  // and Postgres details stay server-side (GLOBAL-012). The status
-  // alone is what the renderer narrows on.
-  return { kind: "error", status: error.status };
+  // Provider and Postgres details stay server-side (GLOBAL-012); the code —
+  // plus whatever bounded params it declares — is what the renderer narrows on,
+  // and the surface gets its copy from the registry, not from here.
+  return { kind: "error", code: error.code };
 }

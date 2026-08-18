@@ -42,9 +42,9 @@ export type AssistantSuccess = {
 
 export type AssistantError = {
   kind: "error";
-  // Mirrored from AskError["status"]. Keeps the renderer narrowing
+  // Mirrored from AskError["code"]. Keeps the renderer narrowing
   // off this string instead of inferring from absence-of-fields.
-  status: AskError["status"];
+  code: AskError["code"];
   message?: string;
 };
 

@@ -20,8 +20,10 @@ import type { ConfirmStash } from "./confirm-stash.ts";
 import { destructiveClarify } from "./destructive-clarify.ts";
 import type { DiagSink } from "./diag.ts";
 import { buildDiff, isWriteVerb } from "./diff.ts";
+import { classifyExecError } from "./exec-classify.ts";
 import { isReplannableExecError } from "./exec-repair.ts";
 import type { FirstQueryTracker } from "./first-query.ts";
+import { llmFailure, type LlmLaneInfo } from "./llm-cause.ts";
 import { hashGoal, type PlanCache } from "./plan-cache.ts";
 import { referencesQualifiedTable, schemaRelativeSql } from "./plan-normalize.ts";
 import type { RateLimiter } from "./rate-limit.ts";
@@ -48,6 +50,10 @@ export type OrchestrateDeps = {
   resolveDb(id: string, tenantId: string): Promise<DbRecord | null>;
   planCache: PlanCache;
   llm: LLMRouter;
+  // SK-LLM-050 — which lane `llm` dispatches on, so a planning failure names
+  // *whose* model failed. The handler passes it from `resolveAskRouter`;
+  // omitted ⇒ the copy stays lane-agnostic. Bounded slugs only — never a key.
+  lane?: LlmLaneInfo;
   // Throws `DbConfigError` if the DB row's `connection_secret_ref`
   // doesn't resolve in env (operator config bug); other throws are
   // treated as transient `db_unreachable`.
@@ -158,7 +164,7 @@ export async function orchestrateAsk(
     return {
       ok: false,
       error: {
-        status: "rate_limited",
+        code: "rate_limited",
         limit: decision.limit,
         count: decision.count,
         resetAt: decision.resetAt,
@@ -167,11 +173,11 @@ export async function orchestrateAsk(
   }
 
   const db = await deps.resolveDb(req.dbId, req.userId);
-  if (!db) return { ok: false, error: { status: "db_not_found" } };
+  if (!db) return { ok: false, error: { code: "db_not_found" } };
   if (!db.schemaHash) {
     // First-query-against-empty-DB lands when DB-on-first-reference
     // does (post-Phase-0). For now, require a populated schema.
-    return { ok: false, error: { status: "schema_unavailable" } };
+    return { ok: false, error: { code: "schema_unavailable" } };
   }
   // TS narrows db.schemaHash to string after the guard above.
   const schemaHash = db.schemaHash;
@@ -281,7 +287,7 @@ export async function orchestrateAsk(
     planConfidence = stashed.confidence;
     const stashValidation = await withSpan("nlqdb.sql.validate", async () => validateSql(planSql));
     if (!stashValidation.ok) {
-      return { ok: false, error: { status: "sql_rejected", reason: stashValidation.reason } };
+      return { ok: false, error: { code: "sql_rejected", reason: stashValidation.reason } };
     }
     cacheHit = false;
     fromConfirmStash = true;
@@ -298,7 +304,7 @@ export async function orchestrateAsk(
     // never trust SQL onto the wire without a fresh allowlist pass.
     const cachedValidation = await withSpan("nlqdb.sql.validate", async () => validateSql(planSql));
     if (!cachedValidation.ok) {
-      return { ok: false, error: { status: "sql_rejected", reason: cachedValidation.reason } };
+      return { ok: false, error: { code: "sql_rejected", reason: cachedValidation.reason } };
     }
     cacheHit = true;
   } else {
@@ -366,12 +372,14 @@ export async function orchestrateAsk(
         const clarify = destructiveClarify(err.reason, db);
         return {
           ok: false,
-          error: clarify ?? { status: "sql_rejected", reason: err.reason },
+          error: clarify ?? { code: "sql_rejected", reason: err.reason },
         };
       }
-      // LLM provider errors can contain API keys or prompt fragments —
-      // the OTel span (llm.plan, SK-LLM-006) captures the root cause.
-      return { ok: false, error: { status: "llm_failed" } };
+      // SK-LLM-050 — the router's bounded cause (reason + lane + provider slug)
+      // rides the envelope so the copy can name the real problem; the provider's
+      // own message, which can carry API keys or prompt fragments, stays on the
+      // OTel span (llm.plan, SK-LLM-006).
+      return { ok: false, error: llmFailure(err, deps.lane) };
     }
     cacheHit = false;
   }
@@ -396,7 +404,7 @@ export async function orchestrateAsk(
       return {
         ok: false,
         error: {
-          status: "schema_mismatch",
+          code: "schema_mismatch",
           referencedTables: mismatch.referencedTables,
           schemaTables: mismatch.schemaTables,
         },
@@ -501,6 +509,13 @@ export async function orchestrateAsk(
               planModel,
             });
             if (schemaError) throw schemaError;
+            // SK-ASK-027 — a constraint / data-exception SQLSTATE is
+            // deterministic: bail the transient retry so we don't replay an
+            // error that can't succeed (the wasted-backoff half of the
+            // 2026-08-18 `23503` incident). The outer catch renders it.
+            if (classifyExecError(err).kind === "deterministic") {
+              throw new Nonrecoverable("exec_deterministic", err);
+            }
             // SK-ASK-022 — deterministic-but-fixable: bail the transient
             // retry on every pass (replaying the identical SQL can't
             // succeed). The outer catch decides whether to re-plan, and
@@ -527,7 +542,7 @@ export async function orchestrateAsk(
       if (err instanceof DbConfigError) {
         // Message would contain the secret ref name — don't leak it.
         // The span (db.query) records the exception for operator visibility.
-        return { ok: false, error: { status: "db_misconfigured" } };
+        return { ok: false, error: { code: "db_misconfigured" } };
       }
       if (err instanceof SchemaMismatchError) {
         // SK-ASK-023 — same preview/e2e log black hole as `db_unreachable`
@@ -557,7 +572,7 @@ export async function orchestrateAsk(
         return {
           ok: false,
           error: {
-            status: "schema_mismatch",
+            code: "schema_mismatch",
             referencedTables: err.referencedTables,
             schemaTables: err.schemaTables,
           },
@@ -588,9 +603,9 @@ export async function orchestrateAsk(
           // A repaired read must stay a read — never let repair smuggle a
           // write past the preview gate.
           if (!validation.ok)
-            return { ok: false, error: { status: "sql_rejected", reason: validation.reason } };
+            return { ok: false, error: { code: "sql_rejected", reason: validation.reason } };
           if (isWriteVerb(repairSql))
-            return { ok: false, error: { status: "sql_rejected", reason: "write_via_repair" } };
+            return { ok: false, error: { code: "sql_rejected", reason: "write_via_repair" } };
           planSql = repairSql;
           planModel = repair.model;
           planConfidence = repair.confidence;
@@ -598,11 +613,15 @@ export async function orchestrateAsk(
           traceBlock.model = planModel;
           traceBlock.confidence = planConfidence;
           await safeEmit({ type: "plan", trace: traceBlock });
-        } catch {
-          return { ok: false, error: { status: "llm_failed" } };
+        } catch (repairErr) {
+          return { ok: false, error: llmFailure(repairErr, deps.lane) };
         }
         continue;
       }
+      // SK-ASK-027 — classify BEFORE the connectivity fallback: a constraint
+      // violation or data exception is deterministic, and calling it
+      // `db_unreachable` is both wrong copy and three wasted retries.
+      const classified = classifyExecError(err);
       // Postgres errors include schema details; keep them server-side —
       // but record the SQLSTATE structurally first, or a deterministic
       // exec class masquerades as connectivity (SK-ASK-019's lesson).
@@ -632,7 +651,10 @@ export async function orchestrateAsk(
           { onError: undefined },
         );
       }
-      return { ok: false, error: { status: "db_unreachable" } };
+      return {
+        ok: false,
+        error: classified.kind === "deterministic" ? classified.error : { code: "db_unreachable" },
+      };
     }
   }
 

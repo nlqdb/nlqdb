@@ -80,7 +80,7 @@ describe("POST /v1/ask — principal gate", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toMatchObject({
       error: {
-        status: "model_unavailable",
+        code: "model_unavailable",
         link: "https://app.nlqdb.com/app/keys",
       },
     });
@@ -118,7 +118,7 @@ describe("POST /v1/ask — principal gate", () => {
     });
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({
-      error: { status: "byollm_requires_session" },
+      error: { code: "byollm_requires_session" },
     });
   });
 
