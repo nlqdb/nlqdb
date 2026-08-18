@@ -268,6 +268,10 @@
   border: 1px solid var(--border);
   background: var(--bg-elev);
   min-height: 0;
+  /* Grid item: without this its min-track is min-content, so a wide table
+   * deep in the reply forces the whole shell (and the page) wider instead
+   * of letting the table's own `overflow-x` scroll. Pin the floor to 0. */
+  min-width: 0;
 }
 
 .chat-main__header {
@@ -824,6 +828,9 @@
   gap: 18px;
   overflow-y: auto;
   flex: 1 1 auto;
+  /* Same reason as .chat-main: keep the flex chain from growing to the
+   * widest table's min-content and overflowing the pane horizontally. */
+  min-width: 0;
 }
 
 .chat-list__user {
@@ -854,6 +861,7 @@
 .chat-list__assistant {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 /* ---------- Reply ---------- */
@@ -865,6 +873,10 @@
   padding: 14px 16px;
   background: var(--bg);
   border: 1px solid var(--border);
+  /* A wide table lives inside .chat-data__tablewrap (overflow-x: auto).
+   * Without a 0 min-width the flex column stretches to the table's
+   * min-content and the scroll never engages — the page scrolls instead. */
+  min-width: 0;
 }
 
 .chat-reply[data-state="error"] {
