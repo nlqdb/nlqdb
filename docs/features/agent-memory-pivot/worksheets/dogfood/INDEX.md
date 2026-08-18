@@ -116,7 +116,7 @@ alpha may ship without delaying D-04–D-07.
 
 ## Gate progress — the number this track exists to move
 
-`SK-PIVOT-016`: **1/5 green** (2026-08-11, up from 0/5). **D-04 run 1** ran the
+`SK-PIVOT-016`: **2/5 green** (up from 0/5). **D-04 run 1** ran the
 first real ops workload through the public MCP surface (see
 [`D-04`](D-04-first-corpus-sync.md) Run log): the prod memory DB
 `db_agent_memory_v1_3a8a72` was provisioned + seeded (13 facts, 9 entities), and
@@ -129,8 +129,8 @@ manifesting live, so it stays not-green and GLOBAL-037-blocked. Criterion 4 is
 **measured on both corpora** — temporal **2/7** (synthetic 2/3, ops 0/4).
 **Criterion 5** is **built and shipping** (D-06 run 1, 2026-08-12): the
 `/agents` page now carries a server-rendered block rendering the real corpus
-aggregates + two GROUP-BY result tables + the as-of date — it goes **green on
-deploy of this PR** (gate → **2/5**). The
+aggregates + two GROUP-BY result tables + the as-of date — it went **green on
+#978's deploy** (gate → **2/5**). The
 launch is still far off (criterion 1 ≪ 100, criteria 3/4 not green); what
 changed is the gate is now driven by a live workload, not a bet.
 
