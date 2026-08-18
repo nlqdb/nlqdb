@@ -18,11 +18,15 @@
 //      which drops the customer straight on the plan-selection page (Hobby/Pro
 //      with prices + proration) and hides the rest of the portal chrome.
 //
-// We use the plain `subscription_update` flow, not `subscription_update_confirm`:
-// an active subscription can carry a second, metered overage item
-// (`ensureOverageItem`, SK-PREMIUM-002), and the confirm flow rejects
-// multi-item subscriptions. The plain flow only needs the subscription id and
-// tolerates the metered item.
+// We use the interactive `subscription_update` flow, not
+// `subscription_update_confirm` (which needs a hard-coded target price and
+// rejects multi-item subscriptions). NOTE Stripe's portal can only *update* a
+// single-product, non-usage-based subscription: once a Pro subscriber hits
+// overage, `ensureOverageItem` (SK-PREMIUM-002) attaches a metered item and the
+// portal will then only *cancel* that subscription. So this deep link serves
+// the common single-item switch; the overage-Pro downgrade needs a server-side
+// subscriptions.update (API, not portal) — a known gap tracked in the
+// stripe-billing feature (SK-STRIPE-015).
 
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import type Stripe from "stripe";
