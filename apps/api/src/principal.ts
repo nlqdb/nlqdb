@@ -31,8 +31,8 @@
 
 import type { NlqSurface } from "@nlqdb/events";
 import type { Context, MiddlewareHandler } from "hono";
-import { fail } from "./error-envelope.ts";
 import type { SkKeyLookup } from "./api-keys.ts";
+import { fail } from "./error-envelope.ts";
 import type { Session } from "./middleware.ts";
 
 export type Principal =

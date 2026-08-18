@@ -1,4 +1,4 @@
-// SK-LLM-050 — carry the router's already-computed failure cause into the
+// SK-LLM-051 — carry the router's already-computed failure cause into the
 // `llm_failed` envelope, bounded and secret-free.
 //
 // `AllProvidersFailedError.attempts` holds one `{provider, reason}` per chain
@@ -36,7 +36,10 @@ function chainReason(attempts: { provider: string; reason: FailoverReason }[]) {
   return sticky ?? attempts[attempts.length - 1];
 }
 
-export function llmFailure(err: unknown, lane: LlmLaneInfo = {}): AskError & { code: "llm_failed" } {
+export function llmFailure(
+  err: unknown,
+  lane: LlmLaneInfo = {},
+): AskError & { code: "llm_failed" } {
   const base = {
     code: "llm_failed" as const,
     ...pick("lane", lane.lane),

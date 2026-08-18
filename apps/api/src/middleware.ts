@@ -15,8 +15,8 @@
 // (`vi.mock` of worker modules is broken upstream — see memory:
 // vi.mock-doesnt-propagate-to-self-fetch).
 
-import { fail } from "./error-envelope.ts";
 import type { Context, MiddlewareHandler } from "hono";
+import { fail } from "./error-envelope.ts";
 
 export type SessionUser = { id: string; name?: string | null; email?: string | null };
 export type Session = {

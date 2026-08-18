@@ -394,7 +394,7 @@ describe("createClient", () => {
             createdAt: 1700000001000,
             result: {
               kind: "error",
-              status: "sql_rejected",
+              code: "sql_rejected",
               message: "no DML",
             },
           },
@@ -774,10 +774,10 @@ describe("createClient", () => {
 
   it("runSql: surfaces 400 sql_rejected as NlqdbApiError", async () => {
     const fakeFetch: FetchLike = async () =>
-      new Response(
-        JSON.stringify({ error: { code: "sql_rejected", reason: "drop_statement" } }),
-        { status: 400, headers: { "content-type": "application/json" } },
-      );
+      new Response(JSON.stringify({ error: { code: "sql_rejected", reason: "drop_statement" } }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
     const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
     try {
       await client.runSql({ db: "db_1", sql: "DROP TABLE x" });

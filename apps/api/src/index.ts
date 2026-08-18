@@ -71,7 +71,7 @@ import { kickoffAskPrelude, resolveAnonEngineOverride, seedFromPinnedDb } from "
 import { makeRecentTablesStore } from "./ask/recent-tables.ts";
 import { withStageRetry } from "./ask/retry.ts";
 import { ROUTE_CONFIDENCE_FLOOR, routeAsk } from "./ask/route-ask.ts";
-import type { AskError, OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
+import type { OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
 import { auth, authWaitUntil, REVOCATION_KEY_PREFIX } from "./auth.ts";
@@ -107,6 +107,13 @@ import { AGENT_MEMORY_V1_VERSION, type MemoryPreset } from "./db-create/presets/
 import { resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
 import { notify } from "./email-notify.ts";
+import {
+  errorEnvelope,
+  errorResponse,
+  fail,
+  failUnknown,
+  type PipelineError,
+} from "./error-envelope.ts";
 import { recordEvalReport, recordPricingEvent, recordWishlist } from "./events-feature.ts";
 import { notifyFirstServerError } from "./first-error-email.ts";
 import {
@@ -126,13 +133,6 @@ import {
   parseRunBody,
   sanitizeAskSource,
 } from "./http.ts";
-import {
-  errorEnvelope,
-  errorResponse,
-  fail,
-  failUnknown,
-  type PipelineError,
-} from "./error-envelope.ts";
 import { httpsRedirectTarget, withHsts } from "./https-enforce.ts";
 import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
@@ -146,7 +146,6 @@ import {
   type MemoryScope,
   memorySurfaceRejection,
   orchestrateRemember,
-  type RememberError,
   validateRememberInput,
 } from "./memory/remember.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
@@ -170,7 +169,7 @@ import {
   rateLimitBucketKey,
   surfaceFromPrincipal,
 } from "./principal.ts";
-import { orchestrateRun, type RunError } from "./run/orchestrate.ts";
+import { orchestrateRun } from "./run/orchestrate.ts";
 import {
   blocksNewCheckout,
   type CustomerRow,
@@ -851,7 +850,11 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         );
         span.end();
         c.header("Retry-After", String(Math.max(0, verdict.resetAt - now)));
-        return fail(c, "rate_limited", { limit: verdict.limit, count: verdict.count, resetAt: verdict.resetAt });
+        return fail(c, "rate_limited", {
+          limit: verdict.limit,
+          count: verdict.count,
+          resetAt: verdict.resetAt,
+        });
       }
 
       // SK-ANON-012 — per-device cap. Fires at the TOP of /v1/ask so
@@ -1091,8 +1094,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       } catch {
         span.setAttribute("nlqdb.ask.outcome", "byollm_unavailable");
         span.end();
-        return fail(c, "byollm_unavailable", { message:
-                "Your stored BYOLLM key could not be unsealed; re-add it under your account keys." });
+        return fail(c, "byollm_unavailable", {
+          message:
+            "Your stored BYOLLM key could not be unsealed; re-add it under your account keys.",
+        });
       }
     }
 
@@ -1255,8 +1260,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       }
       span.setAttribute("nlqdb.ask.outcome", "byollm_gateway_unconfigured");
       span.end();
-      return fail(c, "byollm_unavailable", { message:
-              "BYOLLM is not configured on this deployment; the built-in models are still available." });
+      return fail(c, "byollm_unavailable", {
+        message:
+          "BYOLLM is not configured on this deployment; the built-in models are still available.",
+      });
     }
 
     // SK-FRONTIER-001..004 — dormant founder-funded frontier lane. While
@@ -1843,7 +1850,11 @@ app.post("/v1/run", requirePrincipal, async (c) => {
             }),
           );
           c.header("Retry-After", String(Math.max(0, verdict.resetAt - now)));
-          return fail(c, "rate_limited", { limit: verdict.limit, count: verdict.count, resetAt: verdict.resetAt });
+          return fail(c, "rate_limited", {
+            limit: verdict.limit,
+            count: verdict.count,
+            resetAt: verdict.resetAt,
+          });
         }
         const devicePeek = await anonLimiter.peekDevice(principal.id);
         if (!devicePeek.ok) {
@@ -3128,10 +3139,7 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
           // the draft is intact and the client's next action resumes it.
           const status = outcome.reason === "source_unavailable" ? 422 : 409;
           const code = outcome.reason === "source_unavailable" ? "source_required" : "import_busy";
-          return c.json(
-            { import: importView(settled), ...errorEnvelope({ code }).body },
-            status,
-          );
+          return c.json({ import: importView(settled), ...errorEnvelope({ code }).body }, status);
         }
         span.setAttribute("nlqdb.pack.import.outcome", "ok");
         const body = { import: importView(settled) };
@@ -3274,7 +3282,9 @@ app.post("/v1/keys/byollm", requireSession, async (c) => {
       if (!result.ok) {
         span.setAttribute("nlqdb.keys.byollm.set.outcome", result.reason);
         if (result.reason === "kek_unconfigured") {
-          return fail(c, "byollm_unavailable", { message: "BYOLLM key storage is not configured on this deployment." });
+          return fail(c, "byollm_unavailable", {
+            message: "BYOLLM key storage is not configured on this deployment.",
+          });
         }
         return fail(c, "invalid_byollm_key", { message: result.message });
       }
@@ -3312,7 +3322,9 @@ app.get("/v1/keys/byollm", requireSession, async (c) => {
       const result = await byollmStatus(c.env.DB, c.env, session.user.id);
       if (!result.ok) {
         span.setAttribute("nlqdb.keys.byollm.status.outcome", "kek_unconfigured");
-        return fail(c, "byollm_unavailable", { message: "BYOLLM key storage is not configured on this deployment." });
+        return fail(c, "byollm_unavailable", {
+          message: "BYOLLM key storage is not configured on this deployment.",
+        });
       }
       span.setAttribute("nlqdb.keys.byollm.status.outcome", "ok");
       span.setAttribute("nlqdb.keys.byollm.configured", result.status !== null);
@@ -4040,7 +4052,9 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
     if (!tenantId || !canConnectDatabase(principal)) {
       span.setAttribute("nlqdb.db.connect.outcome", "connect_requires_account");
       span.end();
-      return fail(c, "connect_requires_account", { message: "Connecting a database needs an account session or an sk_live key." });
+      return fail(c, "connect_requires_account", {
+        message: "Connecting a database needs an account session or an sk_live key.",
+      });
     }
     span.setAttribute("nlqdb.user.id", tenantId);
 
@@ -4407,12 +4421,6 @@ function buildSignInUrl(referer: string | undefined): string {
   }
   return url.toString();
 }
-
-// Typed over `AskError["status"]` so adding a new error variant fails
-// the compile here rather than silently falling through to 400. 422
-// for `schema_unavailable` mirrors REST convention for "request was
-// well-formed but the server can't act on it" (the goal+dbId parsed,
-// but introspection couldn't fetch a schema this time).
 
 // Anon-bearer stash endpoint (SK-ANON-012).
 //

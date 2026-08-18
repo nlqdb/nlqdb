@@ -56,19 +56,15 @@ when-to-load:
 
 ### SK-ASK-006 — Anonymous-mode is a separate rate-limit tier — not "free with a lower limit"
 
-- **Decision:** The API has an explicit anonymous-mode rate-limit tier, distinct from authed-free and paid tiers (`GLOBAL-007`). Anonymous traffic shares its tier across all anonymous device-tokens by IP + device-token; signing in promotes the device's outstanding budget to the authed tier (no fresh quota grant).
-- **Core value:** Free, Bullet-proof, Goal-first
-- **Why:** Without a separate tier, an anonymous abuse spike (per-IP create-floods) eats authed-user budget. With it, abuse is contained in its own bucket while the authed surface stays fast. Promoting on sign-in (no fresh grant) prevents farming free quota by signing in repeatedly under fresh emails.
-- **Consequence in code:** Rate-limit middleware (`packages/rate-limit`) reads `(tier, identifier)` where `identifier` is `device_token` for anonymous and `user_id` for authed. `attachIdentity()` carries forward the consumed budget. PoW challenges fire on signup if the bucket spikes (`docs/architecture.md §3.6.8`).
-- **Alternatives rejected:** Single global free tier — every anonymous abuse spike degrades authed users. Allow anonymous to refresh budget by attaching a new identity — quota-farming.
+**Body:** [`decisions/SK-ASK-006-anonymous-rate-limit-tier.md`](./decisions/SK-ASK-006-anonymous-rate-limit-tier.md).
+Anonymous traffic gets its own `GLOBAL-007` tier (keyed by IP + device-token);
+sign-in promotes the outstanding budget instead of granting a fresh one.
 
 ### SK-ASK-007 — `user.first_query` fires exactly once per user via the lookup-then-emit-then-commit pattern
 
-- **Decision:** The first successful `/v1/ask` per user emits a `user.first_query` product event exactly once. The implementation uses lookup-then-emit-then-commit with a KV marker — the marker is checked, the event is emitted, the marker is committed. The full pattern is in `docs/performance.md §4` Slice 6.
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** Naively writing the marker before emitting can drop the event on a Worker crash; emitting then writing can double-emit on retry. The lookup-then-emit-then-commit pattern with idempotent sink writes (events-pipeline) gives us at-most-once user-visible (the dashboard counts unique users) without dropping the signal.
-- **Consequence in code:** the lookup/commit pair is span-wrapped (`nlqdb.cache.first_query.{lookup,commit}`) and the events emit rides `ctx.waitUntil` so it runs after the response — at-most-once even across two concurrent first calls (the second observes the marker).
-- **Alternatives rejected:** Write marker first — event drops on crash. Emit first — double-emit on retry. Synchronous DB write — adds DB round-trip to the response path.
+**Body:** [`decisions/SK-ASK-007-first-query-emit-once.md`](./decisions/SK-ASK-007-first-query-emit-once.md).
+KV marker checked → event emitted → marker committed, so a crash can't drop the
+signal and a retry can't double-emit.
 
 ### SK-ASK-008 — Live trace is streamed in step-completion order; no spinner-lying
 
@@ -235,6 +231,30 @@ rail + `serverErrorEmail` template, deduped once-per-account by the new
 Deliberately narrow: 5xx only (4xx is the user's own action), signed-in only
 (anon surfaces have no email), once ever. Fire-and-forget (`waitUntil`), never
 blocks or fails the ask response.
+
+### SK-ASK-028 — Write outcomes are narrated from the engine's facts; `summarize` never sees a write
+
+**Body:** [`decisions/SK-ASK-028-write-outcomes-narrated-from-facts.md`](./decisions/SK-ASK-028-write-outcomes-narrated-from-facts.md).
+The summarizer only ever sees the RETURNED rows — none, for a plain write — so
+it narrated a *committed* insert as an empty read and told the user to add the
+entry they had just approved. Writes are now narrated server-side from
+verb + table + affected-row count; the `llm.summarize` hop is read-only.
+
+### SK-ASK-029 — PG constraint violations (SQLSTATE class 23) are a typed `write_constraint`, never `db_unreachable`
+
+**Body:** [`decisions/SK-ASK-029-write-constraint-envelope.md`](./decisions/SK-ASK-029-write-constraint-envelope.md).
+A not-null / FK / unique / check violation is the statement's values being
+wrong: `write-constraint.ts` classifies it `Nonrecoverable` and returns
+`409 write_constraint { kind, table?, column?, constraint? }` (identifiers only)
+instead of three backed-off replays and "Couldn't reach the database".
+
+### SK-ASK-030 — PG data exceptions (SQLSTATE class 22) are a typed `invalid_value`, never `db_unreachable`
+
+**Body:** [`decisions/SK-ASK-030-data-exception-envelope.md`](./decisions/SK-ASK-030-data-exception-envelope.md).
+`SK-ASK-029`'s argument one SQLSTATE class over: a failed cast or out-of-range
+value can't succeed on replay, so `exec-classify.ts` returns
+`409 invalid_value { pgCode }` rather than spending the exec stage's three
+backoff attempts and blaming connectivity.
 
 ## The LLM loop
 

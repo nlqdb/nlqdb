@@ -9,15 +9,14 @@
 // claim something we don't know). Feature record: docs/features/error-taxonomy.
 
 import { REGISTRY } from "./registry.ts";
-import { type ErrorEntry, resolve, type Recoverability, type WireError } from "./types.ts";
+import { type ErrorEntry, type Recoverability, resolve, type WireError } from "./types.ts";
 
-export { REGISTRY } from "./registry.ts";
 export type {
   ConstraintKind,
   FailoverReasonParam,
   LlmLane,
 } from "./registry.ts";
-export { FAILOVER_REASONS, LLM_LANES } from "./registry.ts";
+export { FAILOVER_REASONS, LLM_LANES, REGISTRY } from "./registry.ts";
 export type { Recoverability, WireError } from "./types.ts";
 
 export type ErrorCode = keyof typeof REGISTRY;
@@ -55,9 +54,9 @@ export function renderError<C extends ErrorCode>(
   code: C,
   params?: Partial<ParamsFor<C>> | Record<string, unknown>,
 ): Rendered {
-  // biome-ignore lint/suspicious/noExplicitAny: one cast at the registry
-  // boundary; every entry's builders are typed against its own schema, so the
-  // per-entry types are enforced where they're written.
+  // One cast at the registry boundary. Every entry's builders are typed against
+  // its own schema where they are written, so nothing is loosened by this.
+  // biome-ignore lint/suspicious/noExplicitAny: heterogeneous registry lookup.
   const entry = REGISTRY[code] as ErrorEntry<any>;
   const parsed = entry.params.safeParse(params ?? {});
   const p = parsed.success ? parsed.data : {};

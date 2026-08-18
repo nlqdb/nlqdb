@@ -96,7 +96,9 @@ const providerLabel = (p: { provider?: string }) => p.provider ?? "provider";
 // ── Constraint violations (Postgres SQLSTATE class 23). Names come from the
 // tenant's own schema, so showing them back is safe and is the only way the
 // message can be actionable.
-const CONSTRAINT_KINDS = ["fk", "unique", "not_null", "check"] as const;
+// Kept literal-for-literal with `WriteConstraintKind` in
+// apps/api/src/ask/types.ts, which `write-constraint.ts` derives from SQLSTATE.
+const CONSTRAINT_KINDS = ["not_null", "foreign_key", "unique", "check", "exclusion"] as const;
 export type ConstraintKind = (typeof CONSTRAINT_KINDS)[number];
 
 const constraintParams = z.object({
@@ -106,11 +108,15 @@ const constraintParams = z.object({
   column: slug(120),
 });
 
-const onTable = (p: { table?: string }) => (p.table ? ` on ${p.table}` : "");
-const onColumn = (p: { column?: string }) => (p.column ? ` (${p.column})` : "");
+const onTable = (p: { table?: string }) => (p.table ? ` in ${p.table}` : "");
 const named = (p: { constraint?: string }) => (p.constraint ? ` (${p.constraint})` : "");
 
-// SK-TRUST-008 — an approved write that changed nothing. Which hop it happened
+// `orders.user_id` when both are known, else whichever is — the field a user's
+// next message has to supply a real value for.
+const fieldOf = (p: { table?: string; column?: string }) =>
+  p.column ? (p.table ? `${p.table}.${p.column}` : p.column) : undefined;
+
+// SK-TRUST-006 — an approved write that changed nothing. Which hop it happened
 // on decides the honest sentence: a preview that found no matching rows is
 // "nothing would change", a commit that reports 0 rows means the data moved
 // under the preview.
@@ -168,34 +174,39 @@ export const REGISTRY = {
     httpStatus: 409,
     recoverability: "clarify",
     params: constraintParams,
+    // Every branch opens with "Nothing was written": the first thing the reader
+    // needs is that the data is unchanged. Naming the exact field is what makes
+    // the next message answerable — identifiers only, never the values.
     message: (p) => {
+      const field = fieldOf(p);
       switch (p.kind) {
-        case "fk":
-          return `That write points at a row that doesn't exist${named(p)}.`;
+        case "foreign_key":
+          return `Nothing was written — ${field ?? "that link"} has to point at a row that already exists.`;
         case "unique":
-          return `A row with those values already exists${onTable(p)}${named(p)}.`;
+          return `Nothing was written — ${field ?? "that value"} already exists.`;
         case "not_null":
-          return `A required column${onTable(p)}${onColumn(p)} was left empty.`;
+          return `Nothing was written — ${field ?? "a required field"} can't be empty.`;
         case "check":
-          return `That write failed a validation rule${onTable(p)}${named(p)}.`;
+        case "exclusion":
+          return `Nothing was written — ${field ?? "those values"} broke a rule this database enforces${named(p)}.`;
         default:
-          return `That write broke a rule the database enforces${onTable(p)}.`;
+          return `Nothing was written — the database rejected those values${field ? ` for ${field}` : ""}.`;
       }
     },
     action: (p) => {
       switch (p.kind) {
-        case "fk":
+        case "foreign_key":
           return "Name an existing related row (or create it first), then ask again.";
         case "unique":
-          return "Change the duplicated value, or ask to update the existing row instead.";
+          return "Use a different value, or ask to update the existing row instead.";
         case "not_null":
-          return "Include a value for every required column, then ask again.";
+          return "Include that field in your request, then ask again.";
         default:
-          return "Adjust the values so they satisfy the rule, then ask again.";
+          return "Try different values, then ask again.";
       }
     },
   }),
-  // SK-TRUST-008 — the write ran (or previewed) and matched nothing. GLOBAL-011:
+  // SK-TRUST-006 — the write ran (or previewed) and matched nothing. GLOBAL-011:
   // say so plainly instead of rendering an empty success that reads as "done".
   write_no_rows: defineError({
     httpStatus: 409,
@@ -205,16 +216,17 @@ export const REGISTRY = {
       verb: slug(20),
       table: slug(120),
     }),
-    message: (p) => {
-      const what = `${p.verb ? `That ${p.verb.toUpperCase()}` : "That write"}${onTable(p)}`;
-      return p.phase === "commit"
-        ? `${what} matched no rows when it ran, so nothing changed.`
-        : `${what} matches no rows right now, so it would change nothing.`;
-    },
+    // `commit` and `preview` are genuinely different facts: one ran and changed
+    // nothing, the other never ran at all. Collapsing them would be the
+    // silent-lie GLOBAL-011 forbids.
+    message: (p) =>
+      p.phase === "commit"
+        ? `Nothing was changed${onTable(p)} — that ran but matched no rows.`
+        : `Nothing to write${onTable(p)} — no rows matched, so it was not run.`,
     action: (p) =>
       p.phase === "commit"
         ? "Check the rows still match — something may have changed them since the preview — then ask again."
-        : "Widen or correct the filter, then ask again.",
+        : "Say which row you mean, or widen the filter, then ask again.",
   }),
   // SK-ASK-030 — SQLSTATE class 22 (data exception): bad cast, out of range,
   // division by zero. Deterministic like class 23.
@@ -503,7 +515,7 @@ export const REGISTRY = {
     recoverability: "bug",
     params: NONE,
     message: () => "No goal was sent.",
-    action: () => "Send a plain-English goal (e.g. \"top 5 customers by revenue\").",
+    action: () => 'Send a plain-English goal (e.g. "top 5 customers by revenue").',
   }),
   goal_too_long: defineError({
     httpStatus: 400,
@@ -761,7 +773,7 @@ const SQL_REJECT_COPY: Record<string, [string, string]> = {
   ],
   update_without_where: [
     "That would update every row in the table.",
-    'Add a filter (e.g. "… where status = \'open\'"), then ask again.',
+    "Add a filter (e.g. \"… where status = 'open'\"), then ask again.",
   ],
   grant_or_revoke: [
     "Changing database permissions isn't supported here.",
@@ -796,7 +808,7 @@ const SQL_REJECT_COPY: Record<string, [string, string]> = {
     "A retry of that query tried to change data, which the read path won't run.",
     "Ask for the change explicitly so it goes through the preview gate.",
   ],
-  // SK-TRUST-008 — the preview couldn't be built, so the write is not offered.
+  // SK-TRUST-006 — the preview couldn't be built, so the write is not offered.
   preview_unavailable: [
     "nlqdb couldn't preview what that write would change, so it didn't run it.",
     "Rephrase the change more specifically, then ask again.",

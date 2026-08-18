@@ -85,7 +85,7 @@ export function parseByollmHeader(raw: string | undefined): ParseByollmResult {
   return { ok: true, credential: { apiKey, upstream, model } };
 }
 
-// SK-LLM-050 — the bounded lane descriptor the orchestrator threads into a
+// SK-LLM-051 — the bounded lane descriptor the orchestrator threads into a
 // `llm_failed` envelope so the copy can say *whose* model failed. Slugs and the
 // user's chosen model id only; the credential never appears here.
 export type ResolvedLane = {

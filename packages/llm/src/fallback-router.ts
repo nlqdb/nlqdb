@@ -19,15 +19,15 @@
 //     nothing — exactly like a plan-cache hit (SK-PREMIUM-007).
 //   • A caller-initiated cancel is re-thrown, not treated as a premium failure —
 //     an aborted request must not silently re-run on the free chain.
-//   • SK-LLM-050: an `auth_denied` is re-thrown too. This lane guards against a
+//   • SK-LLM-051: an `auth_denied` is re-thrown too. This lane guards against a
 //     gateway *fault*, not against rejected credentials — masking those would
 //     hide a dead paid lane behind an answer that looks fine.
 
-import { AllProvidersFailedError } from "./router.ts";
 import type { LLMRouter } from "./router.ts";
+import { AllProvidersFailedError } from "./router.ts";
 import { type CallOpts, type LLMOperation, ProviderError } from "./types.ts";
 
-// SK-LLM-050 — a *credential* denial is not the gateway fault this lane
+// SK-LLM-051 — a *credential* denial is not the gateway fault this lane
 // fallback exists for. Serving a paid user off the free chain because our
 // premium credentials are rejected hides a billing-side outage behind a
 // working-looking answer, and the user never learns their paid lane is dead.

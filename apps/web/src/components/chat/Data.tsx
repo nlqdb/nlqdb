@@ -5,7 +5,7 @@
 // paraphrase the data away — even when an Answer is present.
 
 import { formatCell, prettifyHeader } from "../../lib/text";
-import { hiddenRowCount, MAX_ROWS } from "./data-rows.ts";
+import { hiddenRowCount, MAX_ROWS, showsEmptyNotice } from "./data-rows.ts";
 
 type Row = Record<string, unknown>;
 
@@ -27,6 +27,9 @@ export default function Data({ rows, rowCount, pending }: DataProps) {
   }
   if (!rows) return null;
   if (rows.length === 0) {
+    // SK-ASK-028 — a committed write returns no rows but a non-zero affected-
+    // row count, so the empty-read notice would deny a write that happened.
+    if (!showsEmptyNotice(rows.length, rowCount)) return null;
     return <p className="chat-data chat-data--empty">No rows returned.</p>;
   }
 

@@ -1,4 +1,3 @@
-import type { AskDiff, NlqClient, NlqdbApiError, RememberRequest } from "@nlqdb/sdk";
 import {
   assertOverrides,
   ERROR_CODES,
@@ -6,6 +5,7 @@ import {
   isErrorCode,
   renderError,
 } from "@nlqdb/errors";
+import type { AskDiff, NlqClient, NlqdbApiError, RememberRequest } from "@nlqdb/sdk";
 import { z } from "zod";
 
 export type ToolError = {
@@ -591,8 +591,7 @@ const OVERRIDES: Partial<Record<ErrorCode, Override>> = assertOverrides({
       "Mint an MCP key at https://app.nlqdb.com/app/keys, then re-launch this host so it picks up the new credentials.",
   },
   forbidden: {
-    action:
-      "Use a user-scoped key (sk_mcp_ or sk_live_) to write; pk_live_ embeds can only query.",
+    action: "Use a user-scoped key (sk_mcp_ or sk_live_) to write; pk_live_ embeds can only query.",
   },
   account_required: {
     action: "Re-launch with an sk_mcp_ MCP key minted at https://app.nlqdb.com/app/keys.",
@@ -634,11 +633,11 @@ const OVERRIDES: Partial<Record<ErrorCode, Override>> = assertOverrides({
   },
   clarify_required: {
     action:
-      "Re-call \`q\` with one of the goals in \`details.options\`, or name exactly which rows you mean.",
+      "Re-call `q` with one of the goals in `details.options`, or name exactly which rows you mean.",
   },
   low_confidence: {
     action:
-      "Re-call with one of \`details.alternatives\`, or rephrase with the exact table and column names.",
+      "Re-call with one of `details.alternatives`, or rephrase with the exact table and column names.",
   },
 });
 
@@ -702,4 +701,3 @@ export function mapSdkError(err: unknown): ToolError {
 
   return { code: String(code), message: GENERIC_ERROR_MESSAGE, action: GENERIC_ERROR_ACTION };
 }
-

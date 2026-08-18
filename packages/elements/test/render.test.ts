@@ -96,7 +96,7 @@ describe("renderState — error", () => {
     expect(html).toContain("Wait a moment, then retry.");
   });
 
-  it("renders structured 5xx api errors (db_unreachable) with status + slug", () => {
+  it("renders the server's sentence + action for a structured 5xx (db_unreachable)", () => {
     const html = renderState(
       {
         kind: "error",
@@ -113,7 +113,11 @@ describe("renderState — error", () => {
       "table",
     );
     expect(html).toContain('data-kind="api"');
-    expect(html).toContain("Error 502: db_unreachable");
+    // SK-ERR-001 — `data-kind` still lets the page branch without parsing text,
+    // but the text itself is the server's copy, not "Error 502: db_unreachable".
+    expect(html).toContain("couldn&#39;t reach that database");
+    expect(html).toContain("Try again in a moment");
+    expect(html).not.toContain("Error 502");
   });
 
   it("renders bare-string api errors with status + slug", () => {

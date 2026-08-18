@@ -35,10 +35,10 @@ type Derived<P, T> = T | ((params: P) => T);
 export type ErrorEntry<P> = {
   httpStatus: Derived<P, number>;
   recoverability: Derived<P, Recoverability>;
-  // Input is `unknown` because callers hand over whatever the throw site had;
-  // the schema's *output* is the typed, sanitised `P` the builders read.
-  // biome-ignore lint/suspicious/noExplicitAny: the schema's *input* is
-  // whatever the throw site had; only its output (`P`) is typed.
+  // The schema's INPUT is whatever the throw site happened to have; only its
+  // output (`P`) is typed, and that is the whole point — parsing is what turns
+  // an unvetted bag of fields into the declared, secret-free params.
+  // biome-ignore lint/suspicious/noExplicitAny: unvetted schema input, by design.
   params: z.ZodType<P, z.ZodTypeDef, any>;
   message: (params: P) => string;
   action: (params: P) => string;

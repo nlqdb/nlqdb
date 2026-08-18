@@ -337,11 +337,14 @@ export type ApiErrorCode =
   | "byollm_requires_session"
   // SK-ASK-016 — the plan named a relation the target DB doesn't have.
   | "schema_mismatch"
-  // SK-ASK-027 — deterministic exec failures the old catch-all mislabeled as
-  // `db_unreachable`: Postgres SQLSTATE class 23 and class 22 respectively.
+  // SK-ASK-029 / SK-ASK-030 — deterministic exec failures the old catch-all
+  // mislabeled as `db_unreachable`: Postgres SQLSTATE class 23 (integrity
+  // constraint) and class 22 (data exception).
   | "write_constraint"
-  | "write_no_rows"
   | "invalid_value"
+  // SK-TRUST-006 — an approved write that changed nothing, rather than an empty
+  // success that reads as "done".
+  | "write_no_rows"
   // The plan's confidence sat below the tier floor.
   | "low_confidence"
   // SK-ASK-009: 409 returned when the LLM disambiguator's confidence
@@ -355,6 +358,18 @@ export type ApiErrorCode =
   // of `sql_rejected`, `body.options` carries re-sendable interpretations
   // and `body.reason` a one-sentence prompt.
   | "clarify_required"
+  // SK-TRUST-006 — 409 returned when a write affects no rows: the pre-flight
+  // count proved the write would touch nothing (`body.phase = "preview"`, so
+  // it was never offered for approval), or an approved write ran and the
+  // engine reported 0 rows affected (`body.phase = "commit"`). `body.verb` /
+  // `body.table` name the target. Never reported as an empty result set.
+  | "write_no_rows"
+  // SK-ASK-029 — 409 returned when the engine refused the write: a required
+  // column was missing, a foreign key pointed at a row that doesn't exist, a
+  // unique/check rule failed. `body.kind` names which, `body.table` /
+  // `body.column` / `body.constraint` the identifiers involved (never the
+  // offending values). Deterministic — never retried.
+  | "write_constraint"
   // SK-SDK-009 / SK-APIKEYS-003 — `/v1/run` rejected the call because
   // the principal is read-only (pk_live tried to write).
   | "forbidden"

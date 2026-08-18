@@ -19,11 +19,17 @@ import { isAgentMemoryV1Db } from "../db-create/presets/agent-memory-v1.ts";
 import type { ConfirmStash } from "./confirm-stash.ts";
 import { destructiveClarify } from "./destructive-clarify.ts";
 import type { DiagSink } from "./diag.ts";
-import { buildDiff, isWriteVerb } from "./diff.ts";
-import { classifyExecError } from "./exec-classify.ts";
+import {
+  buildDiff,
+  isWriteVerb,
+  PreviewUnavailableError,
+  writeOutcomeSummary,
+  writeTarget,
+} from "./diff.ts";
+import { classifyDataException } from "./exec-classify.ts";
 import { isReplannableExecError } from "./exec-repair.ts";
 import type { FirstQueryTracker } from "./first-query.ts";
-import { llmFailure, type LlmLaneInfo } from "./llm-cause.ts";
+import { type LlmLaneInfo, llmFailure } from "./llm-cause.ts";
 import { hashGoal, type PlanCache } from "./plan-cache.ts";
 import { referencesQualifiedTable, schemaRelativeSql } from "./plan-normalize.ts";
 import type { RateLimiter } from "./rate-limit.ts";
@@ -33,6 +39,7 @@ import { classifySchemaError, recordExecUnreachable } from "./schema-mismatch.ts
 import { validateSql } from "./sql-validate.ts";
 import { shouldSummarize } from "./summarize-gate.ts";
 import {
+  type AskDiff,
   type AskError,
   type AskRequest,
   type AskResult,
@@ -44,13 +51,15 @@ import {
   type QueryResult,
   SchemaMismatchError,
   type Trace,
+  WriteConstraintError,
 } from "./types.ts";
+import { classifyWriteConstraint } from "./write-constraint.ts";
 
 export type OrchestrateDeps = {
   resolveDb(id: string, tenantId: string): Promise<DbRecord | null>;
   planCache: PlanCache;
   llm: LLMRouter;
-  // SK-LLM-050 — which lane `llm` dispatches on, so a planning failure names
+  // SK-LLM-051 — which lane `llm` dispatches on, so a planning failure names
   // *whose* model failed. The handler passes it from `resolveAskRouter`;
   // omitted ⇒ the copy stays lane-agnostic. Bounded slugs only — never a key.
   lane?: LlmLaneInfo;
@@ -375,7 +384,7 @@ export async function orchestrateAsk(
           error: clarify ?? { code: "sql_rejected", reason: err.reason },
         };
       }
-      // SK-LLM-050 — the router's bounded cause (reason + lane + provider slug)
+      // SK-LLM-051 — the router's bounded cause (reason + lane + provider slug)
       // rides the envelope so the copy can name the real problem; the provider's
       // own message, which can carry API keys or prompt fragments, stays on the
       // OTel span (llm.plan, SK-LLM-006).
@@ -420,64 +429,86 @@ export async function orchestrateAsk(
   // there is no server-side bypass on `/v1/ask`; raw SQL lives on
   // `/v1/run` (GLOBAL-015).
   if (!req.confirm && isWriteVerb(planSql)) {
-    const diff = await withSpan("nlqdb.diff.build", async () =>
-      buildDiff(planSql, async (countSql) => {
-        const out = await deps.exec(db, countSql);
-        const row = out.rows[0] as Record<string, unknown> | undefined;
-        if (!row) return 0;
-        const raw = row["c"] ?? row["count"] ?? Object.values(row)[0];
-        const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
-        return Number.isFinite(n) ? n : 0;
-      }),
-    );
-    if (diff) {
-      // SK-TRUST-005 — bind this exact validated write to its commit so the
-      // confirm hop runs THIS SQL, not a re-plan of the goal. Best-effort: a
-      // stash-write blip just drops the confirm hop back to re-planning (the
-      // pre-SK-TRUST-005 behaviour), it never blocks the preview.
-      if (confirmStash) {
-        await withSpan(
-          "nlqdb.confirm.stash.write",
-          () =>
-            confirmStash.write(req.userId, req.dbId, queryHash, {
-              sql: planSql,
-              schemaHash,
-              model: planModel,
-              confidence: planConfidence,
-            }),
-          { onError: undefined },
-        );
-      }
-      await safeEmit({ type: "confirm_required", diff });
-      // SK-TRUST-004 — the preview hop is the denominator of the
-      // destructive-op retry rate (`1 − committed/preview_rendered`). A
-      // write plan was rendered as a diff with no exec. Fire-and-forget
-      // through the returned promise so the route's `ctx.waitUntil` drains
-      // it off the user-visible path. Skipped when no `surface` was
-      // threaded (non-route callers) rather than fabricating one.
-      const previewEmit = req.surface
-        ? deps.events.emit({
-            name: "feature.destructive.preview_rendered",
-            principalId: req.userId,
-            surface: req.surface,
-          })
-        : Promise.resolve();
+    // SK-TRUST-006 — an honest diff, or no write at all. `buildDiff` throws
+    // when the effect can't be computed (unparseable plan, unidentifiable
+    // target, failed pre-flight count); it used to report 0 affected rows or
+    // drop the write straight through to exec unpreviewed. Refuse instead.
+    let diff: AskDiff;
+    try {
+      diff = await withSpan("nlqdb.diff.build", async () =>
+        buildDiff(planSql, async (countSql) => {
+          const out = await deps.exec(db, countSql);
+          const row = out.rows[0] as Record<string, unknown> | undefined;
+          // A missing / non-numeric count is an unknown effect, not zero —
+          // throwing routes it to `preview_unavailable` (SK-TRUST-006), where
+          // returning 0 would have invented a no-op.
+          if (!row) throw new Error("pre-flight count returned no row");
+          const raw = row["c"] ?? row["count"] ?? Object.values(row)[0];
+          const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
+          if (!Number.isFinite(n)) throw new Error("pre-flight count was not a number");
+          return n;
+        }),
+      );
+    } catch (err) {
+      if (!(err instanceof PreviewUnavailableError)) throw err;
+      return { ok: false, error: { code: "sql_rejected", reason: "preview_unavailable" } };
+    }
+    // SK-TRUST-006 — a proven-zero effect is not an approval question. The
+    // production bug this closes: an `INSERT … SELECT … FROM users` whose
+    // source matched no row was previewed as "insert a row", approved, and
+    // then inserted nothing.
+    if (diff.affectedRows === 0) {
       return {
-        ok: true,
-        result: {
-          status: "ok",
-          rows: [],
-          rowCount: 0,
-          ...(pipeAdvisory ? { pipe_advisory: pipeAdvisory } : {}),
-          requires_confirm: true,
-          diff,
-          trace: traceBlock,
-        },
-        // Preview hop didn't exec; nothing for `ask.completed` to record —
-        // just the preview-rendered signal.
-        pendingAskCompleted: previewEmit.then(() => undefined),
+        ok: false,
+        error: { code: "write_no_rows", phase: "preview", verb: diff.verb, table: diff.table },
       };
     }
+    // SK-TRUST-005 — bind this exact validated write to its commit so the
+    // confirm hop runs THIS SQL, not a re-plan of the goal. Best-effort: a
+    // stash-write blip just drops the confirm hop back to re-planning (the
+    // pre-SK-TRUST-005 behaviour), it never blocks the preview.
+    if (confirmStash) {
+      await withSpan(
+        "nlqdb.confirm.stash.write",
+        () =>
+          confirmStash.write(req.userId, req.dbId, queryHash, {
+            sql: planSql,
+            schemaHash,
+            model: planModel,
+            confidence: planConfidence,
+          }),
+        { onError: undefined },
+      );
+    }
+    await safeEmit({ type: "confirm_required", diff });
+    // SK-TRUST-004 — the preview hop is the denominator of the
+    // destructive-op retry rate (`1 − committed/preview_rendered`). A
+    // write plan was rendered as a diff with no exec. Fire-and-forget
+    // through the returned promise so the route's `ctx.waitUntil` drains
+    // it off the user-visible path. Skipped when no `surface` was
+    // threaded (non-route callers) rather than fabricating one.
+    const previewEmit = req.surface
+      ? deps.events.emit({
+          name: "feature.destructive.preview_rendered",
+          principalId: req.userId,
+          surface: req.surface,
+        })
+      : Promise.resolve();
+    return {
+      ok: true,
+      result: {
+        status: "ok",
+        rows: [],
+        rowCount: 0,
+        ...(pipeAdvisory ? { pipe_advisory: pipeAdvisory } : {}),
+        requires_confirm: true,
+        diff,
+        trace: traceBlock,
+      },
+      // Preview hop didn't exec; nothing for `ask.completed` to record —
+      // just the preview-rendered signal.
+      pendingAskCompleted: previewEmit.then(() => undefined),
+    };
   }
 
   // SK-ASK-022 — execution-guided repair. The exec stage keeps SK-ASK-013's
@@ -509,12 +540,16 @@ export async function orchestrateAsk(
               planModel,
             });
             if (schemaError) throw schemaError;
-            // SK-ASK-027 — a constraint / data-exception SQLSTATE is
-            // deterministic: bail the transient retry so we don't replay an
-            // error that can't succeed (the wasted-backoff half of the
-            // 2026-08-18 `23503` incident). The outer catch renders it.
-            if (classifyExecError(err).kind === "deterministic") {
-              throw new Nonrecoverable("exec_deterministic", err);
+            // SK-ASK-029 — an integrity-constraint violation (SQLSTATE class
+            // 23) is the statement's values being wrong, not the DB being
+            // unreachable: deterministic, so bail the retry and surface it.
+            const constraintError = classifyWriteConstraint(err);
+            if (constraintError) throw constraintError;
+            // SK-ASK-030 — same argument for class 22 (data exception): a bad
+            // cast or an out-of-range value can't succeed on replay, so it must
+            // not spend the exec stage's three backoff attempts.
+            if (classifyDataException(err)) {
+              throw new Nonrecoverable("exec_invalid_value", err);
             }
             // SK-ASK-022 — deterministic-but-fixable: bail the transient
             // retry on every pass (replaying the identical SQL can't
@@ -543,6 +578,15 @@ export async function orchestrateAsk(
         // Message would contain the secret ref name — don't leak it.
         // The span (db.query) records the exception for operator visibility.
         return { ok: false, error: { code: "db_misconfigured" } };
+      }
+      if (err instanceof WriteConstraintError) {
+        // SK-ASK-029 — honest, typed, and non-retried. The old path bucketed
+        // this into `db_unreachable` ("Couldn't reach the database — try
+        // again") after three backed-off replays of a certain failure.
+        return {
+          ok: false,
+          error: { code: "write_constraint", kind: err.kind, ...err.target },
+        };
       }
       if (err instanceof SchemaMismatchError) {
         // SK-ASK-023 — same preview/e2e log black hole as `db_unreachable`
@@ -618,10 +662,10 @@ export async function orchestrateAsk(
         }
         continue;
       }
-      // SK-ASK-027 — classify BEFORE the connectivity fallback: a constraint
+      // SK-ASK-030 — classify BEFORE the connectivity fallback: a constraint
       // violation or data exception is deterministic, and calling it
       // `db_unreachable` is both wrong copy and three wasted retries.
-      const classified = classifyExecError(err);
+      const dataException = classifyDataException(err);
       // Postgres errors include schema details; keep them server-side —
       // but record the SQLSTATE structurally first, or a deterministic
       // exec class masquerades as connectivity (SK-ASK-019's lesson).
@@ -653,9 +697,27 @@ export async function orchestrateAsk(
       }
       return {
         ok: false,
-        error: classified.kind === "deterministic" ? classified.error : { code: "db_unreachable" },
+        error: dataException
+          ? { code: "invalid_value", pgCode: dataException }
+          : { code: "db_unreachable" },
       };
     }
+  }
+
+  // SK-TRUST-006 — a write the engine reports as 0 rows affected is not a
+  // successful empty read. Postgres reports the AFFECTED-row count (not a
+  // returned-row count) for INSERT/UPDATE/DELETE, so this is where the two
+  // are distinguishable — ClickHouse's insert response carries no such count,
+  // so the envelope is Postgres-only rather than guessed. Returns before the
+  // plan-cache write and the `feature.destructive.committed` emit — nothing
+  // committed.
+  const isWrite = isWriteVerb(planSql);
+  const written = isWrite && db.engine === "postgres" ? writeTarget(planSql) : null;
+  if (written && result.rowCount === 0 && result.rows.length === 0) {
+    return {
+      ok: false,
+      error: { code: "write_no_rows", phase: "commit", verb: written.verb, table: written.table },
+    };
   }
 
   // SK-ASK-015 — plan cache writes are gated on successful exec. A plan
@@ -681,8 +743,23 @@ export async function orchestrateAsk(
 
   await safeEmit({ type: "rows", rows: result.rows, rowCount: result.rowCount });
 
+  // SK-ASK-028 — a write is narrated from the engine's own facts (verb,
+  // table, affected rows), never by the summarize LLM: the LLM sees only the
+  // RETURNED rows — empty for a plain INSERT — so it narrates the write as an
+  // empty read ("nothing to summarize … you may want to add a new entry",
+  // right after the user approved adding it).
   let summary: string | undefined;
-  if (shouldSummarize(result.rowCount, { skipSummary })) {
+  if (skipSummary) {
+    // Programmatic callers (`Accept: application/json`) and knowledge DBs get
+    // no narration at all — read or write.
+  } else if (isWrite) {
+    if (written) {
+      summary = writeOutcomeSummary(written.verb, written.table, result.rowCount);
+      await safeEmit({ type: "summary", summary });
+    }
+  } else if (shouldSummarize(result.rowCount, { skipSummary })) {
+    // SK-ASK-005 — empty read results are never narrated (the one input
+    // where the LLM can only fabricate).
     try {
       const out = await deps.llm.summarize({ goal: req.goal, rows: result.rows });
       summary = out.summary;

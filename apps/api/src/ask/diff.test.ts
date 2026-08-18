@@ -2,7 +2,13 @@
 // orchestrator wiring lives in `apps/api/test/orchestrate.test.ts`.
 
 import { describe, expect, it, vi } from "vitest";
-import { buildDiff, isWriteVerb } from "./diff.ts";
+import {
+  buildDiff,
+  isWriteVerb,
+  PreviewUnavailableError,
+  writeOutcomeSummary,
+  writeTarget,
+} from "./diff.ts";
 
 describe("isWriteVerb", () => {
   it("returns true for INSERT/UPDATE/DELETE (any case, with leading whitespace)", () => {
@@ -57,10 +63,14 @@ describe("isWriteVerb", () => {
 });
 
 describe("buildDiff", () => {
-  it("returns null for SELECT (read path bypasses the gate)", async () => {
+  // SK-TRUST-006 — the caller only reaches `buildDiff` under `isWriteVerb`,
+  // so a read here means the two disagree: refuse rather than fall through to
+  // an unpreviewed exec.
+  it("throws for SELECT (the caller gates on isWriteVerb)", async () => {
     const exec = vi.fn(async () => 0);
-    const diff = await buildDiff("SELECT * FROM orders WHERE id = 1", exec);
-    expect(diff).toBeNull();
+    await expect(buildDiff("SELECT * FROM orders WHERE id = 1", exec)).rejects.toBeInstanceOf(
+      PreviewUnavailableError,
+    );
     expect(exec).not.toHaveBeenCalled();
   });
 
@@ -157,24 +167,65 @@ describe("buildDiff", () => {
     expect(diff?.table).toBe("archive");
   });
 
-  it("degrades gracefully when the count exec throws — affectedRows = 0", async () => {
+  // SK-TRUST-006 regression: a failed pre-flight count used to degrade to
+  // `affectedRows: 0`, which asked the user to approve a fabricated no-op.
+  it("throws when the count exec fails (never reports a fabricated 0)", async () => {
     const exec = vi.fn(async () => {
       throw new Error("DB unreachable");
     });
-    const diff = await buildDiff("DELETE FROM orders WHERE id = 1", exec);
-    expect(diff).toEqual({
-      verb: "DELETE",
-      table: "orders",
-      affectedRows: 0,
-      summary: "This will delete 0 rows in orders.",
-    });
+    await expect(buildDiff("DELETE FROM orders WHERE id = 1", exec)).rejects.toBeInstanceOf(
+      PreviewUnavailableError,
+    );
   });
 
-  it("returns null on unparseable SQL (orchestrator falls through to exec)", async () => {
-    const diff = await buildDiff(
-      ")) not valid sql ((",
-      vi.fn(async () => 0),
-    );
-    expect(diff).toBeNull();
+  // SK-TRUST-006 regression: `null` meant "no diff", and the orchestrator fell
+  // through to exec — committing a write with no render-before-commit gate.
+  it("throws on unparseable SQL (never commits unpreviewed)", async () => {
+    await expect(
+      buildDiff(
+        ")) not valid sql ((",
+        vi.fn(async () => 0),
+      ),
+    ).rejects.toBeInstanceOf(PreviewUnavailableError);
+  });
+
+  it("throws on an INSERT payload shape it can't count", async () => {
+    await expect(
+      buildDiff(
+        "INSERT INTO orders DEFAULT VALUES",
+        vi.fn(async () => 0),
+      ),
+    ).rejects.toBeInstanceOf(PreviewUnavailableError);
+  });
+});
+
+describe("writeTarget", () => {
+  it("names the verb + table of a write, including inside a data-modifying CTE", () => {
+    expect(writeTarget("INSERT INTO orders (id) VALUES (1)")).toEqual({
+      verb: "INSERT",
+      table: "orders",
+    });
+    expect(writeTarget("DELETE FROM orders WHERE id = 1")).toEqual({
+      verb: "DELETE",
+      table: "orders",
+    });
+    expect(
+      writeTarget("WITH x AS (UPDATE orders SET a = 1 WHERE id = 1 RETURNING id) SELECT * FROM x"),
+    ).toEqual({ verb: "UPDATE", table: "orders" });
+  });
+
+  it("returns null for a read or unparseable SQL", () => {
+    expect(writeTarget("SELECT 1")).toBeNull();
+    expect(writeTarget(")) nope ((")).toBeNull();
+  });
+});
+
+// SK-ASK-028 — factual write narration. The summarize LLM only sees returned
+// rows (none, for a plain INSERT) and narrated committed writes as empty reads.
+describe("writeOutcomeSummary", () => {
+  it("states verb, count, and table with singular/plural agreement", () => {
+    expect(writeOutcomeSummary("INSERT", "ideas", 1)).toBe("Inserted 1 row into ideas.");
+    expect(writeOutcomeSummary("UPDATE", "orders", 3)).toBe("Updated 3 rows in orders.");
+    expect(writeOutcomeSummary("DELETE", "orders", 12)).toBe("Deleted 12 rows from orders.");
   });
 });

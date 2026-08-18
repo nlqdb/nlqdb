@@ -77,11 +77,15 @@ export async function handleSupabaseStart(c: ConnectCtx): Promise<Response> {
   const principal = c.var.principal;
   const tenantId = accountTenantIdFromPrincipal(principal);
   if (!tenantId || !canConnectDatabase(principal)) {
-    return fail(c, "connect_requires_account", { message: "Connecting a database needs an account session or an sk_live key." });
+    return fail(c, "connect_requires_account", {
+      message: "Connecting a database needs an account session or an sk_live key.",
+    });
   }
   const client = oauthClient(c);
   if (!client) {
-    return fail(c, "oauth_not_configured", { message: "Supabase connect is not configured on this deployment; paste a URL instead." });
+    return fail(c, "oauth_not_configured", {
+      message: "Supabase connect is not configured on this deployment; paste a URL instead.",
+    });
   }
 
   const state = generateState();

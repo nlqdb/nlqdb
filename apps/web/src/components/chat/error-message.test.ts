@@ -67,9 +67,11 @@ describe("messageFor", () => {
   });
 
   test("a constraint violation is not blamed on the connection (2026-08-18)", () => {
-    const msg = messageFor(apiError("write_constraint", { kind: "fk", table: "orders" }));
+    const msg = messageFor(
+      apiError("write_constraint", { kind: "foreign_key", table: "orders", column: "user_id" }),
+    );
     expect(msg.toLowerCase()).not.toContain("reach");
-    expect(msg).toContain("row that doesn't exist");
+    expect(msg).toContain("orders.user_id");
   });
 
   describe("sql_rejected (SK-ASK-026 — honest, reason-specific copy)", () => {
@@ -131,6 +133,73 @@ describe("messageFor", () => {
       );
       expect(msg).toContain("doesn't have");
       expect(msg).toContain("create a new database");
+    });
+  });
+  // SK-TRUST-006 / SK-ASK-029 — the founder-reported moment: approve a write,
+  // then read empty-read copy ("No rows returned.") or a transient-sounding
+  // "Couldn't reach the database" for a deterministic constraint failure.
+  //
+  // SK-ERR-001 moved the wording into the shared registry and split it into
+  // message + action, so these assert the *facts* the incident turned on rather
+  // than a byte-exact sentence: nothing was written, which field is at fault,
+  // and a next action that isn't "retry".
+  describe("write outcomes never read as an empty result or a transient blip", () => {
+    test("write_no_rows preview: nothing written, and it was not run", () => {
+      const msg = messageFor(
+        apiError("write_no_rows", { phase: "preview", verb: "INSERT", table: "ideas" }),
+      );
+      expect(msg).toContain("Nothing to write in ideas");
+      expect(msg).toContain("not run");
+      expect(msg).toContain("which row you mean");
+    });
+
+    test("write_no_rows commit: distinguishes 'ran and changed nothing'", () => {
+      const msg = messageFor(
+        apiError("write_no_rows", { phase: "commit", verb: "DELETE", table: "orders" }),
+      );
+      expect(msg).toContain("Nothing was changed in orders");
+      expect(msg).toContain("ran but matched no rows");
+      // Not the preview's advice — the rows moved under an approved write.
+      expect(msg).not.toContain("not run");
+    });
+
+    test("write_no_rows without a named table still reads honestly", () => {
+      const msg = messageFor(apiError("write_no_rows", { phase: "preview" }));
+      expect(msg).toContain("Nothing to write —");
+      expect(msg).not.toContain("undefined");
+    });
+
+    test("write_constraint foreign_key names the column that has to point somewhere real", () => {
+      const msg = messageFor(
+        apiError("write_constraint", { kind: "foreign_key", table: "ideas", column: "user_id" }),
+      );
+      expect(msg).toContain("Nothing was written");
+      expect(msg).toContain("ideas.user_id");
+      expect(msg).toContain("row that already exists");
+      // The 2026-08-18 failure mode: transient copy for a certain failure.
+      expect(msg.toLowerCase()).not.toContain("reach the database");
+    });
+
+    test("write_constraint not_null / unique / unknown kinds each get a next action", () => {
+      const notNull = messageFor(
+        apiError("write_constraint", { kind: "not_null", table: "ideas", column: "title" }),
+      );
+      expect(notNull).toContain("ideas.title");
+      expect(notNull).toContain("can't be empty");
+
+      const unique = messageFor(apiError("write_constraint", { kind: "unique", column: "email" }));
+      expect(unique).toContain("email already exists");
+      expect(unique).toContain("different value");
+
+      const check = messageFor(apiError("write_constraint", { kind: "check" }));
+      expect(check).toContain("Nothing was written");
+      expect(check).toContain("Try different values");
+    });
+
+    test("an unpreviewable write says it was not run", () => {
+      const msg = messageFor(apiError("sql_rejected", { reason: "preview_unavailable" }));
+      expect(msg).toContain("couldn't preview");
+      expect(msg).toContain("didn't run it");
     });
   });
 });

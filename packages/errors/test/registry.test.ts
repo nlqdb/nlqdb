@@ -26,10 +26,11 @@ const REPRESENTATIVE: Partial<Record<ErrorCode, Record<string, unknown>[]>> = {
     { reason: "timeout", lane: "byollm", provider: "anthropic" },
   ],
   write_constraint: [
-    { kind: "fk", constraint: "orders_user_id_fkey", table: "orders" },
+    { kind: "foreign_key", constraint: "orders_user_id_fkey", table: "orders" },
     { kind: "unique", constraint: "users_email_key", table: "users" },
     { kind: "not_null", table: "users" },
     { kind: "check", constraint: "positive_total", table: "orders" },
+    { kind: "exclusion", table: "bookings" },
     {},
   ],
   invalid_value: [{ pgCode: "22003" }],
@@ -127,7 +128,7 @@ describe("registry copy", () => {
   });
 
   it("treats a constraint violation as deterministic, not connectivity (2026-08-18)", () => {
-    const r = renderError("write_constraint", { kind: "fk", table: "orders" });
+    const r = renderError("write_constraint", { kind: "foreign_key", table: "orders" });
     expect(r.retryable).toBe(false);
     expect(r.httpStatus).toBe(409);
     expect(r.message.toLowerCase()).not.toContain("reach");

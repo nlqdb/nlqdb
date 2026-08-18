@@ -7,7 +7,7 @@ import { describe, expect, test } from "bun:test";
 // `rowCount > rows.length` test was always false and rows 51+ vanished with
 // no indicator.
 
-import { hiddenRowCount, MAX_ROWS } from "./data-rows.ts";
+import { hiddenRowCount, MAX_ROWS, showsEmptyNotice } from "./data-rows.ts";
 
 describe("hiddenRowCount", () => {
   test("a complete uncapped result over the cap still reports the hidden tail (the regression)", () => {
@@ -39,5 +39,25 @@ describe("hiddenRowCount", () => {
   test("never negative", () => {
     expect(hiddenRowCount(0, 0)).toBe(0);
     expect(hiddenRowCount(3, 0)).toBe(0);
+  });
+});
+
+// SK-ASK-028 — the founder-reported moment: approve an insert, then read
+// "No rows returned." A committed write returns no rows but a non-zero
+// AFFECTED-row count, so the empty-read notice would deny a write that
+// happened.
+describe("showsEmptyNotice", () => {
+  test("a committed write (no rows, rows affected) suppresses the empty notice", () => {
+    expect(showsEmptyNotice(0, 1)).toBe(false);
+    expect(showsEmptyNotice(0, 42)).toBe(false);
+  });
+
+  test("a genuinely empty read still says so", () => {
+    expect(showsEmptyNotice(0, 0)).toBe(true);
+    expect(showsEmptyNotice(0, null)).toBe(true);
+  });
+
+  test("rows present ⇒ never the notice", () => {
+    expect(showsEmptyNotice(3, 3)).toBe(false);
   });
 });
