@@ -112,6 +112,12 @@ export default function ModelPicker({ apiBase, lastAnswer, lastFailedId }: Model
   // until the first switch this session: a page reload trusts the persisted
   // answer for the loaded credential (best-effort; self-heals on the next ask).
   const staleEvidenceIdRef = useRef<string | null>(null);
+  // Same idea for the fail-loud path: the last *failure* id that already stood
+  // when the current key was set. A failure produced by the key it replaced
+  // (or by the free chain before any key) must not warn against the new key —
+  // `staleEvidenceIdRef` can't gate this because it holds an *answer* id, and a
+  // failure reply carries a different id (#948).
+  const staleFailedIdRef = useRef<string | null>(null);
 
   const client = getChatClient(apiBase);
 
@@ -291,7 +297,7 @@ export default function ModelPicker({ apiBase, lastAnswer, lastFailedId }: Model
   // to reconcile). Only counts a failure produced *after* the current key was
   // selected — same stale-evidence gating as the trace-based degrade (#948).
   const keyFailed =
-    credential != null && lastFailedId != null && lastFailedId !== staleEvidenceIdRef.current;
+    credential != null && lastFailedId != null && lastFailedId !== staleFailedIdRef.current;
   // Either signal — a silent free-chain degrade (trace mismatch) or a hard
   // failure — means the pill must not keep claiming a healthy key.
   const showKeyWarning = health.degraded || keyFailed;
@@ -362,6 +368,7 @@ export default function ModelPicker({ apiBase, lastAnswer, lastFailedId }: Model
       // *previous* model, so it can't tell us whether this new key answers —
       // remember it, and only a later reply (a new id) proves the new key.
       staleEvidenceIdRef.current = lastAnswer?.id ?? null;
+      staleFailedIdRef.current = lastFailedId ?? null;
       await refreshStatus();
       closePopover();
     } catch (err) {
