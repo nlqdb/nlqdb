@@ -27,15 +27,13 @@ export type Env = BridgeEnv & {
 
 export { NlqdbMcpAgent };
 
-// DNS-rebinding defense. The MCP Streamable-HTTP spec (rev 2025-11-25)
-// requires servers to validate the `Origin` header on every incoming
-// connection and reject an invalid one with 403; it is also the ~30%
-// rejection cause on the Anthropic Connectors Directory submission.
-// Only browsers send `Origin`, so a request without one (Claude Desktop,
-// Cursor, the npm stdio bridge, curl, server-to-server) passes. A
-// present `Origin` must be nlqdb's own, the consent-screen web origin,
-// or an operator-configured `MCP_ALLOWED_ORIGINS` entry — anything else
-// (a malicious page driving the user's browser) gets 403.
+// Origin validation for OAuth / consent endpoints only. Per `SK-MCP-016`,
+// the `/mcp` transport route accepts any browser Origin (CORS reflects
+// it; cookies are never accepted on `/mcp`, which closes the CSRF path).
+// The trust-decision surfaces (`/authorize`, `/token`, `/register`,
+// `/.well-known/*`, `/oauth/mcp-bridge-callback`) keep the allowlist:
+// browsers without a known Origin get 403 before reaching them; native
+// clients send no `Origin` and pass.
 function isOriginAllowed(req: Request, env: Env): boolean {
   const origin = req.headers.get("origin");
   if (origin === null) return true;
@@ -54,6 +52,38 @@ function isOriginAllowed(req: Request, env: Env): boolean {
     if (trimmed) allowed.add(trimmed);
   }
   return allowed.has(origin);
+}
+
+// `SK-MCP-016` — CORS for the `/mcp` transport route. Any Origin is
+// reflected so browser-based MCP clients (llama.cpp web UI, in-browser
+// agent hosts) can reach the endpoint. `Authorization` is allowlisted
+// on requests; `Mcp-Session-Id` and `WWW-Authenticate` are exposed so
+// the browser client can read the session id (streamable-HTTP) and the
+// OAuth challenge on 401. Credentials are NOT allowed — `/mcp` reads
+// Bearer tokens only, never cookies (pinned by test).
+function corsHeadersForMcp(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin");
+  if (origin === null) return {};
+  const reqHeaders = req.headers.get("access-control-request-headers");
+  return {
+    "access-control-allow-origin": origin,
+    vary: "Origin",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+    "access-control-allow-headers": reqHeaders ?? "authorization, content-type, mcp-session-id",
+    "access-control-expose-headers": "Mcp-Session-Id, WWW-Authenticate",
+    "access-control-max-age": "86400",
+  };
+}
+
+function withCors(res: Response, cors: Record<string, string>): Response {
+  if (Object.keys(cors).length === 0) return res;
+  const headers = new Headers(res.headers);
+  for (const [k, v] of Object.entries(cors)) headers.set(k, v);
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
+
+function isMcpRoute(pathname: string): boolean {
+  return pathname === "/mcp" || pathname.startsWith("/mcp/");
 }
 
 const oauth = new OAuthProvider<Env>({
@@ -81,14 +111,39 @@ export default {
 } satisfies ExportedHandler<Env>;
 
 async function handleFetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-  // DNS-rebinding defense runs before everything else (telemetry,
-  // health, OAuth) so a rejected origin never reaches the agent.
+  const url = new URL(req.url);
+  const onMcpRoute = isMcpRoute(url.pathname);
+
+  // `SK-MCP-016` — `/mcp` accepts any browser Origin: answer OPTIONS
+  // preflight directly, and let subsequent responses on `/mcp` carry
+  // CORS headers so 401 stays browser-readable (a browser client must
+  // read `WWW-Authenticate` to start OAuth).
+  if (onMcpRoute) {
+    const cors = corsHeadersForMcp(req);
+    if (req.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: cors });
+    }
+    const res = await handleAfterOriginGate(req, env, ctx, url);
+    return withCors(res, cors);
+  }
+
+  // Origin allowlist stays on trust-decision surfaces (OAuth, consent,
+  // discovery). A rejected origin never reaches those handlers.
   if (!isOriginAllowed(req, env)) {
     return Response.json(
       { error: { status: "forbidden", message: "Origin not allowed." } },
       { status: 403 },
     );
   }
+  return handleAfterOriginGate(req, env, ctx, url);
+}
+
+async function handleAfterOriginGate(
+  req: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  url: URL,
+): Promise<Response> {
   if (env.GRAFANA_OTLP_ENDPOINT && env.GRAFANA_OTLP_AUTHORIZATION) {
     const telemetry = setupTelemetry({
       serviceName: SERVICE_NAME,
@@ -98,7 +153,6 @@ async function handleFetch(req: Request, env: Env, ctx: ExecutionContext): Promi
     });
     ctx.waitUntil(telemetry.forceFlush());
   }
-  const url = new URL(req.url);
   // Route monitors poll `/health` on a cadence; opting it out keeps trace volume tied to real traffic.
   if (url.pathname === "/health" && req.method === "GET") {
     return oauth.fetch(req, env, ctx);
