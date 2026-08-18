@@ -87,14 +87,15 @@ export const rememberInputShape = {
   kind: z
     .enum(["fact", "episode", "entity"])
     .describe(
-      "Which memory table to write into: 'fact' (a durable statement to recall later), 'episode' (one conversation/tool turn), or 'entity' (a person/project/thing — upserts on agent+kind+name).",
+      "Which memory table to write into. Prefer 'entity' for anything with a current state (a project, a person, a config) — an entity is the CURRENT SNAPSHOT and upserts on (agent+kind+name), so re-remembering refreshes it in place instead of accumulating stale rows. Use 'fact' for a statement whose truth is time-bound (a status update, an observation, an idea) — give it a ttlSeconds when it's transient. Use 'episode' for one conversation/tool turn (append-only log).",
     ),
   payload: z
     .record(z.string(), z.unknown())
     .describe(
       "Kind-specific fields. fact: { content, kind?, tags?, source? }. episode: { role, content, tool_calls?, tokens? }. entity: { kind, canonical_name, properties? }. " +
         "Write for the queries you'll ask later: fact kind + tags become GROUP BY columns — reuse a small lower_snake kind vocabulary (leaving every row on the default 'fact' makes categories unqueryable) and tag every id/topic the row touches. " +
-        "Keep numeric measures in entity properties (JSONB), not inside prose content; an entity re-remember replaces properties when provided, so re-send the whole object. " +
+        "Entities are current snapshots: keep the state in `properties` (JSONB) and re-remember the entity to update it — an upsert on (agent, kind, canonical_name) replaces properties when provided, so re-send the whole object. Prefer updating an entity over accumulating facts about it. " +
+        "Supersede rather than accumulate: when a fact becomes wrong or outdated, write the corrected fact (same tags) rather than piling on — old facts fade via ttlSeconds; entities are refreshed in place. " +
         "Make content one self-describing sentence, so a row reads correctly on its own in a result set.",
     ),
   endUserId: z.string().optional().describe("Optional end-user scope (facts / episodes)."),
@@ -105,7 +106,9 @@ export const rememberInputShape = {
   ttlSeconds: z
     .number()
     .optional()
-    .describe("Optional TTL in seconds — sets expires_at on a fact so it can be swept later."),
+    .describe(
+      "Optional TTL in seconds — sets expires_at on a fact. Expired facts stop appearing in queries (RLS filters them out) and are physically evicted opportunistically on subsequent writes, so memory forgets what it no longer needs. Set this on any fact whose relevance is time-bound (a status, an observation, a hypothesis) — a day for daily standups, a week for weekly plans, a month for quarterly context. Facts without a TTL live forever; entities never expire (update them in place instead).",
+    ),
 };
 
 export type RememberInput = z.infer<z.ZodObject<typeof rememberInputShape>>;
