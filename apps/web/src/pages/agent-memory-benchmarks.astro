@@ -10,6 +10,7 @@ import {
   NLQDB_EVAL_STATUS,
   REPORTED_RESULTS,
 } from "../data/memoryBenchmarks";
+import { ORGANIZATION_ID_FRAGMENT } from "../lib/site-jsonld.ts";
 import Base from "../layouts/Base.astro";
 
 // /agent-memory-benchmarks — a citable landscape of the agent-memory
@@ -22,6 +23,57 @@ import Base from "../layouts/Base.astro";
 const statusLabel: Record<string, string> = {
   "self-reported": "Self-reported",
   disputed: "Disputed",
+};
+
+// schema.org/Dataset node — the reach R-10 b move: this page IS the field's
+// one citable asset, so make it machine-citable. Dataset is what Google
+// Dataset Search + AI answer engines (Perplexity/ChatGPT/AI Mode) index to
+// cite a catalog like this. Derived entirely from `memoryBenchmarks.ts` so
+// the machine view can never drift from the rendered one; `citation`/`isBasedOn`
+// expose every primary source so a crawler can follow them. Honest per hard
+// rule 1: it describes the FIELD survey and carries NO nlqdb score.
+const canonicalUrl = new URL("/agent-memory-benchmarks/", Astro.site).toString();
+const organizationId = Astro.site
+  ? new URL(ORGANIZATION_ID_FRAGMENT, Astro.site).toString()
+  : undefined;
+const citationUrls = [
+  ...new Set([
+    ...BENCHMARKS.map((b) => b.source.url),
+    ...REPORTED_RESULTS.map((r) => r.source.url),
+    LOCOMO_AUDIT.source.url,
+  ]),
+];
+const datasetJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  name: "The agent-memory benchmark landscape",
+  description:
+    "A curated, source-linked survey of the benchmarks the AI-agent-memory field publishes — Deep Memory Retrieval, LoCoMo and LongMemEval — and the headline results vendors report on them (Mem0, Zep), each flagged self-reported or disputed, with an independent LoCoMo audit and the analytical-query gap none of them measure. Catalogs the field, not nlqdb's own results — no nlqdb score appears.",
+  url: canonicalUrl,
+  keywords: [
+    "agent memory",
+    "LoCoMo",
+    "LongMemEval",
+    "Deep Memory Retrieval",
+    "Mem0",
+    "Zep",
+    "LLM memory benchmark",
+  ],
+  variableMeasured: [
+    "what each benchmark scores",
+    "self-reported vs disputed status of each headline result",
+    "whether the benchmark isolates analytical queries over memory",
+  ],
+  dateModified: LANDSCAPE_VERIFIED_ON,
+  isAccessibleForFree: true,
+  citation: citationUrls,
+  isBasedOn: citationUrls,
+  ...(organizationId ? { creator: { "@id": organizationId } } : {}),
+  distribution: {
+    "@type": "DataDownload",
+    encodingFormat: "text/html",
+    contentUrl: canonicalUrl,
+  },
 };
 ---
 
@@ -174,6 +226,8 @@ const statusLabel: Record<string, string> = {
 
     <Footer />
   </div>
+
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(datasetJsonLd)} />
 </Base>
 
 <style is:global>
