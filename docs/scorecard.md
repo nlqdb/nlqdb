@@ -130,7 +130,7 @@ organic referral landings (bing → RLS post, baidu → 3 `/blog/*`), so the sur
 not just count. `/reach` owns the R-slices — not duplicated. The dogfood gate (weekly focus) stays
 2/5: criterion 1 is grind-only, criteria 3/4 are GLOBAL-037-blocked — none single-run-movable.
 (2) UX-flow — health + both deploys green, no failing flow. (3) Engine — dark (async multi-window,
-`main` moved). 
+`main` moved).
 
 **Anti-rut (rule 7):** recent levers were null (178), dogfood (177), dogfood (176), null (174),
 distribution (173) — distribution last pulled 6 runs back, not 5-in-a-row; clear.

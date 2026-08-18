@@ -61,7 +61,7 @@ export const BLOG_POSTS: BlogPost[] = [
     body: [
       {
         kind: "p",
-        text: "We spent a while telling everyone the agent-memory product was a bet. Then we pointed it at ourselves. nlqdb's own operating agents wrote nlqdb's own `docs/` into a real, production memory database and queried it back — every write through the public `/v1/memory/remember` endpoint, every question through the published `@nlqdb/mcp` server a stranger would `npx`. No internal binding, no privileged path. The corpus: **9 entities and 13 facts**, 22 writes, zero failures. Then twelve natural-language questions. Ten of the first ten came back right. Twelve of twelve were answered. The scoreboard read a clean 100%.",
+        text: "We spent a while telling everyone the agent-memory product was a bet. Then we pointed it at ourselves. nlqdb's own operating agents wrote nlqdb's own `docs/` into a real, production memory database and queried it back — every write through the public `/v1/memory/remember` endpoint, every question through the published `@nlqdb/mcp` server a stranger would `npx`. No internal binding, no privileged path. The corpus: **9 entities and 13 facts**, 22 writes, zero failures. Then twelve natural-language questions. Twelve of twelve were answered; the first-ten success counter read ten out of ten. The scoreboard read a clean 100%.",
       },
       {
         kind: "p",
