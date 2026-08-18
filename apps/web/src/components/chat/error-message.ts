@@ -36,6 +36,10 @@ export function messageFor(err: unknown): string {
         return "Couldn't load the database schema — try again.";
       case "schema_mismatch":
         return schemaMismatchMessage(err.body);
+      case "write_no_rows":
+        return writeNoRowsMessage(err.body);
+      case "write_constraint":
+        return writeConstraintMessage(err.body);
     }
   }
   return "Something went wrong — try again.";
@@ -61,6 +65,8 @@ const SQL_REJECT_COPY: Record<string, string> = {
   multi_statement: "Ask one thing at a time — that came through as multiple statements.",
   parse_failed: "I couldn't turn that into a valid query — try rephrasing.",
   empty: "That came through empty — try rephrasing.",
+  // SK-TRUST-006 — an unpreviewable write is never run, so say that plainly.
+  preview_unavailable: "I couldn't preview that change, so I didn't run it — try rephrasing.",
 };
 
 function sqlRejectedMessage(body: unknown): string {
@@ -68,6 +74,40 @@ function sqlRejectedMessage(body: unknown): string {
   return (
     (reason ? SQL_REJECT_COPY[reason] : undefined) ?? "That query was rejected — try rephrasing."
   );
+}
+
+// SK-TRUST-006 — a write that affects no rows. `phase: "preview"` means we
+// never ran it (the pre-flight count was 0, so there was nothing to approve);
+// `phase: "commit"` means an approved write ran and changed nothing. Both say
+// so plainly and name the one next action — the old copy was the generic
+// "No rows returned." of an empty read, which read as success.
+function writeNoRowsMessage(body: unknown): string {
+  const b = body as { phase?: string; verb?: string; table?: string } | null;
+  const target = b?.table ? ` in ${b.table}` : "";
+  if (b?.phase === "commit") {
+    return `Nothing was changed${target} — that ran but matched no rows, so say which row to write.`;
+  }
+  return `Nothing to write${target} — no rows matched, so say which row you mean.`;
+}
+
+// SK-ASK-029 — the engine refused the write. Name the column that broke the
+// rule (identifiers only — the API never sends the offending values) so the
+// user's next message can supply a real one. This used to arrive as
+// `db_unreachable` ("Couldn't reach the database — try again"), which sent the
+// user to retry a statement that could never succeed.
+function writeConstraintMessage(body: unknown): string {
+  const b = body as { kind?: string; table?: string; column?: string } | null;
+  const field = b?.column ? (b.table ? `${b.table}.${b.column}` : b.column) : null;
+  switch (b?.kind) {
+    case "foreign_key":
+      return `Nothing was written — ${field ?? "that link"} has to point at a row that already exists, so name an existing one.`;
+    case "not_null":
+      return `Nothing was written — ${field ?? "a required field"} can't be empty, so include it in your request.`;
+    case "unique":
+      return `Nothing was written — ${field ?? "that value"} already exists, so use a different one.`;
+    default:
+      return `Nothing was written — the database rejected those values${field ? ` for ${field}` : ""}; try different ones.`;
+  }
 }
 
 // SK-ASK-016 — the pre-flight path returns referencedTables (in the goal,

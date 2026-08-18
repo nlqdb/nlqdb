@@ -36,7 +36,7 @@ Every LLM call routes through one `createLLMRouter()` adapter over a cost-ordere
 ### SK-LLM-003 — Day-1 strict-$0 chain: Gemini Flash → Groq → Workers-AI → OpenRouter free
 
 **Body:** [`decisions/SK-LLM-003-strict-zero-chain.md`](./decisions/SK-LLM-003-strict-zero-chain.md).
-`plan` chain `[gemini_flash_free, groq_llama70b_free, openrouter_free]` (+`workers_ai` non-US backup); `route` on `groq_llama8b_free`. Every entry is no-card free (`GLOBAL-013`), env-var configured (`LLM_CHAIN_*`). **Current planner tier:** Cerebras GLM-4.7 (`zai-glm-4.7`) head per [`SK-LLM-048`](#sk-llm-048) (gpt-oss-120b retained fallback per [`SK-LLM-023`](#sk-llm-023)), Mistral tail per [`SK-LLM-028`](#sk-llm-028).
+**Current planner tier:** GLM-4.7 head per [`SK-LLM-048`](#sk-llm-048) (gpt-oss-120b fallback, [`SK-LLM-023`](#sk-llm-023)), Mistral tail per [`SK-LLM-028`](#sk-llm-028).
 
 ### SK-LLM-004 — Cloudflare AI Gateway sits in front of every paid provider
 
@@ -240,9 +240,13 @@ gateway leg is down.
 
 **Body:** [`decisions/SK-LLM-048-glm-4.7-planner-head.md`](./decisions/SK-LLM-048-glm-4.7-planner-head.md). GLM-4.7 (`cerebras-glm`) heads the planner chain, gpt-oss-120b retained fallback; a reasoning model, so `reasoning_effort:"low"` + completion ceiling and [`SK-LLM-014`](#sk-llm-014) hedge 800→2000 ms. Extends [`SK-LLM-023`](#sk-llm-023); gate **measured** 2026-08-16: BIRD/Spider non-regression (`GLOBAL-025`); one-line revert.
 
-### SK-LLM-049 — Schema-metadata goals directive in the planner prompt (answer structure questions from the Schema block, never system catalogs)
+### SK-LLM-049 — Schema-metadata goals directive in the planner prompt
 
-**Body:** [`decisions/SK-LLM-049-schema-metadata-goals-directive.md`](./decisions/SK-LLM-049-schema-metadata-goals-directive.md). One `PLAN_DIRECTIVES` bullet: a structure goal ("show all tables") is answered from the Schema block as a constant SELECT of the names, system catalogs banned — the free planner improvised catalog queries the `SK-ASK-016` pre-flight rejected as `schema_mismatch`. Prompt-only; eval gate per `SK-QUAL-002`.
+**Body:** [`decisions/SK-LLM-049-schema-metadata-goals-directive.md`](./decisions/SK-LLM-049-schema-metadata-goals-directive.md). `PLAN_DIRECTIVES` bullet: structure goals ("show all tables") answer from the Schema block as a constant SELECT; system catalogs banned. Prompt-only; eval gate per `SK-QUAL-002`.
+
+### SK-LLM-050 — No-invented-identity directive in the planner prompt (write-scoped)
+
+**Body:** [`decisions/SK-LLM-050-no-invented-identity-directive.md`](./decisions/SK-LLM-050-no-invented-identity-directive.md). Write-scoped `PLAN_DIRECTIVES` bullet: never fill an FK/owner/identity column with a value the goal did not supply (no arbitrary-row `LIMIT 1`, no placeholder ids). Write-scoped ⇒ read-only BIRD/Spider cannot regress (`SK-LLM-044` lesson). Pairs with `SK-TRUST-006` / `SK-ASK-028/029`.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 

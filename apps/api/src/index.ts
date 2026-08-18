@@ -4587,6 +4587,14 @@ function errorStatus(status: AskError["status"]): 400 | 404 | 409 | 422 | 429 | 
       return 400;
     case "clarify_required":
     case "schema_mismatch":
+    // SK-TRUST-006 — the goal parsed and the SQL was valid, but the write
+    // matched no rows, so nothing changed. Same 409 family as
+    // `schema_mismatch`: right shape, wrong target.
+    case "write_no_rows":
+    // SK-ASK-029 — the engine refused the write's values; deterministic, so
+    // it belongs with the other "right shape, wrong target" 409s, not the
+    // 502 transient family it used to hide in as `db_unreachable`.
+    case "write_constraint":
       return 409;
   }
 }

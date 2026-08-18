@@ -21,3 +21,13 @@ export function hiddenRowCount(returnedLength: number, rowCount: number | null):
   const rendered = Math.min(returnedLength, MAX_ROWS);
   return Math.max(0, total - rendered);
 }
+
+// SK-ASK-028 — whether the empty-result notice ("No rows returned.") is
+// honest. A committed write returns no rows but a non-zero AFFECTED-row
+// count, and empty-read copy right after the user approved the write reads
+// as "it didn't happen" (the founder-reported moment). The Answer block
+// carries the factual write narration instead.
+export function showsEmptyNotice(returnedLength: number, rowCount: number | null): boolean {
+  if (returnedLength > 0) return false;
+  return !(rowCount !== null && rowCount > 0);
+}

@@ -102,4 +102,58 @@ describe("messageFor", () => {
       );
     });
   });
+  // SK-TRUST-006 / SK-ASK-029 — the founder-reported moment: approve a write,
+  // then read empty-read copy ("No rows returned.") or a transient-sounding
+  // "Couldn't reach the database" for a deterministic constraint failure.
+  describe("write outcomes never read as an empty result or a transient blip", () => {
+    test("write_no_rows preview: says nothing was written and what to specify", () => {
+      expect(
+        messageFor(apiError("write_no_rows", { phase: "preview", verb: "INSERT", table: "ideas" })),
+      ).toBe("Nothing to write in ideas — no rows matched, so say which row you mean.");
+    });
+
+    test("write_no_rows commit: distinguishes 'ran and changed nothing'", () => {
+      expect(
+        messageFor(apiError("write_no_rows", { phase: "commit", verb: "DELETE", table: "orders" })),
+      ).toBe(
+        "Nothing was changed in orders — that ran but matched no rows, so say which row to write.",
+      );
+    });
+
+    test("write_no_rows without a named table still reads honestly", () => {
+      expect(messageFor(apiError("write_no_rows", { phase: "preview" }))).toBe(
+        "Nothing to write — no rows matched, so say which row you mean.",
+      );
+    });
+
+    test("write_constraint foreign_key names the column that has to point somewhere real", () => {
+      expect(
+        messageFor(
+          apiError("write_constraint", { kind: "foreign_key", table: "ideas", column: "user_id" }),
+        ),
+      ).toBe(
+        "Nothing was written — ideas.user_id has to point at a row that already exists, so name an existing one.",
+      );
+    });
+
+    test("write_constraint not_null / unique / unknown kinds each get a next action", () => {
+      expect(
+        messageFor(
+          apiError("write_constraint", { kind: "not_null", table: "ideas", column: "title" }),
+        ),
+      ).toBe("Nothing was written — ideas.title can't be empty, so include it in your request.");
+      expect(messageFor(apiError("write_constraint", { kind: "unique", column: "email" }))).toBe(
+        "Nothing was written — email already exists, so use a different one.",
+      );
+      expect(messageFor(apiError("write_constraint", { kind: "check" }))).toBe(
+        "Nothing was written — the database rejected those values; try different ones.",
+      );
+    });
+
+    test("an unpreviewable write says it was not run", () => {
+      expect(messageFor(apiError("sql_rejected", { reason: "preview_unavailable" }))).toBe(
+        "I couldn't preview that change, so I didn't run it — try rephrasing.",
+      );
+    });
+  });
 });

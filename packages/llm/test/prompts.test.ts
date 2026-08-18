@@ -76,6 +76,20 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
     expect(PLAN_SYSTEM).toMatch(/unless the goal explicitly asks for a single combined string/);
   });
 
+  it("carries the SK-LLM-050 no-invented-identity directive (write-scoped)", () => {
+    // The three guessing shapes the production incident used: arbitrary-row
+    // pick, placeholder id, and a goal token matched against an unnamed column.
+    expect(PLAN_SYSTEM).toMatch(/never invent a value the goal did not give you/);
+    expect(PLAN_SYSTEM).toContain("`SELECT … LIMIT 1` without a predicate the goal states");
+    expect(PLAN_SYSTEM).toMatch(/no all-zero UUID/);
+    expect(PLAN_SYSTEM).toMatch(/against a column the goal does not name/);
+    // The load-bearing framing: a failed / no-op write is recoverable, a write
+    // aimed at the wrong row is not.
+    expect(PLAN_SYSTEM).toMatch(/a write aimed at the wrong row is not/);
+    // Write-scoped by construction, so BIRD/Spider (read-only) can't regress.
+    expect(PLAN_SYSTEM).toContain("For an INSERT/UPDATE/DELETE");
+  });
+
   it("carries the SK-LLM-029 NULL-safe extremum directive (false-minimum guard)", () => {
     // ORDER BY ... LIMIT extremum selection must filter NULLs on the ranked column.
     expect(PLAN_SYSTEM).toMatch(/exclude NULLs in the ordered column/);

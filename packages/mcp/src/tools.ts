@@ -596,6 +596,20 @@ const ERROR_COPY = {
     message: "The model failed to produce a plan for that goal.",
     action: "Retry; if it persists, simplify the goal or name the exact tables and columns.",
   },
+  // SK-TRUST-006 — the write matched no rows, so nothing changed. Never
+  // reported as an empty result set.
+  write_no_rows: {
+    message: "That write matched no rows, so nothing was written.",
+    action:
+      "Re-call naming the exact row to write (its id or a filter that matches an existing row).",
+  },
+  // SK-ASK-029 — the engine refused the values (`body.kind` names which
+  // constraint; `body.table` / `body.column` the identifiers).
+  write_constraint: {
+    message: "The database refused that write — the values broke a constraint.",
+    action:
+      "Read the body's kind/table/column, then re-call with values that satisfy it (e.g. a foreign key pointing at an existing row).",
+  },
   clarify_required: {
     message: "That goal was ambiguous, so nlqdb needs more detail before running it.",
     action: "Re-call naming the specific table and columns you mean.",

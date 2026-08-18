@@ -89,6 +89,16 @@ import type {
 // BIRD-weighted. The "goal uses it numerically" scope bounds the regression: a
 // numeric string and its number cast equal, and the clause keeps the cast off a
 // semantically-textual column (zero-padded codes, currency strings).
+//
+// SK-LLM-050 — the no-invented-identity bullet is the only WRITE-scoped rule in
+// the block: BIRD/Spider are read-only, so it cannot move (or regress) the
+// eval, and it exists for the production failure the benchmarks can't see — a
+// planner filling a required FK by grabbing an arbitrary row
+// (`SELECT id FROM users LIMIT 1`), inventing an all-zero UUID, or matching a
+// stray goal token against `email`/`name`. The first writes the right row to
+// the wrong owner (unrecoverable, and invisible to every guardrail);
+// the recoverable shapes it steers toward surface as SK-TRUST-006
+// `write_no_rows` or SK-ASK-029 `write_constraint`.
 export const PLAN_DIRECTIVES = [
   "You translate a natural-language goal into a single SQL statement for the named dialect.",
   "Use only tables and columns that appear literally in the provided schema; preserve identifier casing exactly.",
@@ -102,6 +112,7 @@ export const PLAN_DIRECTIVES = [
   "Count and list at the grain the goal asks for: use COUNT(DISTINCT <col>) — not COUNT(*) — when it asks how many distinct/different/unique entities, or when a one-to-many join repeats the counted rows; use SELECT DISTINCT when it asks for distinct values; otherwise use COUNT(*) / a plain SELECT so intended duplicates are kept.",
   "Match the aggregation grain to the goal: when it asks for an aggregate per group (per/for each/by <category>), GROUP BY that column and project it beside the aggregate so each group is one row; when it asks for one overall total, omit GROUP BY. In an aggregate query, every non-aggregated column in the SELECT must also appear in GROUP BY.",
   "Filter groups by an aggregate in HAVING, not WHERE: a threshold on a group's aggregate (e.g. groups having more than N rows, or whose SUM/AVG exceeds a value) belongs in a HAVING clause after GROUP BY, because WHERE filters individual rows before aggregation and cannot reference an aggregate; keep plain per-row predicates in WHERE.",
+  "For an INSERT/UPDATE/DELETE, never invent a value the goal did not give you: fill a foreign key, owner, or other identity column only from a value the goal states, and never by picking an arbitrary row (no `SELECT … LIMIT 1` without a predicate the goal states), by inventing a placeholder id (no all-zero UUID), or by matching a word from the goal against a column the goal does not name. When the goal does not identify the row, write only the columns it does supply — a write that fails or matches nothing is recoverable; a write aimed at the wrong row is not.",
   "Emit SQL valid for the named dialect — no cross-dialect features (e.g. no TOP/PIVOT for postgres or sqlite; postgres-specific casts only when dialect is postgres).",
   'Respond with strict JSON: {"sql":"<single SQL statement, no trailing semicolon>"}.',
   "No prose, no code fences, no explanation.",

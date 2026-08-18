@@ -148,6 +148,13 @@ func renderAPIError(cmd *cobra.Command, err error) error {
 		renderClarify(cmd, apiErr)
 	case "sql_rejected":
 		printErr(cmd, "%s", sqlRejectedMessage(apiErr.Reason))
+	case "write_no_rows":
+		// SK-TRUST-006 — a write that affects nothing is never reported as an
+		// empty result set.
+		printErr(cmd, "%s", writeNoRowsMessage(apiErr))
+	case "write_constraint":
+		// SK-ASK-029 — the engine refused the write; deterministic, not transient.
+		printErr(cmd, "%s", writeConstraintMessage(apiErr))
 	case "db_not_found":
 		printErr(cmd, "database not found — try `nlq db list` to see what's available.")
 	case "rate_limited":
@@ -195,6 +202,52 @@ func renderClarify(cmd *cobra.Command, apiErr *api.APIError) {
 	}
 }
 
+// writeNoRowsMessage renders a 409 write_no_rows (SK-TRUST-006): a write that
+// matched no rows, either proven by the pre-flight count (so it was never
+// offered for approval) or reported by the engine after an approved write.
+func writeNoRowsMessage(apiErr *api.APIError) string {
+	target := ""
+	if apiErr.Table != "" {
+		target = " in " + apiErr.Table
+	}
+	if apiErr.Phase == "commit" {
+		return fmt.Sprintf("nothing was changed%s — that ran but matched no rows; say which row to write.", target)
+	}
+	return fmt.Sprintf("nothing to write%s — no rows matched; say which row you mean.", target)
+}
+
+// writeConstraintMessage renders a 409 write_constraint (SK-ASK-029): the
+// engine refused the values. Identifiers only — the API never sends the
+// offending values.
+func writeConstraintMessage(apiErr *api.APIError) string {
+	field := apiErr.Column
+	if field != "" && apiErr.Table != "" {
+		field = apiErr.Table + "." + apiErr.Column
+	}
+	switch apiErr.Kind {
+	case "foreign_key":
+		if field == "" {
+			field = "that link"
+		}
+		return fmt.Sprintf("nothing was written — %s has to point at a row that already exists; name an existing one.", field)
+	case "not_null":
+		if field == "" {
+			field = "a required field"
+		}
+		return fmt.Sprintf("nothing was written — %s can't be empty; include it in the goal.", field)
+	case "unique":
+		if field == "" {
+			field = "that value"
+		}
+		return fmt.Sprintf("nothing was written — %s already exists; use a different one.", field)
+	default:
+		if field == "" {
+			return "nothing was written — the database rejected those values; try different ones."
+		}
+		return fmt.Sprintf("nothing was written — the database rejected those values for %s; try different ones.", field)
+	}
+}
+
 // sqlRejectedMessage turns the API's specific allowlist reject reason
 // (SK-ASK-026, `body.reason`) into honest, actionable copy. The
 // destructive-ambiguous family normally arrives as `clarify_required` with
@@ -221,6 +274,10 @@ func sqlRejectedMessage(reason string) string {
 		return "ask one thing at a time — that came through as multiple statements."
 	case "parse_failed", "empty":
 		return "couldn't turn that into a valid query — try rephrasing."
+	case "preview_unavailable":
+		// SK-TRUST-006 — the write wasn't run: its effect couldn't be
+		// computed, and an unpreviewable write never commits.
+		return "couldn't preview that change, so it wasn't run — try rephrasing."
 	default:
 		return "that query was rejected — try rephrasing."
 	}

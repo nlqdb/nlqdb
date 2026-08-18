@@ -72,6 +72,13 @@ type APIError struct {
 	Reason        string
 	Clarification string
 	Options       []ClarifyOption
+	// SK-TRUST-006 `write_no_rows` (`Phase`, `Table`) and SK-ASK-029
+	// `write_constraint` (`Kind`, `Table`, `Column`) — identifiers the copy
+	// needs to name what didn't get written. Never the offending values.
+	Phase  string
+	Kind   string
+	Table  string
+	Column string
 }
 
 func (e *APIError) Error() string {
@@ -222,6 +229,10 @@ func extractError(status int, path string, data []byte) *APIError {
 		Reason        string          `json:"reason"`
 		Clarification string          `json:"clarification"`
 		Options       []ClarifyOption `json:"options"`
+		Phase         string          `json:"phase"`
+		Kind          string          `json:"kind"`
+		Table         string          `json:"table"`
+		Column        string          `json:"column"`
 	}
 	if err := json.Unmarshal(generic.Error, &asObject); err == nil && asObject.Status != "" {
 		out.Status = asObject.Status
@@ -230,6 +241,10 @@ func extractError(status int, path string, data []byte) *APIError {
 		out.Reason = asObject.Reason
 		out.Clarification = asObject.Clarification
 		out.Options = asObject.Options
+		out.Phase = asObject.Phase
+		out.Kind = asObject.Kind
+		out.Table = asObject.Table
+		out.Column = asObject.Column
 		switch {
 		case asObject.Message != "":
 			out.Message = asObject.Message

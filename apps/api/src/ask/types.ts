@@ -176,7 +176,29 @@ export type AskError =
   // goal was valid but aimed at the wrong DB; the surface can offer
   // "create a fresh DB instead" without dead-ending on a generic 502.
   | { status: "schema_mismatch"; referencedTables: string[]; schemaTables: string[] }
+  // SK-TRUST-006 — a write that affects nothing is never a successful
+  // empty read. `phase: "preview"` means the pre-flight count proved the
+  // write would touch 0 rows, so it was never offered for approval;
+  // `phase: "commit"` means an approved write ran and the engine reported
+  // 0 rows affected. Either way nothing changed. HTTP 409 — the goal
+  // parsed, the SQL ran, but the values matched no rows. `verb` / `table`
+  // are omitted only when the plan's target couldn't be named.
+  | { status: "write_no_rows"; phase: "preview" | "commit"; verb?: string; table?: string }
+  // SK-ASK-029 — the write reached the engine and the engine refused it: a
+  // required column was missing, a foreign key pointed at a row that doesn't
+  // exist, a unique/check rule failed. Deterministic (never retried) and
+  // 409 — the goal is answerable once the caller names real values. Carries
+  // identifiers only, never the offending values.
+  | {
+      status: "write_constraint";
+      kind: WriteConstraintKind;
+      table?: string;
+      column?: string;
+      constraint?: string;
+    }
   | ClarifyRequired;
+
+export type WriteConstraintKind = "not_null" | "foreign_key" | "unique" | "check" | "exclusion";
 
 // Thrown by `exec` callbacks when a DB row's `connection_secret_ref`
 // doesn't resolve to anything in env (operator config error, not a
@@ -225,6 +247,23 @@ export class SchemaMismatchError extends Error {
     this.referencedTables = referencedTables;
     this.schemaTables = schemaTables;
     this.diag = diag;
+  }
+}
+
+// SK-ASK-029 — a PG integrity-constraint violation (SQLSTATE class 23) on the
+// write path. Thrown by `classifyWriteConstraint` from the exec catch and
+// mapped to the typed `write_constraint` envelope; deterministic, so
+// SK-ASK-013's retry bails after one attempt.
+export class WriteConstraintError extends Error {
+  readonly code = "write_constraint" as const;
+  constructor(
+    readonly kind: WriteConstraintKind,
+    // Identifiers only (table / column / constraint name) — never the
+    // offending values.
+    readonly target: { table?: string; column?: string; constraint?: string },
+  ) {
+    super(`write rejected by a ${kind} constraint`);
+    this.name = "WriteConstraintError";
   }
 }
 

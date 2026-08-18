@@ -334,6 +334,18 @@ export type ApiErrorCode =
   // of `sql_rejected`, `body.options` carries re-sendable interpretations
   // and `body.reason` a one-sentence prompt.
   | "clarify_required"
+  // SK-TRUST-006 — 409 returned when a write affects no rows: the pre-flight
+  // count proved the write would touch nothing (`body.phase = "preview"`, so
+  // it was never offered for approval), or an approved write ran and the
+  // engine reported 0 rows affected (`body.phase = "commit"`). `body.verb` /
+  // `body.table` name the target. Never reported as an empty result set.
+  | "write_no_rows"
+  // SK-ASK-029 — 409 returned when the engine refused the write: a required
+  // column was missing, a foreign key pointed at a row that doesn't exist, a
+  // unique/check rule failed. `body.kind` names which, `body.table` /
+  // `body.column` / `body.constraint` the identifiers involved (never the
+  // offending values). Deterministic — never retried.
+  | "write_constraint"
   // SK-SDK-009 / SK-APIKEYS-003 — `/v1/run` rejected the call because
   // the principal is read-only (pk_live tried to write).
   | "forbidden"
