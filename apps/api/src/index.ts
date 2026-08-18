@@ -171,6 +171,7 @@ import {
 } from "./stripe/billing-status.ts";
 import { type CheckoutPlan, createCheckoutSession } from "./stripe/checkout.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
+import { createPlanSwitchSession } from "./stripe/plan-switch.ts";
 import { createPortalSession } from "./stripe/portal.ts";
 import { processWebhook } from "./stripe/webhook.ts";
 import { isSyntheticRequest, isSyntheticUserAgent } from "./synthetic-ua.ts";
@@ -2373,14 +2374,19 @@ app.post("/v1/billing/checkout", requireSession, async (c) => {
 // subscriber can update their card, switch plan, download invoices, or
 // cancel (one click, no dark patterns — SK-STRIPE-008).
 //
-// Requires a signed-in session (`requireSession`). No request body: the
-// `return_url` is derived server-side from the request origin (never
-// client-supplied, same open-redirect closure as checkout). The caller's
-// Stripe customer is looked up from the `customers` D1 table; a user who
-// never checked out has no row → 404 no_customer. Forwards
+// Requires a signed-in session (`requireSession`). Optional body
+// `{ flow: "switch_plan" }` deep-links straight to the plan-change page so a
+// subscriber can upgrade/downgrade instead of landing on the overview with no
+// CTA (SK-STRIPE-015 — the default portal has plan switching off). Any other
+// body opens the plain portal. The `return_url` is always derived server-side
+// from the request origin (never client-supplied, same open-redirect closure
+// as checkout). The caller's Stripe customer is looked up from the `customers`
+// D1 table; a user who never checked out has no row → 404 no_customer. Forwards
 // `Idempotency-Key` to Stripe (GLOBAL-005).
 //
-// 503 when STRIPE_SECRET_KEY is not configured. 500 for Stripe API failures.
+// 503 when STRIPE_SECRET_KEY is not configured. 409 no_subscription when a
+// `switch_plan` caller has no live subscription (client routes to checkout).
+// 500 for Stripe API failures.
 app.post("/v1/billing/portal", requireSession, async (c) => {
   const session = c.var.session;
 
@@ -2388,24 +2394,59 @@ app.post("/v1/billing/portal", requireSession, async (c) => {
     return c.json({ error: "billing_not_configured" }, 503);
   }
 
+  // Body is optional — a plain portal open sends none. Ignore malformed JSON
+  // and fall back to the plain portal rather than failing the manage path.
+  const body = await parseJsonBody<{ flow?: unknown }>(c);
+  const wantsSwitch = body.ok && body.body.flow === "switch_plan";
+
   const customer = await c.env.DB.prepare(
-    "SELECT stripe_customer_id FROM customers WHERE user_id = ?",
+    "SELECT stripe_customer_id, stripe_subscription_id, status FROM customers WHERE user_id = ?",
   )
     .bind(session.user.id)
-    .first<{ stripe_customer_id: string }>();
+    .first<{
+      stripe_customer_id: string;
+      stripe_subscription_id: string | null;
+      status: string;
+    }>();
 
   if (!customer?.stripe_customer_id) {
     return c.json({ error: "no_customer" }, 404);
   }
 
   const origin = new URL(c.req.url).origin;
+  const idempotencyKey = c.req.header("Idempotency-Key") ?? null;
+
+  if (wantsSwitch) {
+    // A plan switch needs a live subscription to update. A terminal status
+    // (canceled / incomplete_expired) or a missing subscription id means there
+    // is nothing to switch — the client re-subscribes through checkout instead.
+    if (!customer.stripe_subscription_id || !blocksNewCheckout(customer.status)) {
+      return c.json({ error: "no_subscription" }, 409);
+    }
+    if (!c.env.STRIPE_PRICE_HOBBY || !c.env.STRIPE_PRICE_PRO) {
+      return c.json({ error: "plan_not_configured" }, 503);
+    }
+    const switchResult = await createPlanSwitchSession(
+      {
+        stripeSecretKey: c.env.STRIPE_SECRET_KEY,
+        stripeCustomerId: customer.stripe_customer_id,
+        subscriptionId: customer.stripe_subscription_id,
+        priceIdHobby: c.env.STRIPE_PRICE_HOBBY,
+        priceIdPro: c.env.STRIPE_PRICE_PRO,
+        userId: session.user.id,
+        idempotencyKey,
+      },
+      `${origin}/app/billing`,
+    );
+    return c.json(switchResult.body, switchResult.status);
+  }
 
   const result = await createPortalSession(
     {
       stripeSecretKey: c.env.STRIPE_SECRET_KEY,
       stripeCustomerId: customer.stripe_customer_id,
       userId: session.user.id,
-      idempotencyKey: c.req.header("Idempotency-Key") ?? null,
+      idempotencyKey,
     },
     `${origin}/app`,
   );

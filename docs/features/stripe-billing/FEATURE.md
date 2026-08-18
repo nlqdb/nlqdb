@@ -121,13 +121,13 @@ The customer reminder ships from the events-worker `billing.payment_failed` sink
 
 ### SK-STRIPE-014 — Re-subscribe reuses the existing Stripe customer instead of minting a new one
 
-- **Decision:** When the checkout route runs against an existing `customers` row (only reachable on the re-subscribe path — a terminal `canceled` / `incomplete_expired` status survived the SK-STRIPE-010 guard), it passes that row's `stripe_customer_id` to the Checkout Session as `customer` and drops `customer_email`. With an existing customer + `automatic_tax`, the session also sets `customer_update: { address: 'auto' }` so the address collected at checkout is written back for tax. A first-time subscriber (no row) is unchanged: `customer_email` prefill, no `customer`.
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** In `mode: 'subscription'`, Stripe mints a brand-new Customer object when no `customer` is supplied. A canceled user who re-subscribes would get a second Stripe customer, orphaning their invoice history, saved cards, and tax IDs; the `customers` row (keyed by `user_id`) would then point at the new customer and silently strand the old one. Reusing the customer keeps one billing identity per user.
-- **Consequence in code:** `CheckoutDeps` gains `existingStripeCustomerId`; the route widens its existing duplicate-guard read to `SELECT status, stripe_customer_id` (no extra query) and passes the id through. Stripe forbids `customer` + `customer_email` together, so the params builder picks exactly one. The webhook is unaffected — `checkout.session.completed` upserts the same `stripe_customer_id` for the same `user_id`.
-- **Alternatives rejected:**
-  - Always pass `customer_email`, never `customer` — orphans a Stripe customer on every re-subscribe; the data-integrity bug this fixes.
-  - Reconcile/merge duplicate Stripe customers after the fact — Stripe has no customer-merge API; prevention at Checkout time is the only clean path.
+**Body:** [`decisions/SK-STRIPE-014-resubscribe-reuses-customer.md`](./decisions/SK-STRIPE-014-resubscribe-reuses-customer.md).
+On the re-subscribe path (a terminal `customers` row that survived the SK-STRIPE-010 guard), Checkout passes the stored `stripe_customer_id` as `customer` and drops `customer_email` (Stripe forbids both), plus `customer_update: { address: 'auto' }` for tax. Keeps one billing identity per user; without it `mode: 'subscription'` mints a second Stripe customer and orphans the old one. First-time subscribers (no row) are unchanged.
+
+### SK-STRIPE-015 — Plan switch deep-links to the portal update flow and self-heals the portal configuration
+
+**Body:** [`decisions/SK-STRIPE-015-plan-switch.md`](./decisions/SK-STRIPE-015-plan-switch.md).
+"Switch plan" for a live subscriber POSTs `POST /v1/billing/portal` with `{ flow: "switch_plan" }`; the route deep-links to `flow_data.type = "subscription_update"` and ensures (list-or-create, per-isolate cached) a code-managed portal `configuration` with both plan prices — no manual Dashboard toggle, since Stripe's default config ships plan switching off. No live subscription → `409 no_subscription` (client routes to Checkout). Fixes the single-item Hobby↔Pro switch; overage-Pro downgrade stays a known API-side gap. Web-only (GLOBAL-003).
 
 ## GLOBALs governing this feature
 
@@ -139,9 +139,9 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 
 ## Open questions / known unknowns
 
-- **R2 lifecycle policy** — Resolved (`GLOBAL-033`): **90-day retention** on the date-partitioned keys (events are Dashboard-replayable, so the bucket is a convenience cache). One-time Cloudflare R2 config; **parked until** bucket size is load-bearing.
-- **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (PLAN §11): the queryable signal exists; the ops cron + alert is the wiring that lands when a dispatch first slips by.
-- **Usage metering + live-mode cutover — done (§6 tripped, live 2026-08-14).** The overage meter rides Stripe Billing Meters directly per [`SK-PREMIUM-017`](../premium-tier/decisions/SK-PREMIUM-017-stripe-billing-meters.md) (no Lago); live keys, prices, portal, Tax, webhook + the meter objects are provisioned (`history/founder-actions-log.md` Era 11).
+- **R2 lifecycle policy** — Resolved (`GLOBAL-033`): **90-day retention** on the date-partitioned keys (events are Dashboard-replayable). One-time R2 config; **parked until** bucket size is load-bearing.
+- **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (PLAN §11): the signal exists; the ops cron + alert lands when a dispatch first slips by.
+- **Usage metering — live (2026-08-14).** Overage rides Stripe Billing Meters per [`SK-PREMIUM-017`](../premium-tier/decisions/SK-PREMIUM-017-stripe-billing-meters.md) (no Lago); provisioning logged in `history/founder-actions-log.md` Era 11.
 - **Re-subscribe against a customer deleted in Stripe** (SK-STRIPE-014). A `stripe_customer_id` manually deleted in the Dashboard surfaces as a `500 internal` on the next re-subscribe. **Parked** — it can't arise from our own flow (we never delete customers), and the operator who deleted it is the one who sees the error.
 
 ## Billing constraints and philosophy

@@ -291,13 +291,19 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
       // An existing subscriber changing tier goes through the Billing Portal
       // (Stripe prorates), never a second Checkout — that would create a
-      // parallel subscription and double-bill (SK-STRIPE-010). The status
-      // pass below marks the non-current paid CTA with data-switch.
+      // parallel subscription and double-bill (SK-STRIPE-010). The status pass
+      // below marks the non-current paid CTA with data-switch; a switch to a
+      // *different* plan also carries data-switch-plan, which deep-links to the
+      // plan-change flow (SK-STRIPE-015) instead of the plain portal overview
+      // (which has no switch CTA). Resubscribe (own plan, ending) stays plain.
       if (btn.dataset.switch === "1") {
         btn.disabled = true;
         const original = btn.textContent;
         btn.textContent = "Redirecting…";
-        const outcome = await openBillingPortal(apiBase);
+        const outcome =
+          btn.dataset.switchPlan === "1"
+            ? await openBillingPortal(apiBase, { flow: "switch_plan" })
+            : await openBillingPortal(apiBase);
         if (outcome === "ok") return; // browser is already navigating to Stripe
         btn.disabled = false;
         btn.textContent = original;
@@ -333,10 +339,11 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           }
           if (res.status === 409) {
             // Already subscribed (server backstop if the status pass was stale
-            // or failed) — switch tier in the portal, where Stripe prorates.
-            // openBillingPortal never throws, so restore the button here if it
-            // couldn't redirect rather than leaving it stuck on "Redirecting…".
-            const outcome = await openBillingPortal(apiBase);
+            // or failed) — switch tier in the portal's plan-change flow, where
+            // Stripe prorates (SK-STRIPE-015). openBillingPortal never throws,
+            // so restore the button here if it couldn't redirect rather than
+            // leaving it stuck on "Redirecting…".
+            const outcome = await openBillingPortal(apiBase, { flow: "switch_plan" });
             if (outcome !== "ok") {
               btn.disabled = false;
               btn.textContent = original;
@@ -415,6 +422,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           }
         } else {
           cta.dataset.switch = "1";
+          cta.dataset.switchPlan = "1";
           cta.textContent = "Switch plan";
         }
       }

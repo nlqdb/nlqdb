@@ -62,18 +62,31 @@ export async function fetchBillingUsage(apiBase: string): Promise<BillingUsage |
 
 // Outcome of a portal-open attempt. "ok" means the browser is already
 // navigating to Stripe; the rest map to the caller's inline messaging
-// (404 → no subscription yet, 503 → live keys not configured).
-export type PortalOutcome = "ok" | "no_customer" | "not_configured" | "error";
+// (404 → no subscription yet, 503 → live keys not configured,
+// no_subscription → a switch was asked for but there's no live plan to change,
+// so the caller should route to checkout instead).
+export type PortalOutcome = "ok" | "no_customer" | "no_subscription" | "not_configured" | "error";
 
 // POST /v1/billing/portal — opens the Stripe-hosted Billing Portal and
 // redirects on success. Never throws; returns an outcome the caller renders.
-export async function openBillingPortal(apiBase: string): Promise<PortalOutcome> {
+//
+// Pass `{ flow: "switch_plan" }` to deep-link straight to the plan-change page
+// (upgrade/downgrade) instead of the portal overview — the overview has no
+// switch CTA under Stripe's default configuration (SK-STRIPE-015). The plain
+// call (no options) opens the full portal for manage/cancel.
+export async function openBillingPortal(
+  apiBase: string,
+  opts?: { flow?: "switch_plan" },
+): Promise<PortalOutcome> {
   try {
-    const res = await fetch(`${trimBase(apiBase)}/v1/billing/portal`, {
-      method: "POST",
-      credentials: "include",
-    });
+    const init: RequestInit = { method: "POST", credentials: "include" };
+    if (opts?.flow) {
+      init.headers = { "Content-Type": "application/json" };
+      init.body = JSON.stringify({ flow: opts.flow });
+    }
+    const res = await fetch(`${trimBase(apiBase)}/v1/billing/portal`, init);
     if (res.status === 404) return "no_customer";
+    if (res.status === 409) return "no_subscription";
     if (res.status === 503) return "not_configured";
     if (!res.ok) return "error";
     const { url } = (await res.json()) as { url: string };

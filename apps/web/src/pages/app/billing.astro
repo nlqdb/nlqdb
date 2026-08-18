@@ -197,9 +197,10 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       </p>`;
     }
 
-    // Wire the Upgrade (Hobby→Pro) button. Reuses the /pricing checkout flow:
-    // POST /v1/billing/checkout { plan: "pro" }, redirect to the Stripe URL; a
-    // 409 (already subscribed) falls through to the portal where Stripe prorates.
+    // Wire the Upgrade (Hobby→Pro) button. The caller already holds a live
+    // Hobby subscription, so a second Checkout would double-bill (SK-STRIPE-010);
+    // the switch goes through the portal's plan-change flow, which deep-links
+    // straight to the Pro upgrade with proration (SK-STRIPE-015).
     function wireUpgrade(): void {
       const btn = document.getElementById("billing-upgrade") as HTMLButtonElement | null;
       if (!btn) return;
@@ -207,37 +208,15 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
         const original = btn.textContent ?? "Upgrade to Pro";
         btn.disabled = true;
         btn.textContent = "Redirecting…";
-        try {
-          const res = await fetch(`${apiBase}/v1/billing/checkout`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ plan: "pro" }),
-            credentials: "include",
-          });
-          if (!res.ok) {
-            if (res.status === 409) {
-              // Already subscribed — tier change goes through the portal.
-              const outcome = await openBillingPortal(apiBase);
-              if (outcome !== "ok") {
-                btn.disabled = false;
-                btn.textContent = original;
-                alert("Couldn't open the billing portal. Use “Manage billing” below or email hello@nlqdb.com.");
-              }
-              return;
-            }
-            if (res.status === 503) {
-              btn.textContent = "Not available yet";
-              return;
-            }
-            throw new Error(`checkout failed: ${res.status}`);
-          }
-          const { url } = (await res.json()) as { url: string };
-          window.location.assign(url);
-        } catch {
-          btn.disabled = false;
-          btn.textContent = original;
-          alert("Something went wrong. Please try again or email hello@nlqdb.com.");
+        const outcome = await openBillingPortal(apiBase, { flow: "switch_plan" });
+        if (outcome === "ok") return; // browser is navigating to Stripe
+        btn.disabled = false;
+        btn.textContent = original;
+        if (outcome === "not_configured") {
+          btn.textContent = "Not available yet";
+          return;
         }
+        alert("Couldn't open the upgrade page. Use “Manage billing” below or email hello@nlqdb.com.");
       });
     }
 
