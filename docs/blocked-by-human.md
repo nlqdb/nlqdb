@@ -86,9 +86,10 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    clear. Execution track:
    [`dogfood/INDEX.md`](./features/agent-memory-pivot/worksheets/dogfood/INDEX.md)
    (`D-01..D-07`, one slice per criterion), the founder-set weekly focus
-   number as of 07-28. Gate progress: **1/5** (D-04 run 1, 2026-08-11 —
-   provisioned + seeded the prod memory DB and ran the first ops workload
-   through the public MCP surface; criterion 2 first-10 success 100 % → green,
+   number as of 07-28. Gate progress: **2/5** (criterion 2 green from D-04
+   run 1, 2026-08-11 — provisioned + seeded the prod memory DB and ran the
+   first ops workload through the public MCP surface, first-10 success 100 %;
+   criterion 5 green on #978's deploy — the public `/agents` dashboard is live;
    criterion 1 = 12 real MCP asks, criterion 3 surfaced one silent wrong-answer
    incident. This founder-only launch half stays gated until all five are green).
 
