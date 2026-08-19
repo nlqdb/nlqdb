@@ -2755,7 +2755,34 @@ app.post("/v1/grants", requireSession, async (c) => {
         return c.json({ error: "grantee_not_found" }, 404);
       }
 
+      // EK-06 box 2 — stand up the per-grant, non-owner, SELECT-only
+      // Postgres role the cross-tenant exec path assumes, BEFORE the D1
+      // grants row is written (two-system order, `grant-provision-exec.ts`).
+      // A provision failure fails the mint closed — no "active" grant row
+      // is left pointing at a role that was never created. Dynamic import
+      // keeps the WASM-free Neon client (SK-ASK-024) off the module graph,
+      // matching the delete route.
+      const grantId = crypto.randomUUID();
+      try {
+        const { buildPgClient, resolveDatabaseUrl } = await import("./db-create/pg-client.ts");
+        const { stripDbPrefix } = await import("./db-create/neon-provision.ts");
+        const { provisionGrantRole } = await import("./grant-provision-exec.ts");
+        const pg = buildPgClient(resolveDatabaseUrl(c.env));
+        await provisionGrantRole(tracer, pg, {
+          grantId,
+          schemaName: stripDbPrefix(dbId),
+          scope: scopeCheck.scope,
+        });
+      } catch (err) {
+        const e = err as Error;
+        span.recordException(e);
+        span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+        span.setAttribute("nlqdb.grants.mint.outcome", "provision_failed");
+        return c.json({ error: "provision_failed" }, 500);
+      }
+
       const grant = await mintGrant(c.env.DB, {
+        id: grantId,
         ownerTenantId: session.user.id,
         ownerDbId: dbId,
         granteeTenantId,
