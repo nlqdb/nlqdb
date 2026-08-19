@@ -71,6 +71,11 @@ export function validateScope(raw: unknown): ScopeValidation {
 export async function mintGrant(
   d1: D1Database,
   input: {
+    // Caller-supplied id so the mint route can provision the grant's
+    // Postgres role (keyed on this id via `grant-role.ts`) BEFORE the D1
+    // write, keeping the two-system order fail-closed (`grant-provision-exec.ts`).
+    // Omitted ⇒ minted here (the data-layer tests take this path).
+    id?: string;
     ownerTenantId: string;
     ownerDbId: string;
     granteeTenantId: string;
@@ -78,7 +83,7 @@ export async function mintGrant(
     priceModel: string | null;
   },
 ): Promise<GrantRecord> {
-  const id = crypto.randomUUID();
+  const id = input.id ?? crypto.randomUUID();
   // DB clock for created_at (RETURNING) so it can never disagree with
   // the unixepoch() a later revoke stamps.
   const inserted = await d1
