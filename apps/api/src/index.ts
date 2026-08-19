@@ -1391,7 +1391,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           code: "clarify_required",
           clarification: "create_or_query_pinned",
           pinned_db: pinned ? { id: pinned.id, slug: pinned.slug } : null,
-          reason: routeOutput.reason,
+          // `reason` is the user-facing sentence (rendered as the message); the
+          // router's machine slug lives on the `kind_reason` span, not the wire.
+          reason: "You've pinned a database, but that reads like a request to create a new one.",
         });
       }
       return runCreatePath();
@@ -1449,7 +1451,6 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           return errorResponse(c, {
             code: "ambiguous_db",
             candidate_dbs: tenantCandidates.map((d) => ({ id: d.id, slug: d.slug })),
-            reason: routeOutput.reason,
           });
         }
       }

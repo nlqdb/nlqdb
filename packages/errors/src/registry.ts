@@ -326,7 +326,6 @@ export const REGISTRY = {
     recoverability: "clarify",
     params: z.object({
       candidate_dbs: z.array(dbRef).max(20).default([]).catch([]),
-      reason: sentence,
     }),
     message: () => "More than one of your databases could answer that.",
     action: (p) =>
