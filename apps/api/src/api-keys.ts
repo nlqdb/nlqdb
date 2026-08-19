@@ -252,6 +252,24 @@ export async function listKeysByTenant(d1: D1Database, tenantId: string): Promis
   }));
 }
 
+// Active (non-revoked) count of the two `POST /v1/keys`-mintable key types
+// for a tenant. Backs the per-account mint cap. Scoped to `sk_live` + `sk_mcp`
+// because those are the only kinds this endpoint creates: `pk_live` is a
+// side-effect of `db.create` (its own provisioning limits) and `byollm` is a
+// stored credential, not a bearer key. The mint endpoint is authenticated and
+// self-scoped, so this caps a tenant over-allocating its OWN keys (abuse via
+// throwaway accounts, D1 bloat, revocation surface) — not a cross-tenant path.
+export async function countActiveMintableKeys(d1: D1Database, tenantId: string): Promise<number> {
+  const row = await d1
+    .prepare(
+      "SELECT COUNT(*) AS n FROM api_keys " +
+        "WHERE tenant_id = ? AND key_type IN ('sk_live', 'sk_mcp') AND revoked_at IS NULL",
+    )
+    .bind(tenantId)
+    .first<{ n: number }>();
+  return row?.n ?? 0;
+}
+
 export type RevokeOutcome = "revoked" | "already_revoked" | "not_found";
 
 // Hard-revokes a key by id, tenant-scoped. Sets `revoked_at = unixepoch()`

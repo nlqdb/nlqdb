@@ -748,6 +748,8 @@ function messageFor(err: unknown): string {
 function messageForMint(err: unknown): string {
   if (err instanceof NlqdbApiError) {
     if (err.code === "name_too_long") return "Name must be 80 characters or fewer.";
+    if (err.code === "key_limit_reached")
+      return "You've reached the maximum number of active keys. Revoke one you're not using, then mint again.";
     if (err.httpStatus === 401) return "Sign in again to mint a key.";
     return serverCopy(err) ?? "Couldn't mint the key. Try again.";
   }

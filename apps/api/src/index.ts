@@ -45,6 +45,7 @@ import { buildSetCookie, signAnonStash } from "./anon-stash.ts";
 import {
   apiKeyHmacSecret,
   bumpKeyLastUsed as bumpKeyLastUsedImpl,
+  countActiveMintableKeys,
   getKeyDefaultModel,
   getKeyStatusByHash,
   hmacHex,
@@ -2504,6 +2505,13 @@ app.get("/v1/chat/messages", requireSession, async (c) => {
 const KEY_NAME_MAX = 80;
 const MCP_HOST_MAX = 32;
 const DEVICE_ID_MAX = 64;
+// Per-account cap on active `sk_*` keys mintable here. Bounds the
+// unbounded-resource-allocation vector on this authenticated, self-scoped
+// endpoint (a tenant filling its own account, e.g. via a scripted client):
+// mint is refused once the tenant holds this many active keys, and revoking
+// frees a slot. Generous headroom over the "<50 typical" in the api-keys
+// feature doc, so no real integration is squeezed; revoked keys don't count.
+const ACTIVE_KEY_LIMIT = 100;
 
 app.post("/v1/keys", requireSession, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
@@ -2538,6 +2546,15 @@ app.post("/v1/keys", requireSession, async (c) => {
       if (prior) {
         span.setAttribute("nlqdb.keys.mint.outcome", "idempotent_replay");
         return c.json({ ...prior, replayed: true });
+      }
+
+      // Per-account active-key cap (checked after the idempotency replay so a
+      // legitimate retry is never blocked). Refuses a new mint once the tenant
+      // holds `ACTIVE_KEY_LIMIT` active sk_* keys; revoking one frees a slot.
+      const activeKeys = await countActiveMintableKeys(c.env.DB, session.user.id);
+      if (activeKeys >= ACTIVE_KEY_LIMIT) {
+        span.setAttribute("nlqdb.keys.mint.outcome", "key_limit_reached");
+        return c.json({ error: "key_limit_reached", limit: ACTIVE_KEY_LIMIT }, 409);
       }
 
       if (type === "sk_live") {

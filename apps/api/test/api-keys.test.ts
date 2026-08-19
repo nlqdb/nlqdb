@@ -12,6 +12,7 @@ import {
   adoptApiKeys,
   apiKeyHmacSecret,
   bumpKeyLastUsed,
+  countActiveMintableKeys,
   getKeyDefaultModel,
   listKeysByTenant,
   lookupPkLiveKey,
@@ -88,6 +89,35 @@ describe("apiKeyHmacSecret (SK-APIKEYS-014)", () => {
   it("falls back to BETTER_AUTH_SECRET when API_KEY_SECRET is unset or empty", () => {
     expect(apiKeyHmacSecret({ BETTER_AUTH_SECRET: "session" })).toBe("session");
     expect(apiKeyHmacSecret({ API_KEY_SECRET: "", BETTER_AUTH_SECRET: "session" })).toBe("session");
+  });
+});
+
+describe("countActiveMintableKeys (POST /v1/keys cap)", () => {
+  it("returns the COUNT of active sk_* keys, filtered by tenant + non-revoked", async () => {
+    const { db } = stubDb({ selectRow: { n: 42 } });
+    expect(await countActiveMintableKeys(db, "tenant_1")).toBe(42);
+  });
+
+  it("only counts sk_live / sk_mcp and excludes revoked rows in the query", async () => {
+    // Assert the WHERE clause so the cap can't silently start counting
+    // pk_live (db.create side-effect) or revoked keys.
+    let seenSql = "";
+    const db = {
+      prepare: (sql: string) => {
+        seenSql = sql;
+        return {
+          bind: () => ({ first: async () => ({ n: 3 }) }),
+        };
+      },
+    } as unknown as D1Database;
+    await countActiveMintableKeys(db, "tenant_1");
+    expect(seenSql).toContain("key_type IN ('sk_live', 'sk_mcp')");
+    expect(seenSql).toContain("revoked_at IS NULL");
+  });
+
+  it("treats a missing count row as 0 (no keys yet)", async () => {
+    const { db } = stubDb();
+    expect(await countActiveMintableKeys(db, "tenant_1")).toBe(0);
   });
 });
 
