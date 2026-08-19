@@ -5,47 +5,41 @@ The reach loop's scorecard-equivalent: **overwrite in place, no changelog**
 [`INDEX.md`](INDEX.md); this file holds only the latest measured state, so it
 can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
 
-- **Cycle 2026-08-18 — state flat vs 08-17; slice shipped: made the one
-  citable reach asset (`/agent-memory-benchmarks/`) machine-citable.** No
-  Done-when box was agent-flippable (all three owed boxes gate on measurement
-  outcomes I cannot force from here — R-07's `agent-artifacts` `/app/admin`
-  visit, R-09's `claude-plugin` visit, R-10's first nonzero DR). Diversifying
-  off the exhausted index/link lane per anti-rut, and targeting the diagnosed
-  binding constraint (authority + answer-engine retrieval), this cycle added a
-  **schema.org/Dataset JSON-LD node** to `/agent-memory-benchmarks/` — the R-10
-  (b) linkable asset. It is what Google Dataset Search and AI answer engines
-  index to cite a survey/catalog like this (P2 verified 08-18:
-  [Google Dataset docs](https://developers.google.com/search/docs/appearance/structured-data/dataset),
-  [schema.org/Dataset](https://schema.org/Dataset),
-  [2026 AI-search structured-data guidance](https://www.stackmatix.com/blog/structured-data-ai-search)).
-  Derived entirely from `memoryBenchmarks.ts` (can't drift from the rendered
-  view); `citation`/`isBasedOn` expose every primary source (arXiv + the LoCoMo
-  audit) for a crawler to follow; carries **no nlqdb score** (hard rule 1).
-  Lands one week before the R-08 answer-engine retrieval re-check (08-22) — the
-  first read after the AI-crawler robots block was lifted (08-04), now with the
-  asset both indexed and machine-annotated.
+- **Cycle 2026-08-19 — NULL RUN (fresh measurement, no slice diff). State flat
+  vs 08-18.** Every remaining Done-when box is a **measurement outcome an agent
+  cannot force with a code diff**: R-07's `agent-artifacts` `/app/admin` visit,
+  R-09's `claude-plugin` `/app/admin` visit, and R-10's first nonzero DR — all
+  read from `/app/admin` or the Ahrefs endpoint, none flippable here. The
+  agent-doable authority/retrieval lane is **fully paid off and verified intact
+  this cycle**: `/agent-memory-benchmarks/` is wired into `llms.txt` (path row +
+  `## For coding agents`), the Footer, its canonical, and the blog cross-link;
+  the 08-18 schema.org/Dataset node and the 08-07 `/agents`→wedge crawl links
+  are in place. No markup added — #1019 (merged 08-19) just removed
+  rich-result-ineligible structured data site-wide, so speculative new markup is
+  contraindicated. **Sole binding constraint remains authority (DR 0.0), which
+  moves only via the founder-shaped launch** (blocked-by-human.md #1, gated on
+  the SK-PIVOT-016 dogfood gate). Nothing agent-pullable → null run per step 2.
 - **Domain Rating (R-10, `bun scripts/ahrefs-dr.ts` — free Ahrefs public
-  endpoint, live 2026-08-18): nlqdb.com 0.0 · docs.nlqdb.com 0.0 · mem0.ai
-  74.0.** Flat across every read since 08-04 — the **sole binding constraint**
-  now the wedge index is closed at 6/6. R-10's last box (first nonzero DR) stays
-  owed; the largest referring-domain events are founder-shaped (launch /
-  community posts, `blocked-by-human.md` #1). Referring-domains itself is not
-  free-tier readable (`backlinks-stats` is Site-Explorer/paid), so DR stays the
-  only free authority read for `nlqdb.com`.
-- **GSC** (live 2026-08-18, 28d 07-19→08-16): **12 clicks / 625 impr / pos
-  21.7**; **query-level 0 intent-query clicks**. The one real ICP intent query
+  endpoint, live 2026-08-19): nlqdb.com 0.0 · docs.nlqdb.com 0.0 · mem0.ai
+  74.0.** Flat across every read since 08-04 — the **sole binding constraint**.
+  R-10's last box (first nonzero DR) stays owed; the largest referring-domain
+  events are founder-shaped (launch / community posts, `blocked-by-human.md` #1).
+  Referring-domains itself is not free-tier readable (`backlinks-stats` is
+  Site-Explorer/paid), so DR stays the only free authority read for `nlqdb.com`.
+- **GSC** (live 2026-08-19, 28d 07-20→08-17): **11 clicks / 643 impr / pos
+  22.0**; **query-level 0 intent-query clicks**. The one real ICP intent query
   holds page 1: "i need a relational database for ai agent world use cases like
   planning, retrieval, and action execution. what tools fit best in 2026?" —
   pos 8.0, 3 impr. The R-10(b) benchmark asset **`/agent-memory-benchmarks/` is
   indexed and earning impressions — 13 impr / pos 14.6**, but its target queries
   still surface off page 1 ("locomo benchmark ai memory") — consistent with DR
   0. Biggest winnable page stays `solve/running-total-cumulative-sum-in-sql`
-  (114 impr / pos 36.7); `security/hall-of-fame` earns 5 page-level clicks
-  (pos 23.3) — the site's best converter, off-wedge.
-- **Per-URL index truth (URL Inspection API, live 2026-08-18): 6 of 6 wedge
+  (112 impr / pos 36.7); `security/hall-of-fame` earns 5 page-level clicks
+  (pos 22.8) — the site's best converter, off-wedge.
+- **Per-URL index truth (URL Inspection API, live 2026-08-19): 6 of 6 wedge
   pages indexed** — `/agents/` (crawled 08-16),
   `solve/best-way-to-store-agent-memory` (08-12),
-  `solve/build-vs-buy-agent-memory` (08-12),
+  `solve/build-vs-buy-agent-memory` (08-17),
   `solve/expire-old-agent-memory` (08-12),
   `solve/agent-memory-mcp-server` (08-13), and
   `docs.nlqdb.com/agent-memory/` (08-11). Internal-link + indexing levers
@@ -70,6 +64,9 @@ can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
   yield 0. Install-yield gate (a real `agent-artifacts` visit in `/app/admin`)
   unmeasurable from here.
 - Answer-engine retrieval presence (R-08 baseline, 2026-07-22): **0/10**.
-  Monthly; next 2026-08-22, so not re-run this cycle — and now the first read
-  after both the 08-04 AI-crawler robots unblock and this cycle's Dataset
-  markup on the one citable target.
+  Monthly; **next 2026-08-22** — respected, not burned 3 days early to keep the
+  clean monthly comparison. That read is the first after both the 08-04
+  AI-crawler robots unblock and the 08-18 Dataset markup on the one citable
+  target; R-05's PulseMCP + mcp.directory re-checks and R-10's crawl-lever
+  verification also fall due 08-22, so the next cycle on/after that date carries
+  the real signal.
