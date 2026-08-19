@@ -152,6 +152,22 @@ them are the engine roadmap. Canonical plan + exit gates:
 [`docs/phase-plan.md`](./docs/phase-plan.md). Legend:
 **✓ shipped · ~ in progress · ◯ planned**.
 
+> **This roadmap is yours to shape.** Want something added, reprioritised, or
+> dropped? Open a PR editing this section (and
+> [`docs/phase-plan.md`](./docs/phase-plan.md) if it's engine-facing), or open
+> an issue to float it first. Say **why now** — which of the four north-star
+> pillars (engine quality, onboarding, UX, performance) it moves. New to the
+> codebase? Point your coding agent at this repo and paste:
+>
+> ```
+> Read README.md and docs/phase-plan.md, then propose a roadmap change:
+> add/change "<your idea>" under the right section in one line, with a
+> "why now" naming which north-star pillar it moves. Open a PR with just
+> that edit — no code.
+> ```
+>
+> Setup, branch naming, and the CLA are in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 ### Now — analytical agent memory (the wedge)
 
 Memory your agent can `GROUP BY`: real Postgres tables per memory type,
