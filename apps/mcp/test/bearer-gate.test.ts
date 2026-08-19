@@ -139,16 +139,15 @@ describe("apps/mcp auth boundary (slice 3b)", () => {
   });
 });
 
-// WS06-T5 — DNS-rebinding defense per the MCP Streamable-HTTP spec
-// (rev 2025-11-25): validate `Origin` on every connection, 403 an
-// invalid one. Native clients send no `Origin` and must still pass.
-describe("apps/mcp Origin validation (DNS-rebinding defense)", () => {
+// `SK-MCP-016` — `/mcp` accepts any browser Origin (CORS reflects it,
+// cookies never accepted); OAuth / consent endpoints keep the allowlist.
+describe("apps/mcp Origin validation", () => {
   it("allows requests with no Origin (native MCP clients, server-to-server)", async () => {
     const res = await SELF.fetch("https://mcp.nlqdb.test/health");
     expect(res.status).toBe(200);
   });
 
-  it("allows the server's own origin", async () => {
+  it("allows the server's own origin on OAuth / discovery routes", async () => {
     const res = await SELF.fetch("https://mcp.nlqdb.test/health", {
       headers: { origin: "https://mcp.nlqdb.test" },
     });
@@ -163,19 +162,70 @@ describe("apps/mcp Origin validation (DNS-rebinding defense)", () => {
     expect(res.status).toBe(200);
   });
 
-  it("rejects an unknown browser origin with 403", async () => {
-    const res = await SELF.fetch("https://mcp.nlqdb.test/health", {
+  it("rejects an unknown browser origin on discovery / OAuth routes with 403", async () => {
+    const res = await SELF.fetch("https://mcp.nlqdb.test/.well-known/oauth-authorization-server", {
       headers: { origin: "https://evil.example" },
     });
     expect(res.status).toBe(403);
   });
+});
 
-  it("rejects an unknown origin before the /mcp auth gate (403, not 401)", async () => {
+// `SK-MCP-016` — `/mcp` transport accepts any browser Origin so
+// browser-based MCP clients (llama.cpp web UI, in-browser agent hosts)
+// can connect. The load-bearing invariant is that `/mcp` reads only
+// Bearer tokens and NEVER cookies (which closes the CSRF path a wide
+// CORS surface would otherwise open).
+describe("apps/mcp /mcp browser-origin support (SK-MCP-016)", () => {
+  it("answers OPTIONS preflight from an arbitrary browser Origin with CORS", async () => {
+    const res = await SELF.fetch("https://mcp.nlqdb.test/mcp", {
+      method: "OPTIONS",
+      headers: {
+        origin: "http://127.0.0.1:8080",
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "authorization, content-type",
+      },
+    });
+    expect(res.status).toBe(204);
+    expect(res.headers.get("access-control-allow-origin")).toBe("http://127.0.0.1:8080");
+    expect(res.headers.get("access-control-allow-headers")).toContain("authorization");
+    // DELETE must be advertised so a browser client can preflight session teardown.
+    expect(res.headers.get("access-control-allow-methods") ?? "").toContain("DELETE");
+    expect(res.headers.get("access-control-expose-headers") ?? "").toContain("Mcp-Session-Id");
+    // No credentials — cookies are never accepted on /mcp.
+    expect(res.headers.get("access-control-allow-credentials")).toBeNull();
+  });
+
+  it("returns 401 with CORS headers on an arbitrary browser Origin so the browser can read WWW-Authenticate", async () => {
+    // A browser client must be able to READ the 401 + WWW-Authenticate
+    // to start the OAuth flow — without CORS on the error the flow
+    // dead-ends in the browser.
     const res = await SELF.fetch("https://mcp.nlqdb.test/mcp", {
       method: "POST",
-      headers: { "content-type": "application/json", origin: "https://evil.example" },
+      headers: {
+        "content-type": "application/json",
+        origin: "http://127.0.0.1:8080",
+      },
       body: JSON.stringify({ jsonrpc: "2.0", method: "ping", id: 1 }),
     });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
+    expect(res.headers.get("access-control-allow-origin")).toBe("http://127.0.0.1:8080");
+    expect(res.headers.get("access-control-expose-headers") ?? "").toContain("WWW-Authenticate");
+  });
+
+  it("does not authenticate /mcp via cookies (the invariant that keeps wide CORS safe)", async () => {
+    // If /mcp ever accepted cookie-based auth, the wide CORS surface
+    // above would open a CSRF path. This test pins the invariant: a
+    // request carrying only cookies (no Authorization header) is
+    // unauthenticated.
+    const res = await SELF.fetch("https://mcp.nlqdb.test/mcp", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "http://127.0.0.1:8080",
+        cookie: "session=whatever; better-auth.session_token=whatever",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "ping", id: 1 }),
+    });
+    expect(res.status).toBe(401);
   });
 });
