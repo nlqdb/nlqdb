@@ -26,9 +26,10 @@ the [curl tutorial](/tutorials/curl/).
 
 ## Error codes
 
-Every non-2xx response carries a JSON envelope `{ "error": { "status": <code>, … } }`
+Every non-2xx response carries a JSON envelope
+`{ "error": { "code": <code>, "message", "action", "retryable", "params"? } }`
 (`GLOBAL-012`). An agent can read this table *before* calling to decide which codes are
-retryable and which need a human. `status` is the discriminant the SDK exposes as
+retryable and which need a human. `code` is the discriminant the SDK exposes as
 `err.code`; the same set is the `ApiErrorCode` union in
 [`packages/sdk/src/index.ts`](/reference/sdk/), kept in lockstep by a build-time guard
 (`apps/docs/scripts/check-error-codes.ts`).
@@ -103,9 +104,10 @@ The last four are **SDK-only sentinels** — the API never sends them; the SDK r
 for transport states. Recoverable failures (transport errors and transient 5xx) are
 retried automatically by `@nlqdb/sdk` before they ever surface (`SK-SDK-008`).
 
-### Envelope fields beyond `status`
+### Envelope fields beyond `code`
 
-Some codes carry extra fields an agent should branch on:
+Some codes carry extra fields (under `error.params`, and mirrored top-level on
+`err.body` by the SDK) an agent should branch on:
 
 - `candidate_dbs` — on `ambiguous_db`: `[{ id, slug }]` to render a picker.
 - `pinned_db` — on `clarify_required`: the DB that was pinned when the goal looked like a create.

@@ -749,15 +749,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       if (principal.kind !== "user") {
         span.setAttribute("nlqdb.ask.outcome", "byollm_requires_session");
         span.end();
-        return c.json(
-          {
-            error: {
-              code: "byollm_requires_session" as const,
-              message: `${BYOLLM_HEADER} requires a signed-in session; sign in to use your own LLM key.`,
-            },
-          },
-          400,
-        );
+        return fail(c, "byollm_requires_session");
       }
       const parsedKey = parseByollmHeader(byollmHeaderRaw);
       if (!parsedKey.ok) {
@@ -1395,17 +1387,12 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         const pinned = tenantCandidates.find((d) => d.id === parsed.body.dbId);
         span.setAttribute("nlqdb.ask.outcome", "clarify_create_with_pinned_db");
         span.end();
-        return c.json(
-          {
-            error: {
-              code: "clarify_required" as const,
-              clarification: "create_or_query_pinned" as const,
-              pinned_db: pinned ? { id: pinned.id, slug: pinned.slug } : null,
-              reason: routeOutput.reason,
-            },
-          },
-          409,
-        );
+        return errorResponse(c, {
+          code: "clarify_required",
+          clarification: "create_or_query_pinned",
+          pinned_db: pinned ? { id: pinned.id, slug: pinned.slug } : null,
+          reason: routeOutput.reason,
+        });
       }
       return runCreatePath();
     }
@@ -1459,16 +1446,11 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         if (!parsed.body.dbId) {
           span.setAttribute("nlqdb.ask.dbid_resolution", "ambiguous_409");
           span.end();
-          return c.json(
-            {
-              error: {
-                code: "ambiguous_db" as const,
-                candidate_dbs: tenantCandidates.map((d) => ({ id: d.id, slug: d.slug })),
-                reason: routeOutput.reason,
-              },
-            },
-            409,
-          );
+          return errorResponse(c, {
+            code: "ambiguous_db",
+            candidate_dbs: tenantCandidates.map((d) => ({ id: d.id, slug: d.slug })),
+            reason: routeOutput.reason,
+          });
         }
       }
     }
@@ -1692,9 +1674,13 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
             },
           });
           if (!outcome.ok) {
+            // SK-ERR-001 — render the streamed error through the registry, same
+            // as the non-SSE path (`errorResponse`): a raw `outcome.error` would
+            // reach the surface with no message/action/retryable, and every
+            // surface renders the wire copy verbatim (GLOBAL-012).
             await stream.writeSSE({
               event: "error",
-              data: JSON.stringify({ error: outcome.error }),
+              data: JSON.stringify(errorEnvelope(outcome.error).body),
             });
             emitFeatureSignal(
               buildEventEmitter(c.env.EVENTS_QUEUE),
@@ -2954,7 +2940,7 @@ app.post("/v1/packs/imports", async (c) => {
         return c.json(
           {
             error: {
-              status: created.reason,
+              code: created.reason,
               ...(created.reason === "invalid_source" ? { reason: created.detail } : {}),
             },
           },

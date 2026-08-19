@@ -669,6 +669,10 @@ export function mapSdkError(err: unknown): ToolError {
   const apiErr = err as NlqdbApiError | undefined;
   const code = apiErr?.code ?? "unknown_error";
   const body = apiErr?.body ?? null;
+  // A streamed ask error arrives flat (`{code, table, …}`); a JSON error nests
+  // the same fields under `params`. Read either shape — the registry's schema
+  // ignores the extra top-level keys — so copy and details render for both.
+  const params = (body?.params ?? body ?? undefined) as Record<string, unknown> | undefined;
 
   // A registry code: render the wire copy, then apply the sparse MCP override.
   // `renderError` covers the SDK-only sentinels (network_error, aborted, …),
@@ -676,12 +680,12 @@ export function mapSdkError(err: unknown): ToolError {
   if (isErrorCode(code)) {
     const wire = body?.message
       ? { message: body.message, action: body.action ?? "" }
-      : renderError(code, body?.params);
+      : renderError(code, params);
     const override = OVERRIDES[code];
-    const details = detailsFor(code, body?.params);
+    const details = detailsFor(code, params);
     const action =
       typeof override?.action === "function"
-        ? override.action(body?.params ?? {})
+        ? override.action(params ?? {})
         : (override?.action ?? wire.action);
     return {
       code,

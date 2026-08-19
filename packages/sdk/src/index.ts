@@ -1314,8 +1314,8 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
             break;
           }
           case "error": {
-            const p = payload as { error?: ApiErrorBody };
-            const errBody = p.error ?? null;
+            const p = payload as { error?: Record<string, unknown> };
+            const errBody = p.error ? normalizeErrorBody(p.error) : null;
             throw new NlqdbApiError(
               `nlqdb: /v1/ask → ${errBody?.code ?? "unknown_error"}`,
               200,
@@ -1751,6 +1751,20 @@ function buildByollmHeader(cred: ByollmCredential): string {
   return value;
 }
 
+// The registry nests declared cause fields under `params` (SK-ERR-002), but
+// `ApiErrorBody` also exposes them top-level (`candidate_dbs`, `options`,
+// `pinned_db`, …) so a surface can read `err.body.<field>`. Surface them at
+// both levels; the envelope's own keys win over `params`. Applied to both the
+// JSON error path and the SSE `error` frame so `err.body` is identical either way.
+function normalizeErrorBody(inner: Record<string, unknown>): ApiErrorBody {
+  const params = inner["params"];
+  return (
+    params && typeof params === "object"
+      ? { ...(params as Record<string, unknown>), ...inner }
+      : inner
+  ) as ApiErrorBody;
+}
+
 // Normalize the API's TWO error envelope shapes into a single
 // `ApiErrorBody`:
 //
@@ -1773,7 +1787,7 @@ function extractError(parsed: unknown): ApiErrorBody | null {
   }
   if (errEnvelope && typeof errEnvelope === "object") {
     const inner = errEnvelope as Record<string, unknown>;
-    if (typeof inner["code"] === "string") return inner as ApiErrorBody;
+    if (typeof inner["code"] === "string") return normalizeErrorBody(inner);
   }
   return null;
 }

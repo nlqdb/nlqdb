@@ -1029,6 +1029,37 @@ describe("mapSdkError", () => {
     expect(err.details?.["candidate_dbs"]).toHaveLength(2);
   });
 
+  // SK-ERR-001 — a streamed `/v1/ask` error frame arrives FLAT (fields at the
+  // top level, no `params` wrapper) while a JSON error nests them under
+  // `params`. `mapSdkError` must render copy + details from either shape; the
+  // params-only fixtures above once masked a regression where the streamed
+  // (flat) body rendered generic copy with no candidate list.
+  it("reads cause fields from a flat (streamed) body, not only params", () => {
+    const apiErr = new NlqdbApiError("ambiguous", 409, "ambiguous_db", "/v1/ask", {
+      code: "ambiguous_db",
+      candidate_dbs: [
+        { id: "db_1", slug: "orders" },
+        { id: "db_2", slug: "inventory" },
+      ],
+    } as unknown as NlqdbApiError["body"]);
+    const err = mapSdkError(apiErr);
+    expect(err.code).toBe("ambiguous_db");
+    expect(err.details?.["candidate_dbs"]).toHaveLength(2);
+  });
+
+  it("renders write_constraint field names from a flat body", () => {
+    const apiErr = new NlqdbApiError("constraint", 409, "write_constraint", "/v1/ask", {
+      code: "write_constraint",
+      kind: "foreign_key",
+      table: "orders",
+      column: "user_id",
+    } as unknown as NlqdbApiError["body"]);
+    const err = mapSdkError(apiErr);
+    expect(err.code).toBe("write_constraint");
+    // The field name must reach the message, not degrade to the generic branch.
+    expect(err.message).toContain("orders.user_id");
+  });
+
   // These statuses previously had no branch and all collapsed to the
   // generic bucket. Each must now carry a specific message + a next action
   // and preserve its machine-readable code (GLOBAL-012).

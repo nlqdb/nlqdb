@@ -324,7 +324,10 @@ export const REGISTRY = {
   ambiguous_db: defineError({
     httpStatus: 409,
     recoverability: "clarify",
-    params: z.object({ candidate_dbs: z.array(dbRef).max(20).default([]).catch([]) }),
+    params: z.object({
+      candidate_dbs: z.array(dbRef).max(20).default([]).catch([]),
+      reason: sentence,
+    }),
     message: () => "More than one of your databases could answer that.",
     action: (p) =>
       p.candidate_dbs.length > 0

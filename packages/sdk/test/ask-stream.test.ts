@@ -111,6 +111,35 @@ describe("askStream", () => {
     }
   });
 
+  it("surfaces params-nested cause fields at the top level of err.body (SK-ERR-002)", async () => {
+    // The registry nests declared fields under `params`; `ApiErrorBody` also
+    // exposes them top-level so a surface reads `err.body.candidate_dbs`.
+    const frames =
+      `event: plan\ndata: ${JSON.stringify({ trace: TRACE })}\n\n` +
+      `event: error\ndata: ${JSON.stringify({
+        error: {
+          code: "ambiguous_db",
+          message: "More than one of your databases could answer that.",
+          action: "Say which one you mean.",
+          retryable: false,
+          params: { candidate_dbs: [{ id: "db_1", slug: "orders" }] },
+        },
+      })}\n\n`;
+    const fakeFetch: FetchLike = async () => sseResponse([frames]);
+    const client = createClient({ withCredentials: true, fetch: fakeFetch });
+    try {
+      await client.askStream({ goal: "x", dbId: "db_1" }, {});
+      expect.fail("should have thrown");
+    } catch (err) {
+      const e = err as NlqdbApiError;
+      expect(e.code).toBe("ambiguous_db");
+      // Both shapes are readable: the nested params AND the mirrored top level.
+      expect(e.body?.candidate_dbs).toEqual([{ id: "db_1", slug: "orders" }]);
+      expect(e.body?.params?.["candidate_dbs"]).toEqual([{ id: "db_1", slug: "orders" }]);
+      expect(e.body?.message).toBe("More than one of your databases could answer that.");
+    }
+  });
+
   it("throws 'missing trace block' when `done` arrives with no `plan` event (SK-TRUST-002)", async () => {
     const frames =
       `event: rows\ndata: ${JSON.stringify({ rows: [], rowCount: 0 })}\n\n` +
