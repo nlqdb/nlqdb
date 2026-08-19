@@ -940,12 +940,36 @@
   background: var(--bg-elev);
 }
 
+/* Blunt line + muted model attribution stack to the left of the CTA. min-width:0
+   lets a long model id wrap instead of stretching the row. */
+.chat-reply__free-nudge-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .chat-reply__free-nudge-text {
   margin: 0;
   font-family: var(--sans);
   font-size: 13px;
   line-height: 1.4;
   color: var(--fg);
+}
+
+/* Which free model produced the struggled answer — transparency, not blame:
+   muted, small, the id itself in mono so it reads as a machine name. */
+.chat-reply__free-nudge-model {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--fg-muted);
+}
+
+.chat-reply__free-nudge-model code {
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
 }
 
 .chat-reply__free-nudge-cta {
