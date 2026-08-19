@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 // is a thin/soft-404 an Ahrefs crawl of the merged app host (SK-WEB-026)
 // flagged. They sit outside the sitemap and must carry `noindex` so a new shell
 // page can't silently ship indexable and re-open that error.
-const PAGES = dirname(fileURLToPath(import.meta.url));
+const PAGES = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 function shellPages(dir: string): string[] {
   return readdirSync(join(PAGES, dir))
