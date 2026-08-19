@@ -59,11 +59,20 @@ the 10 s request cap. The `app.tenant_id`/`app.agent_id` GUCs carry the
 **owner's** identity so the owner's `agent_isolation` policy returns the
 owner's published rows (full-tenant visibility via the tenant-literal arm);
 buyer identity drives metering attribution at the app layer
-(`grant-usage.ts`), not a GUC — so no buyer-side GUC is set. Still box 2's
-open work: (c) the live `/v1/ask` route wiring that runs this batch, whose
-`app.*` GUC values against the `agent_memory_v1` `agent_isolation` RLS
-policy get their **live PG verification** (owner rows returned, nothing
-else) alongside the RLS-bypass kill-test.
+(`grant-usage.ts`), not a GUC — so no buyer-side GUC is set.
+**Box 2 — provisioning wired into mint shipped 2026-08-19 (sub-piece c,
+provision leg):** `apps/api/src/grant-provision-exec.ts`
+(`provisionGrantRole`) runs the `buildGrantRoleDdl` batch against the shared
+Neon branch in one spanned transaction (`GLOBAL-014`; 30 s `statement_timeout`
+cap, SK-HDC-010), and `POST /v1/grants` now calls it **before** the D1 grants
+row is written — the `neon-provision.ts` "Postgres first, D1 second" order, so
+a later D1 failure leaves only a harmless idempotent orphan role, never an
+"active" grant whose buyer queries fail closed on a missing role (P6). Mint
+fails closed with `provision_failed` if the role cannot be stood up. Still box
+2's open work: the buyer's live `/v1/ask` **exec** wiring that runs the
+`grant-exec.ts` batch, whose `app.*` GUC values against the `agent_memory_v1`
+`agent_isolation` RLS policy get their **live PG verification** (owner rows
+returned, nothing else) alongside the RLS-bypass kill-test.
 
 ## Goal
 
@@ -121,8 +130,11 @@ satisfy):
       `buildHostedExecSteps` analogue: grant role asserted, in-flight
       `statement_timeout` pinned to the revocation bound, owner-scoped RLS
       GUCs; load-bearing order shared via `ask/exec-steps.ts` so hosted and
-      grant paths can't drift; unit-tested). RLS-bypass kill-test + live
-      `/v1/ask` route wiring await the rest of the DB-role half; see header.)*
+      grant paths can't drift; unit-tested). Provisioning wired into mint
+      2026-08-19 — `grant-provision-exec.ts` `provisionGrantRole` runs the
+      DDL batch in one spanned transaction and `POST /v1/grants` calls it
+      before the D1 write (Postgres-first, fail-closed). RLS-bypass kill-test
+      + the buyer's live `/v1/ask` exec wiring await the rest; see header.)*
 - [ ] Usage records emitted per granted query, idempotent under retry.
       *(Meter primitive shipped 2026-08-10 — migration `0028_grant_usage.sql`
       + `apps/api/src/grant-usage.ts` `recordGrantUsage`: one row per
