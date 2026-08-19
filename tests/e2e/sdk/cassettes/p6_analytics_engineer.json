@@ -33,10 +33,10 @@
         "status": 422,
         "body": {
           "error": {
-            "status": "low_confidence",
-            "code": "refused_below_floor",
+            "code": "low_confidence",
             "message": "I don't have enough confidence to answer this safely. Try a more specific question (e.g. 'how many orders today').",
-            "action": "clarify"
+            "action": "Rephrase with the exact table and column names you mean.",
+            "retryable": false
           }
         }
       }

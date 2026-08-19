@@ -163,7 +163,7 @@ describe("P2 — Agent Builder · MCP protocol contract", () => {
             401,
             "unauthorized",
             "/v1/ask",
-            { status: "unauthorized", message: "token missing or revoked" },
+            { code: "unauthorized", message: "token missing or revoked" },
           );
         },
       }),

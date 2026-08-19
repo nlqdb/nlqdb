@@ -10,7 +10,7 @@
         "status": 503,
         "body": {
           "error": {
-            "status": "llm_failed",
+            "code": "llm_failed",
             "message": "upstream provider transient failure"
           }
         }

@@ -3,11 +3,11 @@ import { type NlqClient, NlqdbApiError } from "@nlqdb/sdk";
 import { describe, expect, it, vi } from "vitest";
 import {
   connectDatabaseInputShape,
-  GENERIC_ERROR_MESSAGE,
   createListDatabasesCache,
   formatError,
   formatQueryResult,
   formatResult,
+  GENERIC_ERROR_MESSAGE,
   handleConnectDatabase,
   handleDescribe,
   handleListDatabases,

@@ -65,6 +65,35 @@ retryable and which need a human. `status` is the discriminant the SDK exposes a
 | `invalid_request` | 400 | Malformed body, or a bad / non-HTTPS / egress-blocked connection URL (`body.message`). | No | Fix the field named in `body.message`. |
 | `introspection_failed` | 502 | The connected database couldn't be reached or read. | Yes | Check the host and credential, then retry. |
 | `sealing_unconfigured` | 503 | The server can't seal secrets (KEK unset). | No | Operator action — not caller-fixable. |
+| `schema_mismatch` | 409 | The plan named a table this database doesn't have (`body.params`). | No | Ask about a table it has, or create a new database. |
+| `write_constraint` | 409 | An approved write hit a constraint (FK / unique / not-null / check); nothing was written (`body.params`). | No | Fix the named field, then ask again. |
+| `write_no_rows` | 409 | An approved write matched no rows — previewed or committed (`body.params.phase`). | No | Name the row or widen the filter, then ask again. |
+| `invalid_value` | 409 | A value didn't fit its column (Postgres SQLSTATE class 22). | No | Restate with values that match the column types. |
+| `low_confidence` | 409 | The planner wasn't confident enough in the plan to run it. | No | Rephrase with the exact table and column names. |
+| `goal_too_long` | 400 | `goal` exceeds the length limit (`body.params.maxLength`). | No | Shorten it to the essential question. |
+| `invalid_scope` | 400 | `agentId` / `endUserId` / `threadId` weren't strings. | No | Send strings, or omit the fields. |
+| `byollm_requires_session` | 400 | A per-request provider key needs a signed-in session. | No | Sign in, or save the key to your account. |
+| `auth_required` | 401 | The anonymous budget is exhausted (`body.params.cap`). | No | Sign in — your prompt is saved. |
+| `account_required` | 403 | The call needs an account-scoped key, not a public embed key. | No | Mint an account key and retry. |
+| `create_requires_session` | 403 | Creating a database needs a signed-in session. | No | Sign in, then create it. |
+| `challenge_required` | 428 | A human check is required before running that. | No | Complete the check, then retry. |
+| `key_not_found` | 404 | No key of yours matched that id. | No | Check the key list, then retry. |
+| `unconfigured` | 503 | That feature isn't configured on this deployment. | No | Operator action — retry later. |
+| `internal_error` | 500 | An unexpected server-side failure. | No | Retry once; if it persists, report it. |
+| `invalid_bearer` | 400 | The `Authorization` header wasn't a usable bearer token. | No | Send `Authorization: Bearer <key>`. |
+| `invalid_token` | 400 | The anonymous token isn't valid. | No | Start a new session. |
+| `token_taken` | 409 | The anonymous session was already claimed by another account. | No | Carry on in this account. |
+| `adopt_failed` | 500 | nlqdb couldn't move anonymous work into this account. | No | Retry once; if it persists, contact support. |
+| `import_not_found` | 404 | The import draft no longer exists. | No | Start the import again. |
+| `import_busy` | 409 | That import is already running. | Yes | Wait for it to finish, then check the result. |
+| `unknown_pack` | 400 | The import pack doesn't exist (`body.params.allowed`). | No | Use a supported pack. |
+| `source_required` | 400 | No source was given for the import. | No | Name the source, then retry. |
+| `invalid_preset` | 400 | The schema preset doesn't exist (`body.params.allowed`). | No | Use a supported preset. |
+| `preset_disabled` | 400 | That preset isn't enabled on this deployment. | No | Create without a preset, or ask the operator to enable it. |
+| `preset_engine_conflict` | 400 | The preset doesn't run on the requested engine. | No | Drop the engine override, or pick a compatible preset. |
+| `provision_failed` | 502 | nlqdb couldn't finish creating the database. | Yes | Retry; nothing was left half-created. |
+| `oauth_not_configured` | 503 | This deployment can't connect that provider by OAuth. | No | Connect with a connection URL instead. |
+| `pick_expired` | 410 | The connection choice expired before it was confirmed. | No | Start the connection again. |
 | `unknown_error` | 5xx | A 5xx with no parseable envelope. | Yes | Retry; if persistent, report it. |
 | `non_json_response` | — | A proxy/CDN returned non-JSON (SDK sentinel). | Maybe | Retry; check the network path. |
 | `network_error` | — | Transport failure, no response (SDK sentinel, `httpStatus === 0`). | Yes | Retry with backoff. |
