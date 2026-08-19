@@ -126,6 +126,59 @@ describe("requirePrincipal middleware", () => {
     });
     expect(res.status).toBe(401);
   });
+
+  // A transient storage/auth throw in any resolver must become a retryable
+  // 503 `auth_unavailable`, never an uncaught 500 (this gate fronts /v1/ask
+  // and every data-path route) and never a mislabeled `unauthorized`.
+  it("returns retryable 503 auth_unavailable when getSession throws", async () => {
+    const app = buildApp({
+      getSession: async () => {
+        throw new Error("Failed to get session");
+      },
+      isRevoked: async () => false,
+    });
+    const res = await app.request("/protected");
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({
+      error: { code: "auth_unavailable", retryable: true },
+    });
+  });
+
+  it("fails open (resolves the user) when isRevoked throws, per SK-AUTH-020", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const app = buildApp({
+      getSession: async () => ({
+        user: { id: "u_alice" },
+        session: { token: "tok_1", userId: "u_alice" },
+      }),
+      isRevoked: async () => {
+        throw new Error("KV get failed");
+      },
+    });
+    const res = await app.request("/protected");
+    // A KV blip on the revocation set must NOT log out a validly-signed
+    // session (SK-AUTH-020); the request proceeds as the cookie's user.
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, kind: "user", id: "u_alice" });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("session_revocation_check_failed"));
+    warn.mockRestore();
+  });
+
+  it("fails closed (503) when an sk_* key lookup throws — not 401", async () => {
+    const app = buildApp({
+      getSession: async () => null,
+      isRevoked: async () => false,
+      lookupSkKey: async () => {
+        throw new Error("D1 read failed");
+      },
+    });
+    const res = await app.request("/protected", {
+      headers: { authorization: "Bearer sk_live_abc123" },
+    });
+    // A D1 blip on a valid key must not tell the caller they're unauthenticated.
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ error: { code: "auth_unavailable" } });
+  });
 });
 
 describe("parseAnonBearer", () => {

@@ -33,19 +33,55 @@ export type RequireSessionVariables = {
   session: Session;
 };
 
+// Structured, non-paging warn for a transient auth-store blip — logged (not
+// thrown) so a KV/D1 hiccup stays observable without tripping the
+// unhandled-error alert. Never logs secrets: error name/message + path/method.
+export function logAuthWarn(msg: string, err: unknown, c: Context): void {
+  const e = err as Error;
+  console.warn(
+    JSON.stringify({
+      msg,
+      name: e?.name,
+      message: e?.message,
+      path: c.req.path,
+      method: c.req.method,
+    }),
+  );
+}
+
 export function makeRequireSession(opts: RequireSessionOpts): MiddlewareHandler<{
   Variables: RequireSessionVariables;
 }> {
   return async (c, next) => {
-    const session = await opts.getSession(c.req.raw);
+    let session: Session | null = null;
+    try {
+      session = await opts.getSession(c.req.raw);
+    } catch (err) {
+      // `getSession` is the authentication oracle. Better Auth wraps any KV
+      // `secondaryStorage` / D1 failure as `APIError: Failed to get session` —
+      // a transient storage blip, NOT an unauthenticated caller — so a raw 500
+      // (which also pages on-call) is wrong: the SDK's 5xx retry replays a
+      // retryable `auth_unavailable` (503) and the caller self-heals.
+      logAuthWarn("session_resolve_failed", err, c);
+      return fail(c, "auth_unavailable");
+    }
     if (!session) {
       return fail(c, "unauthorized");
     }
-    if (await opts.isRevoked(session.session.token)) {
-      // The session row is gone but a cookie-cached copy is still in
-      // flight. Tell the browser to stop using it; rely on the frontend's
-      // re-auth path (docs/architecture.md §4.3).
-      return c.json({ error: "session_revoked" }, 401);
+    // The revocation check fails *open* on a KV outage per SK-AUTH-020: the
+    // cookie signature already proves identity, so a KV blip on the revocation
+    // set must not log out a validly-signed session (that would break
+    // GLOBAL-009 silent refresh for an outage unrelated to the session).
+    // Revocation resumes the moment KV is reachable again.
+    try {
+      if (await opts.isRevoked(session.session.token)) {
+        // The session row is gone but a cookie-cached copy is still in
+        // flight. Tell the browser to stop using it; rely on the frontend's
+        // re-auth path (docs/architecture.md §4.3).
+        return c.json({ error: "session_revoked" }, 401);
+      }
+    } catch (err) {
+      logAuthWarn("session_revocation_check_failed", err, c);
     }
     c.set("session", session);
     return next();

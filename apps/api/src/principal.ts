@@ -33,7 +33,7 @@ import type { NlqSurface } from "@nlqdb/events";
 import type { Context, MiddlewareHandler } from "hono";
 import type { SkKeyLookup } from "./api-keys.ts";
 import { fail } from "./error-envelope.ts";
-import type { Session } from "./middleware.ts";
+import { logAuthWarn, type Session } from "./middleware.ts";
 
 export type Principal =
   | { kind: "user"; id: string; session: Session }
@@ -147,64 +147,88 @@ export function makeRequirePrincipal(
   opts: RequirePrincipalOpts,
 ): MiddlewareHandler<{ Variables: RequirePrincipalVariables }> {
   return async (c, next) => {
-    // Cookie session takes precedence — a signed-in user that also
-    // has an anonymous token in localStorage is a user. The /v1/anon/
-    // adopt endpoint is the seam that bridges the two (SK-ANON-003).
-    const session = await opts.getSession(c.req.raw);
-    if (session) {
-      if (await opts.isRevoked(session.session.token)) {
-        return c.json({ error: "session_revoked" }, 401);
-      }
-      const principal: Principal = { kind: "user", id: session.user.id, session };
-      c.set("principal", principal);
-      return next();
-    }
-
-    const auth = c.req.header("authorization");
-    const anonToken = parseAnonBearer(auth);
-    if (anonToken) {
-      const id = `anon:${await sha256Hex(anonToken, 16)}`;
-      const principal: Principal = { kind: "anon", id, token: anonToken };
-      c.set("principal", principal);
-      return next();
-    }
-
-    const pkLiveToken = parsePkLiveBearer(auth);
-    if (pkLiveToken && opts.lookupPkLiveKey) {
-      const found = await opts.lookupPkLiveKey(pkLiveToken);
-      if (found) {
-        const principal: Principal = { kind: "pk_live", id: found.tenantId, dbId: found.dbId };
-        c.set("principal", principal);
-        return next();
-      }
-    }
-
-    const skToken = parseSkBearer(auth);
-    if (skToken && opts.lookupSkKey) {
-      const found = await opts.lookupSkKey(skToken);
-      if (found) {
-        const principal: Principal =
-          found.kind === "sk_live"
-            ? { kind: "sk_live", id: found.tenantId, keyId: found.keyId }
-            : {
-                kind: "sk_mcp",
-                id: found.tenantId,
-                keyId: found.keyId,
-                mcpHost: found.mcpHost,
-                deviceId: found.deviceId,
-              };
-        c.set("principal", principal);
-        // Fire-and-forget bump; `executionCtx` is absent in Hono unit-
-        // test flows that call `app.request()` without an env/ctx pair.
-        if (opts.bumpKeyLastUsed) {
-          const ctx = tryGetExecutionCtx(c);
-          if (ctx) ctx.waitUntil(opts.bumpKeyLastUsed(found.keyId));
+    // Resolve the principal inside a try/catch, but keep `next()` OUT of it:
+    // `getSession` (Better Auth) and the D1 key lookups (`lookupPkLiveKey` /
+    // `lookupSkKey`) can throw on a transient storage blip. An uncaught throw
+    // would 500 the ENTIRE data path (`/v1/ask`, `/v1/run`, `/v1/databases`, …)
+    // and page on-call — the same failure the `requireSession` gate had.
+    // Instead we fail *closed* to a retryable `auth_unavailable` (503): the
+    // SDK's 5xx retry replays it and the caller self-heals, and a D1 hiccup
+    // never mislabels a valid key as `unauthorized`. The revocation check is
+    // the one exception — it fails *open* per SK-AUTH-020 (see below).
+    // Wrapping `next()` would wrongly relabel any downstream handler throw as
+    // an auth failure, so it stays out.
+    let principal: Principal | null = null;
+    let bumpKeyId: string | null = null;
+    try {
+      // Cookie session takes precedence — a signed-in user that also
+      // has an anonymous token in localStorage is a user. The /v1/anon/
+      // adopt endpoint is the seam that bridges the two (SK-ANON-003).
+      const session = await opts.getSession(c.req.raw);
+      if (session) {
+        // Revocation fails *open* on a KV outage per SK-AUTH-020: a KV blip on
+        // the revocation set must not 401 a validly-signed session (the cookie
+        // signature already proves identity). Kept out of the outer catch so it
+        // never escalates to a 503.
+        let revoked = false;
+        try {
+          revoked = await opts.isRevoked(session.session.token);
+        } catch (err) {
+          logAuthWarn("session_revocation_check_failed", err, c);
         }
-        return next();
+        if (revoked) {
+          return c.json({ error: "session_revoked" }, 401);
+        }
+        principal = { kind: "user", id: session.user.id, session };
+      } else {
+        const auth = c.req.header("authorization");
+        const anonToken = parseAnonBearer(auth);
+        if (anonToken) {
+          const id = `anon:${await sha256Hex(anonToken, 16)}`;
+          principal = { kind: "anon", id, token: anonToken };
+        } else {
+          const pkLiveToken = parsePkLiveBearer(auth);
+          if (pkLiveToken && opts.lookupPkLiveKey) {
+            const found = await opts.lookupPkLiveKey(pkLiveToken);
+            if (found) principal = { kind: "pk_live", id: found.tenantId, dbId: found.dbId };
+          }
+          if (!principal) {
+            const skToken = parseSkBearer(auth);
+            if (skToken && opts.lookupSkKey) {
+              const found = await opts.lookupSkKey(skToken);
+              if (found) {
+                principal =
+                  found.kind === "sk_live"
+                    ? { kind: "sk_live", id: found.tenantId, keyId: found.keyId }
+                    : {
+                        kind: "sk_mcp",
+                        id: found.tenantId,
+                        keyId: found.keyId,
+                        mcpHost: found.mcpHost,
+                        deviceId: found.deviceId,
+                      };
+                bumpKeyId = found.keyId;
+              }
+            }
+          }
+        }
       }
+    } catch (err) {
+      logAuthWarn("principal_resolve_failed", err, c);
+      return fail(c, "auth_unavailable");
     }
 
-    return fail(c, "unauthorized");
+    if (!principal) {
+      return fail(c, "unauthorized");
+    }
+    c.set("principal", principal);
+    // Fire-and-forget bump; `executionCtx` is absent in Hono unit-
+    // test flows that call `app.request()` without an env/ctx pair.
+    if (bumpKeyId && opts.bumpKeyLastUsed) {
+      const ctx = tryGetExecutionCtx(c);
+      if (ctx) ctx.waitUntil(opts.bumpKeyLastUsed(bumpKeyId));
+    }
+    return next();
   };
 }
 
