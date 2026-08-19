@@ -17,6 +17,7 @@ import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import { deriveSlug } from "../databases/list.ts";
 import { isAgentMemoryV1Db } from "../db-create/presets/agent-memory-v1.ts";
 import type { ConfirmStash } from "./confirm-stash.ts";
+import { constraintClarify } from "./constraint-clarify.ts";
 import { destructiveClarify } from "./destructive-clarify.ts";
 import type { DiagSink } from "./diag.ts";
 import {
@@ -580,6 +581,19 @@ export async function orchestrateAsk(
         return { ok: false, error: { code: "db_misconfigured" } };
       }
       if (err instanceof WriteConstraintError) {
+        // SK-ASK-031 — a missing-required-reference (not_null / FK on a
+        // column the goal never identified) becomes a clarify with one chip
+        // per candidate parent row: both free AND paid planners emitted
+        // doomed guesses here (scalar-subquery → NULL, placeholder UUID), so
+        // no prompt rule can close it — only a question can. Deterministic,
+        // one bounded SELECT; any failure falls through to the SK-ASK-029
+        // envelope below.
+        const clarify = await withSpan(
+          "nlqdb.ask.constraint_clarify",
+          () => constraintClarify(err, req.goal, db, deps.exec),
+          { onError: null },
+        );
+        if (clarify) return { ok: false, error: clarify };
         // SK-ASK-029 — honest, typed, and non-retried. The old path bucketed
         // this into `db_unreachable` ("Couldn't reach the database — try
         // again") after three backed-off replays of a certain failure.

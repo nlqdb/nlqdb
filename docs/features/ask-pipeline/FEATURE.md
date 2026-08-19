@@ -76,13 +76,7 @@ signal and a retry can't double-emit.
 
 ### SK-ASK-009 — Cheap-tier classifier sees the principal's recent tables; classify + disambiguate merge into `routeAsk`
 
-- **Decision:** The cheap-tier classifier receives the principal's 100 most-recent `(dbId, table)` tuples. Output is `{kind, targetDbId, referencedTables, confidence, reason}` from a single LLM call (`llm.route`). Collapses the prior `classify` + `disambiguate` pair into one.
-- **Core value:** Bullet-proof, Fast, Effortless UX
-- **Why:** Without table-level context the classifier can't tell "insert red and blue tables" (`kind=create`) from "insert into red and blue" (`kind=write`). Recent tables are the cheapest disambiguator. Merging halves cheap-tier latency on the dbId-absent path; prompt budget absorbs 100 × ~30 chars ≈ 3 KB.
-- **Consequence in code:** `routeAsk` is the single merged classifier (the old `classifier.ts` / `disambiguate-db.ts` are gone) and runs in parallel with `listDatabasesForTenant`. Anon `kind=create` past the device cap returns the SK-ANON-012 `auth_required` envelope.
-  - *The routed `kind` is load-bearing downstream, not advisory.* It threads into orchestration as `AskRequest.intent` and reaches the planner (`PlanRequest.intent`): a `write` goal gets a one-line directive so the planner emits INSERT/UPDATE/DELETE rather than defaulting to a SELECT, and the orchestrator **enforces** it — a write intent that plans as a read re-plans through the existing `withStageRetry("plan", …)` loop (reject reason `expected_data_modification`) instead of silently executing the goal as a read and dropping the mutation. Without this the classifier's `write` decision was discarded and the write-vs-read verb was re-derived solely from `isWriteVerb(planSql)`.
-  - *The recent-table fast-path resolves read-vs-write deterministically where it can.* A recent-table hit with a write verb (`add`/`insert`/…) routes `write`; a **verb-less** hit ("members", "orders") routes `query` — a bare reference to a table the user already has is a read, so it must not fall through to the LLM's "unknown table → create" bias and dead-end on the create-a-new-DB clarify. Table matching is singular/plural-tolerant (`member` ↔ `members`, `category` ↔ `categories`) so morphology doesn't drop the match onto the LLM path.
-- **Alternatives rejected:** Two cheap-tier calls — overlapping input, double latency. Full schema in prompt — token-explodes on power users. Dbset only — doesn't help the load-bearing "insert red and blue tables" misclassification. Route `kind` advisory-only (re-derive verb from the plan) — the read-as-write silent-drop bug this closes.
+**Body:** [`decisions/SK-ASK-009-route-ask-classifier.md`](./decisions/SK-ASK-009-route-ask-classifier.md). One merged `llm.route` call with the principal's recent `(dbId, table)` tuples; the routed `kind` is load-bearing (threads to the planner as intent, enforced by re-plan on mismatch), and the recent-table fast-path resolves read-vs-write deterministically where it can.
 
 ### SK-ASK-010 — Goal text is capped at 2 000 characters server-side
 
@@ -255,6 +249,15 @@ instead of three backed-off replays and "Couldn't reach the database".
 value can't succeed on replay, so `exec-classify.ts` returns
 `409 invalid_value { pgCode }` rather than spending the exec stage's three
 backoff attempts and blaming connectivity.
+
+### SK-ASK-031 — A missing-required-reference write failure becomes a `clarify_required` with candidate parent rows
+
+**Body:** [`decisions/SK-ASK-031-missing-required-reference-clarify.md`](./decisions/SK-ASK-031-missing-required-reference-clarify.md).
+A `not_null`/`foreign_key` write failure on a column that FKs a parent table
+returns chips of that table's actual rows ("For Alice / Bob / Carol") instead
+of the `SK-ASK-029` envelope — the planner can't answer what the goal never
+said (both free AND paid planners guessed past `SK-LLM-050` on 2026-08-19),
+so the recovery is a question. Fallback on any miss: plain `write_constraint`.
 
 ## The LLM loop
 

@@ -155,7 +155,7 @@ export type ClarifyOption = {
 // or create goal would otherwise dead-end on.
 export type ClarifyRequired = {
   code: "clarify_required";
-  clarification: "create_or_query_pinned" | "destructive_ambiguous";
+  clarification: "create_or_query_pinned" | "destructive_ambiguous" | "missing_required_reference";
   pinned_db: { id: string; slug: string } | null;
   reason: string;
   // SK-ASK-026 — present on `destructive_ambiguous`; one re-sendable
