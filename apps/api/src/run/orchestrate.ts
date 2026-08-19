@@ -35,7 +35,7 @@ export type RunResult = {
 export type RunError =
   | AskError
   // `SK-APIKEYS-003` — distinct from `sql_rejected` so the wire response carries the policy reason.
-  | { status: "forbidden"; reason: "read_only_principal" };
+  | { code: "forbidden"; reason: "read_only_principal" };
 
 export type RunOutcome = { ok: true; result: RunResult } | { ok: false; error: RunError };
 
@@ -69,7 +69,7 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
     return {
       ok: false,
       error: {
-        status: "rate_limited",
+        code: "rate_limited",
         limit: decision.limit,
         count: decision.count,
         resetAt: decision.resetAt,
@@ -80,7 +80,7 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
   // Span name matches `/v1/ask` so dashboards built off `performance.md §3.1` work unchanged.
   const validation = await withSpan("nlqdb.sql.validate", async () => validateSql(req.sql));
   if (!validation.ok) {
-    return { ok: false, error: { status: "sql_rejected", reason: validation.reason } };
+    return { ok: false, error: { code: "sql_rejected", reason: validation.reason } };
   }
 
   // Read-only principals (pk_live, anon) may not write. `containsWriteVerb`
@@ -88,12 +88,12 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
   // so a data-modifying CTE (`WITH x AS (INSERT … RETURNING *) SELECT …`,
   // leading verb `with`) can't smuggle a write past this gate.
   if (req.readOnly && containsWriteVerb(req.sql)) {
-    return { ok: false, error: { status: "forbidden", reason: "read_only_principal" } };
+    return { ok: false, error: { code: "forbidden", reason: "read_only_principal" } };
   }
 
   const db = await deps.resolveDb(req.dbId, req.userId);
-  if (!db) return { ok: false, error: { status: "db_not_found" } };
-  if (!db.schemaHash) return { ok: false, error: { status: "schema_unavailable" } };
+  if (!db) return { ok: false, error: { code: "db_not_found" } };
+  if (!db.schemaHash) return { ok: false, error: { code: "schema_unavailable" } };
   const schemaHash = db.schemaHash;
 
   const sqlHash = await hashGoal(req.sql);
@@ -103,9 +103,9 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
     result = await withSpan("nlqdb.run.exec", () => deps.exec(db, req.sql));
   } catch (err) {
     if (err instanceof DbConfigError) {
-      return { ok: false, error: { status: "db_misconfigured" } };
+      return { ok: false, error: { code: "db_misconfigured" } };
     }
-    return { ok: false, error: { status: "db_unreachable" } };
+    return { ok: false, error: { code: "db_unreachable" } };
   }
 
   const traceBlock: Trace = {

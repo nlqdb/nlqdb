@@ -59,7 +59,7 @@ import PmfSurveyCard from "./PmfSurveyCard";
 import ReplyChoices from "./ReplyChoices";
 import { settleInterruptedReply } from "./reply-settle";
 import Trace, { type TraceStepName, type TraceStepRecord } from "./Trace";
-import { displayTraceSteps } from "./trace-steps";
+import { displayTraceSteps, markStepsFailed } from "./trace-steps";
 
 interface ChatPanelProps {
   apiBase: string;
@@ -1209,9 +1209,8 @@ function applyTraceEvent(reply: Reply, event: TraceEvent): Reply {
       // ReplyView is the user-visible signal. Fall through.
       break;
     case "error":
-      next.steps = next.steps.map((s) =>
-        s.status === "pending" ? { ...s, status: "error", detail: event.error.status } : s,
-      );
+      // GLOBAL-011 — only the in-flight step failed; the rest are skipped.
+      next.steps = markStepsFailed(next.steps, event.error.code);
       break;
     case "done":
       // Final marker; per-step events already filled in their

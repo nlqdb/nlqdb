@@ -6,10 +6,9 @@
 // formatError — and sweeps EVERY known error code so a future gap fails CI
 // here instead of in a user's transcript.
 //
-// The compile-time guard in tools.ts (AssertNever<UnmappedErrorCodes>)
-// proves every ApiErrorCode literal *has* a branch; this file proves each
-// branch produces something an agent can act on (GLOBAL-012) and never
-// leaks internals.
+// The compile-time guard in packages/errors (registry ⇄ ApiErrorCode parity)
+// proves every code *has* an entry; this file proves each one produces
+// something an agent can act on (GLOBAL-012) and never leaks internals.
 
 import { type ApiErrorBody, type NlqClient, NlqdbApiError } from "@nlqdb/sdk";
 import { describe, expect, it } from "vitest";
@@ -60,7 +59,7 @@ function clientThatThrows(on: {
 }
 
 function apiError(code: string, status = 500, extra: Record<string, unknown> = {}) {
-  const body = { status: code, ...extra } as ApiErrorBody;
+  const body = { code, ...extra } as ApiErrorBody;
   return new NlqdbApiError(`stub ${code}`, status, code, "/v1/ask", body);
 }
 
@@ -75,23 +74,20 @@ describe("every known error code maps to an actionable, non-leaky ToolError", ()
     expect(KNOWN_ERROR_CODES.length).toBeGreaterThan(20);
   });
 
-  // `unauthorized` is intentionally re-labelled to the agent-facing
-  // `auth_required` (an MCP host should see what to *do*, not the raw HTTP
-  // status); every other code keeps its identity.
-  const CODE_REMAP: Record<string, string> = { unauthorized: "auth_required" };
-
-  it.each(KNOWN_ERROR_CODES)("%s → actionable code, message + action present", (code) => {
+  it.each(KNOWN_ERROR_CODES)("%s → actionable code, message + action present", (code: string) => {
     const err = mapSdkError(apiError(code));
-    expect(err.code).toBe(CODE_REMAP[code] ?? code);
+    // SK-ERR-001 — codes keep their identity end to end; the host-facing
+    // *action* is what a surface may override, never the code.
+    expect(err.code).toBe(code);
     expect(err.message.trim().length).toBeGreaterThan(0);
     expect(err.action.trim().length).toBeGreaterThan(0);
     // Renders cleanly as "message\n\n→ action" — never a dangling arrow.
     expect(renderedText(err)).toMatch(/\S\n\n→ \S/);
   });
 
-  it.each(KNOWN_ERROR_CODES.filter((c) => !RESIDUAL_CODES.has(c)))(
+  it.each(KNOWN_ERROR_CODES.filter((c: string) => !RESIDUAL_CODES.has(c)))(
     "%s does not fall back to the generic bucket",
-    (code) => {
+    (code: string) => {
       expect(mapSdkError(apiError(code)).message).not.toBe(GENERIC_ERROR_MESSAGE);
     },
   );
@@ -101,7 +97,7 @@ describe("every known error code maps to an actionable, non-leaky ToolError", ()
   it("never leaks the thrown error's raw internal message", () => {
     const leaky = "pg-pool-3.us-east-1.internal:5432 connection refused";
     for (const code of KNOWN_ERROR_CODES) {
-      const err = mapSdkError(new NlqdbApiError(leaky, 500, code, "/v1/ask", { status: code }));
+      const err = mapSdkError(new NlqdbApiError(leaky, 500, code, "/v1/ask", { code }));
       expect(renderedText(err)).not.toContain("internal");
     }
   });
@@ -240,7 +236,7 @@ describe("reported bug: nlqdb_remember with no resolvable memory DB", () => {
   it("passes the server's field-level invalid_body reason through to the host", async () => {
     const client = clientThatThrows({
       remember: apiError("invalid_body", 400, {
-        reason: "fact `payload.content` is required.",
+        params: { reason: "fact `payload.content` is required." },
       }),
     });
     const result = await handleRemember(client, {

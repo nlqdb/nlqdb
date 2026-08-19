@@ -16,6 +16,7 @@
 // vi.mock-doesnt-propagate-to-self-fetch).
 
 import type { Context, MiddlewareHandler } from "hono";
+import { fail } from "./error-envelope.ts";
 
 export type SessionUser = { id: string; name?: string | null; email?: string | null };
 export type Session = {
@@ -38,7 +39,7 @@ export function makeRequireSession(opts: RequireSessionOpts): MiddlewareHandler<
   return async (c, next) => {
     const session = await opts.getSession(c.req.raw);
     if (!session) {
-      return c.json({ error: "unauthorized" }, 401);
+      return fail(c, "unauthorized");
     }
     if (await opts.isRevoked(session.session.token)) {
       // The session row is gone but a cookie-cached copy is still in

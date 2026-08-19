@@ -7,6 +7,7 @@ import {
   formatError,
   formatQueryResult,
   formatResult,
+  GENERIC_ERROR_MESSAGE,
   handleConnectDatabase,
   handleDescribe,
   handleListDatabases,
@@ -262,11 +263,15 @@ describe("handleQuery", () => {
     const client = stubClient({
       ask: async () => {
         throw new NlqdbApiError("ambiguous", 409, "ambiguous_db", "/v1/ask", {
-          status: "ambiguous_db",
-          candidate_dbs: [
-            { id: "db_1", slug: "orders" },
-            { id: "db_2", slug: "inventory" },
-          ],
+          code: "ambiguous_db",
+          message: "More than one of your databases could answer that.",
+          action: "Say which one you mean (orders, inventory).",
+          params: {
+            candidate_dbs: [
+              { id: "db_1", slug: "orders" },
+              { id: "db_2", slug: "inventory" },
+            ],
+          },
         });
       },
     });
@@ -276,7 +281,14 @@ describe("handleQuery", () => {
     expect("err" in result).toBe(true);
     if ("err" in result) {
       expect(result.err.code).toBe("ambiguous_db");
-      expect(result.err.action).toContain("orders");
+      // The host-facing action names the tool, and the ids ride `details`.
+      expect(result.err.action).toContain("`db`");
+      expect(result.err.details).toEqual({
+        candidate_dbs: [
+          { id: "db_1", slug: "orders" },
+          { id: "db_2", slug: "inventory" },
+        ],
+      });
     }
   });
 
@@ -284,17 +296,20 @@ describe("handleQuery", () => {
     const client = stubClient({
       ask: async () => {
         throw new NlqdbApiError("clarify", 409, "clarify_required", "/v1/ask", {
-          status: "clarify_required",
-          clarification: "destructive_ambiguous",
-          reason: "Clearing the whole database could mean a few things.",
-          options: [
-            { label: 'Empty the "facts" table', goal: "delete every row from the facts table" },
-            {
-              label: "Start fresh with a new, empty database",
-              goal: "create a new empty database",
-              forceNoPin: true,
-            },
-          ],
+          code: "clarify_required",
+          message: "Clearing the whole database could mean a few things.",
+          action: "Pick one of the offered interpretations, or ask again more specifically.",
+          params: {
+            clarification: "destructive_ambiguous",
+            options: [
+              { label: 'Empty the "facts" table', goal: "delete every row from the facts table" },
+              {
+                label: "Start fresh with a new, empty database",
+                goal: "create a new empty database",
+                forceNoPin: true,
+              },
+            ],
+          },
         });
       },
     });
@@ -305,7 +320,8 @@ describe("handleQuery", () => {
     if ("err" in result) {
       expect(result.err.code).toBe("clarify_required");
       expect(result.err.message).toContain("could mean a few things");
-      expect(result.err.action).toContain("delete every row from the facts table");
+      expect(result.err.action).toContain("details.options");
+      expect(result.err.details?.["options"]).toHaveLength(2);
       expect(result.err.details?.["options"]).toHaveLength(2);
     }
   });
@@ -364,7 +380,7 @@ describe("handleQuery", () => {
     );
   });
 
-  it("maps a 401 to auth_required pointing at the dashboard mint flow", async () => {
+  it("maps a 401 to unauthorized pointing at the dashboard mint flow", async () => {
     const client = stubClient({
       ask: async () => {
         throw new NlqdbApiError("unauthorized", 401, "unauthorized", "/v1/ask", null);
@@ -375,7 +391,7 @@ describe("handleQuery", () => {
 
     expect("err" in result).toBe(true);
     if ("err" in result) {
-      expect(result.err.code).toBe("auth_required");
+      expect(result.err.code).toBe("unauthorized");
       expect(result.err.action).toMatch(/app\.nlqdb\.com\/app\/keys/);
     }
   });
@@ -401,9 +417,10 @@ describe("handleQuery", () => {
     const client = stubClient({
       ask: async () => {
         throw new NlqdbApiError("low confidence", 422, "low_confidence", "/v1/ask", {
-          status: "low_confidence",
+          code: "low_confidence",
           message: "two tables match 'users'",
-          ...({ alternatives: ["users", "user_profiles"] } as Record<string, unknown>),
+          action: "Pick one of the offered readings.",
+          params: { alternatives: ["users", "user_profiles"] },
         });
       },
     });
@@ -457,7 +474,7 @@ describe("handleListDatabases", () => {
     }
   });
 
-  it("surfaces 401 as auth_required pointing at the dashboard mint flow", async () => {
+  it("surfaces 401 as unauthorized pointing at the dashboard mint flow", async () => {
     const client = stubClient({
       listDatabases: async () => {
         throw new NlqdbApiError("unauthorized", 401, "unauthorized", "/v1/databases", null);
@@ -468,7 +485,7 @@ describe("handleListDatabases", () => {
 
     expect("err" in result).toBe(true);
     if ("err" in result) {
-      expect(result.err.code).toBe("auth_required");
+      expect(result.err.code).toBe("unauthorized");
       expect(result.err.action).toMatch(/app\.nlqdb\.com\/app\/keys/);
     }
   });
@@ -711,12 +728,12 @@ describe("handleRemember", () => {
       listDatabases: async () => ({ databases: [] }),
       createDatabase: async () => {
         throw new NlqdbApiError("nope", 404, "db_not_found", "/v1/databases", {
-          status: "db_not_found",
+          code: "db_not_found",
         });
       },
       remember: async () => {
         throw new NlqdbApiError("nope", 404, "db_not_found", "/v1/memory/remember", {
-          status: "db_not_found",
+          code: "db_not_found",
         });
       },
     });
@@ -740,8 +757,8 @@ describe("handleRemember", () => {
     const client = stubClient({
       remember: async () => {
         throw new NlqdbApiError("bad body", 400, "invalid_body", "/v1/memory/remember", {
-          status: "invalid_body",
-          reason: "fact `payload.content` is required.",
+          code: "invalid_body",
+          params: { reason: "fact `payload.content` is required." },
         });
       },
     });
@@ -810,7 +827,7 @@ describe("handleConnectDatabase", () => {
           "/v1/db/connect",
           // The server message must not contain the URL; it doesn't here.
           {
-            status: "introspection_failed",
+            code: "introspection_failed",
             message: "Could not reach the database host within 5s.",
           },
         );
@@ -952,7 +969,7 @@ describe("mapSdkError", () => {
   it("returns a safe generic shape for unknown errors", () => {
     const err = mapSdkError(new Error("internal: hostname 'pg-pool-3.us-east-1.internal' refused"));
     expect(err.code).toBeTruthy();
-    expect(err.message).toBe("An unexpected error occurred.");
+    expect(err.message).toBe(GENERIC_ERROR_MESSAGE);
     expect(err.action).toBeTruthy();
   });
 
@@ -967,8 +984,8 @@ describe("mapSdkError", () => {
   it("surfaces the real wait from resetAt on a 429 (SK-RL-004)", () => {
     const resetAt = Math.floor(Date.now() / 1000) + 42;
     const apiErr = new NlqdbApiError("too many", 429, "rate_limited", "/v1/ask", {
-      status: "rate_limited",
-      ...({ limit: 60, count: 61, resetAt } as Record<string, unknown>),
+      code: "rate_limited",
+      params: { limit: 60, count: 61, resetAt },
     });
     const err = mapSdkError(apiErr);
     expect(err.code).toBe("rate_limited");
@@ -992,11 +1009,13 @@ describe("mapSdkError", () => {
 
   it("forwards candidate_dbs on ambiguous_db", () => {
     const apiErr = new NlqdbApiError("ambiguous", 409, "ambiguous_db", "/v1/ask", {
-      status: "ambiguous_db",
-      candidate_dbs: [
-        { id: "db_1", slug: "orders" },
-        { id: "db_2", slug: "inventory" },
-      ],
+      code: "ambiguous_db",
+      params: {
+        candidate_dbs: [
+          { id: "db_1", slug: "orders" },
+          { id: "db_2", slug: "inventory" },
+        ],
+      },
     });
     const err = mapSdkError(apiErr);
     expect(err.code).toBe("ambiguous_db");
@@ -1006,7 +1025,39 @@ describe("mapSdkError", () => {
         { id: "db_2", slug: "inventory" },
       ],
     });
-    expect(err.action).toContain("orders");
+    expect(err.action).toContain("`db`");
+    expect(err.details?.["candidate_dbs"]).toHaveLength(2);
+  });
+
+  // SK-ERR-001 — a streamed `/v1/ask` error frame arrives FLAT (fields at the
+  // top level, no `params` wrapper) while a JSON error nests them under
+  // `params`. `mapSdkError` must render copy + details from either shape; the
+  // params-only fixtures above once masked a regression where the streamed
+  // (flat) body rendered generic copy with no candidate list.
+  it("reads cause fields from a flat (streamed) body, not only params", () => {
+    const apiErr = new NlqdbApiError("ambiguous", 409, "ambiguous_db", "/v1/ask", {
+      code: "ambiguous_db",
+      candidate_dbs: [
+        { id: "db_1", slug: "orders" },
+        { id: "db_2", slug: "inventory" },
+      ],
+    } as unknown as NlqdbApiError["body"]);
+    const err = mapSdkError(apiErr);
+    expect(err.code).toBe("ambiguous_db");
+    expect(err.details?.["candidate_dbs"]).toHaveLength(2);
+  });
+
+  it("renders write_constraint field names from a flat body", () => {
+    const apiErr = new NlqdbApiError("constraint", 409, "write_constraint", "/v1/ask", {
+      code: "write_constraint",
+      kind: "foreign_key",
+      table: "orders",
+      column: "user_id",
+    } as unknown as NlqdbApiError["body"]);
+    const err = mapSdkError(apiErr);
+    expect(err.code).toBe("write_constraint");
+    // The field name must reach the message, not degrade to the generic branch.
+    expect(err.message).toContain("orders.user_id");
   });
 
   // These statuses previously had no branch and all collapsed to the
@@ -1021,7 +1072,7 @@ describe("mapSdkError", () => {
     ["llm_failed", 502],
     ["clarify_required", 409],
   ] as const)("maps %s to an actionable, non-generic error", (code, status) => {
-    const err = mapSdkError(new NlqdbApiError(code, status, code, "/v1/ask", { status: code }));
+    const err = mapSdkError(new NlqdbApiError(code, status, code, "/v1/ask", { code }));
     expect(err.code).toBe(code);
     expect(err.message).not.toBe("An unexpected error occurred.");
     expect(err.message.length).toBeGreaterThan(0);
@@ -1120,7 +1171,7 @@ describe("tool descriptions carry the contract (WS04-T1)", () => {
 // WS04-T2 — name which key is for which purpose. `sk_mcp_` ⊂ `sk_live_`
 // (SK-APIKEYS-015): it reaches every tool here except `nlqdb_connect_database`,
 // so it is named first — but neither is read-only, so don't imply that split.
-describe("auth_required names each key by purpose (WS04-T2)", () => {
+describe("unauthorized names each key by purpose (WS04-T2)", () => {
   it("mentions sk_mcp_ and sk_live_ with their purpose", () => {
     const err = mapSdkError(
       new NlqdbApiError("unauthorized", 401, "unauthorized", "/v1/ask", null),

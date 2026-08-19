@@ -1,8 +1,14 @@
 // SK-TRUST-001 — build a plain-English preview of a write plan before
-// it commits. Returns `null` for read SQL (orchestrator skips the
-// preview gate). Values are derived server-side from the AST + a
-// pre-flight `SELECT COUNT(*)` so surfaces never compute the affected-
-// rows themselves (would be a silent-lie risk under GLOBAL-011).
+// it commits. Values are derived server-side from the AST + a pre-flight
+// `SELECT COUNT(*)` so surfaces never compute the affected-rows
+// themselves (would be a silent-lie risk under GLOBAL-011).
+//
+// SK-TRUST-006 — every "couldn't compute it" path now THROWS
+// `PreviewUnavailableError` instead of degrading to `affectedRows: 0` or
+// `null`. A fabricated 0 asked the user to approve a no-op; a `null`
+// dropped the write straight through the gate and committed it with no
+// diff at all. Neither is honest, so the orchestrator refuses the write
+// instead.
 //
 // Parser reuse: `node-sql-parser` is already the validator parser in
 // `sql-validate.ts`/`recent-tables.ts` — keeps cold-start cheap and
@@ -16,15 +22,61 @@ const parser = new Parser();
 
 export type CountExec = (countSql: string) => Promise<number>;
 
+// SK-TRUST-006 — thrown when the diff cannot be computed honestly
+// (unparseable plan, unidentifiable target, an INSERT payload shape we
+// don't count, or a failed pre-flight count). The orchestrator surfaces
+// it rather than previewing a number it made up or committing unpreviewed.
+export class PreviewUnavailableError extends Error {
+  constructor(reason: string, options?: { cause: unknown }) {
+    super(`write preview unavailable: ${reason}`, options);
+    this.name = "PreviewUnavailableError";
+  }
+}
+
+export type WriteTarget = { verb: "INSERT" | "UPDATE" | "DELETE"; table: string };
+
 type AnyAst = { type?: string; [k: string]: unknown };
 
 // Pre-flight count helper: build the COUNT(*) SQL for a write plan and
-// return the verb + table needed to render the diff. Read SQL returns
-// null. Parse failure also returns null — the validator has already
-// accepted the SQL by this point, so a re-parse should succeed, but
-// degrading gracefully keeps the diff path from blocking exec on a
-// parser quirk.
-export async function buildDiff(planSql: string, exec: CountExec): Promise<AskDiff | null> {
+// return the verb + table needed to render the diff. Throws
+// `PreviewUnavailableError` when the effect can't be computed — the caller
+// is the SK-TRUST-001 gate, and a write it cannot describe must not run.
+export async function buildDiff(planSql: string, exec: CountExec): Promise<AskDiff> {
+  const stmt = parseWriteStmt(planSql);
+  if (!stmt) throw new PreviewUnavailableError("no write statement in the plan");
+  const type = stmt.type as "insert" | "update" | "delete";
+  const tableRef = pickTableRef(stmt, type);
+  if (!tableRef) throw new PreviewUnavailableError(`${type} target table not identifiable`);
+  const count =
+    type === "insert"
+      ? await countInsert(stmt, exec)
+      : await runCount(tableRef, (stmt["where"] ?? null) as AnyAst | null, exec);
+  const verb = type.toUpperCase() as WriteTarget["verb"];
+  return {
+    verb,
+    table: tableRef.table,
+    affectedRows: count,
+    summary: buildSummary(verb, count, tableRef.table),
+  };
+}
+
+// SK-TRUST-006 — verb + table of a write plan, for the post-exec
+// zero-rows-affected envelope. Same AST walk the diff uses (so a
+// data-modifying CTE resolves to its inner write); null when the plan
+// isn't a parseable write.
+export function writeTarget(sql: string): WriteTarget | null {
+  const stmt = parseWriteStmt(sql);
+  if (!stmt) return null;
+  const type = stmt.type as "insert" | "update" | "delete";
+  const tableRef = pickTableRef(stmt, type);
+  if (!tableRef) return null;
+  return { verb: type.toUpperCase() as WriteTarget["verb"], table: tableRef.table };
+}
+
+// The write statement node — the root itself, or the data-modifying
+// statement inside a CTE. Null for a read or an unparseable statement
+// (`validateSql` has already rejected the latter upstream).
+function parseWriteStmt(planSql: string): AnyAst | null {
   let asts: AnyAst[];
   try {
     const parsed = parser.astify(planSql, { database: "PostgreSQL" }) as unknown as
@@ -41,37 +93,7 @@ export async function buildDiff(planSql: string, exec: CountExec): Promise<AskDi
   // whose outer `type` is `select`). Preview the inner write so the
   // CTE form goes through the same render-before-commit gate as a
   // top-level write (SK-TRUST-001) instead of silently committing.
-  const stmt = findWriteStmt(root);
-  if (!stmt) return null;
-  const type = stmt.type;
-
-  if (type === "update" || type === "delete") {
-    const tableRef = pickTableRef(stmt, type);
-    if (!tableRef) return null;
-    const where = (stmt["where"] ?? null) as AnyAst | null;
-    const count = await runCount(tableRef, where, exec);
-    const verb = type === "update" ? "UPDATE" : "DELETE";
-    return {
-      verb,
-      table: tableRef.table,
-      affectedRows: count,
-      summary: buildSummary(verb, count, tableRef.table),
-    };
-  }
-
-  if (type === "insert") {
-    const tableRef = pickTableRef(stmt, "insert");
-    if (!tableRef) return null;
-    const count = await countInsert(stmt, exec);
-    return {
-      verb: "INSERT",
-      table: tableRef.table,
-      affectedRows: count,
-      summary: buildSummary("INSERT", count, tableRef.table),
-    };
-  }
-
-  return null;
+  return findWriteStmt(root);
 }
 
 // Returns the INSERT/UPDATE/DELETE statement node — the root itself for a
@@ -154,13 +176,13 @@ async function runCount(
   let countSql: string;
   try {
     countSql = parser.sqlify(countAst as never, { database: "PostgreSQL" });
-  } catch {
-    return 0;
+  } catch (cause) {
+    throw new PreviewUnavailableError("could not build the pre-flight count", { cause });
   }
   try {
     return await exec(countSql);
-  } catch {
-    return 0;
+  } catch (cause) {
+    throw new PreviewUnavailableError("pre-flight count failed", { cause });
   }
 }
 
@@ -169,28 +191,47 @@ async function runCount(
 //   • SELECT form:  `values.type === "select"`, the whole SELECT AST.
 // We count tuples directly for the VALUES form (no SQL hop), and wrap
 // the SELECT in `SELECT COUNT(*) FROM (<select>) s` for the SELECT
-// form. Falls back to 0 on shapes we don't recognise (e.g. `INSERT …
-// DEFAULT VALUES`).
+// form. Any other shape (e.g. `INSERT … DEFAULT VALUES`) is a count we
+// can't prove — SK-TRUST-006 refuses rather than reporting 0.
 async function countInsert(root: AnyAst, exec: CountExec): Promise<number> {
   const payload = root["values"];
-  if (!payload || typeof payload !== "object") return 0;
-  const p = payload as AnyAst;
-  if (p["type"] === "values") {
+  const p = payload && typeof payload === "object" ? (payload as AnyAst) : null;
+  if (p?.["type"] === "values") {
     const tuples = p["values"];
-    return Array.isArray(tuples) ? tuples.length : 0;
+    if (Array.isArray(tuples)) return tuples.length;
   }
-  if (p["type"] === "select") {
+  if (p?.["type"] === "select") {
+    let innerSql: string;
     try {
-      const innerSql = parser.sqlify(p as never, { database: "PostgreSQL" });
+      innerSql = parser.sqlify(p as never, { database: "PostgreSQL" });
+    } catch (cause) {
+      throw new PreviewUnavailableError("could not re-serialise the INSERT source", { cause });
+    }
+    try {
       // Wrap as a subquery so the inner SELECT's columns / ORDER BY /
       // LIMIT don't bleed into the outer count semantics. Alias `s` is
       // arbitrary; PG requires an alias on a subquery in FROM.
       return await exec(`SELECT COUNT(*) AS c FROM (${innerSql}) AS s`);
-    } catch {
-      return 0;
+    } catch (cause) {
+      throw new PreviewUnavailableError("pre-flight count failed", { cause });
     }
   }
-  return 0;
+  throw new PreviewUnavailableError("unrecognised INSERT payload shape");
+}
+
+// SK-ASK-028 — factual narration of a committed write, built from the
+// verb + table + the engine's affected-row count. Writes are never
+// narrated by the summarize LLM (it has only the returned rows — an empty
+// array for a plain INSERT — so it invents a read).
+export function writeOutcomeSummary(
+  verb: WriteTarget["verb"],
+  table: string,
+  rowCount: number,
+): string {
+  const rows = `${rowCount.toLocaleString()} ${rowCount === 1 ? "row" : "rows"}`;
+  if (verb === "INSERT") return `Inserted ${rows} into ${table}.`;
+  if (verb === "UPDATE") return `Updated ${rows} in ${table}.`;
+  return `Deleted ${rows} from ${table}.`;
 }
 
 function buildSummary(verb: AskDiff["verb"], count: number, table: string): string {

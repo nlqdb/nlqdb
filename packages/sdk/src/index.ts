@@ -12,7 +12,7 @@
  * Error contract: every method throws `NlqdbApiError` on failure —
  * non-2xx, network failure, abort, and non-JSON proxy response. The
  * error carries a discriminant `code` (mirrors the API's
- * `error.status`, plus SDK-only sentinels `unknown_error`,
+ * `error.code`, plus SDK-only sentinels `unknown_error`,
  * `non_json_response`, `network_error`, `aborted`) and the HTTP
  * status (0 for transport-level failures). Consumers `try/catch` and
  * discriminate on `err.code`.
@@ -304,10 +304,11 @@ export type RememberResult = {
   expires_at?: string;
 };
 
-// Mirror of the API's `AskError` discriminant (apps/api/src/ask/types.ts)
-// plus SDK-only sentinels. Open-ended via `(string & {})` so a new API
-// status doesn't force an SDK bump to compile — consumers still get
-// autocomplete on the known values.
+// The wire's `error.code` values. Kept literal-for-literal in step with the
+// `@nlqdb/errors` registry (SK-ERR-001) — a compile-time guard in
+// `packages/errors/test/sdk-parity.test.ts` fails the build if either side
+// gains a code the other lacks. Still open-ended via `(string & {})` so a
+// newer API than the installed SDK doesn't break consumer compiles.
 export type ApiErrorCode =
   | "db_not_found"
   | "schema_unavailable"
@@ -319,10 +320,33 @@ export type ApiErrorCode =
   | "unauthorized"
   | "invalid_json"
   | "goal_required"
+  | "goal_too_long"
+  | "invalid_scope"
   | "dbId_required"
   | "invalid_body"
   | "invalid_email"
   | "secret_unconfigured"
+  | "unconfigured"
+  | "internal_error"
+  | "key_not_found"
+  | "challenge_required"
+  // SK-ANON-010 / SK-ANON-012 — the anonymous budget ran out; `params.cap`
+  // names which cap so the surface can stash the prompt and offer sign-in.
+  | "auth_required"
+  | "account_required"
+  | "byollm_requires_session"
+  // SK-ASK-016 — the plan named a relation the target DB doesn't have.
+  | "schema_mismatch"
+  // SK-ASK-029 / SK-ASK-030 — deterministic exec failures the old catch-all
+  // mislabeled as `db_unreachable`: Postgres SQLSTATE class 23 (integrity
+  // constraint) and class 22 (data exception).
+  | "write_constraint"
+  | "invalid_value"
+  // SK-TRUST-006 — an approved write that changed nothing, rather than an empty
+  // success that reads as "done".
+  | "write_no_rows"
+  // The plan's confidence sat below the tier floor.
+  | "low_confidence"
   // SK-ASK-009: 409 returned when the LLM disambiguator's confidence
   // is below the floor on a 2+ DB tenant. Body carries `candidate_dbs`.
   | "ambiguous_db"
@@ -334,6 +358,18 @@ export type ApiErrorCode =
   // of `sql_rejected`, `body.options` carries re-sendable interpretations
   // and `body.reason` a one-sentence prompt.
   | "clarify_required"
+  // SK-TRUST-006 — 409 returned when a write affects no rows: the pre-flight
+  // count proved the write would touch nothing (`body.phase = "preview"`, so
+  // it was never offered for approval), or an approved write ran and the
+  // engine reported 0 rows affected (`body.phase = "commit"`). `body.verb` /
+  // `body.table` name the target. Never reported as an empty result set.
+  | "write_no_rows"
+  // SK-ASK-029 — 409 returned when the engine refused the write: a required
+  // column was missing, a foreign key pointed at a row that doesn't exist, a
+  // unique/check rule failed. `body.kind` names which, `body.table` /
+  // `body.column` / `body.constraint` the identifiers involved (never the
+  // offending values). Deterministic — never retried.
+  | "write_constraint"
   // SK-SDK-009 / SK-APIKEYS-003 — `/v1/run` rejected the call because
   // the principal is read-only (pk_live tried to write).
   | "forbidden"
@@ -368,6 +404,23 @@ export type ApiErrorCode =
   | "invalid_request"
   | "introspection_failed"
   | "sealing_unconfigured"
+  | "oauth_not_configured"
+  | "pick_expired"
+  // Guided import + database creation.
+  | "import_not_found"
+  | "import_busy"
+  | "unknown_pack"
+  | "source_required"
+  | "invalid_preset"
+  | "preset_disabled"
+  | "preset_engine_conflict"
+  | "provision_failed"
+  | "create_requires_session"
+  // Anonymous-session adoption + bearer parsing.
+  | "invalid_bearer"
+  | "invalid_token"
+  | "token_taken"
+  | "adopt_failed"
   // SDK-only sentinels — never sent by the API.
   | "unknown_error"
   | "non_json_response"
@@ -395,10 +448,21 @@ export type ClarifyOption = {
   forceNoPin?: boolean;
 };
 
-// JSON body the API returns on every non-2xx response; surfaced as `NlqdbApiError.body`.
+// JSON body the API returns on every non-2xx response; surfaced as
+// `NlqdbApiError.body`. `code` / `message` / `action` / `retryable` are
+// rendered server-side from the `@nlqdb/errors` registry (SK-ERR-001) so a
+// surface renders them verbatim instead of keeping its own copy table;
+// `params` carries the code's declared, secret-free cause fields.
 export type ApiErrorBody = {
-  status: ApiErrorCode;
+  code: ApiErrorCode;
+  /** One sentence naming what happened (GLOBAL-012). Render verbatim. */
   message?: string;
+  /** The single next action the reader can take (GLOBAL-012). */
+  action?: string;
+  /** Derived from the code's recoverability — never guess your own. */
+  retryable?: boolean;
+  /** Declared cause fields for this code (bounded enums / slugs only). */
+  params?: Record<string, unknown>;
   reason?: string;
   limit?: number;
   count?: number;
@@ -438,7 +502,7 @@ export type ChatAssistantSuccess = {
 // Error branch of `ChatAssistantResult` — a persisted assistant turn whose API call failed.
 export type ChatAssistantError = {
   kind: "error";
-  status: ApiErrorCode;
+  code: ApiErrorCode;
   message?: string;
 };
 
@@ -1159,7 +1223,7 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
         );
       }
       const errBody = extractError(parsed);
-      const code = errBody?.status ?? "unknown_error";
+      const code = errBody?.code ?? "unknown_error";
       throw new NlqdbApiError(
         `nlqdb: /v1/ask → ${res.status} ${code}`,
         res.status,
@@ -1250,12 +1314,12 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
             break;
           }
           case "error": {
-            const p = payload as { error?: ApiErrorBody };
-            const errBody = p.error ?? null;
+            const p = payload as { error?: Record<string, unknown> };
+            const errBody = p.error ? normalizeErrorBody(p.error) : null;
             throw new NlqdbApiError(
-              `nlqdb: /v1/ask → ${errBody?.status ?? "unknown_error"}`,
+              `nlqdb: /v1/ask → ${errBody?.code ?? "unknown_error"}`,
               200,
-              errBody?.status ?? "unknown_error",
+              errBody?.code ?? "unknown_error",
               "/v1/ask",
               errBody,
             );
@@ -1516,7 +1580,7 @@ function toTraceEvent(event: string, payload: unknown): TraceEvent | null {
     }
     case "error": {
       const p = payload as { error?: ApiErrorBody };
-      return { type: "error", error: p.error ?? { status: "unknown_error" } };
+      return { type: "error", error: p.error ?? { code: "unknown_error" } };
     }
     case "done":
       return { type: "done", status: "ok" };
@@ -1579,7 +1643,7 @@ async function sendOnce<T>(
   }
   if (!res.ok) {
     const errBody = extractError(parsed);
-    const code = errBody?.status ?? "unknown_error";
+    const code = errBody?.code ?? "unknown_error";
     return {
       kind: "err",
       error: new NlqdbApiError(
@@ -1687,10 +1751,24 @@ function buildByollmHeader(cred: ByollmCredential): string {
   return value;
 }
 
+// The registry nests declared cause fields under `params` (SK-ERR-002), but
+// `ApiErrorBody` also exposes them top-level (`candidate_dbs`, `options`,
+// `pinned_db`, …) so a surface can read `err.body.<field>`. Surface them at
+// both levels; the envelope's own keys win over `params`. Applied to both the
+// JSON error path and the SSE `error` frame so `err.body` is identical either way.
+function normalizeErrorBody(inner: Record<string, unknown>): ApiErrorBody {
+  const params = inner["params"];
+  return (
+    params && typeof params === "object"
+      ? { ...(params as Record<string, unknown>), ...inner }
+      : inner
+  ) as ApiErrorBody;
+}
+
 // Normalize the API's TWO error envelope shapes into a single
 // `ApiErrorBody`:
 //
-//   1. Structured  — `{ error: { status: "rate_limited", limit, count } }`
+//   1. Structured  — `{ error: { code: "rate_limited", message, action, … } }`
 //      (orchestrator + chat outcome failures)
 //   2. String-form — `{ error: "invalid_json" }`
 //      (body-parse failures from apps/api/src/http.ts +
@@ -1705,11 +1783,11 @@ function extractError(parsed: unknown): ApiErrorBody | null {
   const body = parsed as Record<string, unknown>;
   const errEnvelope = body["error"];
   if (typeof errEnvelope === "string") {
-    return { status: errEnvelope as ApiErrorCode };
+    return { code: errEnvelope as ApiErrorCode };
   }
   if (errEnvelope && typeof errEnvelope === "object") {
     const inner = errEnvelope as Record<string, unknown>;
-    if (typeof inner["status"] === "string") return inner as ApiErrorBody;
+    if (typeof inner["code"] === "string") return normalizeErrorBody(inner);
   }
   return null;
 }

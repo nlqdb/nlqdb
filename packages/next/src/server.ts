@@ -29,7 +29,7 @@ export function createAskRoute(opts: NlqdbServerOptions = {}) {
       body = (await req.json()) as AskRequest;
     } catch {
       return Response.json(
-        { error: { status: "invalid_json", message: "request body is not valid JSON" } },
+        { error: { code: "invalid_json", message: "request body is not valid JSON" } },
         { status: 400 },
       );
     }
@@ -44,7 +44,7 @@ export function createAskRoute(opts: NlqdbServerOptions = {}) {
         // carries a `message`, it passes through. The SDK's debug-text
         // `err.message` stays out of the wire shape.
         return Response.json(
-          { error: { status: err.code, ...(err.body ?? {}) } },
+          { error: { code: err.code, ...(err.body ?? {}) } },
           { status: err.httpStatus || 500 },
         );
       }

@@ -22,9 +22,27 @@
 const ACTIVE_STATE_KINDS = new Set(["pending", "needs-confirm"]);
 
 // Structural — matches ChatPanel's `TraceStepRecord` without importing it.
-export type StepLike = { status: "pending" | "ok" | "error" };
+export type StepLike = { status: "pending" | "ok" | "error" | "skipped"; detail?: string };
 
 export function displayTraceSteps<T extends StepLike>(steps: T[], replyStateKind: string): T[] {
   if (ACTIVE_STATE_KINDS.has(replyStateKind)) return steps;
   return steps.filter((s) => s.status !== "pending");
+}
+
+// SK-ERR-001 / GLOBAL-011 — settle the pipeline on an error event. Exactly ONE
+// step failed: the one that was in flight. Everything after it never ran, so it
+// settles as `skipped`, not as a second, third, fourth copy of the same error.
+//
+// The bug this replaces stamped every pending step with the error code, so the
+// 2026-08-17 BYOLLM transcript showed cache_lookup, plan, validate, exec and
+// summarize all "llm_failed" — five claimed failures, no indication that the run
+// actually stopped at `plan`, and a trace that read as a total system outage.
+export function markStepsFailed<T extends StepLike>(steps: T[], detail: string): T[] {
+  let failedOne = false;
+  return steps.map((s) => {
+    if (s.status !== "pending") return s;
+    if (failedOne) return { ...s, status: "skipped" as const };
+    failedOne = true;
+    return { ...s, status: "error" as const, detail };
+  });
 }

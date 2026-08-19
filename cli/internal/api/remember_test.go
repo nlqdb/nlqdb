@@ -71,7 +71,7 @@ func TestRememberIDStringPreservesBigint(t *testing.T) {
 func TestRememberWrongPreset(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict)
-		_, _ = w.Write([]byte(`{"error":{"status":"wrong_preset"}}`))
+		_, _ = w.Write([]byte(`{"error":{"code":"wrong_preset"}}`))
 	}))
 	defer srv.Close()
 
@@ -85,7 +85,7 @@ func TestRememberWrongPreset(t *testing.T) {
 	if !errors.As(err, &apiErr) {
 		t.Fatalf("expected APIError, got %T", err)
 	}
-	if apiErr.Status != "wrong_preset" {
-		t.Errorf("Status = %q", apiErr.Status)
+	if apiErr.Code != "wrong_preset" {
+		t.Errorf("Status = %q", apiErr.Code)
 	}
 }

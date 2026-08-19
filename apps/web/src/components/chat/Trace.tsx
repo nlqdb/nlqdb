@@ -22,7 +22,12 @@ export type TraceStepRecord = {
   name: TraceStepName;
   model?: string;
   latencyMs?: number;
-  status: "pending" | "ok" | "error";
+  // GLOBAL-011 — `skipped` is load-bearing, not cosmetic. When a step fails, the
+  // steps after it never ran; labelling them `error` with the same code (which
+  // is what happened before SK-ERR-001 — the 2026-08-17 transcript showed all
+  // five steps stamped `llm_failed`) claims five failures where there was one,
+  // and hides *where* the pipeline actually stopped.
+  status: "pending" | "ok" | "error" | "skipped";
   detail?: string;
 };
 
@@ -80,9 +85,11 @@ export default function Trace({ steps, sql, explain, defaultOpen, meta }: TraceP
             <span className="chat-trace__step-latency">
               {step.status === "pending"
                 ? "…"
-                : step.latencyMs !== undefined
-                  ? `${step.latencyMs}ms`
-                  : "—"}
+                : step.status === "skipped"
+                  ? "skipped"
+                  : step.latencyMs !== undefined
+                    ? `${step.latencyMs}ms`
+                    : "—"}
             </span>
             {step.detail ? <span className="chat-trace__step-detail">{step.detail}</span> : null}
           </li>

@@ -56,7 +56,7 @@ export function destructiveClarify(reason: string, db: DbRecord): ClarifyRequire
   });
 
   return {
-    status: "clarify_required",
+    code: "clarify_required",
     clarification: "destructive_ambiguous",
     pinned_db: null,
     reason:

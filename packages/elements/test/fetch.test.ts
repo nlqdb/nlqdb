@@ -159,7 +159,7 @@ describe("fetchAsk", () => {
 
   it("surfaces structured 4xx errors (rate_limited)", async () => {
     const fetchImpl = vi.fn<FetchLike>(async () =>
-      jsonResponse({ error: { status: "rate_limited", limit: 10, count: 11 } }, { status: 429 }),
+      jsonResponse({ error: { code: "rate_limited", limit: 10, count: 11 } }, { status: 429 }),
     );
     const outcome = await fetchAsk({
       endpoint: "https://api.example/v1/ask",
@@ -172,7 +172,7 @@ describe("fetchAsk", () => {
       failure: {
         kind: "api",
         status: 429,
-        error: { status: "rate_limited", limit: 10, count: 11 },
+        error: { code: "rate_limited", limit: 10, count: 11 },
       },
     });
   });
@@ -180,7 +180,7 @@ describe("fetchAsk", () => {
   it("surfaces structured 5xx errors (db_unreachable)", async () => {
     const fetchImpl = vi.fn<FetchLike>(async () =>
       jsonResponse(
-        { error: { status: "db_unreachable", message: "connect ECONNREFUSED" } },
+        { error: { code: "db_unreachable", message: "connect ECONNREFUSED" } },
         { status: 502 },
       ),
     );
@@ -195,7 +195,7 @@ describe("fetchAsk", () => {
       failure: {
         kind: "api",
         status: 502,
-        error: { status: "db_unreachable", message: "connect ECONNREFUSED" },
+        error: { code: "db_unreachable", message: "connect ECONNREFUSED" },
       },
     });
   });

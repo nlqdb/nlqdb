@@ -74,7 +74,7 @@ export function buildPackRunnerDeps(
           agentId,
         },
       );
-      if (!outcome.ok) throw new Error(`remember_failed:${outcome.error.status}`);
+      if (!outcome.ok) throw new Error(`remember_failed:${outcome.error.code}`);
     },
 
     async countRows(dbId) {

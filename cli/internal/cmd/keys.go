@@ -81,7 +81,7 @@ revoked key disconnect within ~1 second.`,
 			out, err := api.New(g.apiURL, id).RevokeKey(ctx, keyID)
 			if err != nil {
 				var apiErr *api.APIError
-				if errors.As(err, &apiErr) && apiErr.Status == "key_not_found" {
+				if errors.As(err, &apiErr) && apiErr.Code == "key_not_found" {
 					printErr(cmd, "key not found — run `nlq keys list` to see ids you own.")
 					return err
 				}

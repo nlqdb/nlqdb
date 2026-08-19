@@ -136,12 +136,16 @@ describe("renderActionState — error", () => {
       failure: {
         kind: "api",
         status: 429,
-        error: { status: "rate_limited", limit: 10, count: 11 },
+        error: {
+          code: "rate_limited",
+          message: "You've used 11 of 10 requests in this window.",
+          action: "Wait a moment, then retry.",
+        },
       },
       label: "Submit",
     });
-    expect(html).toContain("Rate limit reached");
     expect(html).toContain("11 of 10");
+    expect(html).toContain("Wait a moment, then retry.");
   });
 
   it("renders bare-string API errors verbatim", () => {

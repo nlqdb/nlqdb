@@ -19,9 +19,26 @@
 //     nothing — exactly like a plan-cache hit (SK-PREMIUM-007).
 //   • A caller-initiated cancel is re-thrown, not treated as a premium failure —
 //     an aborted request must not silently re-run on the free chain.
+//   • SK-LLM-051: an `auth_denied` is re-thrown too. This lane guards against a
+//     gateway *fault*, not against rejected credentials — masking those would
+//     hide a dead paid lane behind an answer that looks fine.
 
 import type { LLMRouter } from "./router.ts";
-import type { CallOpts, LLMOperation } from "./types.ts";
+import { AllProvidersFailedError } from "./router.ts";
+import { type CallOpts, type LLMOperation, ProviderError } from "./types.ts";
+
+// SK-LLM-051 — a *credential* denial is not the gateway fault this lane
+// fallback exists for. Serving a paid user off the free chain because our
+// premium credentials are rejected hides a billing-side outage behind a
+// working-looking answer, and the user never learns their paid lane is dead.
+// Fail loud instead: the response names `llm_failed × auth_denied × premium`.
+function isAuthDenied(err: unknown): boolean {
+  if (err instanceof ProviderError) return err.reason === "auth_denied";
+  if (err instanceof AllProvidersFailedError) {
+    return err.attempts.some((a) => a.reason === "auth_denied");
+  }
+  return false;
+}
 
 export function withFallbackRouter(
   primary: LLMRouter,
@@ -40,6 +57,7 @@ export function withFallbackRouter(
         // A caller-side cancel is not a premium failure — don't burn a second
         // (free) round-trip the caller no longer wants.
         if (opts?.signal?.aborted) throw err;
+        if (isAuthDenied(err)) throw err;
         onFallback(op, err);
         return fb(req, opts);
       }

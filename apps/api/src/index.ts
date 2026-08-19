@@ -71,7 +71,7 @@ import { kickoffAskPrelude, resolveAnonEngineOverride, seedFromPinnedDb } from "
 import { makeRecentTablesStore } from "./ask/recent-tables.ts";
 import { withStageRetry } from "./ask/retry.ts";
 import { ROUTE_CONFIDENCE_FLOOR, routeAsk } from "./ask/route-ask.ts";
-import type { AskError, OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
+import type { OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
 import { auth, authWaitUntil, REVOCATION_KEY_PREFIX } from "./auth.ts";
@@ -107,6 +107,13 @@ import { AGENT_MEMORY_V1_VERSION, type MemoryPreset } from "./db-create/presets/
 import { resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
 import { notify } from "./email-notify.ts";
+import {
+  errorEnvelope,
+  errorResponse,
+  fail,
+  failUnknown,
+  type PipelineError,
+} from "./error-envelope.ts";
 import { recordEvalReport, recordPricingEvent, recordWishlist } from "./events-feature.ts";
 import { notifyFirstServerError } from "./first-error-email.ts";
 import {
@@ -139,7 +146,6 @@ import {
   type MemoryScope,
   memorySurfaceRejection,
   orchestrateRemember,
-  type RememberError,
   validateRememberInput,
 } from "./memory/remember.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
@@ -163,7 +169,7 @@ import {
   rateLimitBucketKey,
   surfaceFromPrincipal,
 } from "./principal.ts";
-import { orchestrateRun, type RunError } from "./run/orchestrate.ts";
+import { orchestrateRun } from "./run/orchestrate.ts";
 import {
   blocksNewCheckout,
   type CustomerRow,
@@ -723,7 +729,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     const parsed = await parseAskBody(c);
     if (!parsed.ok) {
       span.end();
-      return c.json(parsed.error.body, parsed.error.status);
+      return errorResponse(c, parsed.error as PipelineError);
     }
     span.setAttribute("nlqdb.ask.goal_preview", redactPii(parsed.body.goal).slice(0, 200));
 
@@ -743,24 +749,13 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       if (principal.kind !== "user") {
         span.setAttribute("nlqdb.ask.outcome", "byollm_requires_session");
         span.end();
-        return c.json(
-          {
-            error: {
-              status: "byollm_requires_session" as const,
-              message: `${BYOLLM_HEADER} requires a signed-in session; sign in to use your own LLM key.`,
-            },
-          },
-          400,
-        );
+        return fail(c, "byollm_requires_session");
       }
       const parsedKey = parseByollmHeader(byollmHeaderRaw);
       if (!parsedKey.ok) {
         span.setAttribute("nlqdb.ask.outcome", "byollm_invalid_key");
         span.end();
-        return c.json(
-          { error: { status: "invalid_byollm_key" as const, message: parsedKey.message } },
-          400,
-        );
+        return fail(c, "invalid_byollm_key", { message: parsedKey.message });
       }
       byollmCredential = parsedKey.credential;
     }
@@ -815,19 +810,12 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         span.setAttribute("nlqdb.ask.outcome", "auth_required_global_cap");
         span.setAttribute("nlqdb.ask.global_window", globalPeek.window);
         span.end();
-        return c.json(
-          {
-            error: {
-              status: "auth_required" as const,
-              code: "anon_global_cap" as const,
-              window: globalPeek.window,
-              resetAt: globalPeek.resetAt,
-              signInUrl: buildSignInUrl(c.req.header("referer")),
-              action: "Sign in to continue — your prompt is saved.",
-            },
-          },
-          401,
-        );
+        return fail(c, "auth_required", {
+          cap: "anon_global_cap",
+          window: globalPeek.window,
+          resetAt: globalPeek.resetAt,
+          signInUrl: buildSignInUrl(c.req.header("referer")),
+        });
       }
 
       const ip = c.req.header("cf-connecting-ip") ?? "unknown";
@@ -854,17 +842,11 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         );
         span.end();
         c.header("Retry-After", String(Math.max(0, verdict.resetAt - now)));
-        return c.json(
-          {
-            error: {
-              status: "rate_limited" as const,
-              limit: verdict.limit,
-              count: verdict.count,
-              resetAt: verdict.resetAt,
-            },
-          },
-          429,
-        );
+        return fail(c, "rate_limited", {
+          limit: verdict.limit,
+          count: verdict.count,
+          resetAt: verdict.resetAt,
+        });
       }
 
       // SK-ANON-012 — per-device cap. Fires at the TOP of /v1/ask so
@@ -881,17 +863,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       if (!devicePeek.ok) {
         span.setAttribute("nlqdb.ask.outcome", "auth_required_device_cap");
         span.end();
-        return c.json(
-          {
-            error: {
-              status: "auth_required" as const,
-              code: "anon_device_cap" as const,
-              signInUrl: buildSignInUrl(c.req.header("referer")),
-              action: "Sign in to create another database — your draft is saved.",
-            },
-          },
-          401,
-        );
+        return fail(c, "auth_required", {
+          cap: "anon_device_cap",
+          signInUrl: buildSignInUrl(c.req.header("referer")),
+        });
       }
 
       // Record the global counter only after BOTH gates clear and
@@ -1075,17 +1050,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     const modelUnavailable = () => {
       span.setAttribute("nlqdb.ask.outcome", "model_unavailable");
       span.end();
-      return c.json(
-        {
-          error: {
-            status: "model_unavailable" as const,
-            message:
-              'model "best" needs a frontier model: add your own provider key (BYOLLM) or a paid plan — pick one under /app/keys.',
-            link: "https://app.nlqdb.com/app/keys",
-          },
-        },
-        409,
-      );
+      return fail(c, "model_unavailable", { link: "https://app.nlqdb.com/app/keys" });
     };
     // Anon principals can never hold a frontier lane (BYOLLM is
     // signed-in-only, paid plans need an account), so `best` fails loud
@@ -1121,16 +1086,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       } catch {
         span.setAttribute("nlqdb.ask.outcome", "byollm_unavailable");
         span.end();
-        return c.json(
-          {
-            error: {
-              status: "byollm_unavailable" as const,
-              message:
-                "Your stored BYOLLM key could not be unsealed; re-add it under your account keys.",
-            },
-          },
-          503,
-        );
+        return fail(c, "byollm_unavailable", {
+          message:
+            "Your stored BYOLLM key could not be unsealed; re-add it under your account keys.",
+        });
       }
     }
 
@@ -1293,16 +1252,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       }
       span.setAttribute("nlqdb.ask.outcome", "byollm_gateway_unconfigured");
       span.end();
-      return c.json(
-        {
-          error: {
-            status: "byollm_unavailable" as const,
-            message:
-              "BYOLLM is not configured on this deployment; the built-in models are still available.",
-          },
-        },
-        503,
-      );
+      return fail(c, "byollm_unavailable", {
+        message:
+          "BYOLLM is not configured on this deployment; the built-in models are still available.",
+      });
     }
 
     // SK-FRONTIER-001..004 — dormant founder-funded frontier lane. While
@@ -1410,7 +1363,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     } catch {
       span.setAttribute("nlqdb.ask.outcome", "router_failed");
       span.end();
-      return c.json({ error: { status: "llm_failed" as const } }, 502);
+      return fail(c, "llm_failed");
     }
 
     const { candidates: tenantCandidates, output: routeOutput } = routed;
@@ -1434,17 +1387,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         const pinned = tenantCandidates.find((d) => d.id === parsed.body.dbId);
         span.setAttribute("nlqdb.ask.outcome", "clarify_create_with_pinned_db");
         span.end();
-        return c.json(
-          {
-            error: {
-              status: "clarify_required" as const,
-              clarification: "create_or_query_pinned" as const,
-              pinned_db: pinned ? { id: pinned.id, slug: pinned.slug } : null,
-              reason: routeOutput.reason,
-            },
-          },
-          409,
-        );
+        return errorResponse(c, {
+          code: "clarify_required",
+          clarification: "create_or_query_pinned",
+          pinned_db: pinned ? { id: pinned.id, slug: pinned.slug } : null,
+          // `reason` is the user-facing sentence (rendered as the message); the
+          // router's machine slug lives on the `kind_reason` span, not the wire.
+          reason: "You've pinned a database, but that reads like a request to create a new one.",
+        });
       }
       return runCreatePath();
     }
@@ -1498,16 +1448,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         if (!parsed.body.dbId) {
           span.setAttribute("nlqdb.ask.dbid_resolution", "ambiguous_409");
           span.end();
-          return c.json(
-            {
-              error: {
-                status: "ambiguous_db" as const,
-                candidate_dbs: tenantCandidates.map((d) => ({ id: d.id, slug: d.slug })),
-                reason: routeOutput.reason,
-              },
-            },
-            409,
-          );
+          return errorResponse(c, {
+            code: "ambiguous_db",
+            candidate_dbs: tenantCandidates.map((d) => ({ id: d.id, slug: d.slug })),
+          });
         }
       }
     }
@@ -1539,7 +1483,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // dbId, returns the create response, or returns 409. Surface as
       // a 500 rather than letting the orchestrator crash on undefined.
       span.end();
-      return c.json({ error: { status: "ambiguous_db" as const } }, 409);
+      return fail(c, "ambiguous_db");
     }
     const orchestrateReq = {
       goal: parsed.body.goal,
@@ -1731,9 +1675,13 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
             },
           });
           if (!outcome.ok) {
+            // SK-ERR-001 — render the streamed error through the registry, same
+            // as the non-SSE path (`errorResponse`): a raw `outcome.error` would
+            // reach the surface with no message/action/retryable, and every
+            // surface renders the wire copy verbatim (GLOBAL-012).
             await stream.writeSSE({
               event: "error",
-              data: JSON.stringify({ error: outcome.error }),
+              data: JSON.stringify(errorEnvelope(outcome.error).body),
             });
             emitFeatureSignal(
               buildEventEmitter(c.env.EVENTS_QUEUE),
@@ -1781,9 +1729,8 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         skipSummary: wantsJsonOnly,
       });
       if (!outcome.ok) {
-        const httpStatus = errorStatus(outcome.error.status);
         // RFC 9110 X-RateLimit-* headers (SK-RL-004 / GLOBAL-002 parity).
-        if (outcome.error.status === "rate_limited") {
+        if (outcome.error.code === "rate_limited") {
           const { limit, count, resetAt } = outcome.error;
           const now = Math.floor(Date.now() / 1000);
           c.header("X-RateLimit-Limit", String(limit));
@@ -1799,7 +1746,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           outcome.error,
         );
         bumpFirst10(false);
-        return c.json({ error: outcome.error }, httpStatus);
+        return errorResponse(c, outcome.error);
       }
       // Detach the ask.completed producer so queue.send runs in
       // ctx.waitUntil after the response flushes — keeps /v1/ask p99
@@ -1851,8 +1798,8 @@ app.post("/v1/run", requirePrincipal, async (c) => {
 
       const parsed = await parseRunBody(c, { dbOptional: principal.kind === "pk_live" });
       if (!parsed.ok) {
-        span.setAttribute("nlqdb.run.outcome", parsed.error.body.error);
-        return c.json(parsed.error.body, parsed.error.status);
+        span.setAttribute("nlqdb.run.outcome", parsed.error.code);
+        return errorResponse(c, parsed.error as PipelineError);
       }
       if (principal.kind === "pk_live" && !parsed.body.db) {
         parsed.body.db = principal.dbId;
@@ -1865,19 +1812,12 @@ app.post("/v1/run", requirePrincipal, async (c) => {
         const globalPeek = await globalLimiter.peek();
         if (!globalPeek.ok) {
           span.setAttribute("nlqdb.run.outcome", "auth_required_global_cap");
-          return c.json(
-            {
-              error: {
-                status: "auth_required" as const,
-                code: "anon_global_cap" as const,
-                window: globalPeek.window,
-                resetAt: globalPeek.resetAt,
-                signInUrl: buildSignInUrl(c.req.header("referer")),
-                action: "Sign in to continue — your prompt is saved.",
-              },
-            },
-            401,
-          );
+          return fail(c, "auth_required", {
+            cap: "anon_global_cap",
+            window: globalPeek.window,
+            resetAt: globalPeek.resetAt,
+            signInUrl: buildSignInUrl(c.req.header("referer")),
+          });
         }
         const ip = c.req.header("cf-connecting-ip") ?? "unknown";
         const anonLimiter = makeAnonRateLimiter(c.env.KV);
@@ -1897,32 +1837,19 @@ app.post("/v1/run", requirePrincipal, async (c) => {
             }),
           );
           c.header("Retry-After", String(Math.max(0, verdict.resetAt - now)));
-          return c.json(
-            {
-              error: {
-                status: "rate_limited" as const,
-                limit: verdict.limit,
-                count: verdict.count,
-                resetAt: verdict.resetAt,
-              },
-            },
-            429,
-          );
+          return fail(c, "rate_limited", {
+            limit: verdict.limit,
+            count: verdict.count,
+            resetAt: verdict.resetAt,
+          });
         }
         const devicePeek = await anonLimiter.peekDevice(principal.id);
         if (!devicePeek.ok) {
           span.setAttribute("nlqdb.run.outcome", "auth_required_device_cap");
-          return c.json(
-            {
-              error: {
-                status: "auth_required" as const,
-                code: "anon_device_cap" as const,
-                signInUrl: buildSignInUrl(c.req.header("referer")),
-                action: "Sign in to keep going — your draft is saved.",
-              },
-            },
-            401,
-          );
+          return fail(c, "auth_required", {
+            cap: "anon_device_cap",
+            signInUrl: buildSignInUrl(c.req.header("referer")),
+          });
         }
         c.executionCtx.waitUntil(globalLimiter.record());
       }
@@ -1951,8 +1878,7 @@ app.post("/v1/run", requirePrincipal, async (c) => {
       );
 
       if (!outcome.ok) {
-        const httpStatus = runErrorStatus(outcome.error);
-        if (outcome.error.status === "rate_limited") {
+        if (outcome.error.code === "rate_limited") {
           const { limit, count, resetAt } = outcome.error;
           const now = Math.floor(Date.now() / 1000);
           c.header("X-RateLimit-Limit", String(limit));
@@ -1964,7 +1890,7 @@ app.post("/v1/run", requirePrincipal, async (c) => {
         // `orchestrateRun`'s trip is the per-account D1 bucket (keyed by
         // `rateLimitBucketKey`), so it's `larger_account` — the anon
         // per-IP gate above (`checkQuery`) is what fires `heavier_tier`.
-        if (outcome.error.status === "rate_limited") {
+        if (outcome.error.code === "rate_limited") {
           c.executionCtx.waitUntil(
             buildEventEmitter(c.env.EVENTS_QUEUE).emit({
               name: "feature.requested.larger_account",
@@ -1973,8 +1899,8 @@ app.post("/v1/run", requirePrincipal, async (c) => {
             }),
           );
         }
-        span.setAttribute("nlqdb.run.outcome", outcome.error.status);
-        return c.json({ error: outcome.error }, httpStatus);
+        span.setAttribute("nlqdb.run.outcome", outcome.error.code);
+        return errorResponse(c, outcome.error);
       }
 
       span.setAttribute("nlqdb.run.outcome", "ok");
@@ -2024,30 +1950,22 @@ app.post("/v1/memory/remember", requirePrincipal, async (c) => {
       const rejection = memorySurfaceRejection(principal.kind);
       if (rejection === "forbidden") {
         span.setAttribute("nlqdb.memory.outcome", "forbidden_read_only");
-        return c.json({ error: { status: "forbidden", reason: "read_only_principal" } }, 403);
+        return fail(c, "forbidden", { reason: "read_only_principal" });
       }
       if (rejection === "auth_required") {
         span.setAttribute("nlqdb.memory.outcome", "auth_required");
-        return c.json(
-          {
-            error: {
-              status: "auth_required" as const,
-              action: "Use a user-scoped key (sk_live_ or sk_mcp_) to write agent memory.",
-            },
-          },
-          401,
-        );
+        return fail(c, "auth_required");
       }
 
       const raw = await parseJsonBody<unknown>(c);
       if (!raw.ok) {
         span.setAttribute("nlqdb.memory.outcome", "invalid_json");
-        return c.json({ error: { status: "invalid_json" } }, 400);
+        return fail(c, "invalid_json");
       }
       const validated = validateRememberInput(raw.body);
       if (!validated.ok) {
         span.setAttribute("nlqdb.memory.outcome", "invalid_body");
-        return c.json({ error: { status: "invalid_body", reason: validated.reason } }, 400);
+        return fail(c, "invalid_body", { reason: validated.reason });
       }
       span.setAttribute("nlqdb.memory.kind", validated.value.kind);
 
@@ -2071,8 +1989,7 @@ app.post("/v1/memory/remember", requirePrincipal, async (c) => {
       );
 
       if (!outcome.ok) {
-        const httpStatus = rememberErrorStatus(outcome.error);
-        if (outcome.error.status === "rate_limited") {
+        if (outcome.error.code === "rate_limited") {
           const { limit, count, resetAt } = outcome.error;
           const now = Math.floor(Date.now() / 1000);
           c.header("X-RateLimit-Limit", String(limit));
@@ -2080,8 +1997,8 @@ app.post("/v1/memory/remember", requirePrincipal, async (c) => {
           c.header("X-RateLimit-Reset", String(resetAt));
           c.header("Retry-After", String(Math.max(0, resetAt - now)));
         }
-        span.setAttribute("nlqdb.memory.outcome", outcome.error.status);
-        return c.json({ error: outcome.error }, httpStatus);
+        span.setAttribute("nlqdb.memory.outcome", outcome.error.code);
+        return errorResponse(c, outcome.error);
       }
 
       span.setAttribute("nlqdb.memory.outcome", "ok");
@@ -2117,7 +2034,7 @@ app.post("/v1/events/wishlist", async (c) => {
       const body = await parseJsonBody<{ surface?: unknown }>(c);
       if (!body.ok) {
         span.setAttribute("nlqdb.events.outcome", "invalid_body");
-        return c.json({ error: { status: "invalid_body" } }, 400);
+        return fail(c, "invalid_body");
       }
       const result = await recordWishlist(
         { kv: c.env.KV, events: buildEventEmitter(c.env.EVENTS_QUEUE) },
@@ -2126,7 +2043,7 @@ app.post("/v1/events/wishlist", async (c) => {
       );
       if (result.status === 400) {
         span.setAttribute("nlqdb.events.outcome", result.reason);
-        return c.json({ error: { status: result.reason } }, 400);
+        return failUnknown(c, result.reason);
       }
       if (result.status === 429) {
         span.setAttribute("nlqdb.events.outcome", "rate_limited");
@@ -2135,7 +2052,7 @@ app.post("/v1/events/wishlist", async (c) => {
         // a safe upper bound — keeps clients backing off the way the
         // /v1/ask 429 path does.
         c.header("Retry-After", "60");
-        return c.json({ error: { status: "rate_limited" } }, 429);
+        return fail(c, "rate_limited");
       }
       span.setAttribute("nlqdb.events.outcome", "accepted");
       span.setAttribute("nlqdb.events.surface", String(body.body.surface));
@@ -2160,7 +2077,7 @@ app.post("/v1/events/pricing", async (c) => {
       const body = await parseJsonBody<unknown>(c);
       if (!body.ok) {
         span.setAttribute("nlqdb.events.outcome", "invalid_body");
-        return c.json({ error: { status: "invalid_body" } }, 400);
+        return fail(c, "invalid_body");
       }
       let identity: { userId: string; email: string | null } | null = null;
       try {
@@ -2177,12 +2094,12 @@ app.post("/v1/events/pricing", async (c) => {
       );
       if (result.status === 400) {
         span.setAttribute("nlqdb.events.outcome", result.reason);
-        return c.json({ error: { status: result.reason } }, 400);
+        return failUnknown(c, result.reason);
       }
       if (result.status === 429) {
         span.setAttribute("nlqdb.events.outcome", "rate_limited");
         c.header("Retry-After", "60");
-        return c.json({ error: { status: "rate_limited" } }, 429);
+        return fail(c, "rate_limited");
       }
       span.setAttribute("nlqdb.events.outcome", "accepted");
       span.setAttribute("nlqdb.events.authed", String(identity !== null));
@@ -2208,12 +2125,12 @@ app.post("/v1/events/eval", async (c) => {
       const expected = c.env.EVAL_INGEST_TOKEN;
       if (!expected) {
         span.setAttribute("nlqdb.events.outcome", "unconfigured");
-        return c.json({ error: { status: "unconfigured" } }, 503);
+        return fail(c, "unconfigured");
       }
       const body = await parseJsonBody<unknown>(c);
       if (!body.ok) {
         span.setAttribute("nlqdb.events.outcome", "invalid_body");
-        return c.json({ error: { status: "invalid_body" } }, 400);
+        return fail(c, "invalid_body");
       }
       const result = recordEvalReport(
         buildEventEmitter(c.env.EVENTS_QUEUE),
@@ -2223,11 +2140,11 @@ app.post("/v1/events/eval", async (c) => {
       );
       if (result.status === 401) {
         span.setAttribute("nlqdb.events.outcome", "unauthorized");
-        return c.json({ error: { status: "unauthorized" } }, 401);
+        return fail(c, "unauthorized");
       }
       if (result.status === 400) {
         span.setAttribute("nlqdb.events.outcome", result.reason);
-        return c.json({ error: { status: result.reason } }, 400);
+        return failUnknown(c, result.reason);
       }
       span.setAttribute("nlqdb.events.outcome", "accepted");
       span.setAttribute("nlqdb.events.emitted", result.emitted);
@@ -2526,8 +2443,8 @@ app.get("/v1/billing/usage", requireSession, async (c) => {
 // `POST /v1/chat/messages` validates input → calls `postChatMessage`
 // (which runs `orchestrateAsk` and persists user + assistant rows on
 // success). The chat orchestrator returns `Rejected` for `rate_limited`
-// or `db_not_found` errors — the handler maps those to 4xx via the
-// shared `errorStatus()` mapper, identical to `/v1/ask`. Other
+// or `db_not_found` errors — the handler renders those through the
+// shared `errorResponse` envelope, identical to `/v1/ask`. Other
 // outcomes (success or post-execute failure) get persisted + 200,
 // because the user did engage and the history is meaningful.
 //
@@ -2541,7 +2458,7 @@ app.post("/v1/anon/adopt", requireSession, async (c) => {
   const session = c.var.session;
   const body = await parseJsonBody<{ token?: unknown }>(c);
   if (!body.ok || typeof body.body.token !== "string") {
-    return c.json({ error: { status: "invalid_body" } }, 400);
+    return fail(c, "invalid_body");
   }
   const result = await recordAnonAdoption(
     c.env.DB,
@@ -2554,15 +2471,10 @@ app.post("/v1/anon/adopt", requireSession, async (c) => {
     // `internal` reason describes a server-side failure mode the
     // client can't act on; surface it as `adopt_failed` so external
     // dashboards / docs don't have to track infra detail.
-    const publicStatus =
-      result.reason === "invalid_token"
-        ? "invalid_token"
-        : result.reason === "token_taken"
-          ? "token_taken"
-          : "adopt_failed";
-    const httpStatus =
-      result.reason === "invalid_token" ? 400 : result.reason === "token_taken" ? 409 : 500;
-    return c.json({ error: { status: publicStatus } }, httpStatus);
+    // The `internal` reason describes a server-side failure the client can't
+    // act on; surface it as `adopt_failed` so external dashboards / docs don't
+    // have to track infra detail.
+    return failUnknown(c, result.reason === "internal" ? "adopt_failed" : result.reason);
   }
   // SK-ANON-014 — `dbId` echoes the adopted DB so callers can pin it
   // synchronously (e.g. the post-signin landing appends `?db=<id>`).
@@ -2982,20 +2894,17 @@ app.post("/v1/packs/imports", async (c) => {
       const raw = await parseJsonBody<{ packId?: unknown; source?: unknown }>(c);
       if (!raw.ok) {
         span.setAttribute("nlqdb.pack.import.outcome", "invalid_json");
-        return c.json({ error: { status: "invalid_json" as const } }, 400);
+        return fail(c, "invalid_json");
       }
       const packId = typeof raw.body.packId === "string" ? raw.body.packId.trim() : "";
       const source = typeof raw.body.source === "string" ? raw.body.source.trim() : "";
       if (!PACKS[packId]) {
         span.setAttribute("nlqdb.pack.import.outcome", "unknown_pack");
-        return c.json(
-          { error: { status: "unknown_pack" as const, allowed: Object.keys(PACKS) } },
-          400,
-        );
+        return fail(c, "unknown_pack", { allowed: Object.keys(PACKS) });
       }
       if (!source || source.length > MAX_GOAL_LENGTH) {
         span.setAttribute("nlqdb.pack.import.outcome", "invalid_source");
-        return c.json({ error: { status: "source_required" as const } }, 400);
+        return fail(c, "source_required");
       }
       span.setAttribute("nlqdb.pack.id", packId);
 
@@ -3011,7 +2920,7 @@ app.post("/v1/packs/imports", async (c) => {
       if (!(await throttle.tryConsume(tenantId ?? `ip:${ip}`))) {
         span.setAttribute("nlqdb.pack.import.outcome", "rate_limited");
         c.header("Retry-After", String(PACK_PREFLIGHT_THROTTLE.windowSeconds));
-        return c.json({ error: { status: "rate_limited" as const } }, 429);
+        return fail(c, "rate_limited");
       }
 
       // GLOBAL-005 — a retried create must not start a second import (each
@@ -3032,7 +2941,7 @@ app.post("/v1/packs/imports", async (c) => {
         return c.json(
           {
             error: {
-              status: created.reason,
+              code: created.reason,
               ...(created.reason === "invalid_source" ? { reason: created.detail } : {}),
             },
           },
@@ -3050,7 +2959,7 @@ app.post("/v1/packs/imports", async (c) => {
         // The draft survives every rejection so a retry resumes it; the
         // status is advisory, never a lost import.
         return c.json(
-          { import: importView(draft), error: { status: preflight.reason } },
+          { import: importView(draft), ...errorEnvelope({ code: "source_required" }).body },
           preflight.reason === "source_unavailable" ? 422 : 500,
         );
       }
@@ -3063,7 +2972,7 @@ app.post("/v1/packs/imports", async (c) => {
       span.recordException(e);
       span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
       span.setAttribute("nlqdb.pack.import.outcome", "internal_error");
-      return c.json({ error: { status: "internal_error" as const } }, 500);
+      return fail(c, "internal_error");
     } finally {
       span.end();
     }
@@ -3078,12 +2987,12 @@ app.get("/v1/packs/imports/:id", async (c) => {
   const id = c.req.param("id");
   const store = makeD1DraftStore(c.env.DB);
   const draft = await store.get(id);
-  if (!draft) return c.json({ error: { status: "import_not_found" as const } }, 404);
+  if (!draft) return fail(c, "import_not_found");
   if (draft.tenantId) {
     const session = await sessionResolver.getSession(c.req.raw);
     // Unknown id and another tenant's id are both 404 — no existence leak.
     if (session?.user.id !== draft.tenantId) {
-      return c.json({ error: { status: "import_not_found" as const } }, 404);
+      return fail(c, "import_not_found");
     }
   }
   return c.json({ import: importView(draft) });
@@ -3108,7 +3017,7 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
       let draft = await store.get(id);
       if (!draft) {
         span.setAttribute("nlqdb.pack.import.outcome", "import_not_found");
-        return c.json({ error: { status: "import_not_found" as const } }, 404);
+        return fail(c, "import_not_found");
       }
       // The sign-in resume seam: an unclaimed draft is bound to whoever
       // returns from sign-in first, with no repeated input and no second
@@ -3119,13 +3028,13 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
           const fresh = await store.get(id);
           if (fresh?.tenantId !== session.user.id) {
             span.setAttribute("nlqdb.pack.import.outcome", "import_not_found");
-            return c.json({ error: { status: "import_not_found" as const } }, 404);
+            return fail(c, "import_not_found");
           }
         }
         draft = { ...draft, tenantId: session.user.id };
       } else if (draft.tenantId !== session.user.id) {
         span.setAttribute("nlqdb.pack.import.outcome", "import_not_found");
-        return c.json({ error: { status: "import_not_found" as const } }, 404);
+        return fail(c, "import_not_found");
       }
       span.setAttribute("nlqdb.pack.id", draft.packId);
 
@@ -3147,7 +3056,7 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
         span.setAttribute("nlqdb.pack.import.outcome", "rate_limited");
         const now = Math.floor(Date.now() / 1000);
         c.header("Retry-After", String(Math.max(0, decision.resetAt - now)));
-        return c.json({ error: { status: "rate_limited" as const } }, 429);
+        return fail(c, "rate_limited");
       }
 
       // Exactly one advance of a draft runs at a time. The lease is HELD for
@@ -3163,8 +3072,10 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
       const leaseNow = Date.now();
       if (!(await store.acquireLease(id, leaseNow, leaseNow + PACK_ADVANCE_LEASE_MS))) {
         span.setAttribute("nlqdb.pack.import.outcome", "import_busy");
+        // Carries the draft alongside the error so the UI keeps rendering
+        // progress while the lease holder finishes.
         return c.json(
-          { import: importView(draft), error: { status: "import_busy" as const } },
+          { import: importView(draft), ...errorEnvelope({ code: "import_busy" }).body },
           409,
         );
       }
@@ -3178,7 +3089,7 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
         if (draft.phase === "saving" && !draft.dbId) {
           if (c.env.MEMORY_PRESET !== "1") {
             span.setAttribute("nlqdb.pack.import.outcome", "preset_disabled");
-            return c.json({ error: { status: "preset_disabled" as const } }, 400);
+            return fail(c, "preset_disabled");
           }
           const g = globalThis as unknown as { __filename?: string; __dirname?: string };
           if (typeof g.__filename === "undefined") g.__filename = "worker";
@@ -3198,7 +3109,7 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
           });
           if (!provisioned.ok) {
             span.setAttribute("nlqdb.pack.import.outcome", `provision_${provisioned.error.kind}`);
-            return c.json({ error: { status: "provision_failed" as const } }, 502);
+            return fail(c, "provision_failed");
           }
           draft = { ...draft, dbId: provisioned.dbId };
           await store.save(draft);
@@ -3214,7 +3125,8 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
           // `auth_required` / `db_required` are journey states, not failures:
           // the draft is intact and the client's next action resumes it.
           const status = outcome.reason === "source_unavailable" ? 422 : 409;
-          return c.json({ import: importView(settled), error: { status: outcome.reason } }, status);
+          const code = outcome.reason === "source_unavailable" ? "source_required" : "import_busy";
+          return c.json({ import: importView(settled), ...errorEnvelope({ code }).body }, status);
         }
         span.setAttribute("nlqdb.pack.import.outcome", "ok");
         const body = { import: importView(settled) };
@@ -3229,7 +3141,7 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
       span.recordException(e);
       span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
       span.setAttribute("nlqdb.pack.import.outcome", "internal_error");
-      return c.json({ error: { status: "internal_error" as const } }, 500);
+      return fail(c, "internal_error");
     } finally {
       span.end();
     }
@@ -3259,7 +3171,7 @@ app.delete("/v1/packs/imports/:id", requireSession, async (c) => {
     if (!draft || (draft.tenantId !== null && draft.tenantId !== session.user.id)) {
       span.setAttribute("nlqdb.pack.import.outcome", "import_not_found");
       span.end();
-      return c.json({ error: { status: "import_not_found" as const } }, 404);
+      return fail(c, "import_not_found");
     }
     try {
       if (draft.dbId) {
@@ -3286,7 +3198,7 @@ app.delete("/v1/packs/imports/:id", requireSession, async (c) => {
       });
       span.setAttribute("nlqdb.pack.import.outcome", "internal_error");
       span.end();
-      return c.json({ error: { status: "internal_error" as const } }, 500);
+      return fail(c, "internal_error");
     }
   });
 });
@@ -3357,20 +3269,11 @@ app.post("/v1/keys/byollm", requireSession, async (c) => {
       if (!result.ok) {
         span.setAttribute("nlqdb.keys.byollm.set.outcome", result.reason);
         if (result.reason === "kek_unconfigured") {
-          return c.json(
-            {
-              error: {
-                status: "byollm_unavailable" as const,
-                message: "BYOLLM key storage is not configured on this deployment.",
-              },
-            },
-            503,
-          );
+          return fail(c, "byollm_unavailable", {
+            message: "BYOLLM key storage is not configured on this deployment.",
+          });
         }
-        return c.json(
-          { error: { status: "invalid_byollm_key" as const, message: result.message } },
-          400,
-        );
+        return fail(c, "invalid_byollm_key", { message: result.message });
       }
       // The provider slug is the only bounded value worth a span attribute;
       // the model rides `llm.model` on the dispatch span, the key never does.
@@ -3406,15 +3309,9 @@ app.get("/v1/keys/byollm", requireSession, async (c) => {
       const result = await byollmStatus(c.env.DB, c.env, session.user.id);
       if (!result.ok) {
         span.setAttribute("nlqdb.keys.byollm.status.outcome", "kek_unconfigured");
-        return c.json(
-          {
-            error: {
-              status: "byollm_unavailable" as const,
-              message: "BYOLLM key storage is not configured on this deployment.",
-            },
-          },
-          503,
-        );
+        return fail(c, "byollm_unavailable", {
+          message: "BYOLLM key storage is not configured on this deployment.",
+        });
       }
       span.setAttribute("nlqdb.keys.byollm.status.outcome", "ok");
       span.setAttribute("nlqdb.keys.byollm.configured", result.status !== null);
@@ -3644,7 +3541,7 @@ app.delete("/v1/keys/:id", requireSession, async (c) => {
       const outcome = await revokeKeyById(c.env.DB, session.user.id, keyId);
       span.setAttribute("nlqdb.keys.revoke.outcome", outcome);
       if (outcome === "not_found") {
-        return c.json({ error: { status: "key_not_found" as const } }, 404);
+        return fail(c, "key_not_found");
       }
       return c.json({ ok: true, alreadyRevoked: outcome === "already_revoked" });
     } catch (err) {
@@ -3687,7 +3584,7 @@ app.post("/v1/keys/:id/default-model", requireSession, async (c) => {
       const outcome = await setKeyDefaultModel(c.env.DB, session.user.id, keyId, value);
       span.setAttribute("nlqdb.keys.default_model.outcome", outcome);
       if (outcome === "not_found") {
-        return c.json({ error: { status: "key_not_found" as const } }, 404);
+        return fail(c, "key_not_found");
       }
       return c.json({ ok: true, defaultModel: value });
     } catch (err) {
@@ -3928,7 +3825,7 @@ app.post("/v1/databases", requirePrincipal, async (c) => {
     if (!tenantId) {
       span.setAttribute("nlqdb.databases.create.outcome", "account_required");
       span.end();
-      return c.json({ error: { status: "account_required" as const } }, 403);
+      return fail(c, "account_required");
     }
     span.setAttribute("nlqdb.user.id", tenantId);
 
@@ -3940,7 +3837,7 @@ app.post("/v1/databases", requirePrincipal, async (c) => {
     }>(c);
     if (!raw.ok) {
       span.end();
-      return c.json({ error: { status: "invalid_json" as const } }, 400);
+      return fail(c, "invalid_json");
     }
 
     const name =
@@ -3960,24 +3857,15 @@ app.post("/v1/databases", requirePrincipal, async (c) => {
     if (raw.body.preset !== undefined) {
       if (c.env.MEMORY_PRESET !== "1") {
         span.end();
-        return c.json({ error: { status: "preset_disabled" as const } }, 400);
+        return fail(c, "preset_disabled");
       }
       if (raw.body.preset !== AGENT_MEMORY_V1_VERSION) {
         span.end();
-        return c.json(
-          {
-            error: {
-              status: "invalid_preset" as const,
-              value: raw.body.preset,
-              allowed: [AGENT_MEMORY_V1_VERSION],
-            },
-          },
-          400,
-        );
+        return fail(c, "invalid_preset", { allowed: [AGENT_MEMORY_V1_VERSION] });
       }
       if (raw.body.engine !== undefined) {
         span.end();
-        return c.json({ error: { status: "preset_engine_conflict" as const } }, 400);
+        return fail(c, "preset_engine_conflict");
       }
       preset = raw.body.preset;
     }
@@ -3992,22 +3880,19 @@ app.post("/v1/databases", requirePrincipal, async (c) => {
     if (!preset && principal.kind !== "user") {
       span.setAttribute("nlqdb.databases.create.outcome", "create_requires_session");
       span.end();
-      return c.json({ error: { status: "create_requires_session" as const } }, 403);
+      return fail(c, "create_requires_session");
     }
 
     if (!preset && !name && !goal) {
       span.end();
-      return c.json({ error: { status: "goal_required" as const } }, 400);
+      return fail(c, "goal_required");
     }
 
     // SK-ASK-010 — enforce max goal/name length to bound LLM token cost.
     const effectiveGoal = goal ?? name ?? "";
     if (effectiveGoal.length > MAX_GOAL_LENGTH) {
       span.end();
-      return c.json(
-        { error: { status: "goal_too_long" as const, maxLength: MAX_GOAL_LENGTH } },
-        400,
-      );
+      return fail(c, "goal_too_long", { maxLength: MAX_GOAL_LENGTH });
     }
 
     // SK-DB-010 — explicit engine override on the create surface.
@@ -4020,16 +3905,7 @@ app.post("/v1/databases", requirePrincipal, async (c) => {
     if (raw.body.engine !== undefined) {
       if (!isAllowedEngine(raw.body.engine)) {
         span.end();
-        return c.json(
-          {
-            error: {
-              status: "invalid_engine" as const,
-              value: raw.body.engine,
-              allowed: [...ALLOWED_ENGINES],
-            },
-          },
-          400,
-        );
+        return fail(c, "invalid_engine", { allowed: [...ALLOWED_ENGINES] });
       }
       engine = raw.body.engine;
     }
@@ -4163,15 +4039,9 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
     if (!tenantId || !canConnectDatabase(principal)) {
       span.setAttribute("nlqdb.db.connect.outcome", "connect_requires_account");
       span.end();
-      return c.json(
-        {
-          error: {
-            status: "connect_requires_account" as const,
-            message: "Connecting a database needs an account session or an sk_live key.",
-          },
-        },
-        403,
-      );
+      return fail(c, "connect_requires_account", {
+        message: "Connecting a database needs an account session or an sk_live key.",
+      });
     }
     span.setAttribute("nlqdb.user.id", tenantId);
 
@@ -4184,25 +4054,14 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
     if (!raw.ok) {
       span.setAttribute("nlqdb.db.connect.outcome", "invalid_json");
       span.end();
-      return c.json(
-        { error: { status: "invalid_request" as const, message: "Body must be JSON." } },
-        400,
-      );
+      return fail(c, "invalid_request", { message: "Body must be JSON." });
     }
 
     const engine = raw.body.engine;
     if (engine !== "clickhouse" && engine !== "postgres") {
       span.setAttribute("nlqdb.db.connect.outcome", "invalid_engine");
       span.end();
-      return c.json(
-        {
-          error: {
-            status: "invalid_request" as const,
-            message: 'engine must be "clickhouse" or "postgres".',
-          },
-        },
-        400,
-      );
+      return fail(c, "invalid_request", { message: 'engine must be "clickhouse" or "postgres".' });
     }
     span.setAttribute("nlqdb.engine", engine);
 
@@ -4211,10 +4070,7 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
     if (connectionUrl === "") {
       span.setAttribute("nlqdb.db.connect.outcome", "missing_connection_url");
       span.end();
-      return c.json(
-        { error: { status: "invalid_request" as const, message: "connection_url is required." } },
-        400,
-      );
+      return fail(c, "invalid_request", { message: "connection_url is required." });
     }
     const name =
       typeof raw.body.name === "string" && raw.body.name.trim().length > 0
@@ -4273,10 +4129,7 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
               : ("invalid_request" as const);
         span.setAttribute("nlqdb.db.connect.outcome", code);
         span.end();
-        return c.json(
-          { error: { status: code, message: result.message } },
-          result.status as 400 | 502 | 503,
-        );
+        return fail(c, code, { message: result.message });
       }
       span.setAttribute("nlqdb.db.connect.outcome", "ok");
       span.setAttribute("nlqdb.db.connect.db_id", result.dbId);
@@ -4340,7 +4193,7 @@ app.delete("/v1/databases/:id", requireSession, async (c) => {
     if (!record) {
       span.setAttribute("nlqdb.databases.delete.outcome", "not_found");
       span.end();
-      return c.json({ error: { status: "db_not_found" as const } }, 404);
+      return fail(c, "db_not_found");
     }
 
     // The lean client comes from the WASM-free `pg-client.ts`
@@ -4398,7 +4251,7 @@ app.post("/v1/chat/messages", requireSession, async (c) => {
     if (!parsed.ok) {
       span.setAttribute("nlqdb.chat.outcome", "invalid_request");
       span.end();
-      return c.json(parsed.error.body, parsed.error.status);
+      return errorResponse(c, parsed.error as PipelineError);
     }
 
     // TEMPORARY (Slice 11 retires): `dbId="demo"` short-circuits to
@@ -4429,10 +4282,9 @@ app.post("/v1/chat/messages", requireSession, async (c) => {
 
     if (!outcome.ok) {
       span.setAttribute("nlqdb.chat.outcome", "rejected");
-      span.setAttribute("nlqdb.chat.reject_status", outcome.error.status);
+      span.setAttribute("nlqdb.chat.reject_status", outcome.error.code);
       span.end();
-      const httpStatus = errorStatus(outcome.error.status);
-      if (outcome.error.status === "rate_limited") {
+      if (outcome.error.code === "rate_limited") {
         const { limit, count, resetAt } = outcome.error;
         const now = Math.floor(Date.now() / 1000);
         c.header("X-RateLimit-Limit", String(limit));
@@ -4447,7 +4299,7 @@ app.post("/v1/chat/messages", requireSession, async (c) => {
         "chat",
         outcome.error,
       );
-      return c.json({ error: outcome.error }, httpStatus);
+      return errorResponse(c, outcome.error);
     }
     span.setAttribute("nlqdb.chat.outcome", "persisted");
     span.setAttribute("nlqdb.chat.assistant_kind", outcome.assistant.result.kind);
@@ -4500,16 +4352,7 @@ function decisionToResponse(
   // re-renders the widget (`SK-ANON-007` envelope shape unchanged).
   span.setAttribute("nlqdb.ask.outcome", "challenge_required");
   span.end();
-  return c.json(
-    {
-      error: {
-        status: "challenge_required" as const,
-        code: "challenge_required" as const,
-        action: "Complete the browser challenge to continue.",
-      },
-    },
-    428,
-  );
+  return fail(c, "challenge_required");
 }
 
 // Sign-in URL the global-anon-cap response hands the surface
@@ -4566,44 +4409,6 @@ function buildSignInUrl(referer: string | undefined): string {
   return url.toString();
 }
 
-// Typed over `AskError["status"]` so adding a new error variant fails
-// the compile here rather than silently falling through to 400. 422
-// for `schema_unavailable` mirrors REST convention for "request was
-// well-formed but the server can't act on it" (the goal+dbId parsed,
-// but introspection couldn't fetch a schema this time).
-function errorStatus(status: AskError["status"]): 400 | 404 | 409 | 422 | 429 | 502 {
-  switch (status) {
-    case "db_not_found":
-      return 404;
-    case "rate_limited":
-      return 429;
-    case "schema_unavailable":
-      return 422;
-    case "db_unreachable":
-    case "db_misconfigured":
-    case "llm_failed":
-      return 502;
-    case "sql_rejected":
-      return 400;
-    case "clarify_required":
-    case "schema_mismatch":
-      return 409;
-  }
-}
-
-// Wraps `errorStatus` with the `forbidden` branch unique to `/v1/run` (`SK-APIKEYS-003`).
-function runErrorStatus(error: RunError): 400 | 403 | 404 | 409 | 422 | 429 | 502 {
-  if (error.status === "forbidden") return 403;
-  return errorStatus(error.status);
-}
-
-// `/v1/memory/remember` adds `wrong_preset` (409 — the target DB isn't an
-// agent_memory_v1 preset); everything else maps like the ask/run paths.
-function rememberErrorStatus(error: RememberError): 400 | 404 | 409 | 422 | 429 | 502 {
-  if (error.status === "wrong_preset") return 409;
-  return errorStatus(error.status);
-}
-
 // Anon-bearer stash endpoint (SK-ANON-012).
 //
 // Called by `sign-in.astro` before initiating magic-link or OAuth so
@@ -4654,7 +4459,7 @@ app.post("/api/auth/anon-adopt-now", requireSession, async (c) => {
   const session = c.var.session;
   const bearer = c.req.header("x-anon-bearer");
   if (!bearer?.startsWith("anon_") || bearer.length <= "anon_".length) {
-    return c.json({ error: { status: "invalid_bearer" } }, 400);
+    return fail(c, "invalid_bearer");
   }
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.anon.adopt", async (span) => {
@@ -4674,9 +4479,7 @@ app.post("/api/auth/anon-adopt-now", requireSession, async (c) => {
         return c.json({ adopted: result.adopted, dbId: result.dbId });
       }
       span.setAttribute("nlqdb.anon.adopt.outcome", result.reason);
-      const httpStatus =
-        result.reason === "invalid_token" ? 400 : result.reason === "token_taken" ? 409 : 500;
-      return c.json({ error: { status: result.reason } }, httpStatus);
+      return failUnknown(c, result.reason === "internal" ? "adopt_failed" : result.reason);
     } finally {
       span.end();
     }

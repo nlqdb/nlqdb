@@ -43,16 +43,16 @@ describe("createAskRoute()", () => {
       }),
     );
     expect(res.status).toBe(400);
-    const json = (await res.json()) as { error: { status: string } };
-    expect(json.error.status).toBe("invalid_json");
+    const json = (await res.json()) as { error: { code: string } };
+    expect(json.error.code).toBe("invalid_json");
     delete process.env["NLQDB_API_KEY"];
   });
 
   // WS03-T3 / GLOBAL-002: the route must emit the API's error envelope
   // byte-for-byte — no synthetic `message` from the SDK's debug text.
   const apiEnvelopes = [
-    { status: 429, body: { error: { status: "rate_limited", limit: 60, count: 61 } } },
-    { status: 404, body: { error: { status: "db_not_found" } } },
+    { status: 429, body: { error: { code: "rate_limited", limit: 60, count: 61 } } },
+    { status: 404, body: { error: { code: "db_not_found" } } },
   ];
   for (const { status, body } of apiEnvelopes) {
     it(`mirrors the API ${status} error envelope without rewriting it`, async () => {

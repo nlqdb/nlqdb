@@ -67,6 +67,49 @@ function isShallowPlan(plan: SchemaPlan): boolean {
   );
 }
 
+// SK-HDC-022 — an inferred NOT NULL foreign key dead-ends the creator's very
+// next write. The goal string never names which parent row a new child belongs
+// to ("add an idea to build X" says nothing about which of the seeded demo
+// users owns it), so a speculative `NOT NULL` owner column makes the obvious
+// next action structurally impossible: the planner must invent a parent key
+// (23503), borrow an arbitrary one (silent misattribution), or give up.
+//
+// Referential integrity is kept — the FK constraint still rejects a value that
+// names no parent. Only the *mandatory* part is dropped, and only for FK
+// columns the plan did not make part of the child's primary key: a link/child
+// table keyed on its parents ("idea_tags(idea_id, tag_id)") genuinely cannot
+// exist without them, and a nullable PK member is not even legal Postgres.
+// Bonus: `ON DELETE SET NULL` on a NOT NULL column is a provision-time DDL
+// error the free chain does emit; relaxing removes that failure mode too.
+export function relaxSpeculativeForeignKeys(plan: SchemaPlan): SchemaPlan {
+  const relaxable = new Map<string, Set<string>>();
+  const pkByTable = new Map(plan.tables.map((t) => [t.name, new Set(t.primary_key)]));
+  for (const fk of plan.foreign_keys) {
+    const pk = pkByTable.get(fk.from_table);
+    if (!pk) continue; // FK on an unknown table — compile-ddl rejects it later.
+    for (const column of fk.from_columns) {
+      if (pk.has(column)) continue;
+      const columns = relaxable.get(fk.from_table);
+      if (columns) columns.add(column);
+      else relaxable.set(fk.from_table, new Set([column]));
+    }
+  }
+  if (relaxable.size === 0) return plan;
+  return {
+    ...plan,
+    tables: plan.tables.map((t) => {
+      const columns = relaxable.get(t.name);
+      if (!columns) return t;
+      return {
+        ...t,
+        columns: t.columns.map((c) =>
+          columns.has(c.name) && c.nullable === false ? { ...c, nullable: true } : c,
+        ),
+      };
+    }),
+  };
+}
+
 export async function inferSchema(
   deps: InferSchemaDeps,
   args: InferSchemaArgs,
@@ -118,5 +161,9 @@ export async function inferSchema(
     return { ok: false, reason: "ambiguous_goal" };
   }
 
-  return { ok: true, plan: parsed.data, model, confidence };
+  // 5. Relax speculative NOT NULL foreign keys (SK-HDC-022) so the creator's
+  //    next write into a child table is possible without a parent key the goal
+  //    never supplied. Runs on the inferred path only — hand-authored presets
+  //    (SK-HDC-020) skip `inferSchema` entirely and keep their constraints.
+  return { ok: true, plan: relaxSpeculativeForeignKeys(parsed.data), model, confidence };
 }

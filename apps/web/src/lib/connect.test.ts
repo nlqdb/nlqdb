@@ -162,7 +162,7 @@ describe("postConnect", () => {
     mockFetch(
       new Response(
         JSON.stringify({
-          error: { status: 403, message: "Connecting your own database requires an account." },
+          error: { code: 403, message: "Connecting your own database requires an account." },
         }),
         { status: 403, headers: { "content-type": "application/json" } },
       ),

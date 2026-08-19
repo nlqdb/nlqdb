@@ -265,7 +265,7 @@ describe("orchestrateRemember", () => {
     );
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("wrong_preset");
+    expect(out.error.code).toBe("wrong_preset");
     expect(execMemory).not.toHaveBeenCalled();
   });
 
@@ -273,7 +273,7 @@ describe("orchestrateRemember", () => {
     const out = await orchestrateRemember(makeDeps({ resolveDb: async () => null }), req);
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("db_not_found");
+    expect(out.error.code).toBe("db_not_found");
   });
 
   it("returns rate_limited when the limiter denies", async () => {
@@ -285,7 +285,7 @@ describe("orchestrateRemember", () => {
     );
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("rate_limited");
+    expect(out.error.code).toBe("rate_limited");
   });
 
   it("maps a DbConfigError to db_misconfigured and other throws to db_unreachable", async () => {
@@ -297,7 +297,7 @@ describe("orchestrateRemember", () => {
       }),
       req,
     );
-    expect(misconfigured.ok === false && misconfigured.error.status).toBe("db_misconfigured");
+    expect(misconfigured.ok === false && misconfigured.error.code).toBe("db_misconfigured");
 
     const unreachable = await orchestrateRemember(
       makeDeps({
@@ -307,6 +307,6 @@ describe("orchestrateRemember", () => {
       }),
       req,
     );
-    expect(unreachable.ok === false && unreachable.error.status).toBe("db_unreachable");
+    expect(unreachable.ok === false && unreachable.error.code).toBe("db_unreachable");
   });
 });

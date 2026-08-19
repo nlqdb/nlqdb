@@ -113,7 +113,7 @@ describe("orchestrateAsk", () => {
       dbId: "db_missing",
       userId: "user_1",
     });
-    expect(out).toEqual({ ok: false, error: { status: "db_not_found" } });
+    expect(out).toEqual({ ok: false, error: { code: "db_not_found" } });
   });
 
   it("rate-limits by rateLimitBucketKey (SK-MCP-009 per-key bucket), not userId", async () => {
@@ -142,7 +142,7 @@ describe("orchestrateAsk", () => {
       makeDeps({ resolveDb: vi.fn(async () => stubDb({ schemaHash: null })) }),
       { goal: "anything", dbId: "db_1", userId: "user_1" },
     );
-    expect(out).toEqual({ ok: false, error: { status: "schema_unavailable" } });
+    expect(out).toEqual({ ok: false, error: { code: "schema_unavailable" } });
   });
 
   it("calls LLM + writes cache on a cold-cache request", async () => {
@@ -195,8 +195,8 @@ describe("orchestrateAsk", () => {
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("clarify_required");
-    if (out.error.status !== "clarify_required") return;
+    expect(out.error.code).toBe("clarify_required");
+    if (out.error.code !== "clarify_required") return;
     expect(out.error.clarification).toBe("destructive_ambiguous");
     // Options derive from the DB's tables (stubDb → "orders") plus the
     // deterministic "start fresh" create; no LLM hop involved.
@@ -222,7 +222,7 @@ describe("orchestrateAsk", () => {
     // them (GLOBAL-012).
     expect(out).toEqual({
       ok: false,
-      error: { status: "llm_failed" },
+      error: { code: "llm_failed" },
     });
   });
 
@@ -236,7 +236,7 @@ describe("orchestrateAsk", () => {
     // Postgres / connection-string fragments are stripped — status only.
     expect(out).toEqual({
       ok: false,
-      error: { status: "db_unreachable" },
+      error: { code: "db_unreachable" },
     });
   });
 
@@ -249,7 +249,7 @@ describe("orchestrateAsk", () => {
       dbId: "db_1",
       userId: "user_1",
     });
-    expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
+    expect(out).toEqual({ ok: false, error: { code: "db_unreachable" } });
     expect(record).toHaveBeenCalledWith({
       event: "exec_db_unreachable",
       pgCode: "42501",
@@ -271,7 +271,7 @@ describe("orchestrateAsk", () => {
       userId: "user_1",
     });
     expect(record).toHaveBeenCalled();
-    expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
+    expect(out).toEqual({ ok: false, error: { code: "db_unreachable" } });
   });
 
   it("SK-ASK-015: cache miss + exec failure → no plan.write", async () => {
@@ -293,7 +293,7 @@ describe("orchestrateAsk", () => {
       dbId: "db_1",
       userId: "user_1",
     });
-    expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
+    expect(out).toEqual({ ok: false, error: { code: "db_unreachable" } });
     expect(cache.write).not.toHaveBeenCalled();
     expect(cache.lookup).toHaveBeenCalledTimes(1);
   });
@@ -372,7 +372,7 @@ describe("orchestrateAsk", () => {
     // captured server-side via OTel and not echoed to the client.
     expect(out).toEqual({
       ok: false,
-      error: { status: "db_misconfigured" },
+      error: { code: "db_misconfigured" },
     });
   });
 
@@ -388,7 +388,7 @@ describe("orchestrateAsk", () => {
     expect(out).toEqual({
       ok: false,
       error: {
-        status: "schema_mismatch",
+        code: "schema_mismatch",
         referencedTables: ["users"],
         schemaTables: ["orders"],
       },
@@ -414,7 +414,7 @@ describe("orchestrateAsk", () => {
     );
     expect(out).toEqual({
       ok: false,
-      error: { status: "schema_mismatch", referencedTables: [], schemaTables: [] },
+      error: { code: "schema_mismatch", referencedTables: [], schemaTables: [] },
     });
     // Nonrecoverable wrapping means SK-ASK-013's 3-attempt retry stops
     // after the first failure — no point re-running the same SQL.
@@ -512,7 +512,7 @@ describe("orchestrateAsk", () => {
       dbId: "db_1",
       userId: "user_1",
     });
-    expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
+    expect(out).toEqual({ ok: false, error: { code: "db_unreachable" } });
     // One initial exec + one repaired exec, then stop — no unbounded loop.
     expect(plan).toHaveBeenCalledTimes(2);
     expect(exec).toHaveBeenCalledTimes(2);
@@ -541,7 +541,7 @@ describe("orchestrateAsk", () => {
     });
     expect(out).toEqual({
       ok: false,
-      error: { status: "sql_rejected", reason: "write_via_repair" },
+      error: { code: "sql_rejected", reason: "write_via_repair" },
     });
     // The repaired DELETE never reached exec (only the failed SELECT did).
     expect(exec).toHaveBeenCalledTimes(1);
@@ -571,7 +571,7 @@ describe("orchestrateAsk", () => {
       );
       expect(out).toEqual({
         ok: false,
-        error: { status: "schema_mismatch", referencedTables: [], schemaTables: [] },
+        error: { code: "schema_mismatch", referencedTables: [], schemaTables: [] },
       });
       // Same Nonrecoverable wrapping as 42P01 — no retry on missing schema.
       expect(exec).toHaveBeenCalledTimes(1);
@@ -609,7 +609,7 @@ describe("orchestrateAsk", () => {
       );
       expect(out.ok).toBe(false);
       if (out.ok) throw new Error("unreachable");
-      expect(out.error.status).toBe("schema_mismatch");
+      expect(out.error.code).toBe("schema_mismatch");
       expect(exec).toHaveBeenCalledTimes(1);
       const logged = JSON.parse(errorSpy.mock.calls[0]?.[0] as string);
       expect(logged).toMatchObject({ reason: "schema_missing", pg_code: "msg_match" });
@@ -642,7 +642,7 @@ describe("orchestrateAsk", () => {
       );
       expect(out).toEqual({
         ok: false,
-        error: { status: "schema_mismatch", referencedTables: [], schemaTables: [] },
+        error: { code: "schema_mismatch", referencedTables: [], schemaTables: [] },
       });
       // Measured delta: 0 durable diag rows on this path → exactly one, with
       // the SQLSTATE that disambiguates orphaned-schema from wrong-table.
@@ -681,7 +681,7 @@ describe("orchestrateAsk", () => {
       expect(record).toHaveBeenCalled();
       expect(out).toEqual({
         ok: false,
-        error: { status: "schema_mismatch", referencedTables: [], schemaTables: [] },
+        error: { code: "schema_mismatch", referencedTables: [], schemaTables: [] },
       });
     } finally {
       errorSpy.mockRestore();
@@ -806,7 +806,7 @@ describe("orchestrateAsk", () => {
     });
     expect(out).toEqual({
       ok: false,
-      error: { status: "rate_limited", limit: 60, count: 60, resetAt: 0 },
+      error: { code: "rate_limited", limit: 60, count: 60, resetAt: 0 },
     });
     expect(llm.plan).not.toHaveBeenCalled();
     expect(exec).not.toHaveBeenCalled();
@@ -1052,8 +1052,8 @@ describe("orchestrateAsk", () => {
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("clarify_required");
-    if (out.error.status !== "clarify_required") return;
+    expect(out.error.code).toBe("clarify_required");
+    if (out.error.code !== "clarify_required") return;
     expect(out.error.clarification).toBe("destructive_ambiguous");
     expect(calls).toBe(3);
   });
@@ -1085,7 +1085,7 @@ describe("orchestrateAsk", () => {
       dbId: "db_1",
       userId: "user_1",
     });
-    expect(out).toEqual({ ok: false, error: { status: "db_misconfigured" } });
+    expect(out).toEqual({ ok: false, error: { code: "db_misconfigured" } });
     expect(calls).toBe(1);
   });
 
@@ -1319,5 +1319,160 @@ describe("orchestrateAsk", () => {
     expect(events.emit).not.toHaveBeenCalledWith(
       expect.objectContaining({ name: "feature.destructive.committed" }),
     );
+  });
+
+  // SK-TRUST-006 / SK-ASK-028 / SK-ASK-029 — a write is never reported as a
+  // benign empty read. The production incident: an approved INSERT that
+  // affected 0 rows came back as "No rows returned.", and an approved INSERT
+  // that DID commit was narrated by the summarize LLM as an empty read.
+
+  it("SK-TRUST-006: a preview whose pre-flight count is 0 is never offered for approval", async () => {
+    const llm = stubLLM({ plan: { sql: "UPDATE orders SET status = 'paid' WHERE id = 999" } });
+    const exec = vi.fn(async (_db: DbRecord, sql: string) => {
+      expect(sql).toMatch(/COUNT\(\*\)/i);
+      return { rows: [{ c: 0 }], rowCount: 1 };
+    });
+    const stash = stubConfirmStash();
+    const out = await orchestrateAsk(makeDeps({ llm, exec, confirmStash: stash }), {
+      goal: "mark order 999 paid",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out).toEqual({
+      ok: false,
+      error: { code: "write_no_rows", phase: "preview", verb: "UPDATE", table: "orders" },
+    });
+    // Nothing to approve ⇒ nothing stashed, and the write never ran.
+    expect(stash.write).not.toHaveBeenCalled();
+    expect(exec).toHaveBeenCalledTimes(1);
+  });
+
+  it("SK-TRUST-006: an INSERT … SELECT whose source matches nothing short-circuits (the incident)", async () => {
+    const llm = stubLLM({
+      plan: {
+        sql: `INSERT INTO "ideas" ("user_id", "title") SELECT "id", 'x' FROM "users" WHERE "email" = 'nobody' LIMIT 1`,
+      },
+    });
+    const exec = vi.fn(async () => ({ rows: [{ c: 0 }], rowCount: 1 }));
+    const out = await orchestrateAsk(
+      makeDeps({
+        llm,
+        exec,
+        resolveDb: vi.fn(async () =>
+          stubDb({
+            schemaText: 'CREATE TABLE "ideas" (user_id uuid); CREATE TABLE "users" (id uuid);',
+          }),
+        ),
+      }),
+      { goal: "add an idea", dbId: "db_1", userId: "user_1" },
+    );
+    expect(out.ok).toBe(false);
+    if (out.ok) throw new Error("unreachable");
+    expect(out.error).toEqual({
+      code: "write_no_rows",
+      phase: "preview",
+      verb: "INSERT",
+      table: "ideas",
+    });
+  });
+
+  it("SK-TRUST-006: an approved write that affects 0 rows returns write_no_rows, not an empty result", async () => {
+    const llm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 999" } });
+    // Confirmed hop: exec runs the DELETE and Postgres reports 0 rows affected.
+    const exec = vi.fn(async () => ({ rows: [], rowCount: 0 }));
+    const planCache = stubPlanCache();
+    const events = stubEmitter();
+    const out = await orchestrateAsk(makeDeps({ llm, exec, planCache, events }), {
+      goal: "delete order 999",
+      dbId: "db_1",
+      userId: "user_1",
+      surface: "chat",
+      confirm: true,
+    });
+    expect(out).toEqual({
+      ok: false,
+      error: { code: "write_no_rows", phase: "commit", verb: "DELETE", table: "orders" },
+    });
+    // Nothing committed ⇒ no plan-cache write and no `committed` signal.
+    expect(planCache.write).not.toHaveBeenCalled();
+    expect(events.emit).not.toHaveBeenCalledWith(
+      expect.objectContaining({ name: "feature.destructive.committed" }),
+    );
+  });
+
+  it("SK-TRUST-006: an unpreviewable write is refused, never committed unpreviewed", async () => {
+    const llm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } });
+    // The pre-flight COUNT fails. Previously the diff reported 0 affected rows
+    // (asking approval for a fabricated no-op); now the write is refused.
+    const exec = vi.fn(async () => {
+      throw new Error("connection reset");
+    });
+    const out = await orchestrateAsk(makeDeps({ llm, exec }), {
+      goal: "delete order 1",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out).toEqual({
+      ok: false,
+      error: { code: "sql_rejected", reason: "preview_unavailable" },
+    });
+    expect(exec).toHaveBeenCalledTimes(1);
+  });
+
+  it("SK-ASK-028: a committed write is narrated from rowCount, and the summarize LLM is never called", async () => {
+    const llm = stubLLM({ plan: { sql: `INSERT INTO "orders" ("id") VALUES (1)` } });
+    // INSERT without RETURNING: no rows back, one row affected — the exact
+    // shape that made the summarizer narrate a committed write as an empty read.
+    const exec = vi.fn(async () => ({ rows: [], rowCount: 1 }));
+    const events: OrchestrateEvent[] = [];
+    const out = await orchestrateAsk(
+      makeDeps({ llm, exec }),
+      { goal: "add order 1", dbId: "db_1", userId: "user_1", confirm: true },
+      { onEvent: async (e) => void events.push(e) },
+    );
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("unreachable");
+    expect(out.result.summary).toBe("Inserted 1 row into orders.");
+    expect(out.result.rowCount).toBe(1);
+    expect(llm.summarize).not.toHaveBeenCalled();
+    expect(events.find((e) => e.type === "summary")).toEqual({
+      type: "summary",
+      summary: "Inserted 1 row into orders.",
+    });
+  });
+
+  it("SK-ASK-029: a foreign-key violation surfaces as write_constraint, unretried", async () => {
+    const llm = stubLLM({
+      plan: {
+        sql: `INSERT INTO "orders" ("user_id") VALUES ('00000000-0000-0000-0000-000000000000')`,
+      },
+    });
+    const exec = vi.fn(async () => {
+      // Real PG shape: the column lives in the DETAIL line, not the message.
+      const err = new Error(
+        'insert or update on table "orders" violates foreign key constraint "fk_orders__user_id" - ' +
+          'DETAIL: Key (user_id)=(00000000-0000-0000-0000-000000000000) is not present in table "users".',
+      ) as Error & { code?: string };
+      err.code = "23503";
+      throw err;
+    });
+    const out = await orchestrateAsk(makeDeps({ llm, exec }), {
+      goal: "add an order",
+      dbId: "db_1",
+      userId: "user_1",
+      confirm: true,
+    });
+    expect(out).toEqual({
+      ok: false,
+      error: {
+        code: "write_constraint",
+        kind: "foreign_key",
+        table: "orders",
+        column: "user_id",
+        constraint: "fk_orders__user_id",
+      },
+    });
+    // Deterministic: exactly one exec attempt (no SK-ASK-013 backoff replays).
+    expect(exec).toHaveBeenCalledTimes(1);
   });
 });

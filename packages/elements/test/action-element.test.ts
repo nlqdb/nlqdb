@@ -229,7 +229,7 @@ describe("<nlq-action> auth + validation", () => {
   it("surfaces api failures via nlq-action:error", async () => {
     const fetchMock = vi.fn(async () =>
       jsonResponse(
-        { error: { status: "sql_rejected", reason: "DROP not allowed" } },
+        { error: { code: "sql_rejected", reason: "DROP not allowed" } },
         { status: 400 },
       ),
     );

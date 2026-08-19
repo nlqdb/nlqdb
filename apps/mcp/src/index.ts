@@ -134,7 +134,7 @@ async function handleFetch(req: Request, env: Env, ctx: ExecutionContext): Promi
   // discovery). A rejected origin never reaches those handlers.
   if (!isOriginAllowed(req, env)) {
     return Response.json(
-      { error: { status: "forbidden", message: "Origin not allowed." } },
+      { error: { code: "forbidden", message: "Origin not allowed." } },
       { status: 403 },
     );
   }

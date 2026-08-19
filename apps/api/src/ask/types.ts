@@ -2,6 +2,7 @@
 // the surfaces tests + the handler need.
 
 import type { QueryResult } from "@nlqdb/db";
+import type { FailoverReasonParam as FailoverReason, LlmLane } from "@nlqdb/errors";
 import type { NlqSurface } from "@nlqdb/events";
 
 export type DbRecord = {
@@ -153,7 +154,7 @@ export type ClarifyOption = {
 // Both replace the cryptic `disallowed_verb`/`sql_rejected` a destructive
 // or create goal would otherwise dead-end on.
 export type ClarifyRequired = {
-  status: "clarify_required";
+  code: "clarify_required";
   clarification: "create_or_query_pinned" | "destructive_ambiguous";
   pinned_db: { id: string; slug: string } | null;
   reason: string;
@@ -162,21 +163,61 @@ export type ClarifyRequired = {
   options?: ClarifyOption[];
 };
 
+// SK-ERR-001 — the discriminant is `code`, and each variant's remaining fields
+// are exactly the params its registry entry declares (`@nlqdb/errors`). The
+// route handler hands the whole object to `askErrorEnvelope`, which renders the
+// message + action + retryable, so adding a code needs one registry entry and
+// no handler edit.
 export type AskError =
-  | { status: "db_not_found" }
-  | { status: "schema_unavailable" }
-  | { status: "db_misconfigured" }
-  | { status: "db_unreachable" }
-  | { status: "sql_rejected"; reason: string }
-  | { status: "llm_failed" }
-  | { status: "rate_limited"; limit: number; count: number; resetAt: number }
+  | { code: "db_not_found" }
+  | { code: "schema_unavailable" }
+  | { code: "db_misconfigured" }
+  | { code: "db_unreachable" }
+  | { code: "sql_rejected"; reason: string }
+  // SK-LLM-051 — the bounded, secret-free cause the router already computed.
+  // Discarding it is what made a rejected BYOLLM key read as "try rephrasing"
+  // (2026-08-17). Raw provider text stays on the `llm.plan` span.
+  | {
+      code: "llm_failed";
+      reason?: FailoverReason;
+      lane?: LlmLane;
+      provider?: string;
+      model?: string;
+    }
+  | { code: "rate_limited"; limit: number; count: number; resetAt: number }
   // SK-ASK-016 — the LLM-emitted SQL references a table not present in
   // the target DB's schema. Pre-flight catches it before exec; the 42P01
   // exec backstop catches the cases pre-flight misses. HTTP 409 — the
   // goal was valid but aimed at the wrong DB; the surface can offer
   // "create a fresh DB instead" without dead-ending on a generic 502.
-  | { status: "schema_mismatch"; referencedTables: string[]; schemaTables: string[] }
+  | { code: "schema_mismatch"; referencedTables: string[]; schemaTables: string[] }
+  // SK-TRUST-006 — a write that affects nothing is never a successful
+  // empty read. `phase: "preview"` means the pre-flight count proved the
+  // write would touch 0 rows, so it was never offered for approval;
+  // `phase: "commit"` means an approved write ran and the engine reported
+  // 0 rows affected. Either way nothing changed. HTTP 409 — the goal
+  // parsed, the SQL ran, but the values matched no rows. `verb` / `table`
+  // are omitted only when the plan's target couldn't be named.
+  | { code: "write_no_rows"; phase: "preview" | "commit"; verb?: string; table?: string }
+  // SK-ASK-029 — the write reached the engine and the engine refused it: a
+  // required column was missing, a foreign key pointed at a row that doesn't
+  // exist, a unique/check rule failed. Deterministic (never retried) and
+  // 409 — the goal is answerable once the caller names real values. Carries
+  // identifiers only, never the offending values.
+  | {
+      code: "write_constraint";
+      kind: WriteConstraintKind;
+      table?: string;
+      column?: string;
+      constraint?: string;
+    }
+  // SK-ASK-030 — Postgres SQLSTATE class 22 (data exception: bad cast, numeric
+  // overflow, divide by zero). Deterministic like class 23, and the same
+  // catch-all used to bucket it as `db_unreachable` and retry it three times.
+  | { code: "invalid_value"; pgCode?: string }
   | ClarifyRequired;
+
+export type WriteConstraintKind = "not_null" | "foreign_key" | "unique" | "check" | "exclusion";
 
 // Thrown by `exec` callbacks when a DB row's `connection_secret_ref`
 // doesn't resolve to anything in env (operator config error, not a
@@ -225,6 +266,23 @@ export class SchemaMismatchError extends Error {
     this.referencedTables = referencedTables;
     this.schemaTables = schemaTables;
     this.diag = diag;
+  }
+}
+
+// SK-ASK-029 — a PG integrity-constraint violation (SQLSTATE class 23) on the
+// write path. Thrown by `classifyWriteConstraint` from the exec catch and
+// mapped to the typed `write_constraint` envelope; deterministic, so
+// SK-ASK-013's retry bails after one attempt.
+export class WriteConstraintError extends Error {
+  readonly code = "write_constraint" as const;
+  constructor(
+    readonly kind: WriteConstraintKind,
+    // Identifiers only (table / column / constraint name) — never the
+    // offending values.
+    readonly target: { table?: string; column?: string; constraint?: string },
+  ) {
+    super(`write rejected by a ${kind} constraint`);
+    this.name = "WriteConstraintError";
   }
 }
 

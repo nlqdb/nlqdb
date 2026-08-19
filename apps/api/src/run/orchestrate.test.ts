@@ -57,8 +57,8 @@ describe("orchestrateRun", () => {
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("sql_rejected");
-    if (out.error.status !== "sql_rejected") return;
+    expect(out.error.code).toBe("sql_rejected");
+    if (out.error.code !== "sql_rejected") return;
     expect(out.error.reason).toBe("drop_statement");
     expect(exec).not.toHaveBeenCalled();
   });
@@ -82,8 +82,8 @@ describe("orchestrateRun", () => {
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("forbidden");
-    if (out.error.status !== "forbidden") return;
+    expect(out.error.code).toBe("forbidden");
+    if (out.error.code !== "forbidden") return;
     expect(out.error.reason).toBe("read_only_principal");
     expect(exec).not.toHaveBeenCalled();
   });
@@ -108,7 +108,7 @@ describe("orchestrateRun", () => {
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("forbidden");
+    expect(out.error.code).toBe("forbidden");
     expect(exec).not.toHaveBeenCalled();
   });
 
@@ -122,7 +122,7 @@ describe("orchestrateRun", () => {
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("forbidden");
+    expect(out.error.code).toBe("forbidden");
     expect(exec).not.toHaveBeenCalled();
   });
 
@@ -139,7 +139,7 @@ describe("orchestrateRun", () => {
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("forbidden");
+    expect(out.error.code).toBe("forbidden");
     expect(exec).not.toHaveBeenCalled();
   });
 
@@ -157,7 +157,7 @@ describe("orchestrateRun", () => {
       });
       expect(out.ok).toBe(false);
       if (out.ok) continue;
-      expect(out.error.status).toBe("forbidden");
+      expect(out.error.code).toBe("forbidden");
       expect(exec).not.toHaveBeenCalled();
     }
   });
@@ -180,7 +180,7 @@ describe("orchestrateRun", () => {
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("db_not_found");
+    expect(out.error.code).toBe("db_not_found");
   });
 
   it("returns schema_unavailable when the row carries a null schemaHash", async () => {
@@ -190,7 +190,7 @@ describe("orchestrateRun", () => {
     );
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("schema_unavailable");
+    expect(out.error.code).toBe("schema_unavailable");
   });
 
   it("returns rate_limited when the limiter rejects", async () => {
@@ -204,8 +204,8 @@ describe("orchestrateRun", () => {
     );
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("rate_limited");
-    if (out.error.status !== "rate_limited") return;
+    expect(out.error.code).toBe("rate_limited");
+    if (out.error.code !== "rate_limited") return;
     expect(out.error.limit).toBe(60);
     expect(out.error.count).toBe(61);
     expect(out.error.resetAt).toBe(9999);
@@ -222,7 +222,7 @@ describe("orchestrateRun", () => {
     );
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("db_misconfigured");
+    expect(out.error.code).toBe("db_misconfigured");
   });
 
   it("maps generic exec throws to db_unreachable (transient infra)", async () => {
@@ -236,7 +236,7 @@ describe("orchestrateRun", () => {
     );
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.error.status).toBe("db_unreachable");
+    expect(out.error.code).toBe("db_unreachable");
   });
 
   it("uses the supplied rateLimitBucketKey instead of userId when present", async () => {

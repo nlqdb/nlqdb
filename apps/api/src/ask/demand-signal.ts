@@ -30,7 +30,7 @@ export function emitFeatureSignal(
   // It is still a GLOBAL-024 "not yet" demand signal (the user wants a
   // one-click destructive op we instead route to safer choices), so keep
   // emitting `ddl_via_ask` — drop/truncate fired it before the reroute.
-  if (error.status === "clarify_required" && error.clarification === "destructive_ambiguous") {
+  if (error.code === "clarify_required" && error.clarification === "destructive_ambiguous") {
     ctx.waitUntil(
       emitter.emit({
         name: "feature.requested.ddl_via_ask",
@@ -41,7 +41,7 @@ export function emitFeatureSignal(
     );
     return;
   }
-  if (error.status === "sql_rejected" && DDL_REJECT_REASONS.has(error.reason)) {
+  if (error.code === "sql_rejected" && DDL_REJECT_REASONS.has(error.reason)) {
     ctx.waitUntil(
       emitter.emit({
         name: "feature.requested.ddl_via_ask",
@@ -52,7 +52,7 @@ export function emitFeatureSignal(
     );
     return;
   }
-  if (error.status === "rate_limited") {
+  if (error.code === "rate_limited") {
     ctx.waitUntil(
       emitter.emit({
         name: "feature.requested.larger_account",

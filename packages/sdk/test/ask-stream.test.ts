@@ -95,7 +95,7 @@ describe("askStream", () => {
   it("throws the API error carried on an SSE `error` event (httpStatus 200)", async () => {
     const frames =
       `event: plan\ndata: ${JSON.stringify({ trace: TRACE })}\n\n` +
-      `event: error\ndata: ${JSON.stringify({ error: { status: "llm_failed", message: "boom" } })}\n\n`;
+      `event: error\ndata: ${JSON.stringify({ error: { code: "llm_failed", message: "boom" } })}\n\n`;
     const fakeFetch: FetchLike = async () => sseResponse([frames]);
 
     const client = createClient({ withCredentials: true, fetch: fakeFetch });
@@ -108,6 +108,35 @@ describe("askStream", () => {
       expect(e.code).toBe("llm_failed");
       expect(e.httpStatus).toBe(200);
       expect(e.body?.message).toBe("boom");
+    }
+  });
+
+  it("surfaces params-nested cause fields at the top level of err.body (SK-ERR-002)", async () => {
+    // The registry nests declared fields under `params`; `ApiErrorBody` also
+    // exposes them top-level so a surface reads `err.body.candidate_dbs`.
+    const frames =
+      `event: plan\ndata: ${JSON.stringify({ trace: TRACE })}\n\n` +
+      `event: error\ndata: ${JSON.stringify({
+        error: {
+          code: "ambiguous_db",
+          message: "More than one of your databases could answer that.",
+          action: "Say which one you mean.",
+          retryable: false,
+          params: { candidate_dbs: [{ id: "db_1", slug: "orders" }] },
+        },
+      })}\n\n`;
+    const fakeFetch: FetchLike = async () => sseResponse([frames]);
+    const client = createClient({ withCredentials: true, fetch: fakeFetch });
+    try {
+      await client.askStream({ goal: "x", dbId: "db_1" }, {});
+      expect.fail("should have thrown");
+    } catch (err) {
+      const e = err as NlqdbApiError;
+      expect(e.code).toBe("ambiguous_db");
+      // Both shapes are readable: the nested params AND the mirrored top level.
+      expect(e.body?.candidate_dbs).toEqual([{ id: "db_1", slug: "orders" }]);
+      expect(e.body?.params?.["candidate_dbs"]).toEqual([{ id: "db_1", slug: "orders" }]);
+      expect(e.body?.message).toBe("More than one of your databases could answer that.");
     }
   });
 
@@ -126,7 +155,7 @@ describe("askStream", () => {
 
   it("maps a non-2xx JSON error returned before the stream opens", async () => {
     const fakeFetch: FetchLike = async () =>
-      new Response(JSON.stringify({ error: { status: "rate_limited", limit: 5, count: 6 } }), {
+      new Response(JSON.stringify({ error: { code: "rate_limited", limit: 5, count: 6 } }), {
         status: 429,
         headers: { "content-type": "application/json" },
       });

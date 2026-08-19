@@ -78,32 +78,46 @@ describe("renderState — error", () => {
         failure: {
           kind: "api",
           status: 429,
-          error: { status: "rate_limited", limit: 10, count: 11 },
+          error: {
+            code: "rate_limited",
+            message: "You've used 11 of 10 requests in this window.",
+            action: "Wait a moment, then retry.",
+            retryable: true,
+            params: { limit: 10, count: 11 },
+          },
         },
       },
       "table",
     );
     expect(html).toContain('data-kind="api"');
-    // Per GLOBAL-012 the 429 path now renders a one-sentence + next-action
-    // message that includes the limit/count, instead of the old "Error 429".
-    expect(html).toContain("Rate limit reached (11 of 10 requests used)");
-    expect(html).toContain("Please wait a moment, then try again");
+    // SK-ERR-001 — the server renders the sentence + action (GLOBAL-012); this
+    // element prints both verbatim rather than keeping its own rate-limit copy.
+    expect(html).toContain("You&#39;ve used 11 of 10 requests in this window.");
+    expect(html).toContain("Wait a moment, then retry.");
   });
 
-  it("renders structured 5xx api errors (db_unreachable) with status + slug", () => {
+  it("renders the server's sentence + action for a structured 5xx (db_unreachable)", () => {
     const html = renderState(
       {
         kind: "error",
         failure: {
           kind: "api",
           status: 502,
-          error: { status: "db_unreachable", message: "connect ECONNREFUSED" },
+          error: {
+            code: "db_unreachable",
+            message: "nlqdb couldn't reach that database just now.",
+            action: "Try again in a moment; if it persists, check the database is running.",
+          },
         },
       },
       "table",
     );
     expect(html).toContain('data-kind="api"');
-    expect(html).toContain("Error 502: db_unreachable");
+    // SK-ERR-001 — `data-kind` still lets the page branch without parsing text,
+    // but the text itself is the server's copy, not "Error 502: db_unreachable".
+    expect(html).toContain("couldn&#39;t reach that database");
+    expect(html).toContain("Try again in a moment");
+    expect(html).not.toContain("Error 502");
   });
 
   it("renders bare-string api errors with status + slug", () => {

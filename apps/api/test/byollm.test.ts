@@ -87,6 +87,7 @@ describe("resolveAskRouter", () => {
       ok: true,
       router: FREE,
       attributes: { "llm.dispatch_lane": "free", "llm.billed_to": "platform" },
+      lane: { lane: "free" },
     });
   });
 
@@ -156,6 +157,7 @@ describe("resolveAskRouter", () => {
       ok: true,
       router: FREE,
       attributes: { "llm.dispatch_lane": "free", "llm.billed_to": "platform" },
+      lane: { lane: "free" },
     });
   });
 
@@ -187,6 +189,7 @@ describe("resolveAskRouter", () => {
         "llm.billed_to": "platform",
         "llm.byollm_degraded": "gateway_unconfigured",
       },
+      lane: { lane: "free" },
     });
     if (res.ok) {
       // The key never leaks into the redacted attributes.
@@ -257,6 +260,7 @@ describe("resolveAskRouter", () => {
         "llm.billed_to": "platform",
         "llm.model_preset": "fast",
       },
+      lane: { lane: "free" },
     });
   });
 

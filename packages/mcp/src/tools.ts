@@ -1,12 +1,11 @@
-import type {
-  ApiErrorCode,
-  AskDiff,
-  CandidateDb,
-  ClarifyOption,
-  NlqClient,
-  NlqdbApiError,
-  RememberRequest,
-} from "@nlqdb/sdk";
+import {
+  assertOverrides,
+  ERROR_CODES,
+  type ErrorCode,
+  isErrorCode,
+  renderError,
+} from "@nlqdb/errors";
+import type { AskDiff, NlqClient, NlqdbApiError, RememberRequest } from "@nlqdb/sdk";
 import { z } from "zod";
 
 export type ToolError = {
@@ -556,342 +555,156 @@ function buildQueryOutput(
   return { rows, rowCount, trace: traceOf(trace) };
 }
 
-// The one place a genuinely-opaque failure lands. GLOBAL-012 bans this
-// phrasing for anything we *can* explain, so every known `ApiErrorCode`
-// gets a specific message below and only truly-unknown codes reach here.
-export const GENERIC_ERROR_MESSAGE = "An unexpected error occurred.";
+// SK-ERR-001 — the API renders one sentence + the next action from the shared
+// `@nlqdb/errors` registry, so this boundary is a pass-through, not a copy table.
+// What remains below is the sparse set of codes where an MCP host genuinely needs
+// a different action from a human's: name the tool to re-call, or the credential
+// to re-launch with. Every other code — including any added tomorrow — arrives
+// already phrased, so it can never regress to "An unexpected error occurred."
+//
+// `assertOverrides` type-checks the keys against the registry, so a typo or a
+// retired code fails the build instead of silently never firing.
+
+// The one place a genuinely-opaque failure lands: a non-API throw with no code
+// at all. GLOBAL-012 bans this phrasing for anything we can explain.
+// Sourced from the registry so there is exactly one wording for it.
+export const GENERIC_ERROR_MESSAGE = renderError("unknown_error").message;
 const GENERIC_ERROR_ACTION =
   "Retry once; if the error persists email support@nlqdb.com with the tool name and time.";
 
-type ErrCopy = { message: string; action: string };
+// `action` may read the code's params (a rate-limit window, a candidate list) —
+// the same parametric copy the registry does, just in the host's voice.
+type Override = {
+  message?: string;
+  action: string | ((params: Record<string, unknown>) => string);
+};
 
-// One-sentence message + next action (GLOBAL-012) for every known error
-// code whose copy is static. Codes whose action needs a value from the
-// response body (rate-limit reset, candidate DBs, validation reason) are
-// handled by the explicit branches in `mapSdkError` and listed in
-// `BRANCH_HANDLED_CODES`. The two sets together must cover every literal
-// in the SDK's `ApiErrorCode` union — enforced at compile time just below,
-// so a new status can never silently regress to `GENERIC_ERROR_MESSAGE`.
-const ERROR_COPY = {
+const OVERRIDES: Partial<Record<ErrorCode, Override>> = assertOverrides({
+  // sk_mcp_ ⊂ sk_live_ (SK-APIKEYS-015): an MCP key reaches every tool here but
+  // cannot connect a BYO database, so name it first — a host config should hold
+  // the narrower credential.
+  unauthorized: {
+    message:
+      "This tool requires a user-scoped key — sk_mcp_ (an MCP key, scoped to one MCP host + device) or sk_live_ (a full-account backend secret).",
+    action:
+      "Mint an MCP key at https://app.nlqdb.com/app/keys, then re-launch this host so it picks up the new credentials.",
+  },
+  auth_required: {
+    action:
+      "Mint an MCP key at https://app.nlqdb.com/app/keys, then re-launch this host so it picks up the new credentials.",
+  },
+  forbidden: {
+    action: "Use a user-scoped key (sk_mcp_ or sk_live_) to write; pk_live_ embeds can only query.",
+  },
+  account_required: {
+    action: "Re-launch with an sk_mcp_ MCP key minted at https://app.nlqdb.com/app/keys.",
+  },
+  // SK-DBCONN-001 — never name sk_mcp_ here: re-launching with another MCP key
+  // would fail identically.
+  connect_requires_account: {
+    action:
+      "Connect it once at https://app.nlqdb.com (signed in), or re-launch this host with an sk_live_ key. Every other tool works on the MCP key.",
+  },
   db_not_found: {
-    message: "No database matched that id for this account.",
     action:
       "Call nlqdb_list_databases for valid ids; for agent memory, re-call nlqdb_remember without `db` and it will adopt (or provision) the memory DB automatically.",
   },
-  db_unreachable: {
-    message: "nlqdb couldn't reach that database.",
+  wrong_preset: {
     action:
-      "Retry shortly; if it persists, confirm the database is running and its connection is current.",
-  },
-  db_misconfigured: {
-    message: "That database's stored connection is no longer usable.",
-    action: "Reconnect it at https://app.nlqdb.com, then re-call.",
-  },
-  schema_unavailable: {
-    message: "nlqdb couldn't read that database's schema just now.",
-    action: "Retry shortly; if it persists, confirm the database is reachable.",
-  },
-  sql_rejected: {
-    message: "The compiled query was blocked by the SQL safety allowlist.",
-    action: "Rephrase the goal — only single-statement, allowlisted queries run.",
-  },
-  llm_failed: {
-    message: "The model failed to produce a plan for that goal.",
-    action: "Retry; if it persists, simplify the goal or name the exact tables and columns.",
-  },
-  clarify_required: {
-    message: "That goal was ambiguous, so nlqdb needs more detail before running it.",
-    action: "Re-call naming the specific table and columns you mean.",
-  },
-  goal_required: {
-    message: "The query goal was missing.",
-    action: "Pass a natural-language goal in `q` (e.g. 'top 5 customers by revenue this year').",
-  },
-  dbId_required: {
-    message: "This call needs an explicit database id.",
-    action: "Pass a `db` id — call nlqdb_list_databases to find it.",
-  },
-  db_required: {
-    message: "This call needs a target database.",
-    action: "Pass a `db` id — call nlqdb_list_databases to find it.",
+      "Re-call nlqdb_remember without `db` — it adopts your existing agent_memory_v1 database, or provisions one for you if none exists.",
   },
   sql_required: {
     message: "This tool doesn't run raw SQL.",
     action: "Use nlqdb_query with a natural-language goal instead.",
   },
-  sql_too_long: {
-    message: "The SQL statement was too long.",
-    action: "Shorten it, or use nlqdb_query with a natural-language goal.",
+  // SK-RL-004 — an agent decides *when* to re-call, so give it the number of
+  // seconds rather than a human's "wait a moment".
+  rate_limited: {
+    action: (p) => {
+      const resetAt = p["resetAt"];
+      if (typeof resetAt === "number" && Number.isFinite(resetAt)) {
+        const wait = Math.max(0, Math.round(resetAt - Date.now() / 1000));
+        return `Wait ${wait}s before retrying — the rate-limit window resets then.`;
+      }
+      // SK-RL-002 documents a 60s fixed window; state it rather than guess.
+      return "Wait up to 60s before retrying; the per-minute window resets on the minute boundary.";
+    },
   },
-  invalid_engine: {
-    message: "That database engine isn't supported.",
-    action: "Use engine 'postgres' or 'clickhouse'.",
+  // Point at the tool that resolves the ambiguity, not at a human's picker.
+  ambiguous_db: {
+    action: "Re-call with an explicit `db` argument — nlqdb_list_databases has the ids.",
   },
-  invalid_model: {
-    message: "`model` must be one of auto, fast, or best.",
-    action: "Re-call with a valid model preset, or omit it.",
+  clarify_required: {
+    action:
+      "Re-call `q` with one of the goals in `details.options`, or name exactly which rows you mean.",
   },
-  invalid_email: {
-    message: "That email address wasn't valid.",
-    action: "Provide a valid email address, then re-call.",
+  low_confidence: {
+    action:
+      "Re-call with one of `details.alternatives`, or rephrase with the exact table and column names.",
   },
-  invalid_byollm_key: {
-    message: "The provided LLM provider key was mis-shaped.",
-    action: "Check the key format at https://app.nlqdb.com/app/keys, then re-call.",
-  },
-  byollm_unavailable: {
-    message: "This deployment can't store provider keys right now.",
-    action: "Retry shortly; if it persists, email support@nlqdb.com.",
-  },
-  secret_unconfigured: {
-    message: "This deployment is missing a required secret, so it can't complete that call.",
-    action: "Retry shortly; if it persists, email support@nlqdb.com.",
-  },
-  network_error: {
-    message: "Couldn't reach nlqdb.",
-    action: "Check network connectivity and retry.",
-  },
-  non_json_response: {
-    message: "nlqdb returned an unexpected (non-JSON) response.",
-    action: "Retry shortly; if it persists, email support@nlqdb.com.",
-  },
-  unknown_error: { message: GENERIC_ERROR_MESSAGE, action: GENERIC_ERROR_ACTION },
-} satisfies Record<string, ErrCopy>;
+});
 
-// Codes handled by the explicit body-reading branches in `mapSdkError`
-// (they need a candidate list, a reset time, a validation reason, or
-// bespoke auth copy) rather than the static table above.
-const BRANCH_HANDLED_CODES = [
-  "unauthorized",
-  "forbidden",
-  "connect_requires_account",
-  "ambiguous_db",
-  "rate_limited",
-  "wrong_preset",
-  "aborted",
-  "invalid_request",
-  "introspection_failed",
-  "sealing_unconfigured",
-  "model_unavailable",
-  "invalid_body",
-  "invalid_json",
-] as const;
+// Every code this boundary can phrase — the registry itself, now that nothing
+// here keeps a hand-maintained list. Exported for the anti-regression sweep.
+export const KNOWN_ERROR_CODES: readonly string[] = ERROR_CODES;
 
-// Every error code the boundary knows how to phrase — the union of the
-// static table and the branch-handled set. Exported so the anti-regression
-// test can assert each one maps to an actionable, non-generic `ToolError`.
-export const KNOWN_ERROR_CODES: readonly string[] = [
-  ...Object.keys(ERROR_COPY),
-  ...BRANCH_HANDLED_CODES,
-];
-
-// Compile-time exhaustiveness guard (GLOBAL-012). `LiteralOnly` drops the
-// `(string & {})` escape hatch from `ApiErrorCode`, leaving just the named
-// literals; if any of them lacks a mapping, `UnmappedErrorCodes` is not
-// `never` and `Assert` fails to compile, naming the missing code(s). This
-// is the fix for the class of bug where the map drifted out of sync with
-// the SDK union and a real status (db_not_found) surfaced as "An unexpected
-// error occurred." to an agent.
-type LiteralOnly<T> = T extends string ? (string extends T ? never : T) : never;
-type HandledErrorCode = keyof typeof ERROR_COPY | (typeof BRANCH_HANDLED_CODES)[number];
-type UnmappedErrorCodes = Exclude<LiteralOnly<ApiErrorCode>, HandledErrorCode>;
-type AssertNever<T extends never> = T;
-type _AllErrorCodesMapped = AssertNever<UnmappedErrorCodes>;
-
-// Strips raw SDK strings on the unknown bucket so internal details don't reach the host LLM.
-export function mapSdkError(err: unknown): ToolError {
-  const apiErr = err as NlqdbApiError | undefined;
-  const code = apiErr?.code ?? "unknown_error";
-  const httpStatus = apiErr?.httpStatus ?? 0;
-  const body = apiErr?.body ?? null;
-
-  if (code === "unauthorized" || httpStatus === 401) {
-    return {
-      code: "auth_required",
-      // sk_mcp_ ⊂ sk_live_ (SK-APIKEYS-015): an MCP key reaches every tool
-      // here but cannot connect a BYO database, so name it first — a host
-      // config should hold the narrower credential.
-      message:
-        "This tool requires a user-scoped key — sk_mcp_ (an MCP key, scoped to one MCP host + device) or sk_live_ (a full-account backend secret).",
-      action:
-        "Mint an MCP key at https://app.nlqdb.com/app/keys, then re-launch this host so it picks up the new credentials.",
-    };
-  }
-  // Read-only principal tried to write memory (`/v1/memory/remember` 403).
-  // Checked before the generic 403 branch so the action names the real fix.
-  if (code === "forbidden") {
-    return {
-      code: "forbidden",
-      message: "This key is read-only, so it can't write memory.",
-      action:
-        "Use a user-scoped key (sk_mcp_ or sk_live_) to write; pk_live_ embeds can only query.",
-    };
-  }
-  // SK-DBCONN-001 — connect on an anonymous session, or on an MCP key, which
-  // is deliberately narrower than sk_live_ here (SK-APIKEYS-015). Checked
-  // before the generic 403 so the action names the real fix, and never names
-  // sk_mcp_ — re-launching with another MCP key would fail identically.
-  if (code === "connect_requires_account") {
-    return {
-      code: "connect_requires_account",
-      message:
-        "Connecting a database needs an account session or an sk_live_ key; an MCP key cannot attach data sources.",
-      action:
-        "Connect it once at https://app.nlqdb.com (signed in), or re-launch this host with an sk_live_ key. Every other tool works on the MCP key.",
-    };
-  }
-  if (code === "account_required" || httpStatus === 403) {
-    return {
-      code: "account_required",
-      message: "This tool needs an account-scoped key; a pk_live_ embed key is not enough.",
-      action: "Re-launch with an sk_mcp_ MCP key minted at https://app.nlqdb.com/app/keys.",
-    };
-  }
-  if (code === "low_confidence") {
-    const details = readAlternatives(body);
-    return {
-      code: "low_confidence",
-      message: body?.message ?? "The plan confidence was below the per-tier floor.",
-      action: details
-        ? "Re-call with one of the alternatives in `details.alternatives`, or rephrase with the exact table/column names you mean."
-        : "Rephrase your goal with the specific table or column names you mean.",
-      ...(details ? { details } : {}),
-    };
-  }
-  // SK-ASK-026 — a destructive-ambiguous goal ("clear db" family) comes
-  // back as a clarify carrying re-sendable options, not a flat rejection.
-  // Surface them like `ambiguous_db`'s candidates so a host/agent can pick
-  // a concrete goal and re-call `q` with it. (The SK-ASK-014 create-vs-query
-  // clarify has no options and falls through to the generic entry.)
-  if (code === "clarify_required" && body?.clarification === "destructive_ambiguous") {
-    const options = body?.options as ClarifyOption[] | undefined;
-    return {
-      code: "clarify_required",
-      message: body?.reason ?? "That goal could mean a few different things.",
-      action: options?.length
-        ? `Re-call \`q\` with one of these goals: ${options
-            .map((o) => `"${o.goal}"`)
-            .join(", ")}. Full list in \`details.options\`.`
-        : "Re-call naming exactly which rows to change, or ask to start a new database.",
-      ...(options?.length ? { details: { options } } : {}),
-    };
-  }
-  if (code === "ambiguous_db") {
-    const candidates = body?.candidate_dbs as CandidateDb[] | undefined;
-    return {
-      code: "ambiguous_db",
-      message: "Multiple databases could match this goal.",
-      action: candidates?.length
-        ? `Re-call with an explicit \`db\` argument (e.g. ${candidates
-            .slice(0, 3)
-            .map((c) => `\`${c.slug}\``)
-            .join(", ")}).`
-        : "Re-call with an explicit `db` argument.",
-      ...(candidates?.length ? { details: { candidate_dbs: candidates } } : {}),
-    };
-  }
-  if (code === "rate_limited" || httpStatus === 429) {
-    // SK-RL-004 — the 429 body carries `resetAt` (epoch seconds). Surface
-    // the real wait when present; otherwise state the documented
-    // fixed-window behaviour (SK-RL-002: 60s window) rather than guess.
-    const retryAfter = readRetryAfterSeconds(body);
-    return {
-      code: "rate_limited",
-      message: "Rate limit exceeded.",
-      action:
-        retryAfter !== undefined
-          ? `Wait ${retryAfter}s before retrying — the rate-limit window resets then.`
-          : "Wait up to 60s before retrying; the per-minute window resets on the minute boundary.",
-    };
-  }
-  if (code === "wrong_preset") {
-    return {
-      code: "wrong_preset",
-      message:
-        "That database isn't an agent-memory database, so it has no facts/episodes/entities tables.",
-      action:
-        "Re-call nlqdb_remember without `db` — it adopts your existing agent_memory_v1 database, or provisions one for you if none exists.",
-    };
-  }
-  if (code === "aborted") {
-    return {
-      code: "aborted",
-      message: "The tool call was cancelled.",
-      action: "Re-call when you're ready.",
-    };
-  }
-  // SK-DBCONN-001 connect failures carry an actionable, server-authored
-  // `message` worth surfacing verbatim. The server never echoes the
-  // connection URL into the message, so this is safe.
-  if (code === "invalid_request" || code === "introspection_failed") {
-    return {
-      code: String(code),
-      message: body?.message ?? "Could not connect to the database.",
-      action:
-        "Check the engine and connection URL are correct (HTTPS, reachable host, valid credentials), then re-call.",
-    };
-  }
-  if (code === "sealing_unconfigured") {
-    return {
-      code: "sealing_unconfigured",
-      message: "This deployment can't seal database credentials right now.",
-      action: "Retry shortly; if it persists email support@nlqdb.com.",
-    };
-  }
-  // SK-PREMIUM-014 — `model: "best"` with no frontier lane. Deterministic
-  // and user-fixable, so never the generic retry advice.
-  if (code === "model_unavailable") {
-    return {
-      code: "model_unavailable",
-      message:
-        'model "best" needs a frontier model, and this account has no BYOLLM key or paid plan.',
-      action: "Add a provider key at https://app.nlqdb.com/app/keys, or omit `model`.",
-    };
-  }
-  // The server's body-validation errors carry a one-sentence `reason`
-  // naming the offending field (memory/remember.ts validateRememberInput);
-  // surface it verbatim (GLOBAL-012) instead of dropping it into the
-  // generic bucket, which is what left `nlqdb_remember` opaque.
-  if (code === "invalid_body" || code === "invalid_json") {
-    const reason = typeof body?.reason === "string" ? body.reason : undefined;
-    return {
-      code,
-      message:
-        reason ??
-        (code === "invalid_json"
-          ? "The request body wasn't valid JSON."
-          : "The request body was invalid."),
-      action: "Correct the field named in the message, then re-call.",
-    };
-  }
-
-  // Every remaining *known* code has static copy. Only genuinely-unknown
-  // codes (the `(string & {})` escape hatch, or a non-API error) fall
-  // through to the generic bucket below — the compile-time guard above
-  // proves no named `ApiErrorCode` can reach it.
-  const copy = (ERROR_COPY as Record<string, ErrCopy>)[code];
-  if (copy) return { code, ...copy };
-
-  return {
-    code: String(code),
-    message: GENERIC_ERROR_MESSAGE,
-    action: GENERIC_ERROR_ACTION,
+// Structured payloads a host/agent can act on programmatically. The copy comes
+// from the registry; this only lifts the machine-readable half out of `params`
+// onto `details`.
+function detailsFor(code: string, params: Record<string, unknown> | undefined) {
+  if (!params) return undefined;
+  const lift = (key: string) => {
+    const v = params[key];
+    return Array.isArray(v) && v.length > 0 ? { [key]: v } : undefined;
   };
-}
-
-function readAlternatives(body: NlqdbApiError["body"]): Record<string, unknown> | undefined {
-  if (!body) return undefined;
-  const alt = (body as unknown as { alternatives?: unknown }).alternatives;
-  if (Array.isArray(alt) && alt.length > 0) return { alternatives: alt };
+  if (code === "ambiguous_db") return lift("candidate_dbs");
+  if (code === "clarify_required") return lift("options");
+  if (code === "low_confidence") return lift("alternatives");
   return undefined;
 }
 
-// `resetAt` is on the wire (SK-RL-004) but not in the SDK's ApiErrorBody
-// type, so read it defensively like readAlternatives does. It's an epoch
-// second; return whole seconds from now until the window resets.
-function readRetryAfterSeconds(body: NlqdbApiError["body"]): number | undefined {
-  if (!body) return undefined;
-  const resetAt = (body as unknown as { resetAt?: unknown }).resetAt;
-  if (typeof resetAt !== "number" || !Number.isFinite(resetAt)) return undefined;
-  return Math.max(0, Math.round(resetAt - Date.now() / 1000));
+// Strips raw SDK strings on the unknown bucket so internal details never reach
+// the host LLM.
+export function mapSdkError(err: unknown): ToolError {
+  const apiErr = err as NlqdbApiError | undefined;
+  const code = apiErr?.code ?? "unknown_error";
+  const body = apiErr?.body ?? null;
+  // A streamed ask error arrives flat (`{code, table, …}`); a JSON error nests
+  // the same fields under `params`. Read either shape — the registry's schema
+  // ignores the extra top-level keys — so copy and details render for both.
+  const params = (body?.params ?? body ?? undefined) as Record<string, unknown> | undefined;
+
+  // A registry code: render the wire copy, then apply the sparse MCP override.
+  // `renderError` covers the SDK-only sentinels (network_error, aborted, …),
+  // which have no wire body of their own.
+  if (isErrorCode(code)) {
+    const wire = body?.message
+      ? { message: body.message, action: body.action ?? "" }
+      : renderError(code, params);
+    const override = OVERRIDES[code];
+    const details = detailsFor(code, params);
+    const action =
+      typeof override?.action === "function"
+        ? override.action(params ?? {})
+        : (override?.action ?? wire.action);
+    return {
+      code,
+      message: override?.message ?? wire.message,
+      action,
+      ...(details ? { details } : {}),
+    };
+  }
+
+  // A code newer than this MCP build. The server already phrased it — surface
+  // that rather than the generic bucket, which is what left `nlqdb_remember`
+  // opaque before SK-ERR-001.
+  if (body?.message) {
+    return {
+      code: String(code),
+      message: body.message,
+      action: body.action ?? GENERIC_ERROR_ACTION,
+    };
+  }
+
+  return { code: String(code), message: GENERIC_ERROR_MESSAGE, action: GENERIC_ERROR_ACTION };
 }

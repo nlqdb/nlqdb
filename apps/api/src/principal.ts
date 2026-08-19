@@ -32,6 +32,7 @@
 import type { NlqSurface } from "@nlqdb/events";
 import type { Context, MiddlewareHandler } from "hono";
 import type { SkKeyLookup } from "./api-keys.ts";
+import { fail } from "./error-envelope.ts";
 import type { Session } from "./middleware.ts";
 
 export type Principal =
@@ -203,7 +204,7 @@ export function makeRequirePrincipal(
       }
     }
 
-    return c.json({ error: "unauthorized" }, 401);
+    return fail(c, "unauthorized");
   };
 }
 

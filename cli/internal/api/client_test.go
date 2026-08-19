@@ -52,7 +52,7 @@ func TestRetriesOnTransient5xx(t *testing.T) {
 		n := hits.Add(1)
 		if n < 3 {
 			w.WriteHeader(http.StatusBadGateway)
-			_, _ = w.Write([]byte(`{"error":{"status":"upstream_error"}}`))
+			_, _ = w.Write([]byte(`{"error":{"code":"upstream_error"}}`))
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
@@ -80,7 +80,7 @@ func TestDoesNotRetry4xx(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hits.Add(1)
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"error":{"status":"goal_required"}}`))
+		_, _ = w.Write([]byte(`{"error":{"code":"goal_required"}}`))
 	}))
 	defer srv.Close()
 
@@ -93,8 +93,8 @@ func TestDoesNotRetry4xx(t *testing.T) {
 	if !errors.As(err, &apiErr) {
 		t.Fatalf("expected APIError, got %T", err)
 	}
-	if apiErr.Status != "goal_required" {
-		t.Errorf("Status = %q", apiErr.Status)
+	if apiErr.Code != "goal_required" {
+		t.Errorf("Status = %q", apiErr.Code)
 	}
 	if got := hits.Load(); got != 1 {
 		t.Errorf("expected 1 hit (no retry on 4xx), got %d", got)
@@ -114,8 +114,8 @@ func TestParsesStringErrorEnvelope(t *testing.T) {
 	if !errors.As(err, &apiErr) {
 		t.Fatalf("expected APIError, got %T", err)
 	}
-	if apiErr.Status != "invalid_json" {
-		t.Errorf("Status = %q", apiErr.Status)
+	if apiErr.Code != "invalid_json" {
+		t.Errorf("Status = %q", apiErr.Code)
 	}
 }
 
@@ -130,7 +130,7 @@ func TestRetriesReuseIdempotencyKey(t *testing.T) {
 		mu <- struct{}{}
 		if n < 3 {
 			w.WriteHeader(http.StatusBadGateway)
-			_, _ = w.Write([]byte(`{"error":{"status":"upstream_error"}}`))
+			_, _ = w.Write([]byte(`{"error":{"code":"upstream_error"}}`))
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
@@ -264,13 +264,13 @@ func TestRevokeKeyPathEscapesId(t *testing.T) {
 func TestRevokeKey404Surfaces(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte(`{"error":{"status":"key_not_found"}}`))
+		_, _ = w.Write([]byte(`{"error":{"code":"key_not_found"}}`))
 	}))
 	defer srv.Close()
 	c := New(srv.URL, auth.Identity{Kind: auth.KindSignedIn, Token: "session_x"})
 	_, err := c.RevokeKey(context.Background(), "k_missing")
 	var apiErr *APIError
-	if !errors.As(err, &apiErr) || apiErr.HTTPStatus != 404 || apiErr.Status != "key_not_found" {
+	if !errors.As(err, &apiErr) || apiErr.HTTPStatus != 404 || apiErr.Code != "key_not_found" {
 		t.Fatalf("expected typed 404 key_not_found, got %v", err)
 	}
 }

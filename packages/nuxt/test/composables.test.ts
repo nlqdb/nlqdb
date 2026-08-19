@@ -24,7 +24,7 @@ const ok = () =>
   );
 
 const errorResponse = (status: number, code: string) => () =>
-  new Response(JSON.stringify({ error: { status: code } }), {
+  new Response(JSON.stringify({ error: { code: code } }), {
     status,
     headers: { "content-type": "application/json" },
   });

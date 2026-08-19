@@ -86,7 +86,7 @@ grant is a no-op, not an error.`,
 			out, err := api.New(g.apiURL, id).RevokeGrant(ctx, grantID)
 			if err != nil {
 				var apiErr *api.APIError
-				if errors.As(err, &apiErr) && apiErr.Status == "grant_not_found" {
+				if errors.As(err, &apiErr) && apiErr.Code == "grant_not_found" {
 					printErr(cmd, "grant not found — run `nlq grants list` to see ids you own.")
 					return err
 				}

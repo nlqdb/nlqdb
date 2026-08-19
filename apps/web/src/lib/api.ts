@@ -73,11 +73,15 @@ export type CreateError =
 
 export type CreateOutcome = { ok: true; result: CreateResult } | { ok: false; error: CreateError };
 
+// SK-ERR-001 — the wire envelope: `code` is the discriminant, and the
+// code's declared cause fields live under `params`.
 interface AuthRequiredEnvelope {
-  status: "auth_required";
-  signInUrl: string;
-  window?: "hour" | "day" | "month";
-  resetAt?: number;
+  code: "auth_required";
+  params?: {
+    signInUrl?: string;
+    window?: "hour" | "day" | "month";
+    resetAt?: number;
+  };
 }
 
 export async function postAskCreate(
@@ -133,18 +137,22 @@ export async function postAskCreate(
     // body. The cap envelope drives the prompt-stash + redirect
     // flow in CreateForm.tsx; bare unauthorized is a hard error.
     try {
-      const body = (await res.json()) as { error?: AuthRequiredEnvelope | { status?: string } };
-      if (body.error && "status" in body.error && body.error.status === "auth_required") {
-        const env = body.error as AuthRequiredEnvelope;
-        return {
-          ok: false,
-          error: {
-            kind: "auth_required",
-            signInUrl: env.signInUrl,
-            ...(env.window !== undefined ? { window: env.window } : {}),
-            ...(env.resetAt !== undefined ? { resetAt: env.resetAt } : {}),
-          },
-        };
+      const body = (await res.json()) as { error?: AuthRequiredEnvelope | { code?: string } };
+      if (body.error && "code" in body.error && body.error.code === "auth_required") {
+        const p = (body.error as AuthRequiredEnvelope).params ?? {};
+        // No signInUrl means the server couldn't build one; treat it as a hard
+        // unauthorized rather than redirecting nowhere (GLOBAL-011).
+        if (typeof p.signInUrl === "string") {
+          return {
+            ok: false,
+            error: {
+              kind: "auth_required",
+              signInUrl: p.signInUrl,
+              ...(p.window !== undefined ? { window: p.window } : {}),
+              ...(p.resetAt !== undefined ? { resetAt: p.resetAt } : {}),
+            },
+          };
+        }
       }
     } catch {
       // body wasn't json — fall through to bare unauthorized.

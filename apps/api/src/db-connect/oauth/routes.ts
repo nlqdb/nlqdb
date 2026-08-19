@@ -16,6 +16,7 @@
 
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { fail } from "../../error-envelope.ts";
 import { idempotencyLookup, idempotencyStore } from "../../idempotency.ts";
 import type { RequireSessionVariables } from "../../middleware.ts";
 import {
@@ -76,27 +77,15 @@ export async function handleSupabaseStart(c: ConnectCtx): Promise<Response> {
   const principal = c.var.principal;
   const tenantId = accountTenantIdFromPrincipal(principal);
   if (!tenantId || !canConnectDatabase(principal)) {
-    return c.json(
-      {
-        error: {
-          status: "connect_requires_account" as const,
-          message: "Connecting a database needs an account session or an sk_live key.",
-        },
-      },
-      403,
-    );
+    return fail(c, "connect_requires_account", {
+      message: "Connecting a database needs an account session or an sk_live key.",
+    });
   }
   const client = oauthClient(c);
   if (!client) {
-    return c.json(
-      {
-        error: {
-          status: "oauth_not_configured" as const,
-          message: "Supabase connect is not configured on this deployment; paste a URL instead.",
-        },
-      },
-      503,
-    );
+    return fail(c, "oauth_not_configured", {
+      message: "Supabase connect is not configured on this deployment; paste a URL instead.",
+    });
   }
 
   const state = generateState();
@@ -208,12 +197,12 @@ export async function handleSupabaseProjects(c: ConnectCtx): Promise<Response> {
   const principal = c.var.principal;
   const tenantId = accountTenantIdFromPrincipal(principal);
   if (!tenantId || !canConnectDatabase(principal)) {
-    return c.json({ error: { status: "connect_requires_account" as const } }, 403);
+    return fail(c, "connect_requires_account");
   }
   const pickId = c.req.query("pick");
-  if (!pickId) return c.json({ error: { status: "invalid_request" as const } }, 400);
+  if (!pickId) return fail(c, "invalid_request");
   const tokens = await openPick(c, pickId, tenantId);
-  if (!tokens) return c.json({ error: { status: "pick_expired" as const } }, 410);
+  if (!tokens) return fail(c, "pick_expired");
   const projects = await listSupabaseProjects(tokens.accessToken);
   return c.json({ projects });
 }
@@ -223,7 +212,7 @@ export async function handleSupabaseSelect(c: ConnectCtx): Promise<Response> {
   const principal = c.var.principal;
   const tenantId = accountTenantIdFromPrincipal(principal);
   if (!tenantId || !canConnectDatabase(principal)) {
-    return c.json({ error: { status: "connect_requires_account" as const } }, 403);
+    return fail(c, "connect_requires_account");
   }
   const body = (await c.req.json().catch(() => null)) as {
     pick?: string;
@@ -231,7 +220,7 @@ export async function handleSupabaseSelect(c: ConnectCtx): Promise<Response> {
     name?: string;
   } | null;
   if (!body?.pick || !body?.ref) {
-    return c.json({ error: { status: "invalid_request" as const } }, 400);
+    return fail(c, "invalid_request");
   }
 
   // GLOBAL-005 — idempotent connect. The `pick` id is the natural dedupe key
@@ -243,7 +232,7 @@ export async function handleSupabaseSelect(c: ConnectCtx): Promise<Response> {
   if (prior) return c.json(prior);
 
   const tokens = await openPick(c, body.pick, tenantId);
-  if (!tokens) return c.json({ error: { status: "pick_expired" as const } }, 410);
+  if (!tokens) return fail(c, "pick_expired");
 
   const res = await connectSupabaseMgmt(buildConnectSupabaseMgmtDeps(c.env), {
     projectRef: body.ref,

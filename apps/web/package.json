@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
+    "@nlqdb/errors": "workspace:*",
     "@resvg/resvg-js": "^2.6.2",
     "@types/react": "^19",
     "@types/three": "^0.185.0",

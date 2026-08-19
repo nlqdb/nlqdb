@@ -66,6 +66,7 @@ block.
 - [**SK-HDC-019**](decisions/SK-HDC-019-deterministic-sample-row-salvage.md) — Pre-validate sample rows and drop only the uninsertable ones, salvaging the rest.
 - [**SK-HDC-020**](decisions/SK-HDC-020-agent-memory-preset.md) — Opt-in `agent_memory_v1` schema preset on the create path.
 - [**SK-HDC-021**](decisions/SK-HDC-021-preset-create-accepts-account-keys.md) — Preset create accepts any account-scoped principal (`user`/`sk_live`/`sk_mcp`); generic goal create stays session-only (applies the SK-PIVOT-010 2026-08-09 amendment).
+- [**SK-HDC-022**](decisions/SK-HDC-022-nullable-inferred-foreign-keys.md) — An inferred FK column is never `NOT NULL` unless it is part of the child's primary key, so the creator's next write is never structurally impossible.
 
 ## GLOBALs governing this feature
 
@@ -85,6 +86,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Classifier confidence threshold — Resolved** (`GLOBAL-033`): one env-tunable threshold gates create-vs-clarify (mirrors `SK-LLM-022`'s `0.75`); the low-confidence *response* stays per-surface (`SK-HDC-005`). One knob, per-surface routing.
 - **`SchemaPlan` type breadth — native `enum` deferred to Phase 2** (resolved per `GLOBAL-033`). Phase 1 ships `text / int / numeric / timestamptz / uuid / boolean / jsonb`; a constrained category is `text` (optionally `+ CHECK`). Native `enum` needs its own decision (adding a value is `ALTER TYPE`, not the `ADD COLUMN` widen `SK-DB-008` allows) — **parked until** a goal needs it.
 - **Multi-statement transactional boundary — Resolved** (`GLOBAL-033`): schema + sample rows + `databases` row commit atomically; embedding is decoupled (best-effort, retried, never rolls back a provision — a rate-limit can't cost the user their DB), and a constraint-violating seed row degrades to an un-seeded DB rather than a 500 (`SK-HDC-018`), each attempt still atomic.
+- **May the planner be told which demo rows we seeded? — open, founder-gated.** `SK-HDC-022` stops a seeded owner table from *blocking* a write, but the planner still cannot see that `users` holds three nlqdb-authored demo rows, so "add an idea" can't deliberately pick one or cite them when it clarifies. Telling it would send cell-values on the planning lane, which [`GLOBAL-037`](../../decisions/GLOBAL-037-schema-only-llm-egress.md) closes and reserves to the founder — even for values nlqdb authored, since after provisioning they are ordinary rows in the user's DB and nothing downstream distinguishes them. **Parked until** the founder rules on a narrow "seed rows only" carve-out (which would need a durable seed marker to stay honest).
 - **Phase 4 BYO connect introspection cost — Resolved** (`GLOBAL-033`/`GLOBAL-026`): **absorb** the connect-time `pg_catalog` read + table-card embedding as onboarding cost; never bill the first connect. Gating first value behind cost is what the free chain forbids.
 
 ## Semantic layer — Phase 2 design

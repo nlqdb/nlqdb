@@ -85,8 +85,17 @@ export function parseByollmHeader(raw: string | undefined): ParseByollmResult {
   return { ok: true, credential: { apiKey, upstream, model } };
 }
 
+// SK-LLM-051 — the bounded lane descriptor the orchestrator threads into a
+// `llm_failed` envelope so the copy can say *whose* model failed. Slugs and the
+// user's chosen model id only; the credential never appears here.
+export type ResolvedLane = {
+  lane: "free" | "byollm" | "premium";
+  provider?: string;
+  model?: string;
+};
+
 export type ResolveAskRouterResult =
-  | { ok: true; router: LLMRouter; attributes: Record<string, string> }
+  | { ok: true; router: LLMRouter; attributes: Record<string, string>; lane: ResolvedLane }
   // An *explicit* per-request header key (`x-nlq-byollm-key`) arrived but
   // the deployment has no AI Gateway configured — an operator-config gap,
   // surfaced as 503 by the caller (not 4xx: the request is well-formed,
@@ -153,11 +162,12 @@ export function resolveAskRouter(args: {
       ok: true,
       router: args.premiumRouter ?? args.freeRouter,
       attributes: { ...dispatchLaneAttributes(realLane), ...presetAttr },
+      lane: { lane: realLane.lane },
     };
   }
   const attributes = { ...dispatchLaneAttributes(selection), ...presetAttr };
   if (selection.lane !== "byollm") {
-    return { ok: true, router: args.freeRouter, attributes };
+    return { ok: true, router: args.freeRouter, attributes, lane: { lane: "free" } };
   }
   const { accountId, gatewayId, token: gatewayToken } = args.gateway;
   if (!accountId || !gatewayId) {
@@ -181,6 +191,7 @@ export function resolveAskRouter(args: {
           "llm.byollm_degraded": "gateway_unconfigured",
           ...presetAttr,
         },
+        lane: { lane: "free" },
       };
     }
     return { ok: false, reason: "gateway_unconfigured" };
@@ -193,5 +204,14 @@ export function resolveAskRouter(args: {
     // SK-LLM-046 — authenticate to the gateway when it requires it.
     ...(gatewayToken ? { gatewayToken } : {}),
   });
-  return { ok: true, router, attributes };
+  return {
+    ok: true,
+    router,
+    attributes,
+    lane: {
+      lane: "byollm",
+      provider: selection.credential.upstream,
+      model: selection.credential.model,
+    },
+  };
 }
