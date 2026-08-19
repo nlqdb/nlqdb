@@ -71,4 +71,36 @@ describe("requireSession middleware", () => {
     await app.request("/protected");
     expect(isRevoked).not.toHaveBeenCalled();
   });
+
+  it("returns a retryable 503 auth_unavailable when getSession throws (storage blip, not 500)", async () => {
+    const app = buildApp({
+      // Mirrors Better Auth wrapping a KV/D1 failure as `APIError: Failed to
+      // get session` — the exact production 500 this guard converts.
+      getSession: async () => {
+        throw new Error("Failed to get session");
+      },
+      isRevoked: async () => false,
+    });
+    const res = await app.request("/protected");
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({
+      error: { code: "auth_unavailable", retryable: true },
+    });
+  });
+
+  it("fails closed (503) rather than honouring a session when isRevoked throws", async () => {
+    const app = buildApp({
+      getSession: async () => ({
+        user: { id: "u_1" },
+        session: { token: "tok_1", userId: "u_1" },
+      }),
+      isRevoked: async () => {
+        throw new Error("KV get failed");
+      },
+    });
+    const res = await app.request("/protected");
+    // Not 200: an unresolved revocation check must never pass through.
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ error: { code: "auth_unavailable" } });
+  });
 });

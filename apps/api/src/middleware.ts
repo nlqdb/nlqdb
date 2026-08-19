@@ -37,11 +37,39 @@ export function makeRequireSession(opts: RequireSessionOpts): MiddlewareHandler<
   Variables: RequireSessionVariables;
 }> {
   return async (c, next) => {
-    const session = await opts.getSession(c.req.raw);
+    let session: Session | null = null;
+    let revoked = false;
+    try {
+      session = await opts.getSession(c.req.raw);
+      // Only probe the revocation set when there's a token to check —
+      // no session means no wasted KV read.
+      if (session) revoked = await opts.isRevoked(session.session.token);
+    } catch (err) {
+      // The session store threw — Better Auth wraps any failure in its
+      // KV `secondaryStorage` or D1 backend as `APIError: Failed to get
+      // session`. That's a transient storage blip, NOT an unauthenticated
+      // caller, so returning a raw 500 (and paging on it) is wrong on both
+      // counts: the SDK's 5xx retry would replay it and the caller would
+      // self-heal. Return a retryable envelope instead and fail *closed* —
+      // an unresolved `isRevoked` must never fall through to honouring a
+      // possibly-revoked session. Logged (not thrown) so a storage hiccup
+      // stays observable without tripping the unhandled-error alert.
+      const e = err as Error;
+      console.warn(
+        JSON.stringify({
+          msg: "session_resolve_failed",
+          name: e?.name,
+          message: e?.message,
+          path: c.req.path,
+          method: c.req.method,
+        }),
+      );
+      return fail(c, "auth_unavailable");
+    }
     if (!session) {
       return fail(c, "unauthorized");
     }
-    if (await opts.isRevoked(session.session.token)) {
+    if (revoked) {
       // The session row is gone but a cookie-cached copy is still in
       // flight. Tell the browser to stop using it; rely on the frontend's
       // re-auth path (docs/architecture.md §4.3).
