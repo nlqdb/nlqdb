@@ -696,7 +696,10 @@ if (env.MOCK_IDP === "1") {
 // unset — name/email are still attempted and Tawk keeps the anon id until
 // Secure Mode is configured, so nothing crashes pre-provisioning.
 app.get("/api/tawk/identity", async (c) => {
-  const session = await sessionResolver.getSession(c.req.raw);
+  // A session-store blip here shouldn't 500 (and page) — this is a
+  // best-effort identity probe. Degrade to the unauthenticated response
+  // (the client already handles null by leaving the visitor anonymous).
+  const session = await sessionResolver.getSession(c.req.raw).catch(() => null);
   if (!session) return c.json(null);
   const { id, name, email } = session.user;
   const hash = email && env.TAWK_TO_API_KEY ? await hmacHex(env.TAWK_TO_API_KEY, email) : undefined;
