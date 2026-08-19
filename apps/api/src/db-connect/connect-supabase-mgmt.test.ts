@@ -43,8 +43,23 @@ function stubD1(existingIds: Set<string> = new Set()) {
   return { d1: { prepare } as unknown as D1Database, captured };
 }
 
+// An introspection query that returns one table (a column row for COLUMNS_SQL,
+// which is the only read carrying `format_type`; empty for PK/FK) — so the
+// rendered schema is non-empty and connect proceeds.
+function populatedQuery(): PostgresQueryFn {
+  return vi.fn(async (sql: string) => {
+    if (sql.includes("format_type")) {
+      return {
+        rows: [{ table_name: "users", column_name: "id", data_type: "uuid", not_null: true }],
+        rowCount: 1,
+      };
+    }
+    return { rows: [], rowCount: 0 };
+  });
+}
+
 // An introspection query that returns empty rowsets for every read — yields a
-// no-table schema that still renders to a short non-empty preview.
+// no-table (empty) schema.
 function emptyQuery(): PostgresQueryFn {
   return vi.fn(async () => ({ rows: [], rowCount: 0 }));
 }
@@ -54,7 +69,7 @@ function baseDeps(overrides: Partial<ConnectSupabaseMgmtDeps> = {}): ConnectSupa
     kek: KEK,
     d1: stubD1().d1,
     randomSuffix: () => "a1b2c3",
-    buildMgmtQuery: () => ({ query: emptyQuery() }),
+    buildMgmtQuery: () => ({ query: populatedQuery() }),
     ...overrides,
   };
 }
@@ -97,6 +112,17 @@ describe("connectSupabaseMgmt", () => {
       refreshToken: "sbp_refresh_token_secret",
       expiresAt: 1_800_000_000,
     });
+  });
+
+  it("returns a 422 when the public schema has no tables (nothing to query)", async () => {
+    const res = await connectSupabaseMgmt(
+      baseDeps({ buildMgmtQuery: () => ({ query: emptyQuery() }) }),
+      ARGS,
+    );
+    expect(res.ok).toBe(false);
+    if (res.ok) throw new Error("expected failure");
+    expect(res.status).toBe(422);
+    expect(res.message).toMatch(/no tables/i);
   });
 
   it("rejects a malformed project ref with a 400 before any I/O (SSRF guard)", async () => {

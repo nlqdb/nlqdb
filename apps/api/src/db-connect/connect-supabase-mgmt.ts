@@ -127,6 +127,19 @@ export async function connectSupabaseMgmt(
     };
   }
 
+  // b.1 An empty `public` schema (the only schema introspected) has nothing to
+  //     query in English. Fail honestly with the next action rather than mint a
+  //     database that silently 0-results at ask-time (`P6`, `GLOBAL-012`). Empty
+  //     `schemaText` ⇔ zero rendered CREATE TABLEs ⇔ no tables.
+  if (!rendered.schemaText) {
+    return {
+      ok: false,
+      status: 422,
+      message:
+        "Connected to Supabase, but its public schema has no tables; add a table (or pick a project that has data) and reconnect.",
+    };
+  }
+
   // c. Mint the dbId. Slug from the caller's name, else the project ref.
   const slug = makeSlug(args.name ?? args.projectRef);
   const dbId = await mintUniqueDbId(deps.d1, slug, deps.randomSuffix);

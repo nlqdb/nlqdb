@@ -117,6 +117,8 @@ export function oauthConnectErrorMessage(code: string): string {
       return "That connect link expired — start the Supabase connect again.";
     case "introspection":
       return "Connected, but the schema couldn't be read — reconnect and make sure the project is active.";
+    case "empty_schema":
+      return "Connected, but your project's public schema has no tables — add a table (or pick a project with data) and reconnect.";
     case "unconfigured":
       return "Supabase connect isn't configured on this deployment — paste a connection string instead.";
     default:
