@@ -63,6 +63,13 @@ describe("agent_memory_v1 preset", () => {
     expect(link).toContain(`PRIMARY KEY ("entity_id", "fact_id")`);
   });
 
+  it("indexes facts.expires_at (partial) so the E-04 sweep is not a per-write seq scan", () => {
+    const ddl = agentMemoryV1Ddl(SCHEMA);
+    const ttl = ddl.find((s) => s.includes(`"idx_facts__expires_at"`));
+    expect(ttl).toContain(`ON "${SCHEMA}"."facts" ("expires_at")`);
+    expect(ttl).toContain(`WHERE "expires_at" IS NOT NULL`);
+  });
+
   it("defers the pgvector embedding column to E-05 (provisions on stock Postgres)", () => {
     const ddl = agentMemoryV1Ddl(SCHEMA).join("\n");
     expect(ddl).not.toMatch(/vector/i);

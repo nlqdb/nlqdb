@@ -1151,6 +1151,37 @@ describe("unauthorized names each key by purpose (WS04-T2)", () => {
   });
 });
 
+// Agent-memory convention (SK-PIVOT-011 lazy variant) — the tool
+// descriptions are the ONLY place a cold agent learns how to use memory
+// well. A cold agent that never reads FEATURE.md must still learn: use
+// entities for current state, give transient facts a TTL, supersede
+// rather than accumulate. Test the description text carries each move.
+describe("nlqdb_remember description teaches the memory conventions", () => {
+  // Late import so the test survives a re-order of the module.
+  async function shape() {
+    const mod = await import("../src/tools.ts");
+    return mod.rememberInputShape;
+  }
+
+  it("teaches entity = current snapshot, refreshed in place", async () => {
+    const s = await shape();
+    expect(s.kind.description).toMatch(/current snapshot|current state/i);
+    expect(s.kind.description).toMatch(/upsert/i);
+    expect(s.payload.description).toMatch(/current snapshot|refreshed in place|update.*in place/i);
+  });
+
+  it("teaches ttlSeconds as the way transient facts decay", async () => {
+    const s = await shape();
+    expect(s.ttlSeconds.description).toMatch(/expired.*not.*appear|stop appearing|fades|forgets/i);
+    expect(s.ttlSeconds.description).toMatch(/time-bound|transient|status|observation/i);
+  });
+
+  it("teaches supersede rather than accumulate", async () => {
+    const s = await shape();
+    expect(s.payload.description).toMatch(/supersede|update.*in place|refreshed in place/i);
+  });
+});
+
 // WS04-T4 — the advertised stdio version must track package.json so a host
 // never sees a version that drifted from what it actually installed.
 describe("PACKAGE_VERSION stays in sync with package.json (WS04-T4)", () => {
