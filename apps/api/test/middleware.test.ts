@@ -88,7 +88,8 @@ describe("requireSession middleware", () => {
     });
   });
 
-  it("fails closed (503) rather than honouring a session when isRevoked throws", async () => {
+  it("fails open (honours the valid cookie) when isRevoked throws, per SK-AUTH-020", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const app = buildApp({
       getSession: async () => ({
         user: { id: "u_1" },
@@ -99,8 +100,12 @@ describe("requireSession middleware", () => {
       },
     });
     const res = await app.request("/protected");
-    // Not 200: an unresolved revocation check must never pass through.
-    expect(res.status).toBe(503);
-    expect(await res.json()).toMatchObject({ error: { code: "auth_unavailable" } });
+    // A KV blip on the revocation set must NOT log out a validly-signed
+    // session (SK-AUTH-020) — the cookie signature already proves identity.
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, userId: "u_1", token: "tok_1" });
+    // …but the fail-open is observable via one warn log.
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("session_revocation_check_failed"));
+    warn.mockRestore();
   });
 });

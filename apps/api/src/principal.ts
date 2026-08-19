@@ -33,7 +33,7 @@ import type { NlqSurface } from "@nlqdb/events";
 import type { Context, MiddlewareHandler } from "hono";
 import type { SkKeyLookup } from "./api-keys.ts";
 import { fail } from "./error-envelope.ts";
-import type { Session } from "./middleware.ts";
+import { logAuthWarn, type Session } from "./middleware.ts";
 
 export type Principal =
   | { kind: "user"; id: string; session: Session }
@@ -148,15 +148,16 @@ export function makeRequirePrincipal(
 ): MiddlewareHandler<{ Variables: RequirePrincipalVariables }> {
   return async (c, next) => {
     // Resolve the principal inside a try/catch, but keep `next()` OUT of it:
-    // the resolvers below touch KV (`isRevoked`) and D1 (`lookupPkLiveKey` /
-    // `lookupSkKey`) and call Better Auth (`getSession`), any of which can
-    // throw on a transient storage blip. An uncaught throw here would 500 the
-    // ENTIRE data path (`/v1/ask`, `/v1/run`, `/v1/databases`, …) and page
-    // on-call — the same failure the `requireSession` gate had. Instead we
-    // fail *closed* to a retryable `auth_unavailable` (503): the SDK's 5xx
-    // retry replays it and the caller self-heals, and a D1 hiccup never
-    // mislabels a valid key as `unauthorized`. Wrapping `next()` would wrongly
-    // relabel any downstream handler throw as an auth failure, so it stays out.
+    // `getSession` (Better Auth) and the D1 key lookups (`lookupPkLiveKey` /
+    // `lookupSkKey`) can throw on a transient storage blip. An uncaught throw
+    // would 500 the ENTIRE data path (`/v1/ask`, `/v1/run`, `/v1/databases`, …)
+    // and page on-call — the same failure the `requireSession` gate had.
+    // Instead we fail *closed* to a retryable `auth_unavailable` (503): the
+    // SDK's 5xx retry replays it and the caller self-heals, and a D1 hiccup
+    // never mislabels a valid key as `unauthorized`. The revocation check is
+    // the one exception — it fails *open* per SK-AUTH-020 (see below).
+    // Wrapping `next()` would wrongly relabel any downstream handler throw as
+    // an auth failure, so it stays out.
     let principal: Principal | null = null;
     let bumpKeyId: string | null = null;
     try {
@@ -165,7 +166,17 @@ export function makeRequirePrincipal(
       // adopt endpoint is the seam that bridges the two (SK-ANON-003).
       const session = await opts.getSession(c.req.raw);
       if (session) {
-        if (await opts.isRevoked(session.session.token)) {
+        // Revocation fails *open* on a KV outage per SK-AUTH-020: a KV blip on
+        // the revocation set must not 401 a validly-signed session (the cookie
+        // signature already proves identity). Kept out of the outer catch so it
+        // never escalates to a 503.
+        let revoked = false;
+        try {
+          revoked = await opts.isRevoked(session.session.token);
+        } catch (err) {
+          logAuthWarn("session_revocation_check_failed", err, c);
+        }
+        if (revoked) {
           return c.json({ error: "session_revoked" }, 401);
         }
         principal = { kind: "user", id: session.user.id, session };
@@ -203,16 +214,7 @@ export function makeRequirePrincipal(
         }
       }
     } catch (err) {
-      const e = err as Error;
-      console.warn(
-        JSON.stringify({
-          msg: "principal_resolve_failed",
-          name: e?.name,
-          message: e?.message,
-          path: c.req.path,
-          method: c.req.method,
-        }),
-      );
+      logAuthWarn("principal_resolve_failed", err, c);
       return fail(c, "auth_unavailable");
     }
 

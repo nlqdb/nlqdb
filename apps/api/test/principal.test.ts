@@ -144,7 +144,8 @@ describe("requirePrincipal middleware", () => {
     });
   });
 
-  it("fails closed (503) when isRevoked throws, never honouring the session", async () => {
+  it("fails open (resolves the user) when isRevoked throws, per SK-AUTH-020", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const app = buildApp({
       getSession: async () => ({
         user: { id: "u_alice" },
@@ -155,8 +156,12 @@ describe("requirePrincipal middleware", () => {
       },
     });
     const res = await app.request("/protected");
-    expect(res.status).toBe(503);
-    expect(await res.json()).toMatchObject({ error: { code: "auth_unavailable" } });
+    // A KV blip on the revocation set must NOT log out a validly-signed
+    // session (SK-AUTH-020); the request proceeds as the cookie's user.
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, kind: "user", id: "u_alice" });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("session_revocation_check_failed"));
+    warn.mockRestore();
   });
 
   it("fails closed (503) when an sk_* key lookup throws — not 401", async () => {

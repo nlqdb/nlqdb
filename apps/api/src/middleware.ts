@@ -33,47 +33,55 @@ export type RequireSessionVariables = {
   session: Session;
 };
 
+// Structured, non-paging warn for a transient auth-store blip — logged (not
+// thrown) so a KV/D1 hiccup stays observable without tripping the
+// unhandled-error alert. Never logs secrets: error name/message + path/method.
+export function logAuthWarn(msg: string, err: unknown, c: Context): void {
+  const e = err as Error;
+  console.warn(
+    JSON.stringify({
+      msg,
+      name: e?.name,
+      message: e?.message,
+      path: c.req.path,
+      method: c.req.method,
+    }),
+  );
+}
+
 export function makeRequireSession(opts: RequireSessionOpts): MiddlewareHandler<{
   Variables: RequireSessionVariables;
 }> {
   return async (c, next) => {
     let session: Session | null = null;
-    let revoked = false;
     try {
       session = await opts.getSession(c.req.raw);
-      // Only probe the revocation set when there's a token to check —
-      // no session means no wasted KV read.
-      if (session) revoked = await opts.isRevoked(session.session.token);
     } catch (err) {
-      // The session store threw — Better Auth wraps any failure in its
-      // KV `secondaryStorage` or D1 backend as `APIError: Failed to get
-      // session`. That's a transient storage blip, NOT an unauthenticated
-      // caller, so returning a raw 500 (and paging on it) is wrong on both
-      // counts: the SDK's 5xx retry would replay it and the caller would
-      // self-heal. Return a retryable envelope instead and fail *closed* —
-      // an unresolved `isRevoked` must never fall through to honouring a
-      // possibly-revoked session. Logged (not thrown) so a storage hiccup
-      // stays observable without tripping the unhandled-error alert.
-      const e = err as Error;
-      console.warn(
-        JSON.stringify({
-          msg: "session_resolve_failed",
-          name: e?.name,
-          message: e?.message,
-          path: c.req.path,
-          method: c.req.method,
-        }),
-      );
+      // `getSession` is the authentication oracle. Better Auth wraps any KV
+      // `secondaryStorage` / D1 failure as `APIError: Failed to get session` —
+      // a transient storage blip, NOT an unauthenticated caller — so a raw 500
+      // (which also pages on-call) is wrong: the SDK's 5xx retry replays a
+      // retryable `auth_unavailable` (503) and the caller self-heals.
+      logAuthWarn("session_resolve_failed", err, c);
       return fail(c, "auth_unavailable");
     }
     if (!session) {
       return fail(c, "unauthorized");
     }
-    if (revoked) {
-      // The session row is gone but a cookie-cached copy is still in
-      // flight. Tell the browser to stop using it; rely on the frontend's
-      // re-auth path (docs/architecture.md §4.3).
-      return c.json({ error: "session_revoked" }, 401);
+    // The revocation check fails *open* on a KV outage per SK-AUTH-020: the
+    // cookie signature already proves identity, so a KV blip on the revocation
+    // set must not log out a validly-signed session (that would break
+    // GLOBAL-009 silent refresh for an outage unrelated to the session).
+    // Revocation resumes the moment KV is reachable again.
+    try {
+      if (await opts.isRevoked(session.session.token)) {
+        // The session row is gone but a cookie-cached copy is still in
+        // flight. Tell the browser to stop using it; rely on the frontend's
+        // re-auth path (docs/architecture.md §4.3).
+        return c.json({ error: "session_revoked" }, 401);
+      }
+    } catch (err) {
+      logAuthWarn("session_revocation_check_failed", err, c);
     }
     c.set("session", session);
     return next();
