@@ -188,6 +188,8 @@ describe("apps/mcp /mcp browser-origin support (SK-MCP-016)", () => {
     expect(res.status).toBe(204);
     expect(res.headers.get("access-control-allow-origin")).toBe("http://127.0.0.1:8080");
     expect(res.headers.get("access-control-allow-headers")).toContain("authorization");
+    // DELETE must be advertised so a browser client can preflight session teardown.
+    expect(res.headers.get("access-control-allow-methods") ?? "").toContain("DELETE");
     expect(res.headers.get("access-control-expose-headers") ?? "").toContain("Mcp-Session-Id");
     // No credentials — cookies are never accepted on /mcp.
     expect(res.headers.get("access-control-allow-credentials")).toBeNull();

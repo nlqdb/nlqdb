@@ -18,9 +18,10 @@ export type Env = BridgeEnv & {
   NLQDB_API_BASE_URL?: string;
   GRAFANA_OTLP_ENDPOINT?: string;
   GRAFANA_OTLP_AUTHORIZATION?: string;
-  // Comma-separated extra browser origins allowed past the DNS-rebinding
-  // check (e.g. a browser-based MCP host). nlqdb's own origins are
-  // always allowed; native clients send no `Origin` and pass.
+  // Comma-separated extra origins allowed on the OAuth / consent / discovery
+  // endpoints (`/authorize`, `/token`, `/register`, `/.well-known/*`). `/mcp`
+  // accepts any browser Origin (`SK-MCP-016`) and ignores this. nlqdb's own
+  // origins are always allowed; native clients send no `Origin` and pass.
   MCP_ALLOWED_ORIGINS?: string;
   MCP_AGENT: DurableObjectNamespace;
 };
@@ -68,7 +69,9 @@ function corsHeadersForMcp(req: Request): Record<string, string> {
   return {
     "access-control-allow-origin": origin,
     vary: "Origin",
-    "access-control-allow-methods": "GET, POST, OPTIONS",
+    // DELETE is the streamable-HTTP session-teardown verb (agents/mcp) — a
+    // browser client must be able to preflight it to close a session cleanly.
+    "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
     "access-control-allow-headers": reqHeaders ?? "authorization, content-type, mcp-session-id",
     "access-control-expose-headers": "Mcp-Session-Id, WWW-Authenticate",
     "access-control-max-age": "86400",
