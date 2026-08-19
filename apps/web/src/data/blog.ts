@@ -1376,7 +1376,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         kind: "p",
-        text: "OpenRouter documents exactly this: an error can arrive with a `200` status and a top-level `error` object *instead of* `choices` ([errors reference](https://openrouter.ai/docs/api/reference/errors-and-debugging)). The shape looks like a normal completion envelope right up until you go looking for the content that isn't there.",
+        text: "OpenRouter documents exactly this: an error can arrive with a `200` status and a top-level `error` object *instead of* `choices` ([errors reference](https://openrouter.ai/docs/api_reference/errors-and-debugging)). The shape looks like a normal completion envelope right up until you go looking for the content that isn't there.",
       },
       {
         kind: "code",

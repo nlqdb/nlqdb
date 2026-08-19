@@ -25,7 +25,7 @@ describe("webSiteJsonLd", () => {
     expect(ld.name).toBe("nlqdb");
     expect(ld.url).toBe("https://nlqdb.com/");
     // Publisher binds the site entity to the Organization by @id, so crawlers
-    // consolidate both nodes (and the per-page SoftwareApplication publisher).
+    // consolidate both nodes (and the BlogPosting publisher/author on posts).
     expect(ld.publisher).toEqual({ "@id": "https://nlqdb.com/#organization" });
   });
 
