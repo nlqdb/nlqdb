@@ -1854,7 +1854,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "PostgreSQL docs — the window-functions tutorial, canonical source for `SUM(...) OVER ()` broadcasting an aggregate across rows without collapsing them.",
       },
       {
-        url: "https://mode.com/sql-tutorial/sql-window-functions/",
+        url: "https://www.thoughtspot.com/sql-tutorial/sql-window-functions",
         label:
           "Mode — evergreen SQL window-functions tutorial widely cited for 'percent of total' / running-share patterns.",
       },

@@ -38,7 +38,7 @@ export const RECEIPTS: ResearchReceipt[] = [
     lesson: "LLM picks structure, our code emits SQL.",
     why: "Snowflake Cortex Analyst hits 90%+ accuracy on real BI workloads — about 2× single-prompt GPT-4o — because the LLM picks from a curated semantic layer instead of writing raw SQL. Our schema-create path follows the same logic with a typed plan, not raw DDL.",
     source: "Snowflake engineering blog",
-    url: "https://www.snowflake.com/en/engineering-blog/cortex-analyst-text-to-sql-accuracy-bi/",
+    url: "https://www.snowflake.com/en/blog/engineering/cortex-analyst-text-to-sql-accuracy-bi/",
     appliedAt: {
       label: "docs/architecture.md §3.6.2 typed-plan pipeline",
       href: "/docs/architecture.md",

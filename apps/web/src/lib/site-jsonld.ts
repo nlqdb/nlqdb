@@ -4,8 +4,8 @@
 // declares the site entity, its name (the string Google may surface as the SERP
 // site name), and names that same Organization as publisher via `@id`. Declared
 // once on the root, not per-page — these are site-wide nodes, and the stable
-// `@id`s let crawlers consolidate them with the SoftwareApplication node's
-// `publisher` reference that Base.astro emits on every page.
+// `@id`s let crawlers consolidate them with the `BlogPosting.publisher`/`author`
+// reference that `blog/[slug].astro` emits on every post (SK-WEB-014).
 //
 // No SearchAction: the schema.org sitelinks-searchbox contract requires the
 // target URL to *run* the query, but the goal-first hero submits via JS to

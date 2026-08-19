@@ -1,7 +1,7 @@
 ---
 import "../styles/global.css";
 import { APP_CANONICAL_ORIGIN } from "../lib/app-href.ts";
-import { ORGANIZATION_ID_FRAGMENT, organizationJsonLd, webSiteJsonLd } from "../lib/site-jsonld.ts";
+import { organizationJsonLd, webSiteJsonLd } from "../lib/site-jsonld.ts";
 
 interface Props {
   title: string;
@@ -39,27 +39,12 @@ const ogImageAltText =
   ogImageAlt ??
   "nlqdb — analytical memory for AI agents; a database your agent queries in English.";
 
-// The app node names the Organization as publisher (by stable `@id`) on every
-// page so crawlers consolidate it with the homepage Organization/WebSite nodes
-// below — one entity, declared once on the root, referenced everywhere.
-const organizationId = Astro.site
-  ? new URL(ORGANIZATION_ID_FRAGMENT, Astro.site).toString()
-  : undefined;
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: "nlqdb",
-  applicationCategory: "DeveloperApplication",
-  operatingSystem: "Web",
-  description,
-  url: Astro.site?.toString(),
-  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-  ...(organizationId ? { publisher: { "@id": organizationId } } : {}),
-};
-
 // Homepage-only site-wide entity nodes (lib/site-jsonld.ts) — Organization
 // (brand authority) + WebSite (site name + publisher link). Site-wide nodes
-// belong on the root, not every page.
+// belong on the root, not every page. No per-page SoftwareApplication node:
+// it is rich-result-ineligible without honest ratings/reviews and so errored
+// on every page (SK-WEB-014); the brand entity is carried by Organization +
+// WebSite here and by BlogPosting's Organization `@id` on posts.
 const siteEntityJsonLd =
   canonicalURL.pathname === "/" && Astro.site
     ? [organizationJsonLd(Astro.site), webSiteJsonLd(Astro.site)]
@@ -100,7 +85,6 @@ const siteEntityJsonLd =
     {/* Blog RSS autodiscovery — feed readers + dev.to/Medium/Hashnode import find /rss.xml from any page. */}
     <link rel="alternate" type="application/rss+xml" title="nlqdb blog" href="/rss.xml" />
 
-    <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
     {siteEntityJsonLd.map((ld) => (
       <script is:inline type="application/ld+json" set:html={JSON.stringify(ld)} />
     ))}
