@@ -13,8 +13,8 @@ when-to-load:
 **One-liner:** The agent connects **outbound** to user-configured MCP servers
 (GitHub, Exa, any URL); nlqdb is the first entry in that list. Owns the
 MCP-host mechanics, per-user secret handling, and the agentic guardrail spine.
-**Status:** planned — **Proposed, awaiting founder sign-off.** No code until
-signed.
+**Status:** planned — **founder-signed 2026-08-19; build may begin** (public
+launch still gated on the guardrail spine, SK-MCPI-007).
 **Owners (code):** `apps/api/src/agent/mcp-host/**`,
 `apps/api/src/integrations/**`.
 **Cross-refs:** docs/architecture.md §0 · ~/.claude security skill

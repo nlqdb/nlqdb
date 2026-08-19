@@ -14,8 +14,8 @@ when-to-load:
 **One-liner:** A general agent (web + native mobile clients) that talks to
 user-configured MCP servers; nlqdb is the built-in memory MCP, shown in the
 same integrations list as GitHub, Exa, and anything the user adds.
-**Status:** planned — **Proposed, awaiting founder sign-off.** No code until
-signed.
+**Status:** planned — **founder-signed 2026-08-19; build may begin.** Brand/name
+and the design-time unknowns (below) stay deferred.
 **Owners (code):** `apps/api/src/agent/**` (backend agent), `apps/web/src/**`
 (web client), `nlqdb-mobile` (separate Expo repo — native client).
 **Cross-refs:** docs/architecture.md §0 (core values) · docs/phase-plan.md ·
