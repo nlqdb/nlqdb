@@ -39,6 +39,9 @@ const HANDSHAKE_TIMEOUT_MS = 20_000;
 type ToolSpec = { readOnly: boolean; destructive: boolean; inputKeys: string[] };
 const EXPECTED_TOOLS: Record<string, ToolSpec> = {
   nlqdb_query: { readOnly: false, destructive: true, inputKeys: ["db", "q", "confirm", "model"] },
+  // SK-MCP-002 (read/write split) — the pre-authorizable read-only sibling of
+  // nlqdb_query: no `confirm` knob, hard readOnlyHint a host can auto-approve.
+  nlqdb_read: { readOnly: true, destructive: false, inputKeys: ["db", "q", "model"] },
   nlqdb_list_databases: { readOnly: true, destructive: false, inputKeys: [] },
   nlqdb_describe: { readOnly: true, destructive: false, inputKeys: ["db"] },
   nlqdb_remember: {
@@ -231,7 +234,7 @@ async function main(): Promise<number> {
       tools: hs.tools.map((t) => t.name),
       notes:
         state === "passed"
-          ? "stdio handshake green; catalog = nlqdb_query/list_databases/describe/remember/connect_database (no create_database tool)"
+          ? "stdio handshake green; catalog = nlqdb_query/read/list_databases/describe/remember/connect_database (no create_database tool)"
           : `failed: ${failed.map((c) => c.name).join("; ")}`,
     };
   } catch (e) {

@@ -65,6 +65,36 @@ export const queryInputShape = {
 
 export type QueryInput = z.infer<z.ZodObject<typeof queryInputShape>>;
 
+// SK-MCP-002 (read/write split) — `nlqdb_read` is the read-only sibling of
+// `nlqdb_query`: same NL-query intent, but a hard guarantee it never writes or
+// provisions, so a host can grant it standing "always allow" permission. No
+// `confirm` knob (reads never confirm) and no create-on-first-reference (the
+// db must already exist) — those are what keep the `readOnlyHint` honest.
+export const readInputShape = {
+  db: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "Target database id or slug. Optional: omit to auto-target your only database. Unlike nlqdb_query, this tool never creates a database — with several databases and no `db` it returns ambiguous_db with candidate ids; with none it asks you to create one via nlqdb_query first.",
+    ),
+  q: z
+    .string()
+    .min(1)
+    .describe(
+      "The natural-language question. Read-only: SELECT / aggregate / JOIN over existing data. Example: 'top 5 customers by revenue this year'. Name tables explicitly when you know them; avoid pronouns.",
+    ),
+  // SK-PREMIUM-014 — same goal-first preset knob as nlqdb_query.
+  model: z
+    .enum(["auto", "fast", "best"])
+    .optional()
+    .describe(
+      "Model preset: 'fast' pins the free built-in chain, 'best' requires a frontier model (errors model_unavailable unless the account stored a BYOLLM key or has a paid plan), omit/'auto' lets nlqdb pick.",
+    ),
+};
+
+export type ReadInput = z.infer<z.ZodObject<typeof readInputShape>>;
+
 export const listDatabasesInputShape = {};
 
 export type ListDatabasesInput = Record<string, never>;
@@ -289,6 +319,113 @@ export async function handleQuery(
     }
 
     return { ok: buildQueryOutput(response.rows, response.rowCount, response.trace) };
+  } catch (err) {
+    return { err: mapSdkError(err) };
+  }
+}
+
+// The read-only tool's core guarantee: a plan that would modify data (or
+// provision a database) is refused here, before anything commits. The
+// two-phase confirm contract (SK-TRUST-001) means a write plan returns
+// `requires_confirm: true` *uncommitted* — refusing it writes nothing — and a
+// create arrives as a `kind: "create"` response we never reach because the db
+// is pre-resolved. Either shape means "this goal wanted to write" → nlqdb_query.
+const READ_ONLY_REFUSED: ToolError = {
+  code: "write_not_allowed",
+  message: "That request would modify data, and this is the read-only tool.",
+  action:
+    "Re-run it with nlqdb_query, which previews the change as a diff and commits it on confirm.",
+};
+
+// `nlqdb_read` is `nlqdb_query` minus writes and minus create-on-first-use.
+// It resolves the target db against the existing list (never creating one),
+// asks with confirm:false, and refuses any response that would have written.
+export async function handleRead(
+  client: NlqClient,
+  input: ReadInput,
+  ctx: HandlerContext = {},
+): Promise<ToolResult<QueryOutput>> {
+  const resolved = await resolveExistingDb(client, input.db, ctx);
+  if ("err" in resolved) return resolved;
+
+  try {
+    const askOpts: { signal?: AbortSignal } = {};
+    if (ctx.signal) askOpts.signal = ctx.signal;
+    const askReq: Parameters<NlqClient["ask"]>[0] = {
+      goal: input.q,
+      dbId: resolved.ok,
+      // Never send confirm:true — a write plan stays uncommitted so we can
+      // refuse it below. This is the whole read-only guarantee.
+      confirm: false,
+    };
+    if (input.model !== undefined) askReq.model = input.model;
+
+    const response = await client.ask(askReq, askOpts);
+
+    // A create response (no `status`) or a destructive plan awaiting
+    // confirmation both mean the goal wanted to write. Nothing has committed.
+    if (!("status" in response) || response.requires_confirm) {
+      return { err: READ_ONLY_REFUSED };
+    }
+    return { ok: buildQueryOutput(response.rows, response.rowCount, response.trace) };
+  } catch (err) {
+    return { err: mapSdkError(err) };
+  }
+}
+
+// Resolve a target db that already exists — the read tool never provisions.
+// Mirrors nlqdb_query's auto-target on a single db, but where query would
+// create (zero dbs) or defer to the server (multi-db), this returns an
+// actionable error so the `readOnlyHint` never has to cover a create.
+async function resolveExistingDb(
+  client: NlqClient,
+  db: string | undefined,
+  ctx: HandlerContext,
+): Promise<{ ok: string } | { err: ToolError }> {
+  try {
+    const opts: { signal?: AbortSignal } = {};
+    if (ctx.signal) opts.signal = ctx.signal;
+    const response = ctx.listDatabasesCached
+      ? await ctx.listDatabasesCached()
+      : await client.listDatabases(opts);
+    const dbs = response.databases;
+
+    if (db !== undefined) {
+      const match = dbs.find((d) => d.id === db || d.slug === db);
+      if (!match) {
+        return {
+          err: {
+            code: "db_not_found",
+            message: `No database matches '${db}'.`,
+            action: "Call nlqdb_list_databases to see available databases.",
+          },
+        };
+      }
+      return { ok: match.id };
+    }
+
+    if (dbs.length > 1) {
+      return {
+        err: {
+          code: "ambiguous_db",
+          message: "You have more than one database, so this read needs an explicit target.",
+          action: "Re-call with `db` set — nlqdb_list_databases has the ids.",
+          details: { candidate_dbs: dbs.map((d) => d.id) },
+        },
+      };
+    }
+    const only = dbs[0];
+    if (!only) {
+      return {
+        err: {
+          code: "db_not_found",
+          message: "You don't have a database yet.",
+          action:
+            "Ask a question with nlqdb_query first — it materialises a database from your goal; then this read-only tool can query it.",
+        },
+      };
+    }
+    return { ok: only.id };
   } catch (err) {
     return { err: mapSdkError(err) };
   }
