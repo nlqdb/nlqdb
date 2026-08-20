@@ -98,6 +98,7 @@ export default defineConfig(async () => {
               "src/ask/write-constraint.test.ts",
               "src/ask/demand-signal.test.ts",
               "src/ask/destructive-clarify.test.ts",
+              "src/ask/constraint-clarify.test.ts",
               "src/ask/frontier-router.test.ts",
               "src/ask/orchestrate.test.ts",
               "src/ask/summarize-gate.test.ts",

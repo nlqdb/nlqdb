@@ -1475,4 +1475,57 @@ describe("orchestrateAsk", () => {
     // Deterministic: exactly one exec attempt (no SK-ASK-013 backoff replays).
     expect(exec).toHaveBeenCalledTimes(1);
   });
+
+  it("SK-ASK-031: a missing-required-reference violation escalates to clarify_required with parent-row options", async () => {
+    // The literal fifth-incident shape (2026-08-19): schema forces
+    // ideas.user_id NOT NULL → FK users(id); the goal names no user; the
+    // planner's guess dies on the constraint. The recovery is a question.
+    const schemaText = `CREATE TABLE "s"."users" (
+  "id" UUID NOT NULL,
+  "name" TEXT NOT NULL,
+  PRIMARY KEY ("id")
+);
+CREATE TABLE "s"."ideas" (
+  "id" UUID NOT NULL,
+  "user_id" UUID NOT NULL,
+  "title" TEXT NOT NULL,
+  PRIMARY KEY ("id")
+);
+ALTER TABLE "s"."ideas"
+  ADD CONSTRAINT "fk_ideas__user_id"
+  FOREIGN KEY ("user_id")
+  REFERENCES "s"."users" ("id");`;
+    const llm = stubLLM({
+      plan: { sql: `INSERT INTO "ideas" ("user_id", "title") VALUES (NULL, 'x')` },
+    });
+    const exec = vi.fn(async (_db: unknown, sql: string) => {
+      if (/^SELECT "name" FROM "users"/.test(sql)) {
+        return { rows: [{ name: "Alice" }, { name: "Bob" }], rowCount: 2 };
+      }
+      const err = new Error(
+        'null value in column "user_id" of relation "ideas" violates not-null constraint',
+      ) as Error & { code?: string };
+      err.code = "23502";
+      throw err;
+    });
+    const out = await orchestrateAsk(
+      makeDeps({ llm, exec, resolveDb: vi.fn(async () => stubDb({ schemaText })) }),
+      { goal: "add an idea", dbId: "db_1", userId: "user_1", confirm: true },
+    );
+    expect(out).toEqual({
+      ok: false,
+      error: {
+        code: "clarify_required",
+        clarification: "missing_required_reference",
+        pinned_db: null,
+        reason: expect.stringContaining("every ideas row must reference a users row"),
+        options: [
+          { label: "For Alice", goal: 'add an idea (use the users row whose name is "Alice")' },
+          { label: "For Bob", goal: 'add an idea (use the users row whose name is "Bob")' },
+        ],
+      },
+    });
+    // One write attempt + one bounded candidate fetch — no backoff replays.
+    expect(exec).toHaveBeenCalledTimes(2);
+  });
 });

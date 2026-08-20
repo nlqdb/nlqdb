@@ -83,6 +83,9 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
     expect(PLAN_SYSTEM).toContain("`SELECT … LIMIT 1` without a predicate the goal states");
     expect(PLAN_SYSTEM).toMatch(/no all-zero UUID/);
     expect(PLAN_SYSTEM).toMatch(/against a column the goal does not name/);
+    // Fourth shape, from the 2026-08-19 fifth attempt (both free AND paid
+    // planners): a scalar subquery whose predicate is a guessed goal token.
+    expect(PLAN_SYSTEM).toMatch(/scalar subquery whose predicate the goal did not state/);
     // The load-bearing framing: a failed / no-op write is recoverable, a write
     // aimed at the wrong row is not.
     expect(PLAN_SYSTEM).toMatch(/a write aimed at the wrong row is not/);
