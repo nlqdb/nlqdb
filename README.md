@@ -177,6 +177,8 @@ plain-English analytics over what it remembered — not top-k recall.
 - ✓ `agent_memory_v1` preset — entities / facts / episodes, one command,
   live for every account
 - ✓ `nlqdb_remember` — deterministic write path (MCP tool + API + SDK + CLI)
+- ✓ `nlqdb_read` — read-only MCP tool a host can mark "always allow", so an
+  agent queries memory with no prompt per call (writes stay on `nlqdb_query`)
 - ✓ Per-agent / per-end-user / per-thread isolation — hard RLS gates,
   fail-closed
 - ~ TTL retention — sweep built; cron wiring pending
