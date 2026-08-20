@@ -6,10 +6,26 @@ import { describe, expect, test } from "bun:test";
 // network, db-unreachable) or on confident answers — those would be misleading
 // or banner-blindness.
 
-import { freeChainStruggled, type StruggleInput } from "./free-model-nudge-gate.ts";
+import {
+  freeChainStruggled,
+  type StruggleInput,
+  strugglingModel,
+} from "./free-model-nudge-gate.ts";
 
-function errorReply(code?: string, referencedTables?: string[]): StruggleInput {
-  return { state: { kind: "error", code, referencedTables } };
+function errorReply(
+  code?: string,
+  referencedTables?: string[],
+  extra?: { model?: string; traceModel?: string },
+): StruggleInput {
+  return {
+    state: {
+      kind: "error",
+      code,
+      referencedTables,
+      ...(extra?.model ? { model: extra.model } : {}),
+    },
+    ...(extra?.traceModel ? { trace: { model: extra.traceModel } } : {}),
+  };
 }
 
 function okReply(confidence?: number, traceConfidence?: number): StruggleInput {
@@ -23,6 +39,12 @@ describe("freeChainStruggled — error path", () => {
   test("fires on model-quality codes", () => {
     expect(freeChainStruggled(errorReply("llm_failed"))).toBe(true);
     expect(freeChainStruggled(errorReply("sql_rejected"))).toBe(true);
+    // The plan sat below the confidence floor (SK-TRUST-003), surfaced as the
+    // `low_confidence` error — the error twin of the sub-0.7 ok-path struggle.
+    expect(freeChainStruggled(errorReply("low_confidence"))).toBe(true);
+    // SK-ASK-030 — the model generated SQL whose values didn't fit the columns
+    // (a bad cast / range); a frontier model typically avoids it.
+    expect(freeChainStruggled(errorReply("invalid_value"))).toBe(true);
     // SK-ASK-016 — pre-flight hallucination: the LLM emitted SQL against a
     // table absent from the DDL, so the envelope carries the hallucinated
     // relations. A model-quality failure, so the nudge fires.
@@ -37,6 +59,10 @@ describe("freeChainStruggled — error path", () => {
       "db_unreachable",
       "aborted",
       "db_not_found",
+      // Write *outcomes* — the data / intent, not the plan's quality — so a
+      // frontier model wouldn't change them. Stay excluded (SK-PREMIUM-004).
+      "write_no_rows",
+      "write_constraint",
     ]) {
       expect(freeChainStruggled(errorReply(code))).toBe(false);
     }
@@ -84,5 +110,34 @@ describe("freeChainStruggled — other reply kinds", () => {
     for (const kind of ["pending", "needs-confirm", "ambiguous", "clarify", "created"]) {
       expect(freeChainStruggled({ state: { kind } })).toBe(false);
     }
+  });
+});
+
+describe("strugglingModel", () => {
+  test("prefers the streamed trace model (the model that produced the plan)", () => {
+    // A post-plan failure: `plan` streamed the model before the error landed.
+    expect(strugglingModel(errorReply("sql_rejected", [], { traceModel: "deepseek/r1" }))).toBe(
+      "deepseek/r1",
+    );
+    // Trace wins even when the envelope also names an attempted model.
+    expect(strugglingModel(errorReply("llm_failed", [], { traceModel: "a/b", model: "c/d" }))).toBe(
+      "a/b",
+    );
+  });
+
+  test("falls back to the llm_failed envelope model when no plan streamed", () => {
+    expect(strugglingModel(errorReply("llm_failed", [], { model: "qwen/qwen-2.5" }))).toBe(
+      "qwen/qwen-2.5",
+    );
+  });
+
+  test("reads trace.model on an ok (low-confidence) reply", () => {
+    expect(strugglingModel({ state: { kind: "ok", ok: {} }, trace: { model: "x/y" } })).toBe("x/y");
+  });
+
+  test("returns null when no real model is known", () => {
+    expect(strugglingModel(errorReply("llm_failed"))).toBeNull();
+    // A legacy cache row stores only the placeholder — never named as a model.
+    expect(strugglingModel(errorReply("sql_rejected", [], { traceModel: "cached" }))).toBeNull();
   });
 });

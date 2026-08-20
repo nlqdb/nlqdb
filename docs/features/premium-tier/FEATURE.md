@@ -68,11 +68,15 @@ The primary knob is presets `model: "auto"|"fast"|"best"` (+Enterprise `"custom"
 
 **Body:** [`decisions/SK-PREMIUM-004-free-model-nudge.md`](./decisions/SK-PREMIUM-004-free-model-nudge.md).
 The blunt "the free model sucks — switch model" nudge renders below a reply
-only when the user is on the free chain *and* the reply struggled (a
-model-quality error code or sub-`0.7` confidence). Gated on `onFreeChain &&
+only when the user is on the free chain *and* the reply struggled (an allowlist
+of model-quality error codes — `llm_failed`, `sql_rejected`, `low_confidence`,
+`invalid_value`, `schema_mismatch` on the hallucination path — or sub-`0.7`
+confidence), and names the free model that produced the answer when known
+(`trace.model` / the `llm_failed` envelope). Gated on `onFreeChain &&
 freeChainStruggled(reply)`; `onFreeChain` is now `configured === false && premiumActive === false`,
 so a paid user auto-routed to the hosted-premium model never sees it
-(`SK-PREMIUM-020` fixed that misfire). Web-only per `GLOBAL-002`.
+(`SK-PREMIUM-020` fixed that misfire). Web-only per `GLOBAL-002`; model on
+post-plan error envelopes for programmatic surfaces is a tracked `GLOBAL-003` gap.
 
 ### SK-PREMIUM-020 — A premium-lane dispatch failure falls back to the free chain (surfaced, unmetered), never `llm_failed` for a paid user
 

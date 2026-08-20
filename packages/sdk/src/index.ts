@@ -488,6 +488,10 @@ export type ApiErrorBody = {
   // exec-catch missing-relation / orphaned-schema path (SK-ASK-019).
   referencedTables?: string[];
   schemaTables?: string[];
+  // SK-LLM-051 — the upstream model id the failed lane attempted, present on
+  // `llm_failed` envelopes when a model was pinned (never a key). Surfaces name
+  // it so a failure attributes to a model (SK-PREMIUM-004), not a black box.
+  model?: string;
 };
 
 // Mirrors apps/api/src/chat/types.ts. Keep these definitions in sync

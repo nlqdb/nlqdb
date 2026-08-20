@@ -50,7 +50,7 @@ import Data from "./Data";
 import DiffChip from "./DiffChip";
 import { messageFor } from "./error-message";
 import FreeModelNudge from "./FreeModelNudge";
-import { freeChainStruggled } from "./free-model-nudge-gate";
+import { freeChainStruggled, strugglingModel } from "./free-model-nudge-gate";
 import LeftRail from "./LeftRail";
 import ModelPicker, { BYOLLM_STATUS_EVENT } from "./ModelPicker";
 import { readModelPreset } from "./model-preset";
@@ -114,8 +114,16 @@ type ReplyState =
   // rate-limit / network / auth noise (SK-PREMIUM-004). `referencedTables`
   // rides the `schema_mismatch` envelope (SK-ASK-016) and distinguishes the
   // pre-flight hallucination (non-empty) the nudge fires on from the exec-catch
-  // orphaned-schema infra case (empty).
-  | { kind: "error"; message: string; code?: string; referencedTables?: string[] };
+  // orphaned-schema infra case (empty). `model` is the model an `llm_failed`
+  // envelope reports it attempted (SK-LLM-051) — used to name it on the nudge
+  // when the plan failed before a `trace.model` was streamed.
+  | {
+      kind: "error";
+      message: string;
+      code?: string;
+      referencedTables?: string[];
+      model?: string;
+    };
 
 type Reply = {
   id: string;
@@ -535,6 +543,10 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
             message: messageFor(err),
             code: err instanceof NlqdbApiError ? err.code : undefined,
             referencedTables: err instanceof NlqdbApiError ? err.body?.referencedTables : undefined,
+            // SK-LLM-051 — the model an `llm_failed` envelope attempted, so the
+            // free-model nudge can name it even when the plan failed before any
+            // `trace.model` streamed (SK-PREMIUM-004).
+            model: err instanceof NlqdbApiError ? err.body?.model : undefined,
           },
         }));
       }
@@ -1122,7 +1134,9 @@ function ReplyView({
         <DiffChip diff={needsConfirm} onApprove={onApprove} onCancel={onCancel} />
       ) : null}
       {error ? <p className="chat-reply__error">{error}</p> : null}
-      {onFreeChain && freeChainStruggled(reply) ? <FreeModelNudge /> : null}
+      {onFreeChain && freeChainStruggled(reply) ? (
+        <FreeModelNudge model={strugglingModel(reply)} />
+      ) : null}
       {ok && rows && rows.length > 0 ? (
         <div className="chat-reply__actions">
           <CopySnippet goal={reply.goal} pkLive={pkLive} />
