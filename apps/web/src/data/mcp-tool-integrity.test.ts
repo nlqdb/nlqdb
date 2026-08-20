@@ -83,6 +83,7 @@ describe("MCP tool-name integrity (SK-MCP-002)", () => {
       "nlqdb_describe",
       "nlqdb_list_databases",
       "nlqdb_query",
+      "nlqdb_read",
       "nlqdb_remember",
     ]);
   });
