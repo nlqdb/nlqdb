@@ -12,6 +12,7 @@ import {
   handleDescribe,
   handleListDatabases,
   handleQuery,
+  handleRead,
   handleRemember,
   mapSdkError,
   PACKAGE_VERSION,
@@ -437,6 +438,194 @@ describe("handleQuery", () => {
       expect(result.err.details).toEqual({ options });
       expect(result.err.action).toMatch(/details\.options/);
     }
+  });
+});
+
+describe("handleRead (SK-MCP-002 read/write split)", () => {
+  const okTrace = {
+    sql: "SELECT COUNT(*) FROM users",
+    plan_id: "h:r",
+    confidence: 0.9,
+    model: "stub",
+    cache_hit: false,
+  };
+
+  it("returns rows and calls ask with the resolved db + confirm:false", async () => {
+    const ask = vi.fn<NlqClient["ask"]>(async () => ({
+      status: "ok",
+      rows: [{ count: 42 }],
+      rowCount: 1,
+      trace: okTrace,
+    }));
+    const client = stubClient({
+      ask,
+      listDatabases: async () => ({
+        databases: [makeDbSummary({ id: "db_orders", engine: "postgres" })],
+      }),
+    });
+
+    const result = await handleRead(client, { db: "db_orders", q: "count users" });
+
+    expect(result).toEqual({
+      ok: {
+        rows: [{ count: 42 }],
+        rowCount: 1,
+        trace: { sql: okTrace.sql, model: "stub", confidence: 0.9, cache_hit: false },
+      },
+    });
+    // The read-only guarantee: never confirm, so a write plan can't commit.
+    expect(ask).toHaveBeenCalledWith(
+      expect.objectContaining({ goal: "count users", dbId: "db_orders", confirm: false }),
+      expect.any(Object),
+    );
+  });
+
+  it("refuses a write plan (requires_confirm) with write_not_allowed and commits nothing", async () => {
+    const ask = vi.fn<NlqClient["ask"]>(async () => ({
+      status: "ok",
+      rows: [],
+      rowCount: 0,
+      requires_confirm: true,
+      diff: { verb: "DELETE", table: "users", affectedRows: 3, summary: "Delete 3 users." },
+      trace: { ...okTrace, sql: "DELETE FROM users" },
+    }));
+    const client = stubClient({
+      ask,
+      listDatabases: async () => ({
+        databases: [makeDbSummary({ id: "db_users", engine: "postgres" })],
+      }),
+    });
+
+    const result = await handleRead(client, { db: "db_users", q: "delete inactive users" });
+
+    expect("err" in result).toBe(true);
+    if ("err" in result) {
+      expect(result.err.code).toBe("write_not_allowed");
+      expect(result.err.action).toContain("nlqdb_query");
+    }
+    // confirm was false on the only ask — the write was previewed, not run.
+    expect(ask).toHaveBeenCalledTimes(1);
+    expect(ask.mock.calls[0]?.[0]).toMatchObject({ confirm: false });
+  });
+
+  it("refuses a create-on-first-reference response with write_not_allowed", async () => {
+    const client = stubClient({
+      ask: async () => ({
+        kind: "create",
+        db: "db_new",
+        displayName: "New",
+        schemaName: "tenant_1",
+        engine: "postgres",
+        pkLive: null,
+        plan: {},
+        sampleRows: [],
+        trace: okTrace,
+      }),
+      listDatabases: async () => ({
+        databases: [makeDbSummary({ id: "db_x", engine: "postgres" })],
+      }),
+    });
+
+    const result = await handleRead(client, { db: "db_x", q: "make a table" });
+
+    expect("err" in result).toBe(true);
+    if ("err" in result) expect(result.err.code).toBe("write_not_allowed");
+  });
+
+  it("auto-targets the single database when db is omitted", async () => {
+    const ask = vi.fn<NlqClient["ask"]>(async () => ({
+      status: "ok",
+      rows: [],
+      rowCount: 0,
+      trace: okTrace,
+    }));
+    const client = stubClient({
+      ask,
+      listDatabases: async () => ({
+        databases: [makeDbSummary({ id: "db_only", engine: "postgres" })],
+      }),
+    });
+
+    await handleRead(client, { q: "count users" });
+
+    expect(ask).toHaveBeenCalledWith(
+      expect.objectContaining({ dbId: "db_only", confirm: false }),
+      expect.any(Object),
+    );
+  });
+
+  it("returns ambiguous_db with candidate ids when db is omitted on a multi-DB key — never asks", async () => {
+    const ask = vi.fn<NlqClient["ask"]>();
+    const client = stubClient({
+      ask,
+      listDatabases: async () => ({
+        databases: [
+          makeDbSummary({ id: "db_1", engine: "postgres" }),
+          makeDbSummary({ id: "db_2", engine: "clickhouse" }),
+        ],
+      }),
+    });
+
+    const result = await handleRead(client, { q: "revenue this year" });
+
+    expect("err" in result).toBe(true);
+    if ("err" in result) {
+      expect(result.err.code).toBe("ambiguous_db");
+      expect(result.err.details).toEqual({ candidate_dbs: ["db_1", "db_2"] });
+    }
+    expect(ask).not.toHaveBeenCalled();
+  });
+
+  it("returns db_not_found for an unknown explicit db — never asks (no create)", async () => {
+    const ask = vi.fn<NlqClient["ask"]>();
+    const client = stubClient({
+      ask,
+      listDatabases: async () => ({
+        databases: [makeDbSummary({ id: "db_real", engine: "postgres" })],
+      }),
+    });
+
+    const result = await handleRead(client, { db: "db_ghost", q: "count" });
+
+    expect("err" in result).toBe(true);
+    if ("err" in result) expect(result.err.code).toBe("db_not_found");
+    expect(ask).not.toHaveBeenCalled();
+  });
+
+  it("points at nlqdb_query when the account has no database yet — never asks (no create)", async () => {
+    const ask = vi.fn<NlqClient["ask"]>();
+    const client = stubClient({ ask, listDatabases: async () => ({ databases: [] }) });
+
+    const result = await handleRead(client, { q: "count" });
+
+    expect("err" in result).toBe(true);
+    if ("err" in result) {
+      expect(result.err.code).toBe("db_not_found");
+      expect(result.err.action).toContain("nlqdb_query");
+    }
+    expect(ask).not.toHaveBeenCalled();
+  });
+
+  it("passes the model preset through to the SDK request (SK-PREMIUM-014)", async () => {
+    const ask = vi.fn<NlqClient["ask"]>(async () => ({
+      status: "ok",
+      rows: [],
+      rowCount: 0,
+      trace: okTrace,
+    }));
+    const client = stubClient({
+      ask,
+      listDatabases: async () => ({
+        databases: [makeDbSummary({ id: "db_only", engine: "postgres" })],
+      }),
+    });
+
+    await handleRead(client, { q: "count users", model: "best" });
+
+    expect(ask).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "best", confirm: false }),
+      expect.any(Object),
+    );
   });
 });
 

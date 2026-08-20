@@ -68,11 +68,22 @@ cap, SK-HDC-010), and `POST /v1/grants` now calls it **before** the D1 grants
 row is written — the `neon-provision.ts` "Postgres first, D1 second" order, so
 a later D1 failure leaves only a harmless idempotent orphan role, never an
 "active" grant whose buyer queries fail closed on a missing role (P6). Mint
-fails closed with `provision_failed` if the role cannot be stood up. Still box
-2's open work: the buyer's live `/v1/ask` **exec** wiring that runs the
-`grant-exec.ts` batch, whose `app.*` GUC values against the `agent_memory_v1`
-`agent_isolation` RLS policy get their **live PG verification** (owner rows
-returned, nothing else) alongside the RLS-bypass kill-test.
+fails closed with `provision_failed` if the role cannot be stood up. **Box 2 — the composition keystone shipped 2026-08-20 (sub-piece d):**
+`apps/api/src/grant-read.ts` (`planGrantedRead`) — the single pure decision
+that composes the box-2 guardrails in order: null grant → `no_grant`
+(fail-closed); `validateGrantScope` (layer 1: base allowlist, read-only,
+join-leakage) passed through unchanged; then the derived `grant_<hex>` role
+(`grant-role.ts`) and the `buildGrantExecSteps` batch (owner-scoped RLS GUCs,
+30 s in-flight bound, non-owner role last). Pure — no D1/env/PG (the caller
+owns the `getActiveGrant` + `grant-status.ts` cache lookup and passes the
+already-resolved grant) — so the full reject matrix is unit-tested
+(`grant-read.test.ts`) without a live DB. The forthcoming `/v1/ask` branch
+reduces to: resolve grant → `planGrantedRead` → run `execSteps` → skip
+narration (EK-09 box 2) → meter (`grant-usage.ts`). Still box 2's open work:
+that live `/v1/ask` **exec** wiring, whose `app.*` GUC values against the
+`agent_memory_v1` `agent_isolation` RLS policy get their **live PG
+verification** (owner rows returned, nothing else) alongside the RLS-bypass
+kill-test.
 
 ## Goal
 

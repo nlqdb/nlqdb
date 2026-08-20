@@ -23,17 +23,19 @@ dashboard) shipped run 177 (#978, deployed), so criterion 1 is the gate's only
 GLOBAL-037-unblocked lever; the gate is still the only path off real strangers = 0 —
 premium going **live 08-14** (row #20, meter firing) doesn't change that.
 
-**Worst number today (run 180, 2026-08-19):** the **weekly-focus `SK-PIVOT-016` dogfood gate**
+**Worst number today (run 181, 2026-08-20):** the **weekly-focus `SK-PIVOT-016` dogfood gate**
 (**2/5**) remains the worst number — its only agent-movable, GLOBAL-037-unblocked criterion is
 **criterion 1 (real MCP asks 12 → ≥100)**, grind-only and not honestly container-movable without
-fabricating asks (dark for lever-choice, rule 8). So this run pulled the **highest-yield
-agent-movable lever available — distribution (P1), internal link-graph**: GSC (re-pulled live
-this run) shows `/solve/find-rows-with-no-match-in-another-table/` losing **60 impr at pos 16.5**
-(page-2 edge) while it was a **complete internal orphan** (0 inbound + 0 outbound links) — authority
-can't reach a page one nudge from page-1 clicks. Fixed the SQL-recipe cluster's link-graph leak:
-**zero-inbound orphans in that cluster 3 → 0**, each wired 0 → 2 inbound / 0 → 3 outbound, all
-same-cluster and topically genuine (the `related` field's documented crawl-priority purpose). Delta
-in "Last change".
+fabricating asks (dark for lever-choice, rule 8). Top-page distribution levers are now exhausted:
+GSC's #1 strengthen-next `/solve/running-total-cumulative-sum-in-sql/` (**112 impr, pos 36.5**) is
+content-complete + well-linked (verified this run) — its ceiling is domain authority (launch/founder-
+gated), not on-page work. So this run pulled the lever the row #7 note names as the standing
+bottleneck — **total-impression breadth (P1 distribution)**: added a new SQL-recipe cluster page,
+`/solve/moving-average-rolling-average-in-sql/`, a genuinely-searched window-function gap (no
+dedicated page existed; running-total only mentions it in one FAQ). **Indexable surfaces 111 → 112**
+(`/solve` 40 → 41); the page ships with 2 genuine inbound `related` links (from running-total +
+month-over-month) so it isn't a "Discovered - not indexed" crawl orphan, and 3 outbound. Delta in
+"Last change".
 **Weekly-focus gate (don't overwrite the /weekly-set target mid-week):** dogfood **2/5**.
 **Top `blocked-by-human` bullet:** fire the Show HN launch sequence (⏱ ~30 min,
 **idle 67 days since 06-13**), still condition-gated on the `SK-PIVOT-016` gate (now **2/5**).
@@ -46,27 +48,26 @@ rows **#2/#4/#5/#16** stranger-dependent (N = 0 until launch); row **#15** openc
 saturation, remedy costs money ⇒ rule 4); dogfood criterion 4 (E-09 GLOBAL-037-blocked) +
 criterion 3 (same root).
 
-**Rule 6 — GREEN.** Branch based on `main@715c944` (rebased onto latest — #1020 merged 12 h into
-this run). Health re-measured live: **`typecheck` exit 0** (all packages, after `bun install`
-pulled #1020's new `packages/errors` zod dep — a container-install artifact, not red main),
-**`bun run check` exit 0** (CI gate), **`bun run test` exit 0**, **`@nlqdb/web` 581 pass**,
-`solve.test.ts` 18 pass (related links resolve, no self-ref/dupes). `deploy-web` latest `main`
-run (`f9981af`) **success**. This run's diff: `apps/web/src/data/solve.ts` (7 `related`-array
-edits, no prose/schema change), `distribution-queue.md` (dev.to line), this scorecard.
-**Open PRs: 2** (#1022 EK-06 grants, #1023 reach null — `NUMBERS.md`); neither touches
-`solve.ts` or the solve template. No file overlap risk.
+**Rule 6 — GREEN.** Branch based on `main@bcb8d01` (latest). Health re-measured live: **`typecheck`
+exit 0** (all packages), **`bun run check` exit 0** (CI gate; 53 pre-existing script-`console.log`
+warnings, none in this diff), **`@nlqdb/web` 585 pass** (was 581 — the 4 new asserts are the new
+entry flowing through the parameterized `solve` + `meta-length` guards), `solve.test.ts` +
+`meta-length-integrity.test.ts` **22 pass**. **All four deploys green on latest `main`**: deploy-api
+(`bcb8d01`), deploy-docs / deploy-mcp (`947ee85`), deploy-events-worker (`715c944`) — all success.
+This run's diff: `apps/web/src/data/solve.ts` (one new `/solve` entry + 2 inbound `related` links),
+this scorecard. **Open PRs: 0** at step 0 (this run opens 1). No file-overlap risk.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
-| | **Funnel, bot-filtered** (RUM **re-pulled live 08-18** (`rum-pull.ts`, 7d, SAMPLED); GSC **re-pulled live 08-19** (`gsc-pull.ts`, 28d — barely moves day-to-day). Users/DBs carried from 07-27 remote-D1 — no container access to remote D1 this run, no channel newly live) | | exclude synthetic stranger-test walker traffic |
+| | **Funnel, bot-filtered** (RUM + GSC **re-pulled live 08-20** (`rum-pull.ts` 7d SAMPLED; `gsc-pull.ts` 28d — barely moves day-to-day). Users/DBs carried from 07-27 remote-D1 — no container access to remote D1 this run, no channel newly live) | | exclude synthetic stranger-test walker traffic |
 | 1 | Visits, 7d (CF RUM) | **357 pl / 322 vis** raw, **real-browser floor 93 pl / 58 vis** (re-pulled 08-18; 264 synthetic cut). Real-browser landings led by `app.nlqdb.com/auth/sign-in/` (**18**), `app.nlqdb.com/app/` (17), `auth/continue/` (16), `auth/post-signin/` (9), `nlqdb.com/` (8) | cut rule: `bot=1` or `userAgentBrowser ∈ {Unknown, ChromeHeadless}` or CF-classified bot ⇒ real-browser is a floor. Read at **7d** (28d comes back sampled); this 7d window is itself sampled (interval ≤1.5) — treat sub-interval buckets as noise |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company + 5 test/dev — live remote-D1 07-27; no channel newly live to produce a signal. **Dark** (rule 8) — moves only on launch |
 | 3 | DBs total | **254** (07-27 live remote-D1) + **1 dogfood** (`db_agent_memory_v1_3a8a72`, internal) | stranger subset ~0 (row #2) |
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not measurable** (`SK-ONBOARD-007`). The **dogfood workload** (run 176): **100 % (10/10)** through the public MCP surface (= gate criterion 2) | target ≥ 95 %. Instruments live: TTFV + chips + drop-off funnel |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12; founder-owned) | share with ≥ 2 asks |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **111** content pages (`/solve` 40 + `/vs` 31 + `/blog` **40**; +1 this run — `success-rate-cant-see-a-wrong-answer`); 119 sitemap URLs submitted (GSC auto-aggregates the new slug). Unpublished blog drafts **0** (queue drained) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **40** (no `/blog` publish this run — queue empty). **GSC re-pulled live 08-19** (28d): **~12 clicks / 931 impr across 143 pages / pos ~22**. Top-impression page `/solve/running-total-cumulative-sum-in-sql/` **112 impr / pos 36.7 / 0 clicks** (well-linked already: 5 in / 3 out — content complete, bottleneck is domain authority). Strengthen-next #2 `/solve/find-rows-with-no-match-in-another-table/` **60 impr / pos 16.5** (page-2 edge) was a **complete internal orphan** — **this run wired it + 2 sibling orphans into the SQL-recipe cluster** (link-graph leak: zero-inbound orphans in that cluster **3 → 0**; the run-28 "measure the link graph, not the page count" lesson). Ranking lift is the multi-week downstream effect; the same-instrument delta measured now is the inbound-link count. **Referral yield (RUM 08-18):** **17 pl from 4 external referrers** (mail.google 8, baidu 5, bing 2, google 2) — and the blog is now earning organic referral landings: bing → `/blog/restrictive-rls-agent-memory-scoping/`, baidu → 3 `/blog/*` posts. Validates the distribution lever: published posts, not just count, now open sessions | `gsc-pull.ts` + `rum-pull.ts`. Total-impression breadth is the bottleneck, not per-page CTR at low N |
+| 6 | Indexable surfaces | **112** content pages (`/solve` **41** + `/vs` 31 + `/blog` 40; **+1 this run — `/solve/moving-average-rolling-average-in-sql/`**); sitemap + `llms.txt` auto-aggregate the new slug. Unpublished blog drafts **0** (queue drained) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
+| 7 | Surface yield | posts **40** (no `/blog` publish — queue empty). **GSC re-pulled live 08-20** (28d): **~12 clicks / 930 impr across 144 pages / pos ~22**. Top-impression `/solve/running-total-cumulative-sum-in-sql/` **112 impr / pos 36.5 / 0 clicks** (well-linked: 5 in / 3 out — content-complete, verified this run; ceiling is domain authority). Page-1 example: `/solve/count-rows-per-day-including-missing-dates/` **56 impr / 1 click / pos 8.7**. **This run added a new SQL-recipe cluster page** (`moving-average-rolling-average-in-sql`) to attack the standing bottleneck below — total-impression **breadth** — with 2 genuine inbound `related` links so it seeds crawl instead of orphaning. Ranking is the multi-week downstream effect; the same-instrument delta now is +1 indexable surface + its inbound-link count. **Referral yield (RUM 08-20):** thin real-browser traffic (~30–40 pl), top pages `/agents/`, `app/auth/sign-in`, plus single-hit solve/vs pages | `gsc-pull.ts` + `rum-pull.ts`. Total-impression breadth is the bottleneck, not per-page CTR at low N |
 | | **Engine** — BIRD 07-26 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **22 d old, staleness trigger fired**, but **dark (rule 8)**: resume is async multi-window and `main` moved since the 07-27 checkpoint | target 0.65 / **Phase 2 floor 0.60** — gap 6.2 pp. Offline levers exhausted |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on `04fa3d0`, **29 d old**). 07-27 re-dispatch exited **partial** (`SK-QUAL-013` budget-stop) | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is source of truth |
@@ -88,7 +89,7 @@ edits, no prose/schema change), `distribution-queue.md` (dev.to line), this scor
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **0 failed / 9 blocked** — carried from 07-26; **not re-walkable from a `/daily` container** (Playwright pins Chromium 1223, image ships 1194 → walker aborts). CI-only via `acquisition-health.yml`. #999 (08-16) fixed the `/app/new/` 428 dead-end | target **0 `failed`** ✅; anon walks stop at the 428 `challenge_required` (Turnstile, `SK-ANON-012`) |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub. MCP official registry published 07-22; Glama crawl-listed; Smithery/PulseMCP 0. First-touch attribution live since 07-19; `source_json` non-null **0**, for want of strangers, not instrument | **weekly focus (superseded): → ≥ 5 live.** Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
-| | **Human queue** — the one non-automatable actor | **depth 3**; head is the Show HN launch, oldest bullet **66 days** (`SK-PIVOT-016` gate **2/5**); #2 Anthropic connector directory (money-gated, 07-21); #3 Supabase OAuth app + secrets (08-13) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: **0** |
+| | **Human queue** — the one non-automatable actor | **depth 3**; head is the Show HN launch, oldest bullet **66 days** (`SK-PIVOT-016` gate **2/5**); #2 Anthropic connector directory (money-gated, 07-21); #3 Supabase OAuth app + secrets (08-13) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: **0** at step 0 |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
@@ -97,54 +98,45 @@ edits, no prose/schema change), `distribution-queue.md` (dev.to line), this scor
 
 ## Shipped distribution
 
-**40 canonical `/solve` pages** + **40 `/blog` posts** + **31 `/vs` pages** live under `nlqdb.com/`
+**41 canonical `/solve` pages** + **40 `/blog` posts** + **31 `/vs` pages** live under `nlqdb.com/`
 (`SK-SOLVE-001` / `SK-BLOG-001` / `SK-CMP-001`). The registries are `apps/web/src/data/{solve,blog,competitors}.ts`.
 
-- **This run (180):** no new `/blog` publish (queue empty). Fixed the **`/solve` SQL-recipe
-  internal link-graph** (3 orphaned recipe pages wired into the cluster). Drained one dev.to
-  variant: run-110 `your-bi-tool-got-acquired-data-layer` →
-  https://dev.to/omer_hochman/your-bi-tool-got-acquired-your-data-layer-shouldnt-have-to-care-461i
-- **Run 179:** published **https://nlqdb.com/blog/success-rate-cant-see-a-wrong-answer/** (the
-  dogfood-run lesson); drained run-119 `find-duplicate-rows` dev.to variant.
+- **This run (181):** added a new `/solve` page — `/solve/moving-average-rolling-average-in-sql/`
+  (window-function cluster gap; 2 inbound + 3 outbound `related` links). No `/blog` publish (queue
+  empty). dev.to drain throttled by the drip guard (13.2 h since last post < 20 h) — expected no-op.
+- **Run 180:** fixed the `/solve` SQL-recipe internal link-graph (3 orphaned recipe pages wired
+  into the cluster); drained run-110 `your-bi-tool-got-acquired-data-layer` dev.to variant.
 
 ## Last change
 
-**2026-08-19 (run 180)** — **Distribution lever (P1): fixed the `/solve` SQL-recipe internal
-link-graph so authority reaches the pages GSC shows one nudge from page-1 clicks. Number moved:
-inbound internal-link count on wasted-impression pages / zero-inbound orphans in the SQL-recipe
-cluster.**
+**2026-08-20 (run 181)** — **Distribution lever (P1): added a new `/solve` page for a genuinely-
+searched window-function query the SQL-recipe cluster didn't cover, attacking the standing
+bottleneck the row #7 note names — total-impression breadth. Number moved: indexable surfaces (row
+#6) 111 → 112.**
 
-**Delta (measured, same-instrument before/after — internal link graph over `SOLVE_ENTRIES`):**
-- Zero-inbound orphans in the SQL-recipe cluster **3 → 0**.
-- `find-rows-with-no-match-in-another-table` (GSC **60 impr / pos 16.5**, page-2 edge — the #2
-  wasted-impression surface): inbound **0 → 2**, outbound **0 → 3**.
-- `calculate-median-or-percentile-in-sql`: inbound **0 → 2**, outbound **0 → 3**.
-- `group-numbers-into-ranges-in-sql`: inbound **0 → 2**, outbound **0 → 3**.
-- `find-duplicate-rows-in-my-data`: outbound **0 → 3** (was inbound-only; asymmetry closed).
-- All 7 `related`-array edits are same-cluster and topically genuine (the field's documented
-  crawl-priority purpose; Google devalues topically-forced links). `solve.test.ts` (18 pass)
-  asserts every link resolves, no self-ref, no dupes. Ranking lift is the multi-week downstream
-  effect; the delta measured now is the link-graph itself (the run-28 lesson: measure the link
-  graph, not the page count).
-- dev.to variant drained (step 3.3, `SK-BLOG-003`): run-110 `your-bi-tool-got-acquired-data-layer`
-  posted to
-  https://dev.to/omer_hochman/your-bi-tool-got-acquired-your-data-layer-shouldnt-have-to-care-461i
-  (drip window since 08-18 elapsed). Queue line updated: dev.to venue dropped, live URL appended.
+**Delta (measured, same-instrument before/after — `SOLVE_ENTRIES` + rendered surfaces):**
+- Indexable content surfaces **111 → 112** (`/solve` **40 → 41**); sitemap + `llms.txt` auto-
+  aggregate the new slug `/solve/moving-average-rolling-average-in-sql/`.
+- The new page targets "moving average / rolling average in SQL" — a high-volume window-function
+  query with **no dedicated page** before (running-total only mentioned it in one FAQ). Natural NL
+  ask ("7-day moving average of daily active users"), honest limits, 5 FAQs, 3 enduring sources.
+- Crawl-seeding (not an orphan): **2 inbound** `related` links added from indexed window-function
+  siblings — `running-total-cumulative-sum-in-sql` and `month-over-month-growth-in-sql` (both
+  topically genuine; Google devalues forced links) — plus **3 outbound** to cluster siblings.
+- Validated: `@nlqdb/web` **585 pass** (581 → 585, the 4 new asserts are the entry flowing through
+  the parameterized `solve` + `meta-length` guards — resolves, no self-ref/dupes, oneLiner ≤60w,
+  bullets ≤25w, FAQ ≤80w, meta 30–60 / 110–155, no ID leaks); `typecheck` + `bun run check` green.
+- Ranking lift is the multi-week downstream effect; the same-instrument delta now is +1 surface and
+  its inbound-link seeding.
 
 **Why this lever (lanes in the founder's priority order):** (1) Acquisition/distribution (P1) —
-GSC's own strengthen-next names `/solve/find-rows-with-no-match-in-another-table/` (pos 16.5, one
-page from clicks) as a top wasted-impression surface, yet the link-graph audit found it a complete
-internal orphan: content is complete, so the leak was crawl-priority, not on-page. Concentrating
-same-cluster inbound links is the documented remedy and moves a real, immediately-measurable
-distribution number. `/reach` owns the R-slices — not duplicated (its open PR #1023 is a null
-touching only `NUMBERS.md`). The dogfood gate (weekly focus) stays 2/5: criterion 1 is grind-only,
-criteria 3/4 GLOBAL-037-blocked — none single-run-movable. (2) UX-flow — health green, no failing
-flow. (3) Engine — dark (async multi-window).
-
-**Follow-up finding (not this run's lever):** 21 pages remain zero-inbound — but they are the
-product-wedge/persona cluster (agent-memory, "database Claude can query", etc.), a *different*
-topical cluster with ~0 GSC impressions, so a same-cluster mesh for them is a separate, lower-yield
-lever. Left for a future run rather than forcing cross-cluster links.
+top-page on-page levers are exhausted (GSC's #1 strengthen-next `running-total…` is content-complete
++ well-linked, verified this run; its ceiling is domain authority, which is launch/founder-gated).
+The row #7 note names **total-impression breadth** as the remaining agent-movable bottleneck, and a
+new topically-genuine cluster page moves it. `/reach` owns the R-slices — not duplicated (0 open PRs
+at step 0). The dogfood gate (weekly focus) stays 2/5: criterion 1 is grind-only, criteria 3/4
+GLOBAL-037-blocked — none single-run-movable. (2) UX-flow — inspected the /solve template + top
+page; health green, no failing flow found. (3) Engine — dark (async multi-window).
 
 **Anti-rut (rule 7):** recent levers were distribution (179), null (178), dogfood (177), dogfood
 (176), null (174) — one distribution in the last 5, not 5-in-a-row; clear. (Different sub-lever

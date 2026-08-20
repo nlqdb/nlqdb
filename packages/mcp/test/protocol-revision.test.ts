@@ -102,6 +102,7 @@ describe("tool catalog meets the 2026-07-28 + Connectors-Directory bar", () => {
   // deterministic order so clients can cache and LLM prompt caches hit.
   const EXPECTED_ORDER = [
     "nlqdb_query",
+    "nlqdb_read",
     "nlqdb_list_databases",
     "nlqdb_describe",
     "nlqdb_remember",

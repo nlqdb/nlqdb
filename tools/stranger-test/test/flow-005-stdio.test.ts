@@ -14,6 +14,11 @@ const GOOD: Handshake = {
       inputSchema: { properties: { db: {}, q: {}, confirm: {}, model: {} } },
     },
     {
+      name: "nlqdb_read",
+      annotations: { readOnlyHint: true },
+      inputSchema: { properties: { db: {}, q: {}, model: {} } },
+    },
+    {
       name: "nlqdb_list_databases",
       annotations: { readOnlyHint: true },
       inputSchema: { properties: {} },

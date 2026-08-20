@@ -57,7 +57,8 @@ appended by hand. All four host artifacts:
 
 | Tool | Does |
 |---|---|
-| `nlqdb_query` | Ask in plain English; returns rows plus the compiled SQL. The database materialises on first reference — there is no create tool. |
+| `nlqdb_query` | Ask in plain English; returns rows plus the compiled SQL. The database materialises on first reference — there is no create tool. Writes/DDL preview as a diff and commit on confirm. |
+| `nlqdb_read` | Read-only version of `nlqdb_query` — SELECT/aggregate only, never writes or creates. Mark it "always allow" in your host so reads stop prompting. |
 | `nlqdb_remember` | Write a typed memory row the agent can query later. |
 | `nlqdb_list_databases` | List your databases. |
 | `nlqdb_describe` | Describe a database's schema. |

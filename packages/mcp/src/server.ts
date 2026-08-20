@@ -15,14 +15,17 @@ import {
   handleDescribe,
   handleListDatabases,
   handleQuery,
+  handleRead,
   handleRemember,
   type ListDatabasesOutput,
   listDatabasesInputShape,
   type QueryInput,
   type QueryOutput,
   queryInputShape,
+  type ReadInput,
   type RememberInput,
   type RememberOutput,
+  readInputShape,
   rememberInputShape,
   type ToolError,
   type ToolResult,
@@ -91,6 +94,30 @@ export function createServer(opts: ServerOptions): McpServer {
     async (args: QueryInput, extra: ToolExtra) => {
       return runTool("nlqdb_query", extra.signal, async (ctx) => {
         const result = await handleQuery(client, args, ctx);
+        return formatQueryResult(result, maxRowsInResponse);
+      });
+    },
+  );
+
+  registerTool(
+    "nlqdb_read",
+    {
+      title: "Read your agent's memory in natural language (never writes)",
+      description:
+        "Read-only natural-language query over your agent's memory — SELECT / aggregate / JOIN over existing data. Guaranteed never to write, create, or modify: a request whose plan would change data is refused (use nlqdb_query for that), so this tool is safe to mark 'always allow' in your host. Auto-targets your only database; pass `db` to pick one when you have several. Returns rows + the compiled SQL in trace.",
+      inputSchema: readInputShape,
+      // SK-MCP-002 (read/write split) — a genuine read-only tool: the handler
+      // pre-resolves an existing db and refuses any write/create plan, so
+      // readOnlyHint is an honest signal a host can auto-approve on.
+      annotations: { readOnlyHint: true },
+    },
+    async (args: ReadInput, extra: ToolExtra) => {
+      return runTool("nlqdb_read", extra.signal, async (ctx) => {
+        const ctxWithCache: HandlerContext = {
+          ...ctx,
+          listDatabasesCached: listCache.get,
+        };
+        const result = await handleRead(client, args, ctxWithCache);
         return formatQueryResult(result, maxRowsInResponse);
       });
     },
