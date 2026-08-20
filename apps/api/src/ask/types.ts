@@ -151,11 +151,22 @@ export type ClarifyOption = {
 //     family). Surfaces render one chip / choice per `options` entry
 //     instead of the flat `sql_rejected` dead-end. Returned by the
 //     orchestrator at the plan-loop reject.
-// Both replace the cryptic `disallowed_verb`/`sql_rejected` a destructive
-// or create goal would otherwise dead-end on.
+//   • `low_confidence` (GLOBAL-040) — the plan sat below the tier confidence
+//     floor. Rather than the old standalone `low_confidence` error, it rides
+//     this rail with one re-sendable `options` entry per candidate reading, so
+//     a low-confidence outcome is a guided turn on every surface, never a
+//     dead-end. (Floor activation stays gated on quality-eval — SK-TRUST-003.)
+// All replace the cryptic `disallowed_verb`/`sql_rejected`/`low_confidence` a
+// destructive, create, or below-floor goal would otherwise dead-end on.
 export type ClarifyRequired = {
   code: "clarify_required";
-  clarification: "create_or_query_pinned" | "destructive_ambiguous" | "missing_required_reference";
+  clarification:
+    | "create_or_query_pinned"
+    | "destructive_ambiguous"
+    | "missing_required_reference"
+    // GLOBAL-040 — a below-floor plan surfaces here (options = candidate
+    // readings), never as a standalone `low_confidence` dead-end error.
+    | "low_confidence";
   pinned_db: { id: string; slug: string } | null;
   reason: string;
   // SK-ASK-026 — present on `destructive_ambiguous`; one re-sendable

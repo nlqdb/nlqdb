@@ -1,6 +1,6 @@
 ---
 name: trust-ux
-description: User-surface trust rules — diff preview on writes, visible SQL trace on every response, refuse-on-low-confidence on plans.
+description: User-surface trust rules — diff preview on writes, visible SQL trace on every response, clarify-on-low-confidence on plans (GLOBAL-040).
 when-to-load:
   globs:
     - apps/api/src/ask/**
@@ -8,12 +8,12 @@ when-to-load:
     - packages/elements/**
     - packages/mcp/**
     - cli/**
-  topics: [trust, diff, confidence, refuse, low-confidence]
+  topics: [trust, diff, confidence, clarify, low-confidence]
 ---
 
 # Feature: Trust UX
 
-**One-liner:** User-surface trust rules — diff preview on writes, visible SQL trace on every response, refuse-on-low-confidence on plans.
+**One-liner:** User-surface trust rules — diff preview on writes, visible SQL trace on every response, clarify-on-low-confidence on plans (GLOBAL-040).
 **Status:** partial (Phase 1.5) — SK-TRUST-001 + SK-TRUST-002 shipped end-to-end on `/v1/ask` + `@nlqdb/sdk` + `apps/web` chat. SK-TRUST-001 covers the `/v1/ask` write path (INSERT/UPDATE/DELETE): preview hop returns `requires_confirm: true` + a diff, the confirm hop commits. DDL preview via `db-create` is deferred — the create flow provisions atomically today; adding a confirm step is its own slice (see Open Questions). SK-TRUST-003 (confidence floor) remains placeholder until `quality-eval` lands. Cross-surface gap (SK-TRUST-001 write-preview only): the MCP `confirm_required` shape and the `nlq` CLI diff render are deferred; SK-TRUST-002 trace parity is now closed on every shipped surface, including `<nlq-data>` `el.trace`. **Phase 1.5 telemetry slice:** `GLOBAL-024` demand-signal events are now wired end-to-end — `SK-EVENTS-010` (implicit emits: `feature.requested.ddl_via_ask`, `feature.requested.heavier_tier`, `nlqdb.surface` OTel attribute) and `SK-EVENTS-011` (`home.surface_wishlist` from the marketing CodePanel) together close the Phase 1.5 capture-pipe exit gate. `SK-TRUST-004`'s destructive-op retry-rate instrument is shipped; `SK-TRUST-006` closes the honest-preview gap the 2026-08 write incident exposed. Design locked in [`GLOBAL-023`](../../decisions/GLOBAL-023-trust-ux-baseline.md); implementation lands across `ask-pipeline`, `web-app`, `cli`, `elements`, and `mcp-server` features in the Phase 1.5 slice (see [`phase-plan.md` §3](../../phase-plan.md)).
 **Owners (code):** cross-cutting — see touchpoints.
 **Cross-refs:** [`docs/decisions/GLOBAL-023-trust-ux-baseline.md`](../../decisions/GLOBAL-023-trust-ux-baseline.md) (canonical) · [`docs/phase-plan.md §3`](../../phase-plan.md) (Phase 1.5 placement) · `ask-pipeline/FEATURE.md` (the pipeline that emits trace + confidence) · `sql-allowlist/FEATURE.md` (the parser-level guardrail that trust UX sits on top of — see [`research-receipts.md §1`](../../research-receipts.md) for the server-side guardrail rationale; the user-surface rationale lives in this feature)
@@ -54,15 +54,16 @@ when-to-load:
   - Trace only on cache-miss — cache-hit answers are exactly the ones users trust most; the case for showing what ran is *stronger* on cached paths.
   - Trace gated to Pro tier — contradicts [`GLOBAL-019`](../../decisions/GLOBAL-019-apache2-open-source-core.md) (free + open core) and the bullet-proof value.
 
-### SK-TRUST-003 — Confidence floor per tier; refuse rather than guess
+### SK-TRUST-003 — Confidence floor per tier; clarify rather than guess ([`GLOBAL-040`](../../decisions/GLOBAL-040-guided-turn-not-dead-end.md))
 
-- **Decision:** The LLM router emits a `confidence` score on every plan. `ask-pipeline` rejects plans below a per-tier floor with `low_confidence`, suggesting a clarification or escalation. Refusal is a typed error, not a 5xx. Floor values are calibrated against the [`quality-eval`](../quality-eval/FEATURE.md) harness; until that's running, placeholders ship.
+- **Decision:** The LLM router emits a `confidence` score on every plan. When a plan sits below its per-tier floor, `ask-pipeline` **does not execute it** and returns a **`clarify_required` guided turn** (`clarification: "low_confidence"`, `options` = the candidate readings) — a one-click continuation, not a typed `low_confidence` error dead-end ([`GLOBAL-040`](../../decisions/GLOBAL-040-guided-turn-not-dead-end.md)). Floor values are calibrated against the [`quality-eval`](../quality-eval/FEATURE.md) harness; until that's running, placeholders ship, so the floor stays effectively off (no premature over-clarifying).
 - **Core value:** Bullet-proof, Goal-first, Honest latency
-- **Why:** Executing a low-confidence plan and silently returning a wrong row is the worst possible UX. Forcing a re-prompt is slow; failing the call with a structured error that names what was ambiguous (the candidate dbs, the candidate columns, the missing filter) lets the surface ask the user *one* sharp question. Per-tier floors (rather than one global floor) let us be loose on cheap-tier classify and strict on Opus-tier hard plans.
-- **Consequence in code:** `packages/llm/src/router.ts` returns `{ plan, confidence, alternatives? }` on every plan call. `apps/api/src/ask/orchestrate.ts` short-circuits to `low_confidence` before `db.execute` when `confidence < floor[tier]`. The error body follows [`GLOBAL-012`](../../decisions/GLOBAL-012-one-sentence-errors.md): one sentence, one next action (e.g. "Two databases match — say `orders` or `inventory`"). The web chat surfaces the alternatives as click-to-disambiguate chips; CLI prints them with arrow-key selection; MCP returns them as elicitation choices.
+- **Why:** Executing a low-confidence plan and silently returning a wrong row is the worst possible UX — but so is dead-ending on a bare "not confident" error. The information to move forward (the candidate readings) already exists at the floor check; surfacing it as one-click options asks the user *one* sharp question **and** hands them the answer to it. Per-tier floors (rather than one global floor) let us be loose on cheap-tier classify and strict on Opus-tier hard plans.
+- **Consequence in code:** `packages/llm/src/router.ts` returns `{ plan, confidence, alternatives? }` on every plan call. When it lands, `apps/api/src/ask/orchestrate.ts` short-circuits — before `db.execute` when `confidence < floor[tier]` — to a `clarify_required` envelope (`clarification: "low_confidence"`) whose `options` restate the goal per candidate reading. Every surface already renders `clarify_required` as guided choices (web chips, CLI numbered choices, MCP `details.options`), so no per-surface branch is needed. The prompt copy follows [`GLOBAL-012`](../../decisions/GLOBAL-012-one-sentence-errors.md): one sentence, one next action (e.g. "Two databases match — orders or inventory?").
 - **Alternatives rejected:**
   - Always execute, mark with a warning — silent-wrong-answer is the failure mode this rule exists to prevent.
-  - Single global floor (0.7) — under-serves Tier 1 (forces unnecessary refusals on cheap-tier classify) and over-serves Tier 3 (lets bad Opus plans through).
+  - Refuse with a typed `low_confidence` error (the pre-GLOBAL-040 stance) — a fast-fail dead-end; the candidate readings belong on a guided turn, not behind an error.
+  - Single global floor (0.7) — under-serves Tier 1 (forces unnecessary clarifies on cheap-tier classify) and over-serves Tier 3 (lets bad Opus plans through).
   - Re-prompt the LLM at lower temperature — the bad-plan rate is dominated by ambiguity in the user goal, not LLM stochasticity; re-rolling rarely helps.
 
 ### SK-TRUST-004 — Instrument the three UX KPIs in [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md); baseline by 2026-06-01
@@ -103,10 +104,12 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* The `trace` block is the textual form of the live-trace promise; the live-trace WebSocket events are the visual form. Both must agree.
 - **GLOBAL-012** — Errors are one sentence with the next action.
 - **GLOBAL-015** — Power users always have an escape hatch (raw SQL/Mongo/connection string).
-  - *In this feature:* The `low_confidence` refusal response includes a `raw_sql_hint` field — the user can copy the partial plan to `/v1/run` and edit it themselves.
+  - *In this feature:* The low-confidence clarify turn includes a `raw_sql_hint` field — the user can copy the partial plan to `/v1/run` and edit it themselves.
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
-  - *In this feature:* `low_confidence` is *not* recoverable by retry — it's a user-clarification need, not a transient failure. Surfaces must distinguish the two.
+  - *In this feature:* a below-floor plan is *not* auto-retried — it's a user-clarification need, not a transient failure; per `GLOBAL-040` it surfaces as a guided clarify turn, and the one-click options are the recovery.
 - **GLOBAL-023** — Trust UX baseline. *(This feature is the implementation of `GLOBAL-023`.)*
+- **GLOBAL-040** — Ambiguity and low confidence resolve as a guided one-click `clarify_required` turn, never a dead-end error.
+  - *In this feature:* supersedes `GLOBAL-023` rule (3); `SK-TRUST-003`'s low-confidence outcome is a clarify turn, and `low_confidence` is a `clarification` value on the shared rail, not a standalone error code.
 - **GLOBAL-025** — North-star: engine quality, onboarding, UX — each with explicit KPIs.
   - *In this feature:* the UX north-star pillar lives here. KPI floors (destructive-op retry rate, Sean-Ellis "very disappointed" share, session retention, recoverable-failure recovery rate) are the Phase 2 / Phase 3 exit gates; `SK-TRUST-004` ships the instrumentation.
 

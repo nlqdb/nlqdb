@@ -413,14 +413,17 @@ describe("handleQuery", () => {
     }
   });
 
-  it("surfaces low_confidence with alternatives in details when present", async () => {
+  // GLOBAL-040 — a below-floor plan is a `clarify_required` guided turn, not a
+  // standalone `low_confidence` code; its options lift to `details.options`.
+  it("surfaces a low_confidence clarify with its options in details", async () => {
+    const options = [{ label: "The users table", goal: "count rows in users" }];
     const client = stubClient({
       ask: async () => {
-        throw new NlqdbApiError("low confidence", 422, "low_confidence", "/v1/ask", {
-          code: "low_confidence",
-          message: "two tables match 'users'",
-          action: "Pick one of the offered readings.",
-          params: { alternatives: ["users", "user_profiles"] },
+        throw new NlqdbApiError("low confidence", 409, "clarify_required", "/v1/ask", {
+          code: "clarify_required",
+          message: "A couple of readings fit — which did you mean?",
+          action: "Re-call `q` with one of the goals in `details.options`.",
+          params: { clarification: "low_confidence", options },
         });
       },
     });
@@ -429,10 +432,10 @@ describe("handleQuery", () => {
 
     expect("err" in result).toBe(true);
     if ("err" in result) {
-      expect(result.err.code).toBe("low_confidence");
-      expect(result.err.message).toContain("two tables match");
-      expect(result.err.details).toEqual({ alternatives: ["users", "user_profiles"] });
-      expect(result.err.action).toMatch(/alternatives/);
+      expect(result.err.code).toBe("clarify_required");
+      expect(result.err.message).toContain("which did you mean");
+      expect(result.err.details).toEqual({ options });
+      expect(result.err.action).toMatch(/details\.options/);
     }
   });
 });

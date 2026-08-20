@@ -1,11 +1,19 @@
 # GLOBAL-023 — Trust UX baseline
 
+> **Rule (3) amended 2026-08-20 by [`GLOBAL-040`](./GLOBAL-040-guided-turn-not-dead-end.md).**
+> "Refuse rather than guess" was a fast-fail dead-end; it is superseded by
+> "**clarify** rather than guess" — a below-floor plan is still never silently
+> executed, but its outcome is now a guided one-click `clarify_required` turn,
+> not a typed error. Rules (1) and (2) are unchanged. The wording below reflects
+> the amendment; GLOBAL-040 holds the full rationale.
+
 - **Decision:** Every path that turns natural language into something
   executable enforces three rules at the user surface: (1) any write
   or DDL shows a **diff preview** before commit, (2) every response
   carries the **compiled SQL** (or compiled plan) as a visible trace,
-  (3) plans with confidence below the per-tier floor **refuse**
-  rather than guess.
+  (3) plans with confidence below the per-tier floor **clarify**
+  (a guided one-click turn) rather than guess — never silently executed,
+  never a dead-end error ([`GLOBAL-040`](./GLOBAL-040-guided-turn-not-dead-end.md)).
 - **Core value:** Bullet-proof, Honest latency, Goal-first
 - **Why:** Text-to-SQL in 2026 hits 50–70% accuracy on messy schemas
   and the canonical failure mode is "syntactically right, semantically
@@ -22,12 +30,14 @@
   the surface MUST render before the commit action is enabled.
   `/v1/ask` responses include the compiled SQL in the `trace` block
   on every path, not only on `?trace=1`. The LLM router emits a
-  `confidence` score on every plan; `ask-pipeline` refuses with
-  `low_confidence` (instead of executing) when the score is below a
-  per-tier floor. Floor values are placeholders until the
+  `confidence` score on every plan; when the score is below a per-tier
+  floor `ask-pipeline` returns a `clarify_required` guided turn
+  (`clarification: "low_confidence"`, options from the candidate
+  readings) **instead of executing** — a continuation, not a dead-end
+  ([`GLOBAL-040`](./GLOBAL-040-guided-turn-not-dead-end.md)). Floor values
+  are placeholders until the
   [`quality-eval`](../features/quality-eval/FEATURE.md) harness
-  calibrates them against real benchmark data. Refusal is a typed
-  error per `GLOBAL-012` ("one sentence with the next action").
+  calibrates them against real benchmark data.
 - **Alternatives rejected:**
   - Spinner-and-pray (silent commit) — fails the bullet-proof value;
     the silent-wrong-update is the exact failure this rule prevents.

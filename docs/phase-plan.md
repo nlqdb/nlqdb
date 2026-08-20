@@ -108,7 +108,8 @@ and across every existing feature.
 - **Trust UX baseline** ([`GLOBAL-023`](./decisions/GLOBAL-023-trust-ux-baseline.md)):
   every write/DDL path shows a diff before commit; every response carries
   the compiled SQL (or compiled plan) as a trace; low-confidence plans
-  refuse rather than guess.
+  clarify rather than guess — a guided one-click turn, not a dead-end
+  ([`GLOBAL-040`](./decisions/GLOBAL-040-guided-turn-not-dead-end.md)).
 - **Demand-signal telemetry** ([`GLOBAL-024`](./decisions/GLOBAL-024-demand-signal-telemetry.md)):
   every 4xx "not supported", every rate-limit hit, every wishlist click,
   every anon-mode TTL warning fires a typed product event. Captures

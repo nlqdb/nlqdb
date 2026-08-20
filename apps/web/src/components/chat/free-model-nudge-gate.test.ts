@@ -39,9 +39,6 @@ describe("freeChainStruggled — error path", () => {
   test("fires on model-quality codes", () => {
     expect(freeChainStruggled(errorReply("llm_failed"))).toBe(true);
     expect(freeChainStruggled(errorReply("sql_rejected"))).toBe(true);
-    // The plan sat below the confidence floor (SK-TRUST-003), surfaced as the
-    // `low_confidence` error — the error twin of the sub-0.7 ok-path struggle.
-    expect(freeChainStruggled(errorReply("low_confidence"))).toBe(true);
     // SK-ASK-030 — the model generated SQL whose values didn't fit the columns
     // (a bad cast / range); a frontier model typically avoids it.
     expect(freeChainStruggled(errorReply("invalid_value"))).toBe(true);
@@ -63,6 +60,9 @@ describe("freeChainStruggled — error path", () => {
       // frontier model wouldn't change them. Stay excluded (SK-PREMIUM-004).
       "write_no_rows",
       "write_constraint",
+      // GLOBAL-040 — a below-floor plan is now a `clarify_required` guided turn,
+      // not an error to upsell over; the nudge stays silent on the clarify rail.
+      "clarify_required",
     ]) {
       expect(freeChainStruggled(errorReply(code))).toBe(false);
     }

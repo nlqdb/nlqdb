@@ -1,9 +1,10 @@
 // The shared "reply-level action prompt": a prompt line plus a row of choice
 // chips, each firing a handler. This is the single presentational rail behind
 // every reply that offers the user a set of choices — the SK-ASK-009 DB
-// picker, the SK-ASK-014 create/cancel clarify, and the SK-ASK-026
-// destructive-clarify options — and the home for the SK-TRUST-003
-// `low_confidence` alternatives when they land.
+// picker, the SK-ASK-014 create/cancel clarify, the SK-ASK-026
+// destructive-clarify options, and (GLOBAL-040) the SK-TRUST-003
+// low-confidence readings, which ride the same `clarify_required` options
+// rather than a separate rail.
 //
 // The re-send wiring stays in ChatPanel's `startSend` engine (each `onSelect`
 // is a one-line delegator to it); this component owns only the chip mechanics

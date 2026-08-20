@@ -89,7 +89,8 @@ Four things every release has to move, none allowed to regress
 - **Onboarding** — landing to first answer in under a minute, no card,
   no config.
 - **UX** — see the diff before any write, see the SQL behind every
-  answer, refuse rather than guess when confidence is low.
+  answer, and on low confidence get a one-click clarify — a guided turn,
+  never a dead-end, and never a silent guess.
 - **Performance** — sub-400 ms cached, sub-1.5 s cold.
 
 The bet: get this right on free, open models and it only gets better on
@@ -234,7 +235,7 @@ and shares the link — in under 60 seconds, no card, no config.
 
 - ✓ Diff preview on writes + visible SQL trace on every response
 - ✓ Demand-signal telemetry on every "not yet" path
-- ◯ Confidence floor (refuse-on-low-confidence) — lands with quality-eval
+- ◯ Confidence floor (clarify-on-low-confidence — a guided turn, not a dead-end) — lands with quality-eval
 
 ### Phase 2 — Distribution (agent + developer surfaces)
 

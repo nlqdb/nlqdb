@@ -4,10 +4,10 @@ Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md).
 
 - **Decision:** When the user is on the strict-$0 (free) chain *and* a reply
   visibly struggled — it failed on a model-quality code (`llm_failed` = couldn't
-  plan, `sql_rejected` = produced disallowed SQL, `low_confidence` = the plan sat
-  below the `SK-TRUST-003` floor, `invalid_value` = generated SQL whose values
-  didn't fit their columns (SQLSTATE class 22, `SK-ASK-030`), or `schema_mismatch`
-  **only** on the pre-flight LLM-hallucination path (non-empty `referencedTables`),
+  plan, `sql_rejected` = produced disallowed SQL, `invalid_value` = generated SQL
+  whose values didn't fit their columns (SQLSTATE class 22, `SK-ASK-030`), or
+  `schema_mismatch` **only** on the pre-flight LLM-hallucination path (non-empty
+  `referencedTables`),
   not the exec-catch infra path (`SK-ASK-016`/`SK-ASK-019`)) or came back below the
   `0.7` plan-confidence floor on a successful reply — the chat renders a short,
   non-blocking nudge below that reply: a one-line warning, a muted attribution

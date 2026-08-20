@@ -89,7 +89,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* `nlq remember` ([`SK-CLI-018`](decisions/SK-CLI-018-remember-verb.md)) is a **third** data verb, admitted under GLOBAL-017's "explicit justification" clause: it mirrors the already-justified third *endpoint* `/v1/memory/remember` (SK-PIVOT-008 — memory writes can't ride `nlq run`'s raw-SQL hatch without breaking the typed-plan trust boundary), so it's parity for an existing operation, not a new one.
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.
 - **GLOBAL-023** — Trust UX baseline.
-  - *In this feature:* `nlq` prints the diff in TTY mode and as a JSON field in `--json` mode (per `SK-TRUST-001`); every `nlq ask` response prints the compiled SQL under a `─ trace ─` separator (per `SK-TRUST-002`); `low_confidence` refusals offer arrow-key disambiguation (per `SK-TRUST-003`). See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
+  - *In this feature:* `nlq` prints the diff in TTY mode and as a JSON field in `--json` mode (per `SK-TRUST-001`); every `nlq ask` response prints the compiled SQL under a `─ trace ─` separator (per `SK-TRUST-002`); a below-floor plan renders as a `clarify_required` guided turn with arrow-key selection over its options (per `SK-TRUST-003` / `GLOBAL-040`), not a dead-end. See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
   - *In this feature:* a bare-form `nlq "..."` invocation that hits an unknown verb (post-CLI ship) emits `feature.requested.unknown_cli_verb` via the SDK's event sink.
 
