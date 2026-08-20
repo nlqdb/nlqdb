@@ -126,16 +126,28 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     max-width: 56ch;
   }
 
-  /* SK-WEB-030 — provider "Connect" button row (Stage 1: leads, paste below). */
-  .connect__providers {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+  /* SK-WEB-030 — Postgres "Connect with Supabase OAuth" checkbox. When on it
+   * gates the single Supabase CTA; the note below it sits with the CTA. */
+  .connect__checkbox-field {
+    gap: 6px;
   }
 
-  .connect__provider {
-    align-self: flex-start;
-    min-width: 220px;
+  .connect__checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: var(--t-body);
+    color: var(--ink);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .connect__checkbox input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
   }
 
   .connect__provider-note {

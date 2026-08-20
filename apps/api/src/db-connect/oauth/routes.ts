@@ -171,7 +171,10 @@ export async function handleSupabaseCallback(c: ConnectCtx): Promise<Response> {
     tenantId,
     name: project.name,
   });
-  return res.ok ? toConnect(c, { connected: res.dbId }) : toConnect(c, { error: "introspection" });
+  if (res.ok) return toConnect(c, { connected: res.dbId });
+  // 422 ⇒ connected but the public schema is empty — a distinct, honest code so
+  // the page doesn't wrongly tell the user the project is inactive.
+  return toConnect(c, { error: res.status === 422 ? "empty_schema" : "introspection" });
 }
 
 // Load + verify a pick stash for the calling tenant, returning the opened token.

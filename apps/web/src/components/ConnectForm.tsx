@@ -48,6 +48,12 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
   const [connectionUrl, setConnectionUrl] = useState("");
   const [name, setName] = useState("");
   const [showUrl, setShowUrl] = useState(false);
+  // Postgres has a one-click Supabase OAuth path (SK-DBCONN-003); it's the
+  // recommended default, so the checkbox is on when Postgres is picked. Checked
+  // ⇒ the single "Connect Supabase" CTA and no paste fields; unchecked ⇒ the
+  // paste form for a raw Postgres DSN. ClickHouse has no OAuth, so the checkbox
+  // never shows there. Exactly one CTA is visible at a time (SK-WEB-030).
+  const [useSupabaseOauth, setUseSupabaseOauth] = useState(true);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -166,9 +172,13 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
     );
   }
 
+  // Postgres + checkbox on ⇒ the one-click Supabase OAuth path. ClickHouse has
+  // no OAuth, so it always takes the paste path.
+  const supabaseOauthActive = engine === "postgres" && useSupabaseOauth;
+  const startHref = `${apiBase.replace(/\/$/, "")}/v1/db/connect/oauth/supabase/start`;
+
   return (
     <section className="connect">
-      <ProviderRow apiBase={apiBase} />
       {oauthError && (
         <div className="connect__error-wrap" role="alert">
           <p className="connect__error">{oauthError}</p>
@@ -178,8 +188,9 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
       <header className="connect__head">
         <h1 className="connect__title">Question your {engineLabel}.</h1>
         <p className="connect__lede">
-          Paste a read connection string. nlqdb reads your schema, then you ask in English — the URL
-          is sealed and never stored in your browser.
+          {supabaseOauthActive
+            ? "Connect your Supabase project in one click — you approve on Supabase, with no connection string to paste."
+            : "Paste a read connection string. nlqdb reads your schema, then you ask in English — the URL is sealed and never stored in your browser."}
         </p>
       </header>
 
@@ -207,74 +218,106 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
           </select>
         </div>
 
-        <div className="connect__field">
-          <label className="connect__label" htmlFor={urlId}>
-            Connection URL
-          </label>
-          <div className="connect__url-row">
-            <input
-              id={urlId}
-              name="connection_url"
-              // Secret field — masked by default, never autosaved.
-              type={showUrl ? "text" : "password"}
-              value={connectionUrl}
-              onChange={(e) => setConnectionUrl(e.target.value)}
-              placeholder={placeholder}
-              autoComplete="off"
-              spellCheck={false}
-              disabled={loading}
-              className="connect__input"
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? errorId : undefined}
-            />
-            <button
-              type="button"
-              className="cta cta--ghost connect__toggle"
-              onClick={() => setShowUrl((v) => !v)}
-              aria-pressed={showUrl}
-              disabled={loading}
-            >
-              {showUrl ? "Hide" : "Show"}
-            </button>
+        {engine === "postgres" && (
+          <div className="connect__field connect__checkbox-field">
+            <label className="connect__checkbox">
+              <input
+                type="checkbox"
+                checked={useSupabaseOauth}
+                disabled={loading}
+                onChange={(e) => setUseSupabaseOauth(e.target.checked)}
+              />
+              <span>Connect with Supabase OAuth</span>
+            </label>
+            <p className="connect__hint">
+              Recommended for Supabase — approve on Supabase, no password typed here. Uncheck to
+              paste a Postgres connection string instead.
+            </p>
           </div>
-          <p className="connect__hint">
-            Sealed server-side and never written to your browser. Use a read-only credential.{" "}
-            <a
-              className="connect__hint-link"
-              href="https://docs.nlqdb.com/security/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Read more
+        )}
+
+        {supabaseOauthActive ? (
+          <>
+            <a className="cta connect__submit" href={startHref}>
+              Connect Supabase →
             </a>
-          </p>
-        </div>
+            <p className="connect__provider-note">
+              You approve on Supabase — no password typed here. Supabase shows a write scope (the
+              one our app requests); we only ever run read-only queries against your data.
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="connect__field">
+              <label className="connect__label" htmlFor={urlId}>
+                Connection URL
+              </label>
+              <div className="connect__url-row">
+                <input
+                  id={urlId}
+                  name="connection_url"
+                  // Secret field — masked by default, never autosaved.
+                  type={showUrl ? "text" : "password"}
+                  value={connectionUrl}
+                  onChange={(e) => setConnectionUrl(e.target.value)}
+                  placeholder={placeholder}
+                  autoComplete="off"
+                  spellCheck={false}
+                  disabled={loading}
+                  className="connect__input"
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? errorId : undefined}
+                />
+                <button
+                  type="button"
+                  className="cta cta--ghost connect__toggle"
+                  onClick={() => setShowUrl((v) => !v)}
+                  aria-pressed={showUrl}
+                  disabled={loading}
+                >
+                  {showUrl ? "Hide" : "Show"}
+                </button>
+              </div>
+              <p className="connect__hint">
+                Sealed server-side and never written to your browser. Use a read-only credential.{" "}
+                <a
+                  className="connect__hint-link"
+                  href="https://docs.nlqdb.com/security/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Read more
+                </a>
+              </p>
+            </div>
 
-        <div className="connect__field">
-          <label className="connect__label" htmlFor={nameId}>
-            Name <span className="connect__optional">(optional)</span>
-          </label>
-          <input
-            id={nameId}
-            name="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="analytics"
-            autoComplete="off"
-            spellCheck={false}
-            disabled={loading}
-            className="connect__input"
-          />
-        </div>
+            <div className="connect__field">
+              <label className="connect__label" htmlFor={nameId}>
+                Name <span className="connect__optional">(optional)</span>
+              </label>
+              <input
+                id={nameId}
+                name="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="analytics"
+                autoComplete="off"
+                spellCheck={false}
+                disabled={loading}
+                className="connect__input"
+              />
+            </div>
 
-        <button
-          type="submit"
-          className="cta connect__submit"
-          disabled={loading || connectionUrl.trim().length === 0}
-        >
-          {loading ? "Reading your schema…" : `Connect your ${engineLabel} →`}
-        </button>
+            <button
+              type="submit"
+              className="cta connect__submit"
+              disabled={loading || connectionUrl.trim().length === 0}
+            >
+              {loading ? "Reading your schema…" : `Connect your ${engineLabel} →`}
+            </button>
+          </>
+        )}
 
         {error && (
           <div id={errorId} className="connect__error-wrap" role="alert">
@@ -282,8 +325,6 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
           </div>
         )}
       </form>
-
-      {result && <ConnectResultView result={result} />}
     </section>
   );
 }
@@ -294,25 +335,6 @@ function readEngineFromUrl(): ConnectEngine {
   if (typeof window === "undefined") return "clickhouse";
   const value = new URLSearchParams(window.location.search).get("engine");
   return value === "postgres" ? "postgres" : "clickhouse";
-}
-
-// Provider "Connect" button row (SK-WEB-030). Stage 1 (one live provider):
-// the button leads, the paste form stays visible below. "Connect Supabase" is a
-// plain top-level navigation to `/start` (which 302s to Supabase consent), so
-// no secret is typed into nlqdb. Honest write-scope copy sits alongside.
-function ProviderRow({ apiBase }: { apiBase: string }) {
-  const startHref = `${apiBase.replace(/\/$/, "")}/v1/db/connect/oauth/supabase/start`;
-  return (
-    <div className="connect__providers">
-      <a className="cta connect__provider" href={startHref}>
-        Connect Supabase →
-      </a>
-      <p className="connect__provider-note">
-        You approve on Supabase — no password typed here. Supabase will show a write scope (the one
-        our app requests); we only ever run read-only queries against your data.
-      </p>
-    </div>
-  );
 }
 
 // Single-project OAuth connect landed via the callback redirect (no schema
