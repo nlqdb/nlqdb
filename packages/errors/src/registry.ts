@@ -409,6 +409,19 @@ export const REGISTRY = {
     message: () => "This call wasn't authenticated.",
     action: () => `Sign in again, or use a key minted at ${KEYS_URL}.`,
   }),
+  // The session store (Better Auth over KV/D1) threw while verifying the
+  // caller — a transient storage blip, NOT a signed-out session. Distinct
+  // from `unauthorized` (401, "sign in again") so a KV/D1 hiccup never tells
+  // a signed-in user to re-authenticate. `transient` ⇒ `retryable`, so the
+  // SDK's 5xx retry replays it and the dashboard self-heals; only an
+  // exhausted retry reaches the user, with copy that keeps them calm.
+  auth_unavailable: defineError({
+    httpStatus: 503,
+    recoverability: "transient",
+    params: NONE,
+    message: () => "nlqdb couldn't verify your session just now.",
+    action: () => "Try again in a moment — you're still signed in.",
+  }),
   // SK-ANON-010/012 — the anonymous budget ran out. `cap` names which one so
   // the action can be honest about what signing in buys.
   auth_required: defineError({
