@@ -1409,6 +1409,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "DBA Stack Exchange — the 'duplication' tag, a perennial 'find / dedupe duplicate rows' hub (GROUP BY ... HAVING is the canonical answer).",
       },
     ],
+    related: [
+      "find-rows-with-no-match-in-another-table",
+      "countif-sumif-conditional-aggregate-in-sql",
+      "pivot-rows-into-columns",
+    ],
   },
   {
     slug: "find-top-n-rows-per-group",
@@ -1603,6 +1608,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "pivot-rows-into-columns",
       "calculate-percentage-of-total-in-sql",
       "find-duplicate-rows-in-my-data",
+      "group-numbers-into-ranges-in-sql",
     ],
   },
   {
@@ -1800,6 +1806,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "leafo.net — evergreen 'Calculating Percentile (and Median) in PostgreSQL' walkthrough (`PERCENTILE_CONT` vs `PERCENTILE_DISC`).",
       },
     ],
+    related: [
+      "calculate-percentage-of-total-in-sql",
+      "group-numbers-into-ranges-in-sql",
+      "countif-sumif-conditional-aggregate-in-sql",
+    ],
   },
   {
     slug: "calculate-percentage-of-total-in-sql",
@@ -1863,6 +1874,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "running-total-cumulative-sum-in-sql",
       "month-over-month-growth-in-sql",
       "find-top-n-rows-per-group",
+      "calculate-median-or-percentile-in-sql",
     ],
   },
   {
@@ -1930,6 +1942,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "Modern SQL — Markus Winand's evergreen write-up on three-valued logic, with the dedicated section on why `not in (null, …)` is never true and how `not exists` avoids it.",
       },
     ],
+    related: [
+      "count-rows-per-day-including-missing-dates",
+      "find-duplicate-rows-in-my-data",
+      "countif-sumif-conditional-aggregate-in-sql",
+    ],
   },
   {
     slug: "count-rows-per-day-including-missing-dates",
@@ -1993,6 +2010,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "count-consecutive-days-streak-in-sql",
       "month-over-month-growth-in-sql",
       "calculate-time-between-two-dates-in-sql",
+      "find-rows-with-no-match-in-another-table",
     ],
   },
   {
@@ -2051,6 +2069,11 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         label:
           "PostgreSQL docs — conditional expressions, the canonical reference for the `CASE WHEN` form used to compile named, non-even range bands.",
       },
+    ],
+    related: [
+      "calculate-median-or-percentile-in-sql",
+      "countif-sumif-conditional-aggregate-in-sql",
+      "pivot-rows-into-columns",
     ],
   },
   {

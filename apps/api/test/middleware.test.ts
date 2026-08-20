@@ -71,4 +71,41 @@ describe("requireSession middleware", () => {
     await app.request("/protected");
     expect(isRevoked).not.toHaveBeenCalled();
   });
+
+  it("returns a retryable 503 auth_unavailable when getSession throws (storage blip, not 500)", async () => {
+    const app = buildApp({
+      // Mirrors Better Auth wrapping a KV/D1 failure as `APIError: Failed to
+      // get session` — the exact production 500 this guard converts.
+      getSession: async () => {
+        throw new Error("Failed to get session");
+      },
+      isRevoked: async () => false,
+    });
+    const res = await app.request("/protected");
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({
+      error: { code: "auth_unavailable", retryable: true },
+    });
+  });
+
+  it("fails open (honours the valid cookie) when isRevoked throws, per SK-AUTH-020", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const app = buildApp({
+      getSession: async () => ({
+        user: { id: "u_1" },
+        session: { token: "tok_1", userId: "u_1" },
+      }),
+      isRevoked: async () => {
+        throw new Error("KV get failed");
+      },
+    });
+    const res = await app.request("/protected");
+    // A KV blip on the revocation set must NOT log out a validly-signed
+    // session (SK-AUTH-020) — the cookie signature already proves identity.
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, userId: "u_1", token: "tok_1" });
+    // …but the fail-open is observable via one warn log.
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("session_revocation_check_failed"));
+    warn.mockRestore();
+  });
 });

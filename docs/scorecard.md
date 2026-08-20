@@ -23,18 +23,20 @@ dashboard) shipped run 177 (#978, deployed), so criterion 1 is the gate's only
 GLOBAL-037-unblocked lever; the gate is still the only path off real strangers = 0 —
 premium going **live 08-14** (row #20, meter firing) doesn't change that.
 
-**Worst number today (run 179, 2026-08-18):** the **weekly-focus `SK-PIVOT-016` dogfood gate**
+**Worst number today (run 180, 2026-08-19):** the **weekly-focus `SK-PIVOT-016` dogfood gate**
 (**2/5**) remains the worst number — its only agent-movable, GLOBAL-037-unblocked criterion is
 **criterion 1 (real MCP asks 12 → ≥100)**, grind-only and not honestly container-movable without
 fabricating asks (dark for lever-choice, rule 8). So this run pulled the **highest-yield
-agent-movable lever available — distribution (P1)**: published the queued dogfood-lessons post to
-`/blog` (**posts 39 → 40**, indexable content pages **110 → 111**, unpublished drafts **1 → 0**)
-and drained one dev.to variant (run-119 `find-duplicate-rows`,
-[live](https://dev.to/omer_hochman/the-duplicate-rows-query-you-re-google-every-six-weeks-39km)).
-Delta in "Last change".
+agent-movable lever available — distribution (P1), internal link-graph**: GSC (re-pulled live
+this run) shows `/solve/find-rows-with-no-match-in-another-table/` losing **60 impr at pos 16.5**
+(page-2 edge) while it was a **complete internal orphan** (0 inbound + 0 outbound links) — authority
+can't reach a page one nudge from page-1 clicks. Fixed the SQL-recipe cluster's link-graph leak:
+**zero-inbound orphans in that cluster 3 → 0**, each wired 0 → 2 inbound / 0 → 3 outbound, all
+same-cluster and topically genuine (the `related` field's documented crawl-priority purpose). Delta
+in "Last change".
 **Weekly-focus gate (don't overwrite the /weekly-set target mid-week):** dogfood **2/5**.
 **Top `blocked-by-human` bullet:** fire the Show HN launch sequence (⏱ ~30 min,
-**idle 66 days since 06-13**), still condition-gated on the `SK-PIVOT-016` gate (now **2/5**).
+**idle 67 days since 06-13**), still condition-gated on the `SK-PIVOT-016` gate (now **2/5**).
 #2 = Anthropic **connector directory** (money-gated, since 07-21). #3 = Supabase OAuth app +
 prod secrets (⏱ ~15 min, since 08-13; paste path works meanwhile). Queue **depth 3**, head age
 66 d is the real cycle time.
@@ -44,17 +46,19 @@ rows **#2/#4/#5/#16** stranger-dependent (N = 0 until launch); row **#15** openc
 saturation, remedy costs money ⇒ rule 4); dogfood criterion 4 (E-09 GLOBAL-037-blocked) +
 criterion 3 (same root).
 
-**Rule 6 — GREEN.** Branch based on `main@1202e2e`. Health re-measured live this run:
-`bun install` restored container deps; **`typecheck` exit 0** (all 21 packages), **`bun run lint`
-exit 0** (54 warnings, 0 errors), **`bun run test` exit 0** (1307 passed), **`@nlqdb/web` blog +
-endpoint tests 559 pass** (new post advertised in sitemap + llms.txt, all invariants green).
-`deploy-api` + `deploy-web` latest `main` runs (`1202e2e`) both **success**. This run's diff:
-`apps/web/src/data/blog.ts` (+1 post), `distribution-queue.md`, this scorecard.
-**Open PRs: 0** (checked step-0). No file overlap risk.
+**Rule 6 — GREEN.** Branch based on `main@715c944` (rebased onto latest — #1020 merged 12 h into
+this run). Health re-measured live: **`typecheck` exit 0** (all packages, after `bun install`
+pulled #1020's new `packages/errors` zod dep — a container-install artifact, not red main),
+**`bun run check` exit 0** (CI gate), **`bun run test` exit 0**, **`@nlqdb/web` 581 pass**,
+`solve.test.ts` 18 pass (related links resolve, no self-ref/dupes). `deploy-web` latest `main`
+run (`f9981af`) **success**. This run's diff: `apps/web/src/data/solve.ts` (7 `related`-array
+edits, no prose/schema change), `distribution-queue.md` (dev.to line), this scorecard.
+**Open PRs: 2** (#1022 EK-06 grants, #1023 reach null — `NUMBERS.md`); neither touches
+`solve.ts` or the solve template. No file overlap risk.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
-| | **Funnel, bot-filtered** (RUM **re-pulled live 08-18** (`rum-pull.ts`, 7d, SAMPLED); GSC carried from 08-17 live pull (`gsc-pull.ts`, 28d — barely moves day-to-day). Users/DBs carried from 07-27 remote-D1 — no container access to remote D1 this run, no channel newly live) | | exclude synthetic stranger-test walker traffic |
+| | **Funnel, bot-filtered** (RUM **re-pulled live 08-18** (`rum-pull.ts`, 7d, SAMPLED); GSC **re-pulled live 08-19** (`gsc-pull.ts`, 28d — barely moves day-to-day). Users/DBs carried from 07-27 remote-D1 — no container access to remote D1 this run, no channel newly live) | | exclude synthetic stranger-test walker traffic |
 | 1 | Visits, 7d (CF RUM) | **357 pl / 322 vis** raw, **real-browser floor 93 pl / 58 vis** (re-pulled 08-18; 264 synthetic cut). Real-browser landings led by `app.nlqdb.com/auth/sign-in/` (**18**), `app.nlqdb.com/app/` (17), `auth/continue/` (16), `auth/post-signin/` (9), `nlqdb.com/` (8) | cut rule: `bot=1` or `userAgentBrowser ∈ {Unknown, ChromeHeadless}` or CF-classified bot ⇒ real-browser is a floor. Read at **7d** (28d comes back sampled); this 7d window is itself sampled (interval ≤1.5) — treat sub-interval buckets as noise |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company + 5 test/dev — live remote-D1 07-27; no channel newly live to produce a signal. **Dark** (rule 8) — moves only on launch |
 | 3 | DBs total | **254** (07-27 live remote-D1) + **1 dogfood** (`db_agent_memory_v1_3a8a72`, internal) | stranger subset ~0 (row #2) |
@@ -62,7 +66,7 @@ endpoint tests 559 pass** (new post advertised in sitemap + llms.txt, all invari
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12; founder-owned) | share with ≥ 2 asks |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **111** content pages (`/solve` 40 + `/vs` 31 + `/blog` **40**; +1 this run — `success-rate-cant-see-a-wrong-answer`); 119 sitemap URLs submitted (GSC auto-aggregates the new slug). Unpublished blog drafts **0** (queue drained) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **40** (+1 this run — the dogfood-lessons post). **GSC carried 08-17** (28d): **12 clicks / 619 impr / pos 21.3**. Top-impression page `/solve/running-total-cumulative-sum-in-sql/` **115 impr / pos 36.3 / 0 clicks** (page-4, biggest wasted-impression surface; content complete — bottleneck is domain authority, not on-page). Strengthen-next #2 `/solve/find-rows-with-no-match-in-another-table/` **59 impr / pos 16.7** (page-2, content-complete). **Referral yield (RUM 08-18):** **17 pl from 4 external referrers** (mail.google 8, baidu 5, bing 2, google 2) — and the blog is now earning organic referral landings: bing → `/blog/restrictive-rls-agent-memory-scoping/`, baidu → 3 `/blog/*` posts. Validates the distribution lever: published posts, not just count, now open sessions | `gsc-pull.ts` + `rum-pull.ts`. Total-impression breadth is the bottleneck, not per-page CTR at low N |
+| 7 | Surface yield | posts **40** (no `/blog` publish this run — queue empty). **GSC re-pulled live 08-19** (28d): **~12 clicks / 931 impr across 143 pages / pos ~22**. Top-impression page `/solve/running-total-cumulative-sum-in-sql/` **112 impr / pos 36.7 / 0 clicks** (well-linked already: 5 in / 3 out — content complete, bottleneck is domain authority). Strengthen-next #2 `/solve/find-rows-with-no-match-in-another-table/` **60 impr / pos 16.5** (page-2 edge) was a **complete internal orphan** — **this run wired it + 2 sibling orphans into the SQL-recipe cluster** (link-graph leak: zero-inbound orphans in that cluster **3 → 0**; the run-28 "measure the link graph, not the page count" lesson). Ranking lift is the multi-week downstream effect; the same-instrument delta measured now is the inbound-link count. **Referral yield (RUM 08-18):** **17 pl from 4 external referrers** (mail.google 8, baidu 5, bing 2, google 2) — and the blog is now earning organic referral landings: bing → `/blog/restrictive-rls-agent-memory-scoping/`, baidu → 3 `/blog/*` posts. Validates the distribution lever: published posts, not just count, now open sessions | `gsc-pull.ts` + `rum-pull.ts`. Total-impression breadth is the bottleneck, not per-page CTR at low N |
 | | **Engine** — BIRD 07-26 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **22 d old, staleness trigger fired**, but **dark (rule 8)**: resume is async multi-window and `main` moved since the 07-27 checkpoint | target 0.65 / **Phase 2 floor 0.60** — gap 6.2 pp. Offline levers exhausted |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on `04fa3d0`, **29 d old**). 07-27 re-dispatch exited **partial** (`SK-QUAL-013` budget-stop) | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is source of truth |
@@ -96,48 +100,59 @@ endpoint tests 559 pass** (new post advertised in sitemap + llms.txt, all invari
 **40 canonical `/solve` pages** + **40 `/blog` posts** + **31 `/vs` pages** live under `nlqdb.com/`
 (`SK-SOLVE-001` / `SK-BLOG-001` / `SK-CMP-001`). The registries are `apps/web/src/data/{solve,blog,competitors}.ts`.
 
-- **This run (179):** published **https://nlqdb.com/blog/success-rate-cant-see-a-wrong-answer/** —
-  the dogfood-run lesson (a first-10 success counter can't see a semantically-wrong answer; the
-  fix is a separate wrong-answer judgement + declaring categorical domains in DDL). Drained one
-  dev.to variant: run-119 `find-duplicate-rows` →
-  https://dev.to/omer_hochman/the-duplicate-rows-query-you-re-google-every-six-weeks-39km
+- **This run (180):** no new `/blog` publish (queue empty). Fixed the **`/solve` SQL-recipe
+  internal link-graph** (3 orphaned recipe pages wired into the cluster). Drained one dev.to
+  variant: run-110 `your-bi-tool-got-acquired-data-layer` →
+  https://dev.to/omer_hochman/your-bi-tool-got-acquired-your-data-layer-shouldnt-have-to-care-461i
+- **Run 179:** published **https://nlqdb.com/blog/success-rate-cant-see-a-wrong-answer/** (the
+  dogfood-run lesson); drained run-119 `find-duplicate-rows` dev.to variant.
 
 ## Last change
 
-**2026-08-18 (run 179)** — **Distribution lever (P1): published the queued dogfood-lessons post to
-`/blog` and drained one dev.to variant. Number moved: published-post count / indexable surfaces.**
+**2026-08-19 (run 180)** — **Distribution lever (P1): fixed the `/solve` SQL-recipe internal
+link-graph so authority reaches the pages GSC shows one nudge from page-1 clicks. Number moved:
+inbound internal-link count on wasted-impression pages / zero-inbound orphans in the SQL-recipe
+cluster.**
 
-**Delta (measured, same-instrument before/after):**
-- Published `/blog` posts **39 → 40** (row #7); indexable content pages **110 → 111** (row #6);
-  unpublished blog drafts **1 → 0** (queue drained). Sitemap URLs **118 → 119** (`sitemap.xml.ts`
-  + `llms.txt.ts` auto-aggregate the new slug — asserted green by the endpoint tests, 559 pass).
-- New post: **https://nlqdb.com/blog/success-rate-cant-see-a-wrong-answer/** — the D-04 dogfood
-  run's lesson, verbatim numbers verified against `dogfood/D-04-first-corpus-sync.md`: 22 writes /
-  9 entities / 13 facts, 12/12 asks answered, 10/10 first-ten, one silent wrong answer (query #8:
-  planner compiled `kind='question'` against stored `open_question` → 0 rows, true 11,
-  `confidence:1`). Lesson: a success-rate counter is blind to semantic error; the fix is a separate
-  wrong-answer judgement + declaring the categorical domain in DDL (`CHECK`/enum) so value-linking
-  is legitimate schema egress, not data egress (`E-09`/`GLOBAL-037`).
-- dev.to variant drained (step 3.3, `SK-BLOG-003`): run-119 `find-duplicate-rows` posted to
-  https://dev.to/omer_hochman/the-duplicate-rows-query-you-re-google-every-six-weeks-39km (not
-  drip-guarded — no dev.to post in the prior 20 h). Queue line updated: dev.to venue dropped, live
-  URL appended.
+**Delta (measured, same-instrument before/after — internal link graph over `SOLVE_ENTRIES`):**
+- Zero-inbound orphans in the SQL-recipe cluster **3 → 0**.
+- `find-rows-with-no-match-in-another-table` (GSC **60 impr / pos 16.5**, page-2 edge — the #2
+  wasted-impression surface): inbound **0 → 2**, outbound **0 → 3**.
+- `calculate-median-or-percentile-in-sql`: inbound **0 → 2**, outbound **0 → 3**.
+- `group-numbers-into-ranges-in-sql`: inbound **0 → 2**, outbound **0 → 3**.
+- `find-duplicate-rows-in-my-data`: outbound **0 → 3** (was inbound-only; asymmetry closed).
+- All 7 `related`-array edits are same-cluster and topically genuine (the field's documented
+  crawl-priority purpose; Google devalues topically-forced links). `solve.test.ts` (18 pass)
+  asserts every link resolves, no self-ref, no dupes. Ranking lift is the multi-week downstream
+  effect; the delta measured now is the link-graph itself (the run-28 lesson: measure the link
+  graph, not the page count).
+- dev.to variant drained (step 3.3, `SK-BLOG-003`): run-110 `your-bi-tool-got-acquired-data-layer`
+  posted to
+  https://dev.to/omer_hochman/your-bi-tool-got-acquired-your-data-layer-shouldnt-have-to-care-461i
+  (drip window since 08-18 elapsed). Queue line updated: dev.to venue dropped, live URL appended.
 
-**Why this lever (lanes in the founder's priority order):** (1) Acquisition/distribution (P1) — a
-ready draft sat unpublished; publishing it is the highest-yield agent-movable move and it moves a
-real distribution number (published-post count), while RUM 08-18 shows the blog is now earning
-organic referral landings (bing → RLS post, baidu → 3 `/blog/*`), so the surface produces yield,
-not just count. `/reach` owns the R-slices — not duplicated. The dogfood gate (weekly focus) stays
-2/5: criterion 1 is grind-only, criteria 3/4 are GLOBAL-037-blocked — none single-run-movable.
-(2) UX-flow — health + both deploys green, no failing flow. (3) Engine — dark (async multi-window,
-`main` moved).
+**Why this lever (lanes in the founder's priority order):** (1) Acquisition/distribution (P1) —
+GSC's own strengthen-next names `/solve/find-rows-with-no-match-in-another-table/` (pos 16.5, one
+page from clicks) as a top wasted-impression surface, yet the link-graph audit found it a complete
+internal orphan: content is complete, so the leak was crawl-priority, not on-page. Concentrating
+same-cluster inbound links is the documented remedy and moves a real, immediately-measurable
+distribution number. `/reach` owns the R-slices — not duplicated (its open PR #1023 is a null
+touching only `NUMBERS.md`). The dogfood gate (weekly focus) stays 2/5: criterion 1 is grind-only,
+criteria 3/4 GLOBAL-037-blocked — none single-run-movable. (2) UX-flow — health green, no failing
+flow. (3) Engine — dark (async multi-window).
 
-**Anti-rut (rule 7):** recent levers were null (178), dogfood (177), dogfood (176), null (174),
-distribution (173) — distribution last pulled 6 runs back, not 5-in-a-row; clear.
+**Follow-up finding (not this run's lever):** 21 pages remain zero-inbound — but they are the
+product-wedge/persona cluster (agent-memory, "database Claude can query", etc.), a *different*
+topical cluster with ~0 GSC impressions, so a same-cluster mesh for them is a separate, lower-yield
+lever. Left for a future run rather than forcing cross-cluster links.
 
-**KPI (GLOBAL-025):** advances the **distribution/onboarding** pillar (one more indexed, honest
-engineering post on the wedge's search surface; the post is on-brand "unflattering by design" per
-`SK-PIVOT-019`). **Degrades none** — additive one-post edit, all suites green.
+**Anti-rut (rule 7):** recent levers were distribution (179), null (178), dogfood (177), dogfood
+(176), null (174) — one distribution in the last 5, not 5-in-a-row; clear. (Different sub-lever
+too: 179 was a `/blog` publish, this is the `/solve` link-graph.)
+
+**KPI (GLOBAL-025):** advances the **distribution/onboarding** pillar (authority now flows to the
+recipe pages closest to earning organic clicks). **Degrades none** — data-only edit to `related`
+arrays, no prose/schema/render change; all suites green.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
