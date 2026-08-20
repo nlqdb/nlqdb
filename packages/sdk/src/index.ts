@@ -38,6 +38,12 @@ export type AskRequest = {
   // with `confirm: true`. The orchestrator skips its confidence
   // gate on the second hop and runs the SQL.
   confirm?: boolean;
+  // SK-ASK-032 — resolve a `clarify_required` (`create_or_query_pinned`)
+  // by confirming "query this pinned DB". Re-sending the same goal with the
+  // pin set would re-run the classifier and dead-end on the same clarify;
+  // this flag forces the query route so the confirmation always progresses.
+  // Only honoured alongside a pinned `dbId`; a no-op otherwise.
+  forceQuery?: boolean;
   // SK-PREMIUM-014 — the goal-first model preset (SK-PREMIUM-003):
   // `fast` pins the free chain, `best` demands a frontier lane (throws
   // `model_unavailable` when the account has no BYOLLM key and no paid

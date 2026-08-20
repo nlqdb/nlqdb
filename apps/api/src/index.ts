@@ -68,7 +68,12 @@ import {
 import { emitFeatureSignal } from "./ask/demand-signal.ts";
 import { resolveFrontierAskRouter } from "./ask/frontier-router.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
-import { kickoffAskPrelude, resolveAnonEngineOverride, seedFromPinnedDb } from "./ask/prelude.ts";
+import {
+  kickoffAskPrelude,
+  mergeSeededTables,
+  resolveAnonEngineOverride,
+  seedFromPinnedDb,
+} from "./ask/prelude.ts";
 import { makeRecentTablesStore } from "./ask/recent-tables.ts";
 import { withStageRetry } from "./ask/retry.ts";
 import { ROUTE_CONFIDENCE_FLOOR, routeAsk } from "./ask/route-ask.ts";
@@ -105,7 +110,7 @@ import { makeChatStore } from "./chat/store.ts";
 import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/list.ts";
 import { BYO_SECRET_REF_SENTINEL } from "./db-connect/constants.ts";
 import { AGENT_MEMORY_V1_VERSION, type MemoryPreset } from "./db-create/presets/agent-memory-v1.ts";
-import { resolveDb } from "./db-registry.ts";
+import { memoResolveDb, resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
 import { notify } from "./email-notify.ts";
 import {
@@ -1302,6 +1307,17 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // `recentTablesPromise` is awaited inside routeAsk's input. KV
     // blip → routeAsk still runs; D1 blip → routeAsk sees `dbs: []`
     // (see catch below).
+    // SK-ASK-032 — the caller resolved a create/query clarify by confirming
+    // "query this pinned DB". Re-running the identical classifier would
+    // re-derive kind=create and dead-end on the same clarify (the reported
+    // loop), so a confirmed query with a pin skips routeAsk entirely below.
+    const forceQuery = parsed.body.forceQuery === true && Boolean(parsed.body.dbId);
+
+    // Per-request memoized DB resolver. The pinned DB is read once here (for
+    // routeAsk's table context below) and reused by the orchestrator's exec
+    // read via `buildAskDeps` — one D1 point-read per request, not two.
+    const resolveDbMemo = memoResolveDb(c.env.DB);
+
     const recentTablesStore = makeRecentTablesStore(c.env.KV);
     const { listPromise, recentTablesPromise } = kickoffAskPrelude(
       {
@@ -1310,13 +1326,24 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       },
       principal.id,
     );
+    // SK-ASK-018 (widened) — always fold the pinned DB's own tables into the
+    // classifier's context, not only when the MRU is cold. The pin is the DB
+    // the user is looking at; without its tables a read-shaped goal that names
+    // one of them ("how many campaigns…") misclassifies as create and
+    // dead-ends on the create/query clarify. Kicked off in parallel with the
+    // prelude reads so the extra D1 point-read never sits on the critical path;
+    // skipped when `forceQuery` short-circuits routeAsk. Best-effort: a D1
+    // hiccup leaves the MRU untouched, same end-state as before.
+    const pinnedDbPromise =
+      parsed.body.dbId && !forceQuery
+        ? resolveDbMemo(parsed.body.dbId, principal.id).catch(() => null)
+        : Promise.resolve(null);
     let recentTables = await recentTablesPromise;
-    // SK-ASK-018 — fall back to the pinned DB's schema_text when the
-    // MRU cache is cold (e.g. freshly-adopted user). Best-effort: a D1
-    // hiccup leaves the empty MRU, same end-state as today.
-    if (recentTables.length === 0 && parsed.body.dbId) {
-      const pinnedDb = await resolveDb(c.env.DB, parsed.body.dbId, principal.id).catch(() => null);
-      if (pinnedDb) recentTables = seedFromPinnedDb(pinnedDb);
+    const pinnedDb = await pinnedDbPromise;
+    if (pinnedDb) {
+      // Real MRU touches win table-name ties; the seed only adds tables the
+      // MRU lacks (deduped by dbId + table).
+      recentTables = mergeSeededTables(seedFromPinnedDb(pinnedDb), recentTables);
     }
 
     // SK-ASK-009 — routeAsk runs in parallel with listPromise.
@@ -1326,6 +1353,23 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // retries the LLM call inside routeAsk up to 3 attempts before
     // surfacing as `llm_failed`.
     const routePromise = (async () => {
+      // SK-ASK-032 — dbId is pinned and the user confirmed query intent, so
+      // there is nothing to classify: force the query route straight through.
+      if (forceQuery) {
+        // The prelude reads are in flight but unused on this path; consume
+        // listPromise so a D1 blip can't surface as an unhandled rejection.
+        void listPromise.catch(() => {});
+        return {
+          candidates: [] as ReturnType<typeof toCandidates>,
+          output: {
+            kind: "query" as const,
+            targetDbId: parsed.body.dbId ?? null,
+            referencedTables: [] as string[],
+            confidence: 1,
+            reason: "forced_query" as const,
+          },
+        };
+      }
       let dbs: Awaited<ReturnType<typeof listDatabasesForTenant>>;
       try {
         dbs = await listPromise;
@@ -1477,7 +1521,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       ...(parsed.body.endUserId !== undefined ? { endUserId: parsed.body.endUserId } : {}),
       ...(parsed.body.threadId !== undefined ? { threadId: parsed.body.threadId } : {}),
     };
-    const deps = buildAskDeps(c.env, routing.router, scope);
+    const deps = buildAskDeps(c.env, routing.router, scope, resolveDbMemo);
     // After the SK-ASK-009 resolution above, `dbId` is guaranteed to
     // be set — either by the caller, by the 1-DB auto-target, or by
     // routeAsk (recent-table fast-path / slug fast-path / LLM pick).

@@ -38,7 +38,11 @@ export type RouteAskReason =
   | "recent_table_match"
   | "slug_match"
   | "llm"
-  | "llm_picked_unknown_id";
+  | "llm_picked_unknown_id"
+  // SK-ASK-032 — the caller resolved a create/query clarify by confirming
+  // "query this pinned DB". routeAsk is skipped entirely; this labels the
+  // synthesized query route so the loop-break is visible in telemetry.
+  | "forced_query";
 
 export type RouteAskOutput = {
   kind: RouteAskKind;

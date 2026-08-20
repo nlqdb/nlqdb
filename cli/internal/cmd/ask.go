@@ -18,10 +18,11 @@ import (
 
 func registerAsk(root *cobra.Command, g *globalFlags) {
 	var (
-		db      string
-		engine  string
-		model   string
-		confirm bool
+		db         string
+		engine     string
+		model      string
+		confirm    bool
+		forceQuery bool
 	)
 	cmd := &cobra.Command{
 		Use:   "ask <goal>",
@@ -37,11 +38,12 @@ Pass --json for machine-readable output.`,
 			ctx, cancel := context.WithTimeout(cmd.Context(), 120*time.Second)
 			defer cancel()
 			return doAsk(ctx, cmd, g, askParams{
-				goal:    joinArgs(args),
-				dbID:    db,
-				engine:  engine,
-				model:   model,
-				confirm: confirm,
+				goal:       joinArgs(args),
+				dbID:       db,
+				engine:     engine,
+				model:      model,
+				confirm:    confirm,
+				forceQuery: forceQuery,
 			})
 		},
 	}
@@ -49,15 +51,17 @@ Pass --json for machine-readable output.`,
 	cmd.Flags().StringVar(&engine, "engine", "", "engine override on the create branch (postgres|clickhouse)")
 	cmd.Flags().StringVar(&model, "model", "", "model preset (auto|fast|best); best needs a BYOLLM key (`nlq byollm set`) or a paid plan")
 	cmd.Flags().BoolVar(&confirm, "confirm", false, "approve a destructive plan returned by an earlier call")
+	cmd.Flags().BoolVar(&forceQuery, "force-query", false, "resolve a create/query clarify by querying the pinned --db (skips the classifier)")
 	root.AddCommand(cmd)
 }
 
 type askParams struct {
-	goal    string
-	dbID    string
-	engine  string
-	model   string
-	confirm bool
+	goal       string
+	dbID       string
+	engine     string
+	model      string
+	confirm    bool
+	forceQuery bool
 	// alwaysCreate bypasses active-DB resolution; `nlq new` sets it.
 	alwaysCreate bool
 }
@@ -84,10 +88,11 @@ func doAsk(ctx context.Context, cmd *cobra.Command, g *globalFlags, p askParams)
 	}
 
 	req := api.AskRequest{
-		Goal:    p.goal,
-		Engine:  p.engine,
-		Model:   p.model,
-		Confirm: p.confirm,
+		Goal:       p.goal,
+		Engine:     p.engine,
+		Model:      p.model,
+		Confirm:    p.confirm,
+		ForceQuery: p.forceQuery,
 	}
 
 	switch {
@@ -215,7 +220,7 @@ func lowerFirst(s string) string {
 // options, so fall back to the pinned-DB hint.
 func renderClarify(cmd *cobra.Command, apiErr *api.APIError) {
 	if len(apiErr.Options) == 0 {
-		printErr(cmd, "the goal looks like a creation request but a DB is pinned — re-run without `--db` to create, or rephrase.")
+		printErr(cmd, "the goal looks like a creation request but a DB is pinned — re-run without `--db` to create, or add `--force-query` to query the pinned DB instead.")
 		return
 	}
 	reason := apiErr.Reason

@@ -52,8 +52,13 @@ func TestRenderClarifyNoOptionsFallsBack(t *testing.T) {
 	cmd.SetOut(buf)
 
 	renderClarify(cmd, &api.APIError{Code: "clarify_required", Clarification: "create_or_query_pinned"})
-	if !strings.Contains(buf.String(), "without `--db`") {
-		t.Errorf("expected create-path hint, got %q", buf.String())
+	out := buf.String()
+	// Both resolutions are offered: drop the pin to create, or --force-query to
+	// query the pinned DB (SK-ASK-032 — the CLI equivalent of the web chip).
+	for _, want := range []string{"without `--db`", "--force-query"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("clarify hint missing %q, got %q", want, out)
+		}
 	}
 }
 

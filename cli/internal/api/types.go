@@ -12,6 +12,10 @@ type AskRequest struct {
 	DBID    string `json:"dbId,omitempty"`
 	Engine  string `json:"engine,omitempty"`
 	Confirm bool   `json:"confirm,omitempty"`
+	// SK-ASK-032 — resolve a create/query clarify by forcing the query route
+	// against the pinned DB, so the confirmation can't loop back onto the same
+	// clarify. Only honoured alongside a pinned DBID.
+	ForceQuery bool `json:"forceQuery,omitempty"`
 	// SK-PREMIUM-014 — goal-first preset (auto|fast|best); the server
 	// validates (invalid_model) and errors model_unavailable when "best"
 	// has no frontier lane to honour it.
