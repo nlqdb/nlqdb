@@ -725,10 +725,22 @@ function RevokeDialog({
   );
 }
 
+// The API renders one honest sentence + next action per error (GLOBAL-012);
+// prefer it over a generic fallback so a transient blip reads accurately —
+// e.g. `auth_unavailable` (503, after the SDK's retries are exhausted) says
+// "you're still signed in" rather than the alarming "couldn't revoke". Only
+// the 401 re-auth CTA and a couple of code-specific lines are worth overriding.
+function serverCopy(err: NlqdbApiError): string | null {
+  const msg = err.body?.message;
+  if (!msg) return null;
+  const action = err.body?.action;
+  return action ? `${msg} ${action}` : msg;
+}
+
 function messageFor(err: unknown): string {
   if (err instanceof NlqdbApiError) {
     if (err.httpStatus === 401) return "Sign in again to view your keys.";
-    return "Couldn't load keys. Refresh to try again.";
+    return serverCopy(err) ?? "Couldn't load keys. Refresh to try again.";
   }
   return "Couldn't load keys. Refresh to try again.";
 }
@@ -737,7 +749,7 @@ function messageForMint(err: unknown): string {
   if (err instanceof NlqdbApiError) {
     if (err.code === "name_too_long") return "Name must be 80 characters or fewer.";
     if (err.httpStatus === 401) return "Sign in again to mint a key.";
-    return "Couldn't mint the key. Try again.";
+    return serverCopy(err) ?? "Couldn't mint the key. Try again.";
   }
   return "Couldn't mint the key. Try again.";
 }
@@ -746,7 +758,7 @@ function messageForRevoke(err: unknown): string {
   if (err instanceof NlqdbApiError) {
     if (err.code === "key_not_found") return "Key already gone — close to refresh the list.";
     if (err.httpStatus === 401) return "Sign in again to revoke a key.";
-    return "Couldn't revoke the key. Try again.";
+    return serverCopy(err) ?? "Couldn't revoke the key. Try again.";
   }
   return "Couldn't revoke the key. Try again.";
 }

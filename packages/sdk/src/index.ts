@@ -318,6 +318,10 @@ export type ApiErrorCode =
   | "llm_failed"
   | "rate_limited"
   | "unauthorized"
+  // The session store (KV/D1) threw while verifying the caller — a transient
+  // storage blip, not a signed-out session (503, retryable). Distinct from
+  // `unauthorized` so a hiccup never surfaces as "sign in again".
+  | "auth_unavailable"
   | "invalid_json"
   | "goal_required"
   | "goal_too_long"
