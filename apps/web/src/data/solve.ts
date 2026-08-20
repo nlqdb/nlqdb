@@ -1683,6 +1683,77 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "count-rows-per-day-including-missing-dates",
       "month-over-month-growth-in-sql",
       "calculate-percentage-of-total-in-sql",
+      "moving-average-rolling-average-in-sql",
+    ],
+  },
+  {
+    slug: "moving-average-rolling-average-in-sql",
+    metaTitle: "Calculate a moving (rolling) average in SQL",
+    metaDescription:
+      "Ask for a moving average in plain English and nlqdb compiles the windowed AVG frame (ROWS BETWEEN N PRECEDING AND CURRENT ROW), runs it, shows the SQL.",
+    persona: "P3 analyst",
+    searchTitle: "How do I calculate a moving average (rolling average) in SQL?",
+    oneLiner:
+      "If you need a moving average (a rolling mean over recent rows, like a 7-day average of daily active users), ask in plain English instead of hand-writing the frame clause. nlqdb compiles the `AVG(...) OVER (ORDER BY ... ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)`, runs it in Postgres, and shows the SQL to verify the window and order.",
+    painContext:
+      "Analysts and ops leads reach for a moving average whenever a raw daily series is too noisy to read — a 7-day average of signups, a rolling 30-day revenue mean, a smoothed active-user curve. The SQL is a window function with a frame clause, `AVG(metric) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)`, and the details are where it silently goes wrong: `ROWS` counts physical rows while `RANGE` counts values, a gap in the dates shifts the window, and the number in `N PRECEDING` is off-by-one against the window length you meant. It gets re-Googled every reporting cycle.",
+    demoGoal: "7-day moving average of daily active users",
+    demoWhy:
+      "The smoothed 7-day curve you'd otherwise hand-write with a windowed AVG and a careful frame is one English goal here, with the SQL shown so you can check the window width and the order it slides over.",
+    howNlqdbAnswers: [
+      "Ask '7-day moving average of daily active users'; nlqdb compiles the windowed `AVG(...) OVER (ORDER BY day ROWS ...)` and runs it in Postgres.",
+      "Every answer returns the smoothed rows plus the compiled SQL under a trace toggle — check the frame width and the slide order.",
+      "Works no-code over a provisioned demo, or connect a Postgres you already run (BYO connect) to smooth your real time series.",
+      "Change the window in English — 'rolling 30-day average', 'moving average of the last 4 weeks' — and nlqdb recompiles the frame.",
+    ],
+    whatItDoesnt: [
+      "The order must be one you can name — 'by day', 'by week'. A moving average needs an explicit, unambiguous sort; over rows with no meaningful order the sliding window isn't well-defined and nlqdb won't invent one.",
+      "nlqdb returns the smoothed rows with a read-only SELECT — it's not a BI tool maintaining a live rolling-average chart or refreshing the curve on a schedule. That's a scheduled job's work.",
+      "The public `<nlq-data>` embed is read-scoped — it smooths and surfaces existing rows, it doesn't write. No write key belongs in client HTML; loading the data goes through the SDK or `POST /v1/run`.",
+    ],
+    faqs: [
+      {
+        q: "How do I calculate a moving average (rolling average) in SQL?",
+        a: "Ask in plain English — '7-day moving average of daily signups.' nlqdb compiles the window function with a frame, `AVG(signups) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)`, runs it in Postgres, and returns the smoothed rows plus the SQL it ran. You get the rolling curve without hand-writing the frame clause. The honest limit: you name the window size and the order it slides over.",
+      },
+      {
+        q: "What's the difference between a moving average and a running total?",
+        a: "A running total accumulates every row from the start, so the sum only grows. A moving average averages a fixed window of recent rows and slides it forward, so old rows drop out — `AVG(...) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)`. nlqdb picks the frame from whether you ask for a 'moving' or 'rolling' average or a 'running' or 'cumulative' total, and shows the compiled SQL either way.",
+      },
+      {
+        q: "How do I change the window size — a 30-day or 4-week moving average?",
+        a: "Name the window in your ask: 'rolling 30-day average' compiles `ROWS BETWEEN 29 PRECEDING AND CURRENT ROW`; a '4-week moving average' over weekly rows compiles `ROWS BETWEEN 3 PRECEDING AND CURRENT ROW`. The frame counts rows, so the count is one less than the window length — a 7-day window is 6 preceding plus the current row. nlqdb recompiles the frame when you restate the window and shows the SQL.",
+      },
+      {
+        q: "Should I use ROWS or RANGE, and what about gaps in the dates?",
+        a: "`ROWS` counts physical rows; `RANGE` counts by the ordering value. On a dense daily series they agree, but if some days have no row, `ROWS BETWEEN 6 PRECEDING` spans seven rows that skip the gaps — not seven calendar days. Fill the gaps first so every day is a row (see counting rows per day, including missing dates), then the row-based window is a true 7-day average.",
+      },
+      {
+        q: "Does the moving-average query work in Snowflake, BigQuery, or MySQL?",
+        a: "The pattern is ANSI-standard: `AVG(x) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)` runs unchanged on Postgres, Snowflake, BigQuery, and MySQL 8+. Older MySQL (< 8.0) has no window functions, so a moving average needs a self-join or correlated subquery instead. nlqdb runs your ask on Postgres today and shows the compiled SQL — the same frame clause you'd paste into any modern warehouse.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://stackoverflow.com/questions/tagged/window-functions",
+        label:
+          "Stack Overflow — the `window-functions` tag, the perennial 'moving average / rolling average' hub across SQL dialects.",
+      },
+      {
+        url: "https://www.postgresql.org/docs/current/tutorial-window.html",
+        label:
+          "PostgreSQL docs — the canonical window-function tutorial (frames, `ROWS BETWEEN … PRECEDING AND CURRENT ROW`, `AVG(...) OVER (...)`).",
+      },
+      {
+        url: "https://dba.stackexchange.com/questions/tagged/window-functions",
+        label:
+          "DBA Stack Exchange — the `window-functions` tag, a perennial 'rolling average in SQL' hub.",
+      },
+    ],
+    related: [
+      "running-total-cumulative-sum-in-sql",
+      "count-rows-per-day-including-missing-dates",
+      "month-over-month-growth-in-sql",
     ],
   },
   {
@@ -1746,6 +1817,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "running-total-cumulative-sum-in-sql",
       "calculate-percentage-of-total-in-sql",
       "count-rows-per-day-including-missing-dates",
+      "moving-average-rolling-average-in-sql",
     ],
   },
   {
