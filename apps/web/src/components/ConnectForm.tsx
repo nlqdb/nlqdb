@@ -242,8 +242,8 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
               Connect Supabase →
             </a>
             <p className="connect__provider-note">
-              You approve on Supabase — no password typed here. Supabase shows a write scope (the one
-              our app requests); we only ever run read-only queries against your data.
+              You approve on Supabase — no password typed here. Supabase shows a write scope (the
+              one our app requests); we only ever run read-only queries against your data.
             </p>
           </>
         ) : (
