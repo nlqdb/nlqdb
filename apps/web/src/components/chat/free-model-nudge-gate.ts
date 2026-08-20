@@ -12,9 +12,6 @@ export const LOW_CONFIDENCE_THRESHOLD = 0.7;
 // would plausibly have done better, so "switch models" is honest advice:
 //   `llm_failed`     — couldn't produce a usable plan at all.
 //   `sql_rejected`   — produced disallowed / unparseable SQL.
-//   `low_confidence` — the plan sat below the tier confidence floor (SK-TRUST-003):
-//                      the error form of the sub-0.7 struggle the ok path already
-//                      catches, so the two paths finally agree.
 //   `invalid_value`  — generated SQL whose values didn't fit their columns
 //                      (a bad cast / range — SQLSTATE class 22, SK-ASK-030): a
 //                      planning-quality miss a frontier model typically avoids.
@@ -22,12 +19,11 @@ export const LOW_CONFIDENCE_THRESHOLD = 0.7;
 // network / db-reachability failures, and write *outcome* codes (`write_no_rows`,
 // `write_constraint` — the data/intent, not the plan), are NOT the model's
 // fault, so a "switch models" nudge there is misleading and stays excluded.
-const MODEL_QUALITY_ERROR_CODES = new Set([
-  "llm_failed",
-  "sql_rejected",
-  "low_confidence",
-  "invalid_value",
-]);
+// A below-floor plan is no longer an error code either: GLOBAL-040 makes it a
+// `clarify_required` guided turn (help, not a struggle to upsell over), and the
+// sub-floor *ok-path* struggle below still catches the confident-but-shaky
+// answer that actually ran — the case where "switch models" is honest advice.
+const MODEL_QUALITY_ERROR_CODES = new Set(["llm_failed", "sql_rejected", "invalid_value"]);
 
 // A cache-hit whose originating model we never recorded stores this placeholder
 // (orchestrate.ts). It's not a real model id, so we never name it on the nudge.

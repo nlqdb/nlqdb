@@ -775,10 +775,9 @@ const OVERRIDES: Partial<Record<ErrorCode, Override>> = assertOverrides({
     action:
       "Re-call `q` with one of the goals in `details.options`, or name exactly which rows you mean.",
   },
-  low_confidence: {
-    action:
-      "Re-call with one of `details.alternatives`, or rephrase with the exact table and column names.",
-  },
+  // GLOBAL-040 — a below-floor plan arrives as `clarify_required`
+  // (`clarification: "low_confidence"`, options = candidate readings), handled
+  // by the entry above; there is no standalone `low_confidence` code.
 });
 
 // Every code this boundary can phrase — the registry itself, now that nothing
@@ -796,7 +795,6 @@ function detailsFor(code: string, params: Record<string, unknown> | undefined) {
   };
   if (code === "ambiguous_db") return lift("candidate_dbs");
   if (code === "clarify_required") return lift("options");
-  if (code === "low_confidence") return lift("alternatives");
   return undefined;
 }
 

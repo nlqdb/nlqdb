@@ -349,18 +349,18 @@ export type ApiErrorCode =
   // SK-TRUST-006 — an approved write that changed nothing, rather than an empty
   // success that reads as "done".
   | "write_no_rows"
-  // The plan's confidence sat below the tier floor.
-  | "low_confidence"
   // SK-ASK-009: 409 returned when the LLM disambiguator's confidence
   // is below the floor on a 2+ DB tenant. Body carries `candidate_dbs`.
   | "ambiguous_db"
-  // 409 clarify — two shapes, distinguished by `body.clarification`.
+  // 409 clarify — shapes distinguished by `body.clarification`.
   // SK-ASK-014 `create_or_query_pinned`: caller pinned `dbId` but the
   // classifier returned `kind=create`; `body.pinned_db` set; surfaces offer
   // "Create new database" / "Cancel". SK-ASK-026 `destructive_ambiguous`:
   // a destructive-ambiguous plan ("clear db" family) was rejected; instead
   // of `sql_rejected`, `body.options` carries re-sendable interpretations
-  // and `body.reason` a one-sentence prompt.
+  // and `body.reason` a one-sentence prompt. GLOBAL-040 `low_confidence`:
+  // a below-floor plan — `body.options` carries the candidate readings, so
+  // it is a guided turn, not a standalone `low_confidence` dead-end error.
   | "clarify_required"
   // SK-TRUST-006 — 409 returned when a write affects no rows: the pre-flight
   // count proved the write would touch nothing (`body.phase = "preview"`, so
@@ -471,10 +471,16 @@ export type ApiErrorBody = {
   limit?: number;
   count?: number;
   candidate_dbs?: CandidateDb[];
-  // SK-ASK-014 / SK-ASK-026 — present on `clarify_required` envelopes.
-  // `create_or_query_pinned` carries `pinned_db`; `destructive_ambiguous`
-  // (the "clear db" family) carries `options` + a one-sentence `reason`.
-  clarification?: "create_or_query_pinned" | "destructive_ambiguous";
+  // SK-ASK-014 / SK-ASK-026 / SK-ASK-031 / GLOBAL-040 — present on
+  // `clarify_required` envelopes. `create_or_query_pinned` carries `pinned_db`;
+  // `destructive_ambiguous` (the "clear db" family), `missing_required_reference`,
+  // and `low_confidence` (a below-floor plan, GLOBAL-040) each carry `options` +
+  // a one-sentence `reason`.
+  clarification?:
+    | "create_or_query_pinned"
+    | "destructive_ambiguous"
+    | "missing_required_reference"
+    | "low_confidence";
   pinned_db?: PinnedDb | null;
   // SK-ASK-026 — present on a `destructive_ambiguous` clarify.
   options?: ClarifyOption[];

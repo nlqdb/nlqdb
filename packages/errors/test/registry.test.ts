@@ -55,9 +55,14 @@ const REPRESENTATIVE: Partial<Record<ErrorCode, Record<string, unknown>[]>> = {
       options: [{ label: "Delete open orders", goal: "delete orders where status = 'open'" }],
     },
     { clarification: "create_or_query_pinned", pinned_db: { id: "db_1", slug: "sales" } },
+    // GLOBAL-040 — a below-floor plan rides the clarify rail, not a standalone code.
+    {
+      clarification: "low_confidence",
+      reason: "A couple of readings fit — which did you mean?",
+      options: [{ label: "Revenue by month", goal: "total revenue grouped by month" }],
+    },
   ],
   ambiguous_db: [{ candidate_dbs: [{ id: "db_1", slug: "sales" }] }, {}],
-  low_confidence: [{ alternatives: ["revenue by month"] }, {}],
   rate_limited: [{ limit: 30, count: 31, resetAt: 1_800_000_000 }, {}],
   auth_required: [{ cap: "anon_device_cap" }, { cap: "anon_global_cap" }, {}],
   forbidden: [{ reason: "read_only_principal" }, {}],

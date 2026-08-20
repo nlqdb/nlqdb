@@ -291,9 +291,12 @@ export const REGISTRY = {
     action: (p) =>
       SQL_REJECT_COPY[p.reason ?? ""]?.[1] ?? "Rephrase the goal in plain English and ask again.",
   }),
-  // SK-ASK-014 / SK-ASK-026 — the goal was ambiguous; `reason` is the
-  // server-authored prompt and `options` are re-sendable goals the surface
-  // renders as chips (web) / numbered choices (CLI) / structured options (MCP).
+  // SK-ASK-014 / SK-ASK-026 / SK-ASK-031 / GLOBAL-040 — the goal was ambiguous
+  // or the plan sat below the confidence floor; `reason` is the server-authored
+  // prompt and `options` are re-sendable goals the surface renders as chips
+  // (web) / numbered choices (CLI) / structured options (MCP). The single rail
+  // for every "which did you mean" — including `clarification: "low_confidence"`
+  // (GLOBAL-040), which replaced the old standalone `low_confidence` error.
   clarify_required: defineError({
     httpStatus: 409,
     recoverability: "clarify",
@@ -336,18 +339,10 @@ export const REGISTRY = {
             .join(", ")}).`
         : "Say which database you mean, then ask again.",
   }),
-  low_confidence: defineError({
-    httpStatus: 409,
-    recoverability: "clarify",
-    params: z.object({
-      alternatives: z.array(z.string().max(2000)).max(10).default([]).catch([]),
-    }),
-    message: () => "nlqdb wasn't confident enough in the plan to run it.",
-    action: (p) =>
-      p.alternatives.length > 0
-        ? "Pick one of the offered readings, or rephrase with the exact table and column names."
-        : "Rephrase with the exact table and column names you mean.",
-  }),
+  // GLOBAL-040 — a below-floor plan is not a standalone `low_confidence`
+  // error; it rides the single `clarify_required` rail above as
+  // `clarification: "low_confidence"` (options = the candidate readings), so
+  // every surface renders it as a guided one-click turn, never a dead-end.
 
   // ── Model / lane selection ─────────────────────────────────────────────
   model_unavailable: defineError({

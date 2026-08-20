@@ -71,7 +71,6 @@ retryable and which need a human. `code` is the discriminant the SDK exposes as
 | `write_constraint` | 409 | An approved write hit a constraint (FK / unique / not-null / check); nothing was written (`body.params`). | No | Fix the named field, then ask again. |
 | `write_no_rows` | 409 | An approved write matched no rows — previewed or committed (`body.params.phase`). | No | Name the row or widen the filter, then ask again. |
 | `invalid_value` | 409 | A value didn't fit its column (Postgres SQLSTATE class 22). | No | Restate with values that match the column types. |
-| `low_confidence` | 409 | The planner wasn't confident enough in the plan to run it. | No | Rephrase with the exact table and column names. |
 | `goal_too_long` | 400 | `goal` exceeds the length limit (`body.params.maxLength`). | No | Shorten it to the essential question. |
 | `invalid_scope` | 400 | `agentId` / `endUserId` / `threadId` weren't strings. | No | Send strings, or omit the fields. |
 | `byollm_requires_session` | 400 | A per-request provider key needs a signed-in session. | No | Sign in, or save the key to your account. |

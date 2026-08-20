@@ -3,7 +3,7 @@ import { createClient, NlqdbApiError } from "../../../packages/sdk/src/index.ts"
 import { openCassette } from "./_lib/cassette.ts";
 
 describe("P6 — Analytics Engineer · SDK contract", () => {
-  it("surfaces trace + confidence on success; refuses loudly on low confidence", async () => {
+  it("surfaces trace + confidence on success; clarifies (never dead-ends) on low confidence", async () => {
     const { fetch, assertConsumed } = openCassette("p6_analytics_engineer");
     const client = createClient({
       apiKey: "sk_live_p6_e2e",
@@ -32,12 +32,18 @@ describe("P6 — Analytics Engineer · SDK contract", () => {
     } catch (e) {
       thrown = e;
     }
+    // GLOBAL-040 — a below-floor plan is a guided `clarify_required` turn
+    // (`clarification: "low_confidence"`, one re-sendable `options` entry per
+    // candidate reading), never a standalone `low_confidence` dead-end error.
+    // The pipeline still never runs the plan silently — the analytics engineer
+    // gets one sharp question plus the answer to it, not coerced SQL.
     expect(thrown).toBeInstanceOf(NlqdbApiError);
     const err = thrown as NlqdbApiError;
-    expect(err.httpStatus).toBe(422);
-    expect(err.code).toBe("low_confidence");
-    expect(err.body?.message).toMatch(/confidence/i);
-    expect(err.body?.message).toMatch(/Try a more specific/i);
+    expect(err.httpStatus).toBe(409);
+    expect(err.code).toBe("clarify_required");
+    expect(err.body?.clarification).toBe("low_confidence");
+    expect(err.body?.options?.length).toBeGreaterThan(0);
+    expect(err.body?.reason).toMatch(/which did you mean/i);
 
     assertConsumed();
   });

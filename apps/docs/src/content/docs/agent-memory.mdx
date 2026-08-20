@@ -169,6 +169,9 @@ After connecting, the host lists these nlqdb tools:
 - `nlqdb_query` — ask your memory a question in English; returns rows **plus
   the exact SQL it ran** (in `trace`). The database materialises on first
   reference — there is no separate create step.
+- `nlqdb_read` — the read-only counterpart: same natural-language query, but
+  guaranteed never to write, create, or modify (a write plan is refused), so
+  you can mark it **always allow** in your host without a prompt per call.
 - `nlqdb_list_databases` — list the memory databases scoped to your account.
 - `nlqdb_describe` — inspect one database's shape (slug, engine, schema).
 - `nlqdb_connect_database` — attach an existing ClickHouse/Postgres so the
