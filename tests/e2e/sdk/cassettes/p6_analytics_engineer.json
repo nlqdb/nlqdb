@@ -30,13 +30,27 @@
         "bodyContains": ["something ambiguous", "db_e2e_p6"]
       },
       "response": {
-        "status": 422,
+        "status": 409,
         "body": {
           "error": {
-            "code": "low_confidence",
-            "message": "I don't have enough confidence to answer this safely. Try a more specific question (e.g. 'how many orders today').",
-            "action": "Rephrase with the exact table and column names you mean.",
-            "retryable": false
+            "code": "clarify_required",
+            "message": "A couple of readings fit — which did you mean?",
+            "action": "Re-send one of the offered readings, or rephrase with the exact table and column names.",
+            "retryable": false,
+            "params": {
+              "clarification": "low_confidence",
+              "reason": "A couple of readings fit — which did you mean?",
+              "options": [
+                {
+                  "label": "Orders per source, this week",
+                  "goal": "count orders grouped by source for the last 7 days"
+                },
+                {
+                  "label": "Revenue per source, this week",
+                  "goal": "sum revenue grouped by source for the last 7 days"
+                }
+              ]
+            }
           }
         }
       }

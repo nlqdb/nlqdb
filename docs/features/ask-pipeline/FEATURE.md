@@ -276,9 +276,9 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
   - *In this feature:* `SK-ASK-013` (per-stage `withStageRetry` with error feedback) is the canonical implementation; `SK-ASK-022` extends the executor with one execution-guided re-plan.
 - **GLOBAL-023** — Trust UX baseline.
-  - *In this feature:* SK-TRUST-002 shipped — `AskResult` carries the `trace: { sql, plan_id, confidence, model, cache_hit }` block on every successful response; the SSE `plan` event is its streaming form. Writes/DDL `diff` ([`SK-TRUST-001`](../trust-ux/FEATURE.md)) and the `low_confidence` short-circuit ([`SK-TRUST-003`](../trust-ux/FEATURE.md)) are planned.
+  - *In this feature:* SK-TRUST-002 shipped — `AskResult` carries the `trace: { sql, plan_id, confidence, model, cache_hit }` block on every successful response; the SSE `plan` event is its streaming form. Writes/DDL `diff` ([`SK-TRUST-001`](../trust-ux/FEATURE.md)) and the below-floor clarify short-circuit ([`SK-TRUST-003`](../trust-ux/FEATURE.md)) are planned.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
-  - *In this feature:* `unsupported_verb` (DDL via `/v1/ask`), `low_confidence`, and `db_full` rejections each emit a `feature.requested.*` event.
+  - *In this feature:* `unsupported_verb` (DDL via `/v1/ask`) and `db_full` rejections each emit a `feature.requested.*` event.
 - **GLOBAL-037** — LLM egress lanes; planning is schema-only.
   - *In this feature:* `orchestrate.ts` passes `db.schemaText` (DDL + evidence) only on the planning lane; no cell-values enter the prompt.
 

@@ -471,10 +471,16 @@ export type ApiErrorBody = {
   limit?: number;
   count?: number;
   candidate_dbs?: CandidateDb[];
-  // SK-ASK-014 / SK-ASK-026 — present on `clarify_required` envelopes.
-  // `create_or_query_pinned` carries `pinned_db`; `destructive_ambiguous`
-  // (the "clear db" family) carries `options` + a one-sentence `reason`.
-  clarification?: "create_or_query_pinned" | "destructive_ambiguous";
+  // SK-ASK-014 / SK-ASK-026 / SK-ASK-031 / GLOBAL-040 — present on
+  // `clarify_required` envelopes. `create_or_query_pinned` carries `pinned_db`;
+  // `destructive_ambiguous` (the "clear db" family), `missing_required_reference`,
+  // and `low_confidence` (a below-floor plan, GLOBAL-040) each carry `options` +
+  // a one-sentence `reason`.
+  clarification?:
+    | "create_or_query_pinned"
+    | "destructive_ambiguous"
+    | "missing_required_reference"
+    | "low_confidence";
   pinned_db?: PinnedDb | null;
   // SK-ASK-026 — present on a `destructive_ambiguous` clarify.
   options?: ClarifyOption[];

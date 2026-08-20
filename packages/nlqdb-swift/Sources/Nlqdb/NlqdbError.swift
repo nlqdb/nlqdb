@@ -13,7 +13,6 @@ public struct NlqdbError: Error, Sendable, Equatable {
         case sqlTooLong = "sql_too_long"
         case sqlRejected = "sql_rejected"
         case invalidEngine = "invalid_engine"
-        case lowConfidence = "low_confidence"
         case invalidJson = "invalid_json"
         case nonJsonResponse = "non_json_response"
         case networkError = "network_error"
