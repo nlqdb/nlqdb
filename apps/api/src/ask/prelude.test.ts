@@ -10,7 +10,13 @@
 //     anon create path (fix B) — explicit `body.engine` always wins.
 
 import { describe, expect, it, vi } from "vitest";
-import { kickoffAskPrelude, resolveAnonEngineOverride, seedFromPinnedDb } from "./prelude.ts";
+import {
+  kickoffAskPrelude,
+  mergeSeededTables,
+  resolveAnonEngineOverride,
+  seedFromPinnedDb,
+} from "./prelude.ts";
+import type { RecentTable } from "./recent-tables.ts";
 import type { DbRecord } from "./types.ts";
 
 describe("kickoffAskPrelude (WS5 fix A)", () => {
@@ -88,6 +94,47 @@ describe("seedFromPinnedDb (SK-ASK-018)", () => {
 
   it("returns [] when schema_text has no CREATE TABLE statements", () => {
     expect(seedFromPinnedDb({ ...pinned, schemaText: "-- empty" })).toEqual([]);
+  });
+});
+
+describe("mergeSeededTables (SK-ASK-032 / SK-ASK-018 widened)", () => {
+  const t = (dbId: string, table: string, touchedAt = 0): RecentTable => ({
+    dbId,
+    slug: dbId,
+    table,
+    touchedAt,
+  });
+
+  it("puts the pinned-DB seed first so it wins a table-name tie", () => {
+    const seed = [t("db_pinned", "campaigns")];
+    const mru = [t("db_other", "orders", 5)];
+    expect(mergeSeededTables(seed, mru)).toEqual([
+      t("db_pinned", "campaigns"),
+      t("db_other", "orders", 5),
+    ]);
+  });
+
+  it("drops an MRU entry the seed already covers (same dbId + table)", () => {
+    const seed = [t("db_pinned", "campaigns")];
+    const mru = [t("db_pinned", "campaigns", 9), t("db_pinned", "leads", 3)];
+    expect(mergeSeededTables(seed, mru)).toEqual([
+      t("db_pinned", "campaigns"),
+      t("db_pinned", "leads", 3),
+    ]);
+  });
+
+  it("keeps a same-named table from a different DB (dedup is per dbId+table)", () => {
+    const seed = [t("db_pinned", "campaigns")];
+    const mru = [t("db_other", "campaigns", 7)];
+    expect(mergeSeededTables(seed, mru)).toEqual([
+      t("db_pinned", "campaigns"),
+      t("db_other", "campaigns", 7),
+    ]);
+  });
+
+  it("is a no-op passthrough of the MRU when the seed is empty", () => {
+    const mru = [t("db_other", "orders", 5)];
+    expect(mergeSeededTables([], mru)).toEqual(mru);
   });
 });
 

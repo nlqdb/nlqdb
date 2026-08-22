@@ -336,6 +336,11 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
         // request through the create path. Overrides activeDbId
         // and dbIdOverride.
         forceNoPin?: boolean;
+        // SK-ASK-032: the create/query clarify's "Query <db>" chip. Re-sends
+        // the same goal pinned to the DB AND tells the API to skip the
+        // classifier and force the query route, so the confirmation can't
+        // loop back onto the same clarify.
+        forceQuery?: boolean;
       } = {},
     ) => {
       // SK-ASK-009: send routes through `askStream` only when a
@@ -393,7 +398,13 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
       try {
         if (pinnedDbId) {
           const result = await client.askStream(
-            { goal, dbId: pinnedDbId, ...modelField, ...(opts.confirm ? { confirm: true } : {}) },
+            {
+              goal,
+              dbId: pinnedDbId,
+              ...modelField,
+              ...(opts.confirm ? { confirm: true } : {}),
+              ...(opts.forceQuery ? { forceQuery: true } : {}),
+            },
             { signal: ac.signal, onTrace },
           );
           if (result.requires_confirm && result.diff) {
@@ -594,12 +605,13 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
     void startSend(goal, { replyId, forceNoPin: true });
   }
 
-  // SK-ASK-014: clicking "Query <db>" re-sends the SAME goal pinned to the
-  // DB the classifier flagged — the intended read the create/rephrase
-  // dead-end used to force the user to retype. The recent-table fast-path
-  // (SK-ASK-009) routes a table reference to query on the re-send.
+  // SK-ASK-014 / SK-ASK-032: clicking "Query <db>" re-sends the SAME goal
+  // pinned to the DB the classifier flagged, with `forceQuery` so the API
+  // skips the classifier and takes the query route directly. Without the flag
+  // the re-send re-runs the identical classifier, re-derives kind=create, and
+  // dead-ends on the same clarify — the reported loop.
   function acceptClarifyQuery(replyId: string, goal: string, dbId: string) {
-    void startSend(goal, { replyId, dbIdOverride: dbId });
+    void startSend(goal, { replyId, dbIdOverride: dbId, forceQuery: true });
   }
 
   // SK-ASK-026 — clicking a destructive-clarify option re-sends its goal.

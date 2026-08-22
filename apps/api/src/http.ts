@@ -46,6 +46,7 @@ export type AskBody = {
   dbId?: string;
   engine?: Engine;
   confirm?: boolean;
+  forceQuery?: boolean;
   model?: ModelPreset;
   source?: AskSource;
   agentId?: string;
@@ -138,6 +139,7 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
     dbId?: unknown;
     engine?: unknown;
     confirm?: unknown;
+    forceQuery?: unknown;
     model?: unknown;
     source?: unknown;
     agentId?: unknown;
@@ -168,6 +170,11 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
   // as preview-mode so a malformed client can't bypass the gate.
   if (raw.body.confirm === true) {
     body.confirm = true;
+  }
+  // SK-ASK-032 — truthy-only, same defensive coercion: only an explicit
+  // `true` (from the create/query clarify chip) forces the query route.
+  if (raw.body.forceQuery === true) {
+    body.forceQuery = true;
   }
   // SK-PREMIUM-014 — preset knob. An empty string is treated as omitted
   // (same client convenience as dbId); unknown strings reject.

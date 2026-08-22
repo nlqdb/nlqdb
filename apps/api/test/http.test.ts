@@ -129,6 +129,31 @@ describe("parseAskBody — model preset validation (SK-PREMIUM-014)", () => {
   });
 });
 
+describe("parseAskBody — forceQuery (SK-ASK-032)", () => {
+  it("carries forceQuery only for an explicit boolean true", async () => {
+    const out = await parseAskBody(fakeCtx({ goal: "g", dbId: "db_1", forceQuery: true }));
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("expected ok");
+    expect(out.body.forceQuery).toBe(true);
+  });
+
+  it("omits forceQuery when absent", async () => {
+    const out = await parseAskBody(fakeCtx({ goal: "g", dbId: "db_1" }));
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("expected ok");
+    expect(out.body.forceQuery).toBeUndefined();
+  });
+
+  it("treats any non-true value as omitted (truthy strings can't force the route)", async () => {
+    for (const forceQuery of ["true", 1, {}, "yes", false, null]) {
+      const out = await parseAskBody(fakeCtx({ goal: "g", dbId: "db_1", forceQuery }));
+      expect(out.ok).toBe(true);
+      if (!out.ok) throw new Error("expected ok");
+      expect(out.body.forceQuery).toBeUndefined();
+    }
+  });
+});
+
 describe("parseAskBody — acquisition source (SK-GTM-007)", () => {
   it("carries a valid source through, trimmed and length-capped", async () => {
     const out = await parseAskBody(

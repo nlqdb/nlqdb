@@ -27,7 +27,7 @@ import type { AclRetarget } from "../anon-adopt.ts";
 import { makeAclRetarget } from "../anon-adopt-regrant.ts";
 import { SUPABASE_MGMT_BLOB_SENTINEL } from "../db-connect/constants.ts";
 import { loadValidSupabaseGrant } from "../db-connect/oauth/grant-store.ts";
-import { resolveDb } from "../db-registry.ts";
+import { type BoundResolveDb, resolveDb } from "../db-registry.ts";
 import { buildEventEmitter } from "../events-emitter.ts";
 import { getLLMRouter } from "../llm-router.ts";
 import type { MemoryInsertPlan, MemoryScope } from "../memory/remember.ts";
@@ -54,13 +54,18 @@ import { DbConfigError, type DbRecord, type QueryResult } from "./types.ts";
 // `endUserId` / `threadId` request fields and it rides into the exec
 // transaction as GUCs. Omitted ⇒ `buildHostedExecSteps` defaults to the
 // tenant principal (full visibility), so non-memory callers are unchanged.
+// `resolveDb` defaults to a fresh D1-bound resolver. The `/v1/ask` handler
+// passes a per-request memoized resolver (`memoResolveDb`) so the pinned-DB
+// read it already did for the routeAsk table context is reused here instead of
+// hitting D1 a second time.
 export function buildAskDeps(
   envBindings: Cloudflare.Env,
   llm?: LLMRouter,
   scope?: MemoryScope,
+  resolveDbFn?: BoundResolveDb,
 ): OrchestrateDeps {
   return {
-    resolveDb: (id, tenantId) => resolveDb(envBindings.DB, id, tenantId),
+    resolveDb: resolveDbFn ?? ((id, tenantId) => resolveDb(envBindings.DB, id, tenantId)),
     planCache: makePlanCache(envBindings.KV),
     confirmStash: makeConfirmStash(envBindings.KV),
     llm: llm ?? getLLMRouter(),

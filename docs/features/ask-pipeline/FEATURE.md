@@ -134,13 +134,14 @@ Pre-flight `extractTables` check + a `42P01` exec backstop converge on one
 - **Consequence in code:** the three speculative modules are deleted and the handler drops the kickoff + consume blocks; only canonical creates now reach `recent_tables.touch`, and `dropSchemaAndRegistry` survives for the registry-insert-failed path.
 - **Alternatives rejected:** Gate speculation on listDb=0 — adds wait per cold-create. Cancellable rollback — Workers Postgres tx can't. MRU-touch removal only — tail risk remains. Feature flag — re-introduces dead code.
 
-### SK-ASK-018 — Seed `routeAsk` recentTables from the pinned DB's `schema_text` when the MRU is empty
+### SK-ASK-018 — Seed `routeAsk` recentTables from the pinned DB's `schema_text` on every pinned ask
 
-- **Decision:** When `/v1/ask` arrives with `dbId` pinned and `recent_tables:<principalId>` is empty in KV, the handler reads the pinned `databases` row from D1, synthesizes a `RecentTable` per `CREATE TABLE` in `schema_text`, and feeds that to `routeAsk`. KV stays authoritative when populated — the D1 fallback fires only on the cold-MRU path.
-- **Core value:** Effortless UX, Goal-first, Fast
-- **Why:** A freshly-adopted user writing against a pinned DB saw `409 clarify_required` because adoption (SK-ANON-003) doesn't migrate `recent_tables:anon:<hash>` to the user key. With empty `recentTables`, routeAsk's LLM applied its "no recent tables → create" rule. Seeding from `schema_text` puts the real tables in the prompt and the classifier picks `kind=write`. Gating on `recentTables.length === 0` keeps the hot path at one KV read — D1 fires only when the cache was going to misclassify anyway.
-- **Consequence in code:** on the cold-MRU pinned path the handler synthesizes a `RecentTable` per `CREATE TABLE` in `schema_text`, each stamped `touchedAt = 0` so any real touch outranks it. Best-effort: a D1 throw leaves the empty MRU.
-- **Alternatives rejected:** Always fetch the pinned DB alongside the MRU — extra D1 read even when the cache covers it. Migrate the anon MRU on adoption — a KV op on sign-in for a rare payoff. Inline schema_text into the prompt — larger budget; reusing `recentTables` is a smaller diff.
+**Body:** [`decisions/SK-ASK-018-seed-pinned-db-tables.md`](./decisions/SK-ASK-018-seed-pinned-db-tables.md).
+On every pinned `/v1/ask` the pinned DB's own tables (from `schema_text`) are
+folded into routeAsk's `recentTables` — not only on a cold MRU (the prior gate,
+which let a read like `"how many campaigns…"` misclassify as create against a
+freshly-connected DB). The read is memoized (`memoResolveDb`) and shared with
+the orchestrator's exec read, so the widening costs no extra D1 hop.
 
 ### SK-ASK-019 — Map PG `3F000` (schema does not exist) to `schema_mismatch` with structured logging
 
@@ -258,6 +259,16 @@ returns chips of that table's actual rows ("For Alice / Bob / Carol") instead
 of the `SK-ASK-029` envelope — the planner can't answer what the goal never
 said (both free AND paid planners guessed past `SK-LLM-050` on 2026-08-19),
 so the recovery is a question. Fallback on any miss: plain `write_constraint`.
+
+### SK-ASK-032 — `forceQuery` resolves the create/query clarify without re-classifying — a guided turn, not a loop
+
+**Body:** [`decisions/SK-ASK-032-force-query-clarify.md`](./decisions/SK-ASK-032-force-query-clarify.md).
+Re-sending the same goal + pin re-ran the identical classifier and re-returned
+the same `create_or_query_pinned` clarify — a dead-end loop. Resolving it with
+`forceQuery: true` skips `routeAsk` and forces `kind=query` against the pin
+(`GLOBAL-040`: a clarify is a guided turn, not a dead-end). Pairs with the
+widened `SK-ASK-018`. Shipped SDK + web + CLI (`--force-query`); MCP/elements
+gap tracked in the body.
 
 ## The LLM loop
 
