@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createGroqProvider } from "../../src/providers/groq.ts";
+import { createGroqProvider, createGroqQwenProvider } from "../../src/providers/groq.ts";
 import type { ProviderError, RouteRequest } from "../../src/types.ts";
 import { mockFetch, openAIChatResponse } from "../_fixtures.ts";
 
@@ -202,5 +202,38 @@ describe("createGroqProvider", () => {
     ]);
     const res = await provider.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
     expect(res.sql).toBe("SELECT 2");
+  });
+});
+
+describe("createGroqQwenProvider (SK-LLM-053)", () => {
+  it("names the chain entry groq-qwen and serves Qwen3.6-27B on the planner ops", () => {
+    const provider = createGroqQwenProvider({ apiKey });
+    expect(provider.name).toBe("groq-qwen");
+    expect(provider.model("plan")).toBe("qwen/qwen3.6-27b");
+    expect(provider.model("schema_infer")).toBe("qwen/qwen3.6-27b");
+  });
+
+  it("dispatches the planner head PLAIN — no reasoning_effort (forcing it empties content on Groq)", async () => {
+    const provider = createGroqQwenProvider({ apiKey });
+    let sent: Record<string, unknown> = {};
+    const fetch = mockFetch([
+      {
+        match: /api\.groq\.com.*chat\/completions/,
+        respond: async (req) => {
+          sent = (await req.clone().json()) as Record<string, unknown>;
+          return openAIChatResponse(JSON.stringify({ sql: "SELECT 1" }));
+        },
+      },
+    ]);
+    const res = await provider.plan(
+      { goal: "g", schema: "t(a int)", dialect: "sqlite" },
+      { fetch },
+    );
+    expect(res.sql).toBe("SELECT 1");
+    expect(sent["model"]).toBe("qwen/qwen3.6-27b");
+    expect(sent["reasoning_effort"]).toBeUndefined();
+    expect(sent["max_completion_tokens"]).toBeUndefined();
+    // Greedy (SK-LLM-024) like every other planner leg.
+    expect(sent["temperature"]).toBe(0);
   });
 });

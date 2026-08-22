@@ -122,7 +122,7 @@ export { createCerebrasGlmProvider, createCerebrasProvider } from "./providers/c
 export type { GeminiProviderOptions } from "./providers/gemini.ts";
 export { createGeminiProvider } from "./providers/gemini.ts";
 export type { GroqProviderOptions } from "./providers/groq.ts";
-export { createGroqProvider } from "./providers/groq.ts";
+export { createGroqProvider, createGroqQwenProvider } from "./providers/groq.ts";
 export type { MistralProviderOptions } from "./providers/mistral.ts";
 export { createMistralProvider } from "./providers/mistral.ts";
 export { parseChatUsage } from "./providers/openai-compatible.ts";

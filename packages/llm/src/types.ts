@@ -23,7 +23,12 @@ export type ProviderName =
   | "cerebras"
   // SK-LLM-048 — GLM-4.7 planner head, served by the same Cerebras key as
   // `cerebras` (gpt-oss-120b) but a distinct name so both sit in the chain.
+  // SK-LLM-053 — unwired 2026-08-22 (Cerebras pulled `zai-glm-4.7`, now 404);
+  // the factory is retained as reusable Cerebras-reasoning-model infra.
   | "cerebras-glm"
+  // SK-LLM-053 — Qwen3.6-27B planner head, served on the same Groq key as
+  // `groq` (gpt-oss) but a distinct name + model so both sit in the chain.
+  | "groq-qwen"
   | "mistral"
   | "byollm";
 

@@ -9,10 +9,10 @@
 //                           on this lane per `SK-QUAL-009`.
 
 import {
-  createCerebrasGlmProvider,
   createCerebrasProvider,
   createGeminiProvider,
   createGroqProvider,
+  createGroqQwenProvider,
   createLLMRouter,
   createMistralProvider,
   createOpenRouterProvider,
@@ -78,12 +78,15 @@ export type Lane = {
 
 function buildFreeLane(env: EvalEnv): Lane | null {
   const providers = [];
-  if (env.CEREBRAS_API_KEY) {
-    // SK-LLM-048 — GLM-4.7 head + gpt-oss-120b fallback, both off the one key.
-    providers.push(createCerebrasGlmProvider({ apiKey: env.CEREBRAS_API_KEY }));
-    providers.push(createCerebrasProvider({ apiKey: env.CEREBRAS_API_KEY }));
+  // SK-LLM-053 — Qwen3.6-27B planner head, off the same Groq key as the
+  // gpt-oss `groq` leg below (distinct model ⇒ distinct per-model quota).
+  if (env.GROQ_API_KEY) {
+    providers.push(createGroqQwenProvider({ apiKey: env.GROQ_API_KEY }));
+    providers.push(createGroqProvider({ apiKey: env.GROQ_API_KEY }));
   }
-  if (env.GROQ_API_KEY) providers.push(createGroqProvider({ apiKey: env.GROQ_API_KEY }));
+  // SK-LLM-023 — Cerebras gpt-oss-120b, retained planner fallback.
+  if (env.CEREBRAS_API_KEY)
+    providers.push(createCerebrasProvider({ apiKey: env.CEREBRAS_API_KEY }));
   if (env.GEMINI_API_KEY) providers.push(createGeminiProvider({ apiKey: env.GEMINI_API_KEY }));
   if (env.CF_AI_TOKEN && env.CLOUDFLARE_ACCOUNT_ID) {
     providers.push(
@@ -96,13 +99,13 @@ function buildFreeLane(env: EvalEnv): Lane | null {
   if (env.MISTRAL_API_KEY) providers.push(createMistralProvider({ apiKey: env.MISTRAL_API_KEY }));
   if (providers.length === 0) return null;
   // Chain order matches apps/api/src/llm-router.ts so the eval measures what
-  // production ships — GLM-4.7 planner head per SK-LLM-048 (gpt-oss-120b
+  // production ships — Qwen3.6-27B planner head per SK-LLM-053 (gpt-oss-120b
   // retained third), Mistral tail capacity backstop per SK-LLM-028. The router
   // skips any provider whose key is absent, so a partial-key CI run still runs.
   const router = createLLMRouter({
     providers,
     chains: {
-      plan: ["cerebras-glm", "gemini", "cerebras", "groq", "workers-ai", "openrouter", "mistral"],
+      plan: ["groq-qwen", "gemini", "cerebras", "groq", "workers-ai", "openrouter", "mistral"],
     },
     // SK-LLM-030 — honor a 429's full `Retry-After` window (prod caps it
     // for latency). A long server back-off is exactly the signal the
