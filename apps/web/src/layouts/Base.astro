@@ -58,6 +58,52 @@ const siteEntityJsonLd =
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#0b0c0b" />
 
+    {/* Legacy-browser boot guard — upholds SK-WEB-001's "no blank screens,
+        no dead-ended onboarding" floor. The create path
+        (`lib/anon.ts` → `crypto.randomUUID`) and bundled deps (`Array.prototype.at`)
+        use APIs shipped ~Chrome 92 / Safari 15.4 (mid-2021). On older browsers they
+        throw at hydration and dead-end onboarding (rnd@ boot alerts, 2026-08-22:
+        "t.entries.at is not a function", "window.crypto.randomUUID is not a function").
+        Runtime APIs aren't transpiled, so this dependency-free inline shim — running
+        before any deferred module bundle — is the fix. `crypto.getRandomValues`
+        (Chrome 11+) backs the UUID fallback and is already assumed by the boot-fallback
+        reporter below. Placed early in `<head>` so it is in effect before hydration. */}
+    <script is:inline>
+      (function () {
+        try {
+          var atFn = function (n) {
+            n = Math.trunc(n) || 0;
+            if (n < 0) n += this.length;
+            return n < 0 || n >= this.length ? undefined : this[n];
+          };
+          if (!Array.prototype.at) {
+            Object.defineProperty(Array.prototype, "at", { value: atFn, writable: true, configurable: true });
+          }
+          if (!String.prototype.at) {
+            Object.defineProperty(String.prototype, "at", { value: atFn, writable: true, configurable: true });
+          }
+          if (window.crypto && !window.crypto.randomUUID && window.crypto.getRandomValues) {
+            var hex = [];
+            for (var i = 0; i < 256; i++) hex[i] = (i + 0x100).toString(16).slice(1);
+            window.crypto.randomUUID = function () {
+              var b = window.crypto.getRandomValues(new Uint8Array(16));
+              b[6] = (b[6] & 0x0f) | 0x40;
+              b[8] = (b[8] & 0x3f) | 0x80;
+              return (
+                hex[b[0]] + hex[b[1]] + hex[b[2]] + hex[b[3]] + "-" +
+                hex[b[4]] + hex[b[5]] + "-" +
+                hex[b[6]] + hex[b[7]] + "-" +
+                hex[b[8]] + hex[b[9]] + "-" +
+                hex[b[10]] + hex[b[11]] + hex[b[12]] + hex[b[13]] + hex[b[14]] + hex[b[15]]
+              );
+            };
+          }
+        } catch (_) {
+          /* a polyfill failure must never itself break boot */
+        }
+      })();
+    </script>
+
     <title>{title}</title>
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
