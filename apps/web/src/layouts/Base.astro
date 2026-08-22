@@ -58,7 +58,8 @@ const siteEntityJsonLd =
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#0b0c0b" />
 
-    {/* SK-WEB-001 — legacy-browser boot guard. The create path
+    {/* Legacy-browser boot guard — upholds SK-WEB-001's "no blank screens,
+        no dead-ended onboarding" floor. The create path
         (`lib/anon.ts` → `crypto.randomUUID`) and bundled deps (`Array.prototype.at`)
         use APIs shipped ~Chrome 92 / Safari 15.4 (mid-2021). On older browsers they
         throw at hydration and dead-end onboarding (rnd@ boot alerts, 2026-08-22:
