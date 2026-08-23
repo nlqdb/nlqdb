@@ -28,6 +28,17 @@ and its age next to "worst number today" — restating it each run is
 measurement, not nagging: with 0 real strangers, the age of this queue's head
 is the company's real cycle time.
 
+## ⚠️ Pipeline blocked — reconnect the Claude GitHub App (2026-08-23)
+
+The autonomous PR review/merge loop can't run: every repo-scoped GitHub API
+call for `nlqdb/nlqdb` and `nlqdb/experts` returns **403 — "An org admin must
+connect the Claude GitHub App for this organization."** Git fetch/push still
+work, but agents can't list PRs, read CI, comment, or merge. Merges last
+succeeded **2026-08-22** (#1040), so this is a *fresh* outage — **verify it's
+still down, then reconnect the App** at `claude.ai/admin-settings/claude-tag`
+(~2 min, org-admin only). Until then nothing ships. Delete this bullet once a
+merge succeeds again.
+
 ## At a glance
 
 The whole queue, same order as the bullets below — where the exact URLs, form
