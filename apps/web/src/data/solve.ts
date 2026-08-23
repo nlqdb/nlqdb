@@ -1481,6 +1481,12 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "pivot-rows-into-columns",
     persona: "P3 analyst",
+    // Hand-written SERP meta (GSC: pos ~12.8, 21 impr, 0 clicks): the
+    // auto-clamp truncates the title at "…without writing a…", cutting the
+    // "crosstab query" differentiator — see lib/meta.ts.
+    metaTitle: "Pivot rows into columns in SQL — no crosstab query",
+    metaDescription:
+      "Pivot rows into columns in SQL without hand-writing a crosstab — nlqdb compiles the conditional aggregation, runs it, shows the SQL. Ask in plain English.",
     searchTitle: "How do I pivot rows into columns in SQL without writing a crosstab query?",
     oneLiner:
       "If you need a pivot table — rows turned into columns, like revenue per product with one column per month — ask in plain English instead of hand-writing a crosstab. nlqdb compiles the conditional aggregation, runs it in Postgres, and shows the SQL so you can verify the buckets.",
@@ -2023,6 +2029,13 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "count-rows-per-day-including-missing-dates",
     persona: "P3 analyst",
+    // Hand-written SERP meta (GSC: pos ~8.6, 57 impr, 0 clicks — top page-1
+    // zero-click page): the auto-clamp truncates the title at "…including days
+    // with…", cutting the zero-row/missing-date differentiator — see
+    // lib/meta.ts.
+    metaTitle: "Count rows per day in SQL, including zero-row days",
+    metaDescription:
+      "Count rows per day in SQL and still show the days with none — nlqdb builds the date spine, LEFT JOINs your rows, and shows the SQL. Ask in plain English.",
     searchTitle: "How do I count rows per day in SQL, including days with zero rows?",
     oneLiner:
       "If your per-day counts skip the days with no rows — a signup chart with holes where the zeros should be — ask in plain English. nlqdb compiles the `generate_series` calendar spine, LEFT JOINs your rows onto it, runs it in Postgres, and shows the SQL, so quiet days come back as 0 instead of vanishing.",
