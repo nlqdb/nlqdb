@@ -63,7 +63,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 - run 7 — **https://nlqdb.com/blog/http-200-error-in-body/** — r/LocalLLaMA + lobste.rs · engine lesson (res.ok necessary not sufficient) · dev.to posted 2026-08-12: https://dev.to/omer_hochman/your-text-to-sql-eval-is-lying-the-gateway-returns-http-200-with-the-error-in-the-body-4i8i
 - run 14 — **https://nlqdb.com/blog/bird-gold-noise-distinct/** — r/LLMDevs + lobste.rs (`llm`) · engine lesson (benchmark number = floor bounded by gold quality; `SK-QUAL-014`) · dev.to posted 2026-08-07: https://dev.to/omer_hochman/your-text-to-sql-model-isnt-as-wrong-as-your-benchmark-says-the-gold-sql-is-p16
 - run 16 — **https://nlqdb.com/blog/model-preset-fail-loud/** — dev.to (#llm #api #ux) + r/LLMDevs · engine/product lesson (a model knob is a contract not a capability: pin `fast` / upgrade `best` or 409 `model_unavailable` + fix-it link; refusal count = paid-lane demand signal; `SK-PREMIUM-014`, GLOBAL-012 fail-loud)
-- run 17 — **https://nlqdb.com/blog/llm-preflight-probe-health/** — dev.to (#llm #ci #testing) + r/LLMDevs · CI/engine lesson (health ≠ competence; probe the tool-call shape, read the body not the status; `SK-LLM-042`)
+- run 17 — **https://nlqdb.com/blog/llm-preflight-probe-health/** — r/LLMDevs (human) · CI/engine lesson (health ≠ competence; probe the tool-call shape, read the body not the status; `SK-LLM-042`) · dev.to posted 2026-08-22: https://dev.to/omer_hochman/your-llm-health-probe-passed-your-agent-still-starved-50d0
 
 ## Collapsed — full drafts in git history
 
