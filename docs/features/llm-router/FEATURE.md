@@ -31,7 +31,7 @@ when-to-load:
 
 ### SK-LLM-003 — Day-1 strict-$0 chain: Gemini Flash → Groq → Workers-AI → OpenRouter free
 
-**Body:** [`decisions/SK-LLM-003-strict-zero-chain.md`](./decisions/SK-LLM-003-strict-zero-chain.md). **Current planner tier:** Qwen3.6-27B head per [`SK-LLM-053`](#sk-llm-053) (gpt-oss-120b fallback, [`SK-LLM-023`](#sk-llm-023); GLM-4.7 head [`SK-LLM-048`](#sk-llm-048) superseded — pulled from Cerebras), Mistral tail per [`SK-LLM-028`](#sk-llm-028).
+**Body:** [`decisions/SK-LLM-003-strict-zero-chain.md`](./decisions/SK-LLM-003-strict-zero-chain.md). **Current planner tier:** Qwen3.6-27B head per [`SK-LLM-053`](#sk-llm-053) (gpt-oss-120b fallback, [`SK-LLM-023`](#sk-llm-023)), Mistral tail per [`SK-LLM-028`](#sk-llm-028).
 
 ### SK-LLM-004 — Cloudflare AI Gateway sits in front of every paid provider
 
@@ -203,7 +203,7 @@ when-to-load:
 
 ### SK-LLM-048 — GLM-4.7 (`zai-glm-4.7`, Cerebras) leads the strict-$0 planner tier — SUPERSEDED by SK-LLM-053
 
-**Body:** [`decisions/SK-LLM-048-glm-4.7-planner-head.md`](./decisions/SK-LLM-048-glm-4.7-planner-head.md). GLM-4.7 (`cerebras-glm`) headed the planner chain, gpt-oss-120b retained fallback; a reasoning model, so `reasoning_effort:"low"` + completion ceiling and [`SK-LLM-014`](#sk-llm-014) hedge 800→2000 ms. **Superseded 2026-08-22 by [`SK-LLM-053`](#sk-llm-053):** Cerebras pulled `zai-glm-4.7` (now 404), so the head moved to Qwen3.6-27B on Groq. The `createCerebrasGlmProvider` factory is retained (unwired) for reuse; the 2000 ms hedge head-start carries forward.
+**Body:** [`decisions/SK-LLM-048-glm-4.7-planner-head.md`](./decisions/SK-LLM-048-glm-4.7-planner-head.md). Superseded 2026-08-22 by [`SK-LLM-053`](#sk-llm-053) — Cerebras pulled `zai-glm-4.7` (404). Its 2000 ms [`SK-LLM-014`](#sk-llm-014) hedge head-start carries forward; the `createCerebrasGlmProvider` factory is retained (unwired).
 
 ### SK-LLM-049 — Schema-metadata goals directive in the planner prompt
 
@@ -223,7 +223,7 @@ when-to-load:
 
 ### SK-LLM-053 — Qwen3.6-27B (`qwen/qwen3.6-27b`, Groq) leads the strict-$0 planner tier
 
-**Body:** [`decisions/SK-LLM-053-qwen3.6-27b-planner-head.md`](./decisions/SK-LLM-053-qwen3.6-27b-planner-head.md). Supersedes [`SK-LLM-048`](#sk-llm-048) — Cerebras pulled `zai-glm-4.7` (verified 404, 2026-08-22). Qwen3.6-27B (`groq-qwen`) heads `plan` / `schema_infer` on the existing card-free Groq key (77.2% SWE-bench Verified; no new secret), dispatched **plain** (forcing `reasoning_effort` empties `content`). gpt-oss-120b retained fallback ([`SK-LLM-023`](#sk-llm-023)); dead `cerebras-glm` unwired (factory kept). Same measurement gate as SK-LLM-048 — BIRD/Spider quality-eval cron before merge; one-line revert.
+**Body:** [`decisions/SK-LLM-053-qwen3.6-27b-planner-head.md`](./decisions/SK-LLM-053-qwen3.6-27b-planner-head.md). Supersedes [`SK-LLM-048`](#sk-llm-048) (Cerebras 404'd `zai-glm-4.7`, 2026-08-22). Qwen3.6-27B (`groq-qwen`) heads `plan` / `schema_infer` on the existing card-free Groq key (no new secret), dispatched **plain** (forcing `reasoning_effort` empties `content`). gpt-oss-120b retained fallback ([`SK-LLM-023`](#sk-llm-023)); dead `cerebras-glm` unwired (factory kept). Measurement-gated — BIRD/Spider quality-eval cron before merge; one-line revert.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
