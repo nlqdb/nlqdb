@@ -59,10 +59,13 @@ describe("P2 — Agent Builder · MCP protocol contract", () => {
       const { tools } = await mcpClient.listTools();
       const names = tools.map((t) => t.name);
       // Tool order is part of the contract — some agent clients discover by index.
-      // New tools are appended (`nlqdb_remember` per SK-PIVOT-008,
-      // `nlqdb_connect_database` per SK-DBCONN-001), never reordering the stable three.
+      // This is the SK-MCP-002 canonical catalog: `nlqdb_read` sits beside its
+      // `nlqdb_query` sibling (the read-only, pre-authorizable twin), then the
+      // list/describe pair, then the additive `nlqdb_remember` (SK-PIVOT-008) and
+      // `nlqdb_connect_database` (SK-DBCONN-001).
       expect(names).toEqual([
         "nlqdb_query",
+        "nlqdb_read",
         "nlqdb_list_databases",
         "nlqdb_describe",
         "nlqdb_remember",
