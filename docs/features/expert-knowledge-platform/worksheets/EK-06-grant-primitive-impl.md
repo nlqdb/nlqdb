@@ -79,11 +79,23 @@ owns the `getActiveGrant` + `grant-status.ts` cache lookup and passes the
 already-resolved grant) — so the full reject matrix is unit-tested
 (`grant-read.test.ts`) without a live DB. The forthcoming `/v1/ask` branch
 reduces to: resolve grant → `planGrantedRead` → run `execSteps` → skip
-narration (EK-09 box 2) → meter (`grant-usage.ts`). Still box 2's open work:
-that live `/v1/ask` **exec** wiring, whose `app.*` GUC values against the
-`agent_memory_v1` `agent_isolation` RLS policy get their **live PG
-verification** (owner rows returned, nothing else) alongside the RLS-bypass
-kill-test.
+narration (EK-09 box 2) → meter (`grant-usage.ts`). **Box 2 — live-PG RLS-bypass kill-test shipped 2026-08-23 (sub-piece e):**
+`apps/api/src/grant-scoping.integration.test.ts` — the "owner rows, nothing
+else" invariant executed by Postgres, not asserted about a string. It
+provisions a grant role from the real `buildGrantRoleDdl` and runs reads
+through the real `buildGrantExecSteps`, then proves against a live Neon branch
+(gated on `NEON_TEST_BRANCH_URL`, skips in CI without it — the
+`memory-scoping.integration.test.ts` idiom): a granted read sees the whole
+owner knowledge DB across every owner agent (tenant-literal arm) minus expired
+rows; **cross-tenant reach fails closed** — a fully-qualified read of another
+tenant's schema, directly *or* via JOIN, is `permission denied` (the grant
+role holds USAGE on the owner schema only); granted writes are denied at the
+role level (SELECT-only); and FORCE RLS is confirmed on every scoped table
+(guardrail #3). So the DB-role guarantees the exec batch leans on are proven
+now — a later route bug can't be mistaken for a grant-primitive bug. Still box
+2's open work: the buyer's live `/v1/ask` **exec** route wiring itself (resolve
+grant → `planGrantedRead` → run `execSteps` → skip narration → meter), and the
+live revoke-while-in-flight latency measurement (its own box below).
 
 ## Goal
 
@@ -145,7 +157,11 @@ satisfy):
       2026-08-19 — `grant-provision-exec.ts` `provisionGrantRole` runs the
       DDL batch in one spanned transaction and `POST /v1/grants` calls it
       before the D1 write (Postgres-first, fail-closed). RLS-bypass kill-test
-      + the buyer's live `/v1/ask` exec wiring await the rest; see header.)*
+      shipped 2026-08-23 — `grant-scoping.integration.test.ts` proves against a
+      live Neon branch: owner rows across every owner agent, cross-tenant reach
+      (direct + JOIN) `permission denied`, SELECT-only writes denied, FORCE RLS
+      on every scoped table. The buyer's live `/v1/ask` exec route wiring is the
+      remaining box-2 work; see header.)*
 - [ ] Usage records emitted per granted query, idempotent under retry.
       *(Meter primitive shipped 2026-08-10 — migration `0028_grant_usage.sql`
       + `apps/api/src/grant-usage.ts` `recordGrantUsage`: one row per

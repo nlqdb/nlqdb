@@ -108,6 +108,10 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
   remains, gated on the `experts` interview endpoint)
 - [ ] EK-05 — marketplace surface v0 (`experts`) — unparked 2026-08-10 (direct agent push confirmed); box 4 boundary guard landed (experts#2, merged; CI to run it in experts#3, open), boxes 1–3 gated on EK-04/EK-06
 - [ ] EK-06 — grant primitive implementation
+  (control plane + all box-2 pure builders shipped; live-PG RLS-bypass kill-test
+  shipped 2026-08-23 — `grant-scoping.integration.test.ts` proves owner-rows-only,
+  cross-tenant reach denied direct + via JOIN, SELECT-only, FORCE RLS; remaining:
+  the buyer's live `/v1/ask` exec route wiring + revoke-in-flight measurement)
 - [ ] EK-07 — sovereign hosting 1-click (roadmap)
 - [ ] EK-08 — launch motion + acceptance criteria
 - [ ] EK-09 — trust hardening (F1-B): narration skip + no-training provider pin
