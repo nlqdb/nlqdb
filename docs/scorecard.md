@@ -17,11 +17,17 @@ only the founder may loosen one, and the gate is condition-gated — never dated
 yield → ≥ 5 (row #22, now 4), [`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-instrumentation.md).
 Acquisition levers stay pullable when no dogfood lever is — premium-chain work now **live**
 (row #20, meter firing 08-14), so that lane is done, not one-rank-below.
-**Weekly focus (`/weekly` 2026-08-15 — affirms the founder's 07-28 gate):** agent-movable
-number = **dogfood criterion 1, real MCP asks 12 → ≥ 100.** Criterion 5 (the `/agents`
-dashboard) shipped run 177 (#978, deployed), so criterion 1 is the gate's only
-GLOBAL-037-unblocked lever; the gate is still the only path off real strangers = 0 —
-premium going **live 08-14** (row #20, meter firing) doesn't change that.
+**Weekly focus (`/weekly` 2026-08-22 — keeps the founder's 07-28 gate frame, re-points the
+agent-movable number):** = **memory-quality eval free-chain EX 59.26 % → ≥ 70 %, driven by the
+temporal axis (2/7).** Why re-point: the 08-15 pick — criterion 1, real MCP asks 12 → ≥ 100 —
+proved **dark** (rule 8): it moves only on real external agents using the MCP surface, which needs
+launch, which is gated on the whole gate — circular and stranger-gated, so no daily run moved it in
+a week (the loop fell back to yieldless distribution breadth, checks 2/4 in `weekly-review.md`). The
+memory-eval temporal axis is the **only gate-advancing lever a daily run can honestly move**: it is
+the measurable proxy for gate-criteria 3 (silent-wrong-answer) + 4 (temporal), it runs **offline**
+(no strangers), and its GLOBAL-037-compatible path — a separate wrong-answer judgement + declaring
+categorical domains in DDL (`CHECK`/enum) so value-linking is legitimate *schema* egress — needs no
+founder widening of `GLOBAL-037` (unlike raw value-sampling on the planning lane, which does).
 
 **Worst number today (run 182, 2026-08-22):** the **weekly-focus `SK-PIVOT-016` dogfood gate**
 (**2/5**) remains the worst *reported* number, but it stays **dark for lever-choice** (rule 8) — its
