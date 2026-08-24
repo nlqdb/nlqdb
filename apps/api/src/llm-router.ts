@@ -78,8 +78,9 @@ export function getLLMRouter(): LLMRouter {
     // coder/reasoner at ~77% SWE-bench Verified — above the pulled GLM-4.7
     // (73.8%, now 404 on Cerebras) and far above gpt-oss-120b (~30%). Dispatched
     // plain (no reasoning_effort); it self-bounds reasoning and returns clean
-    // JSON in default mode. Routed direct (like every non-gateway leg); Gemini
-    // sits second as the independent-pool failover for a Groq-Qwen 429.
+    // JSON in default mode. Gateway-routed like the gpt-oss `groq` leg (rides
+    // gw.groq — Groq is a gateway provider per SK-LLM-047); Gemini sits second
+    // as the independent-pool failover for a Groq-Qwen 429.
     createGroqQwenProvider({
       apiKey: env.GROQ_API_KEY ?? "",
       baseUrl: gw.groq,
@@ -126,8 +127,9 @@ export function getLLMRouter(): LLMRouter {
       // gpt-oss-120b (cerebras) retained third. `groq` (gpt-oss-120b) is a
       // distinct Groq model with its own per-model daily quota, so it does not
       // cannibalise the head's. SK-LLM-028 keeps Mistral as the tail capacity
-      // backstop for full-chain-exhaustion no_sql losses. The direct
-      // groq-qwen/cerebras/mistral legs double as the SK-LLM-047 tail.
+      // backstop for full-chain-exhaustion no_sql losses. groq-qwen rides the
+      // gateway like every Groq leg, so cerebras + mistral are this chain's
+      // direct (non-gateway) SK-LLM-047 tail.
       plan: ["groq-qwen", "gemini", "cerebras", "groq", "workers-ai", "openrouter", "mistral"],
       // Direct (non-gateway) tail per SK-LLM-047.
       summarize: ["groq", "gemini", "workers-ai", "openrouter", "cerebras", "mistral"],

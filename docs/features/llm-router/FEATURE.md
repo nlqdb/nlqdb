@@ -203,7 +203,7 @@ when-to-load:
 
 ### SK-LLM-048 — GLM-4.7 (`zai-glm-4.7`, Cerebras) leads the strict-$0 planner tier — SUPERSEDED by SK-LLM-053
 
-**Body:** [`decisions/SK-LLM-048-glm-4.7-planner-head.md`](./decisions/SK-LLM-048-glm-4.7-planner-head.md). Superseded 2026-08-22 by [`SK-LLM-053`](#sk-llm-053) (Cerebras 404'd `zai-glm-4.7`; hedge head-start + `createCerebrasGlmProvider` factory carry forward there).
+**Body:** [`decisions/SK-LLM-048-glm-4.7-planner-head.md`](./decisions/SK-LLM-048-glm-4.7-planner-head.md). Superseded 2026-08-22 by [`SK-LLM-053`](#sk-llm-053) (Cerebras 404'd `zai-glm-4.7`).
 
 ### SK-LLM-049 — Schema-metadata goals directive in the planner prompt
 
@@ -223,7 +223,7 @@ when-to-load:
 
 ### SK-LLM-053 — Qwen3.6-27B (`qwen/qwen3.6-27b`, Groq) leads the strict-$0 planner tier
 
-**Body:** [`decisions/SK-LLM-053-qwen3.6-27b-planner-head.md`](./decisions/SK-LLM-053-qwen3.6-27b-planner-head.md). Supersedes [`SK-LLM-048`](#sk-llm-048) (Cerebras 404'd `zai-glm-4.7`, 2026-08-22). Qwen3.6-27B (`groq-qwen`) heads `plan` / `schema_infer` on the existing card-free Groq key (no new secret), dispatched **plain** (forcing `reasoning_effort` empties `content`). gpt-oss-120b retained fallback ([`SK-LLM-023`](#sk-llm-023)); dead `cerebras-glm` unwired (factory kept). Measurement-gated — BIRD/Spider quality-eval manual dispatch before merge (crons retired, SK-QUAL-002); one-line revert.
+**Body:** [`decisions/SK-LLM-053-qwen3.6-27b-planner-head.md`](./decisions/SK-LLM-053-qwen3.6-27b-planner-head.md). Supersedes [`SK-LLM-048`](#sk-llm-048) (Cerebras 404'd `zai-glm-4.7`, 2026-08-22): Qwen3.6-27B (`groq-qwen`) heads `plan` / `schema_infer` on the card-free Groq key, dispatched **plain** (forcing `reasoning_effort` empties `content`); gpt-oss-120b retained fallback ([`SK-LLM-023`](#sk-llm-023)). Measurement-gated — BIRD/Spider dispatch before merge; one-line revert.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
