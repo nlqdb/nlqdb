@@ -137,9 +137,11 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
    greedy comparator (79/150 both; b=8/c=8, McNemar p=1.0) at 3× quota ⇒
    lever closed; the machinery (vote core + sampling + runner flags + smoke
    vehicle) stays for a frontier-lane re-measure.
-4. **A second card-free tail backstop beyond Mistral (T11).** `NVIDIA_API_KEY`
-   is a finite ~5,000-credit pool — a `GLOBAL-013` failure; re-rank only if
-   post-T18 runs still show chain-exhaustion `no_sql`.
+4. **A second card-free tail backstop beyond Mistral (T11).** Provisioned
+   `NVIDIA_API_KEY` / `COHERE_TRIAL_API_KEY` / `HF_ACCESS_TOKEN` are finite-pool
+   or weak-for-SQL — a `GLOBAL-013` failure. Planner head re-headed 2026-08-22:
+   Cerebras 404'd GLM-4.7 → Qwen3.6-27B/Groq (`SK-LLM-053`), gated on a manual
+   quality-eval dispatch (crons retired, SK-QUAL-002).
 5. **Corrected-set evaluation (BIRD 52.8% annotation errors).** Score against
    UIUC corrected variants, report Spearman vs canonical — honesty, not
    accuracy; license check first (`SK-QUAL-003`).
