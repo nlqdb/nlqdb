@@ -110,8 +110,11 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
 - [ ] EK-06 — grant primitive implementation
   (control plane + all box-2 pure builders shipped; live-PG RLS-bypass kill-test
   shipped 2026-08-23 — `grant-scoping.integration.test.ts` proves owner-rows-only,
-  cross-tenant reach denied direct + via JOIN, SELECT-only, FORCE RLS; remaining:
-  the buyer's live `/v1/ask` exec route wiring + revoke-in-flight measurement)
+  cross-tenant reach denied direct + via JOIN, SELECT-only, FORCE RLS;
+  granted-read RESOLVE leg shipped 2026-08-24 — `grant-resolve.ts`
+  `resolveGrantedRead` fail-closes to `no_grant`/`owner_db_missing`/`not_grantable`
+  and resolves the owner DB from the trusted grant row, hosted-only; remaining:
+  the buyer's live `/v1/ask` exec route branch + revoke-in-flight measurement)
 - [ ] EK-07 — sovereign hosting 1-click (roadmap)
 - [ ] EK-08 — launch motion + acceptance criteria
 - [ ] EK-09 — trust hardening (F1-B): narration skip + no-training provider pin
