@@ -140,7 +140,8 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
 4. **A second card-free tail backstop beyond Mistral (T11).** Provisioned
    `NVIDIA_API_KEY` / `COHERE_TRIAL_API_KEY` / `HF_ACCESS_TOKEN` are finite-pool
    or weak-for-SQL — a `GLOBAL-013` failure. Planner head re-headed 2026-08-22:
-   Cerebras 404'd GLM-4.7 → Qwen3.6-27B/Groq (`SK-LLM-053`), gated on next cron.
+   Cerebras 404'd GLM-4.7 → Qwen3.6-27B/Groq (`SK-LLM-053`), gated on a manual
+   quality-eval dispatch (crons retired, SK-QUAL-002).
 5. **Corrected-set evaluation (BIRD 52.8% annotation errors).** Score against
    UIUC corrected variants, report Spearman vs canonical — honesty, not
    accuracy; license check first (`SK-QUAL-003`).

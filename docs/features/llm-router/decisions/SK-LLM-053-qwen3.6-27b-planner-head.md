@@ -75,11 +75,13 @@ from [`SK-LLM-023`](./SK-LLM-023-cerebras-planner-tier.md).
   non-regression, before this merges to production. PR CI keeps LLM keys mocked
   ([`SK-QUAL-002`](../../quality-eval/decisions/SK-QUAL-002-weekly-cron.md)),
   so that measurement is the separate `quality-eval-bird-mini.yml` /
-  `quality-eval-spider2-lite.yml` cron, not PR CI. If the cron shows a regression,
-  revert is one line (flip the `plan` / `schema_infer` head back to `cerebras`),
-  the same posture that reverted `SK-LLM-044` / `SK-LLM-048`'s gate. The benchmark
-  deltas above are vendor-reported ranking signal, not our own harness's EX — the
-  cron is the source of truth. **Context that lowers the risk:** the current
+  `quality-eval-spider2-lite.yml` **manual `workflow_dispatch`** (the scheduled
+  crons were retired per SK-QUAL-002 — no run fires on its own; an operator must
+  dispatch it), not PR CI. If the dispatch shows a regression, revert is one line
+  (flip the `plan` / `schema_infer` head back to `cerebras`), the same posture
+  that reverted `SK-LLM-044` / `SK-LLM-048`'s gate. The benchmark deltas above are
+  vendor-reported ranking signal, not our own harness's EX — the dispatch is the
+  source of truth. **Context that lowers the risk:** the current
   production head (`zai-glm-4.7`) is already 404-dead, so prod is *already* on the
   gpt-oss-120b/Gemini fallback; a working 77%-SWE-bench head is very unlikely to
   regress that state, but the gate still decides.
