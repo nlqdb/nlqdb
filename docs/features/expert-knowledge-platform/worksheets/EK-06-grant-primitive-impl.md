@@ -92,10 +92,25 @@ tenant's schema, directly *or* via JOIN, is `permission denied` (the grant
 role holds USAGE on the owner schema only); granted writes are denied at the
 role level (SELECT-only); and FORCE RLS is confirmed on every scoped table
 (guardrail #3). So the DB-role guarantees the exec batch leans on are proven
-now — a later route bug can't be mistaken for a grant-primitive bug. Still box
-2's open work: the buyer's live `/v1/ask` **exec** route wiring itself (resolve
-grant → `planGrantedRead` → run `execSteps` → skip narration → meter), and the
-live revoke-while-in-flight latency measurement (its own box below).
+now — a later route bug can't be mistaken for a grant-primitive bug.
+**Box 2 — granted-read RESOLVE leg shipped 2026-08-24 (sub-piece f):**
+`apps/api/src/grant-resolve.ts` (`resolveGrantedRead`) — the I/O-owning
+counterpart to the pure `grant-read.ts` planner: given (buyer, requestedDbId)
+it returns either a typed fail-closed reject (`no_grant` / `owner_db_missing` /
+`not_grantable`) or the resolved `{ grant, ownerDb, schemaName }` that
+`planGrantedRead` consumes. Pure composition over two injected async resolvers
+(the caller wires `getActiveGrant` behind the ≤30 s `grant-status.ts` cache, and
+the ordinary `db-registry.ts` `resolveDb`), so the full reject matrix is
+unit-tested without a live DB (`grant-resolve.test.ts`, 9 cases). Load-bearing
+fail-closed choices: the owner DB is resolved under the OWNER's tenant from the
+**trusted grant row** (never buyer input, so `resolveDb`'s tenant fence still
+holds); the returned grant's (grantee, ownerDb) identity is re-asserted against
+the request; and hosted-Postgres is re-checked at resolve (SK-EKP-008 v1) so a
+BYO/ClickHouse target the grant role + FORCE-RLS don't fit fails closed rather
+than mis-executing. Still box 2's open work: the live `/v1/ask` **exec** route
+branch that calls `resolveGrantedRead` → `planGrantedRead` → run `execSteps` →
+skip narration → meter, and the live revoke-while-in-flight latency measurement
+(its own box below).
 
 ## Goal
 
@@ -160,7 +175,11 @@ satisfy):
       shipped 2026-08-23 — `grant-scoping.integration.test.ts` proves against a
       live Neon branch: owner rows across every owner agent, cross-tenant reach
       (direct + JOIN) `permission denied`, SELECT-only writes denied, FORCE RLS
-      on every scoped table. The buyer's live `/v1/ask` exec route wiring is the
+      on every scoped table. Granted-read RESOLVE leg shipped 2026-08-24 —
+      `grant-resolve.ts` `resolveGrantedRead` (fail-closed `no_grant` /
+      `owner_db_missing` / `not_grantable`; owner DB resolved under the owner
+      tenant from the trusted grant row; hosted-only re-check; unit-tested).
+      The buyer's live `/v1/ask` exec route branch that composes it is the
       remaining box-2 work; see header.)*
 - [ ] Usage records emitted per granted query, idempotent under retry.
       *(Meter primitive shipped 2026-08-10 — migration `0028_grant_usage.sql`
