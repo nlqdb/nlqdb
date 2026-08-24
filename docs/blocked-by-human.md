@@ -36,12 +36,13 @@ values and criteria live. Read those only when you sit down to do the thing.
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 3 | ~15 min | Register the Supabase OAuth app + set `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` prod secrets — unblocks one-click Supabase connect (paste path works meanwhile) | 2026-08-13 |
+| 2 | ~5 min | **Approve/merge PR #1041** — restore the 404-dead strict-$0 planner head (engine-quality KPI); dispatch the two smoke quality-evals to confirm non-regression, or waive-on-record (prod is already on the weaker fallback, so a working head can't regress below today's floor) | 2026-08-24 |
+| 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 4 | ~15 min | Register the Supabase OAuth app + set `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` prod secrets — unblocks one-click Supabase connect (paste path works meanwhile) | 2026-08-13 |
 
 Only #1 can move real strangers (scorecard row #2); the hosted-premium meter
 went **live 2026-08-14** (`premium.live=true` in prod — the full activation,
-AI Gateway included, is done and off this queue); #2 costs money and waits per
+AI Gateway included, is done and off this queue); #3 costs money and waits per
 `docs/cost-ladder.md` unless a Team org already exists. No founder action remains on the SK-PIVOT-016 gate path itself: with
 `NLQDB_API_KEY` set (2026-08-04), D-04 — provisioning the memory DB through
 the product's own authed create surface — is **agent work** (the 08-08 weekly
@@ -93,7 +94,25 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    criterion 1 = 12 real MCP asks, criterion 3 surfaced one silent wrong-answer
    incident. This founder-only launch half stays gated until all five are green).
 
-2. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+2. **⏱ ~5 min · since 2026-08-24 — Discharge the SK-LLM-053 planner-head
+   measurement gate, then PR #1041 merges.** The strict-$0 planner head
+   `zai-glm-4.7` is 404-dead on Cerebras, so prod silently runs the weaker
+   gpt-oss-120b/Gemini fallback (head-isolated BIRD EX 0.593) plus a wasted
+   round-trip per planner call. PR #1041 (CI-green, independently reviewed
+   twice, 0 code issues) re-heads to `qwen/qwen3.6-27b` on the existing
+   `GROQ_API_KEY` — no new secret. Its own "⚠️ do not merge blind" gate
+   (`SK-LLM-053` / `progress/quality-score-source-of-truth.md` §5 "measured,
+   not assumed") is a P1 call an agent must not waive silently, so it waits
+   here. Either path unblocks the merge — **(a)** have an agent dispatch
+   `quality-eval-bird-mini.yml` + `quality-eval-spider2-lite.yml`
+   (`workflow_dispatch`, ref `claude/festive-noether-niv7cb`, smoke mode;
+   ~45 min, burns strict-$0 quota) and confirm non-regression; or **(b)**
+   waive on record — the current head is already 404-dead, so a working
+   77%-SWE-bench head cannot regress below today's fallback floor, and revert
+   is one line. Then it merges (branch protection needs one approving review;
+   agents can't self-approve this author's PR).
+
+3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -123,7 +142,7 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-3. **⏱ ~15 min · since 2026-08-13 — Enable one-click Supabase connect in prod**
+4. **⏱ ~15 min · since 2026-08-13 — Enable one-click Supabase connect in prod**
    (`SK-DBCONN-003`, shipped #985). The `/app/connect` "Connect Supabase" button
    is live, but `/start` returns 503 and gracefully falls back to paste until the
    OAuth app exists. In the Supabase dashboard → org → **OAuth Apps**, register an
