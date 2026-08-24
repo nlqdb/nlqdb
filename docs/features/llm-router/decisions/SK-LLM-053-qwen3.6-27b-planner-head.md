@@ -67,7 +67,13 @@ from [`SK-LLM-023`](./SK-LLM-023-cerebras-planner-tier.md).
   once, in `providers/groq.ts`. An absent key is harmless (`?? ""` → auth-fails →
   failover), same as every other free provider. No new secret: `GROQ_API_KEY` is
   already in the api-Worker subset (`scripts/mirror-secrets-workers.sh`).
-- **Measurement gate (do not merge blind):** This changes the planner head — the
+- **Measurement gate — discharged 2026-08-24 by founder waiver on record**
+  (path b; merged as #1041): the incumbent head `zai-glm-4.7` was already
+  404-dead so prod was already on the gpt-oss-120b/Gemini fallback — a working
+  77%-SWE-bench head cannot regress below today's floor, and revert is one line.
+  A confirming BIRD-dev + Spider dispatch may still be run post-merge; the gate
+  no longer blocks. See [`history/founder-actions-log.md`](../../../history/founder-actions-log.md).
+- **Measurement gate (the rule that was waived):** This changes the planner head — the
   single most engine-quality-sensitive component — so, per the
   `quality-score-source-of-truth.md` §5 guardrail ("measured, not assumed") and
   [`GLOBAL-025`](../../../decisions/GLOBAL-025-north-star.md)'s "degrades 0" rule,
