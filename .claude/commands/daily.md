@@ -52,7 +52,7 @@ audits this loop once a week and sets the weekly focus number.
    infra (Cloudflare Pro, Neon Launch, Listmonk). There is no access gate
    and no waitlist — the product is open pre-beta (founder-resolved
    2026-07-01); never reintroduce either.
-6. **Red main is the run.** If `bun run typecheck && bun run lint && bun run
+6. **Red main is the run.** If `bun run typecheck && bun run check && bun run
    test` is red before you change anything, fixing it IS this run's lever.
    Same for the `deploy-*` workflows: check each one's latest run on `main`
    — a failing deploy means production silently serves a stale build (the
@@ -239,8 +239,9 @@ always ships the same run.
 
 ### 4 — Ship
 
-One PR per run, small diff. `bun run typecheck && bun run lint && bun run
-test` green before pushing. The PR body must name: the number moved,
+One PR per run, small diff. `bun run typecheck && bun run check && bun run
+test` green before pushing (`check` is the CI gate — `lint` alone skips
+formatting per CLAUDE.md §8). The PR body must name: the number moved,
 before → after values, the GLOBAL-025 KPI advanced, and that none degrade.
 **A PR whose body names no measured delta does not merge**, with one
 exception: a null run's PR (step 2) ships only the step-1 scorecard update
