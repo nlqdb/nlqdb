@@ -29,56 +29,48 @@ the measurable proxy for gate-criteria 3 (silent-wrong-answer) + 4 (temporal), i
 categorical domains in DDL (`CHECK`/enum) so value-linking is legitimate *schema* egress — needs no
 founder widening of `GLOBAL-037` (unlike raw value-sampling on the planning lane, which does).
 
-**Worst number today (run 184, 2026-08-24) — NULL RUN:** the **weekly-focus `SK-PIVOT-016` dogfood
-gate** (**2/5**) remains the worst *reported* number, but it stays **dark for lever-choice** (rule 8) —
-its only agent-movable, GLOBAL-037-unblocked criterion is **criterion 1 (real MCP asks 12 → ≥100)**,
-grind-only and not honestly container-movable without fabricating asks. **No P1/P2/engine lever cleared
-the step-2 bar this run** — so, per rule 2, this run ships only the step-1 scorecard refresh (a valid
-null outcome; busywork is not). Compact waiver (full detail in "Last change"): **P1 distribution
-exhausted** — run 183 fixed the last snippet-fixable page-1 pages; remaining GSC "Strengthen next"
-winners (`running-total…` pos 37.9, `find-rows-with-no-match…` pos 19.9) verified content-complete +
-authority-gated; canonical/JSON-LD/utm all present. **P2 UX-flow green** — FLOW-005 re-run 6/6 (row #21).
-**Engine (weekly focus) sequenced after #1041** — memory-eval temporal is design-heavy + async-measured
-and overlaps #1041's planner re-head (`zai-glm-4.7`→Qwen; the old head is 404-dead in prod), so a
-re-measure on current `main` would score soon-obsolete dead-head state. BIRD/Spider dark.
-**Weekly-focus gate (don't overwrite the /weekly-set target mid-week):** dogfood **2/5**; memory-eval
-free-chain EX **59.26 %** (target ≥ 70 %, temporal 2/7 — 26 d stale, refresh gated on #1041 per above).
-**Top `blocked-by-human` bullet:** fire the Show HN launch sequence (⏱ ~30 min,
-**idle 72 days since 06-13**), still condition-gated on the `SK-PIVOT-016` gate (now **2/5**).
-#2 = Anthropic **connector directory** (money-gated, since 07-21). #3 = Supabase OAuth app +
-prod secrets (⏱ ~15 min, since 08-13; paste path works meanwhile). Queue **depth 3**, head age
-72 d is the real cycle time.
+**Worst number today (run 185, 2026-08-25) — ENGINE MEASUREMENT RUN:** pulled the **weekly-focus
+engine lever the loop was waiting to sequence after #1041** (now merged, `aec2c6f`): re-measured the
+26-day-stale **memory-quality free-chain EX** on the post-#1041 Qwen planner head. **Number moved
+(memory row):** stale 59.26 % (27 q, 07-29, pre-#1041 dead head) → fresh **43.59 % (17/39, 08-25)** —
+first scoring of the +12-q language-tutor pack (added post-07-29) *and* first read on the new head, so a
+fresh 39-q baseline, not a regression delta. Per-axis: **temporal 2/11 = 18.18 %** (still the weak axis,
+weekly focus); retrieval/consolidation/analytical 4/7; forgetting 3/7. **Diagnosis:** categorical
+value-linking / vocabulary drift (planner guesses `'open question'`≠`'open_question'`); fix is a
+per-goal-pack declared vocabulary — a design lever, not a snippet (GLOBAL-037 reconciliation in "Last change").
+**P1 distribution still exhausted** — fresh GSC (28d): 7 clicks / 675 impr / pos 25.1; "Strengthen next"
+winners (`running-total…` pos 38.4, `find-rows-with-no-match…` pos 19.9) authority-gated, content-complete.
+**P2 UX-flow green** (FLOW-005 6/6, carried run 184; nothing in its path changed). BIRD/Spider dark.
+**Weekly-focus gate (don't overwrite the /weekly target mid-week):** dogfood **2/5**; memory-eval
+free-chain EX **43.59 %** (target ≥ 70 %, temporal 2/11 — refreshed live this run).
+**Top `blocked-by-human` bullet:** Show HN launch sequence (⏱ ~30 min, **idle 73 days since 06-13**),
+condition-gated on the `SK-PIVOT-016` gate (**2/5**). #2 Anthropic connector directory (money-gated,
+07-21). #3 Supabase OAuth app + secrets (08-13; paste path works). Queue **depth 3**, head age 73 d.
 **Dark (rule 8, reported not pulled):** dogfood gate (criterion 1 grind-only; criteria 3/4
-E-09/GLOBAL-037-blocked); engine **#8 BIRD 0.5382** (29 d) / **#9 Spider 0.2222**
-(**36 d** stale — resume deferred: async multi-window, `main` moved since the 07-27 checkpoint);
-rows **#2/#4/#5/#16** stranger-dependent (N = 0 until launch); row **#15** opencheck lane only
+E-09/GLOBAL-037-blocked); engine **#8 BIRD 0.5382** (30 d) / **#9 Spider 0.2222** (**37 d** stale, async
+multi-window resume); rows **#2/#4/#5/#16** stranger-dependent (N = 0 until launch); row **#15** opencheck
 (free-lane saturation, remedy costs money ⇒ rule 4).
 
-**Rule 6 — GREEN.** Branch based on `main@5b36e83` (latest; main moved only by docs-only PRs #1043/#1044
-since run 183). Health re-measured live this run: **`typecheck` exit 0** (all packages), **`bun run
-check` exit 0** (CI gate; 53 pre-existing script-`console.log` warnings, none in this diff), **`bun run
-test` 1381 pass / 20 skip (exit 0)**. **All four deploys green on latest code `main`**: deploy-api
-(`ac0534a`), deploy-docs / deploy-mcp (`098953c`), deploy-events-worker (`715c944`) — all success
-(docs-only PRs are path-filtered out of the deploys). This run's diff: **this scorecard only** (null
-run). **Open PRs: 1** at step 0 — **#1041** (engine/LLM planner-head re-head, touches `packages/llm/**`,
-`tools/eval/src/lanes.ts`, `apps/api/src/llm-router.ts`, `docs/features/llm-router/**`,
-`quality-score-source-of-truth.md`, `docs/architecture.md`). No file overlap with this run (scorecard
-only).
+**Rule 6 — GREEN.** Branch based on `main@aec2c6f` (latest; #1041 merged since run 184). Health
+re-measured live: **`typecheck` 0**, **`bun run check` 0** (53 pre-existing script-`console.log` warnings,
+none in this diff), **`bun run test` 1390 pass / 20 skip (exit 0)**. Deploys carried green from run 184
+(this run's diff is docs-only — scorecard, verification log, dev.to queue line — path-filtered out of all
+deploys). **Open PRs: 0** at step 0.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
-| | **Funnel, bot-filtered** (RUM + GSC **re-pulled live 08-24** (`rum-pull.ts` 7d SAMPLED; `gsc-pull.ts` 28d — barely moves day-to-day). Users/DBs carried from 07-27 remote-D1 — no container access to remote D1 this run, no channel newly live) | | exclude synthetic stranger-test walker traffic |
-| 1 | Visits, 7d (CF RUM) | **308 pl / 295 vis** raw, **real-browser floor 63 pl / 51 vis** (re-pulled live 08-24; 245 synthetic cut). Of the floor, **`rateme12.com/` (18 pl) is RUM referrer-spam noise** (unrelated domain) ⇒ genuine nlqdb floor ≈ 45 pl. Real nlqdb landings: `app.nlqdb.com/` (7), `nlqdb.com/` (7), `nlqdb.com/security/hall-of-fame/` (3), plus 1 pl each across 8 `/solve` pages incl. both run-183 optimized (`count-rows-per-day`, `pivot-rows-into-columns`) | cut rule: `bot=1` or `userAgentBrowser ∈ {Unknown, ChromeHeadless}` or CF-classified bot ⇒ real-browser is a floor. Read at **7d**, SAMPLED (interval up to 2) — treat sub-interval buckets as noise |
+| | **Funnel, bot-filtered** (RUM + GSC **re-pulled live 08-25** (`rum-pull.ts` 7d SAMPLED; `gsc-pull.ts` 28d — barely moves day-to-day). Users/DBs carried from 07-27 remote-D1 — no container access to remote D1 this run, no channel newly live) | | exclude synthetic stranger-test walker traffic |
+| 1 | Visits, 7d (CF RUM) | **317 pl / 304 vis** raw, **real-browser floor 72 pl / 60 vis** (re-pulled live 08-25; 245 synthetic cut). Of the floor, **`rateme12.com/` (18 pl) is RUM referrer-spam noise** (unrelated domain) ⇒ genuine nlqdb floor ≈ 54 pl. Real nlqdb landings: `app.nlqdb.com/` (7), `nlqdb.com/` (6), `hall-of-fame/` (4), `/agents/` (3), `/agent-memory-benchmarks` (2), `/vs/vanna/` (2), plus 1 pl each across several `/solve` + `/vs` pages | cut rule: `bot=1` or `userAgentBrowser ∈ {Unknown, ChromeHeadless}` or CF-classified bot ⇒ real-browser is a floor. Read at **7d**, SAMPLED (interval up to 2) — treat sub-interval buckets as noise |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company + 5 test/dev — live remote-D1 07-27; no channel newly live to produce a signal. **Dark** (rule 8) — moves only on launch |
 | 3 | DBs total | **254** (07-27 live remote-D1) + **1 dogfood** (`db_agent_memory_v1_3a8a72`, internal) | stranger subset ~0 (row #2) |
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not measurable** (`SK-ONBOARD-007`). The **dogfood workload** (run 176): **100 % (10/10)** through the public MCP surface (= gate criterion 2) | target ≥ 95 %. Instruments live: TTFV + chips + drop-off funnel |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12; founder-owned) | share with ≥ 2 asks |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **112** content pages (`/solve` **41** + `/vs` 31 + `/blog` 40; unchanged this run — no new page, distribution on-page exhausted for a single run). Unpublished blog drafts **0** (queue drained) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **40** (no `/blog` publish — null run skips step 3; queue empty). **GSC re-pulled live 08-24** (28d): **7 clicks / 662 impr / pos 24.5** (950 impr across 141 pages). Run-183 CTR fixes holding (SEO-lagging, still 0 clicks as expected): `count-rows-per-day` **pos 8.6, 56 impr**; `pivot-rows-into-columns` **pos 12.8, 21 impr**. **No new snippet lever this run** — "Strengthen next" winnable pages are authority-gated: `running-total…` (106 impr, pos 37.9, page-4) + `find-rows-with-no-match…` (52 impr, pos 19.9, page-2) both verified content-complete; `/integrations/` (pos 8.8, 16 impr) already has hand-written non-truncated meta. **Referral yield (RUM 08-24):** 6 pl / 3 referrers (google 5, bing 1); real nlqdb referral landings = `www.google.com`→`hall-of-fame` + `→/solve/store-query-chatbot-conversation-history/` (bing→rateme12.com is spam noise) | `gsc-pull.ts` + `rum-pull.ts`. Page-1 zero-click pages are a CTR lever (snippet, agent-movable); page-2+ ranks are authority/launch-gated |
+| 7 | Surface yield | posts **40** + 1 dev.to variant published this run (`model-preset-fail-loud` → [dev.to](https://dev.to/omer_hochman/your-best-model-toggle-quietly-serves-the-cheap-model-ship-a-409-instead-77o)). **GSC re-pulled live 08-25** (28d): **7 clicks / 675 impr / pos 25.1** (963 impr across 142 pages). Run-183 CTR fixes holding (SEO-lagging, still 0 clicks as expected): `count-rows-per-day` **pos 8.4, 54 impr**; `pivot-rows-into-columns` **pos 12.8, 21 impr**. **No new snippet lever** — "Strengthen next" winnable pages authority-gated: `running-total…` (106 impr, pos 38.4) + `find-rows-with-no-match…` (52 impr, pos 19.9) verified content-complete. **Referral yield (RUM 08-25):** 10 pl / 3 referrers (google 6, accounts.google 3, bing 1); real nlqdb referral landings = `/vs/vanna/` (2), `hall-of-fame` (2), `/solve/store-query-chatbot…`, `/vs/mindsdb/` | `gsc-pull.ts` + `rum-pull.ts`. Page-1 zero-click pages are a CTR lever (snippet, agent-movable); page-2+ ranks are authority/launch-gated |
 | | **Engine** — BIRD 07-26 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
-| 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **29 d old, staleness trigger fired**, but **dark (rule 8)**: resume is async multi-window and `main` moved since the 07-27 checkpoint; also gated on #1041's planner re-head landing first | target 0.65 / **Phase 2 floor 0.60** — gap 6.2 pp. Offline levers exhausted |
-| 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on `04fa3d0`, **36 d old**). 07-27 re-dispatch exited **partial** (`SK-QUAL-013` budget-stop) | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is source of truth |
+| 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **30 d old, staleness trigger fired**, but **dark (rule 8)**: resume is async multi-window and `main` moved since the 07-27 checkpoint. #1041 (planner re-head) now merged ⇒ a fresh BIRD/Spider re-measure is a valid next-run engine lever | target 0.65 / **Phase 2 floor 0.60** — gap 6.2 pp. Offline levers exhausted |
+| 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on `04fa3d0`, **37 d old**). 07-27 re-dispatch exited **partial** (`SK-QUAL-013` budget-stop) | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is source of truth |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004)) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67 % → agentic 69.33 %, 150-q smoke, 07-06, `SK-QUAL-022`) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69 < the 0.80 floor (row #16) |
 | | **Ops** — 7d, CF Workers analytics | | wall-time, all routes |
@@ -97,63 +89,62 @@ only).
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **FLOW-005 re-walked live this run: 6/6 PASS** (curl-based MCP discovery + auth-wall, agent-runnable) — RFC 9728/8414 discovery green, unauth `initialize`/`tools/list` both 401 with matching `resource_metadata` challenge. Playwright walks still **not container-runnable** (Chromium pin mismatch, CI-only via `acquisition-health.yml`); those carried **0 failed / 9 blocked** from 07-26. #999 (08-16) fixed the `/app/new/` 428 dead-end | target **0 `failed`** ✅; anon walks stop at the 428 `challenge_required` (Turnstile, `SK-ANON-012`) |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub. MCP official registry published 07-22; Glama crawl-listed; Smithery/PulseMCP 0. First-touch attribution live since 07-19; `source_json` non-null **0**, for want of strangers, not instrument | **weekly focus (superseded): → ≥ 5 live.** Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
-| | **Human queue** — the one non-automatable actor | **depth 3**; head is the Show HN launch, oldest bullet **72 days** (`SK-PIVOT-016` gate **2/5**); #2 Anthropic connector directory (money-gated, 07-21); #3 Supabase OAuth app + secrets (08-13) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: **1** at step 0 (#1041, engine/LLM), oldest open-PR age **2 d** |
+| | **Human queue** — the one non-automatable actor | **depth 3**; head is the Show HN launch, oldest bullet **73 days** (`SK-PIVOT-016` gate **2/5**); #2 Anthropic connector directory (money-gated, 07-21); #3 Supabase OAuth app + secrets (08-13) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: **0** at step 0 (#1041 merged since run 184) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
 | | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **3/7** (D-01 ✅, D-03 ✅, D-04 🟡, **D-06 🟡**) — gate **2/5** (criterion 2 green from D-04's 100 % first-10; **criterion 5 green on #978's deploy** — the public `/agents` `ag-dog` dashboard is live). Remaining: criterion 1 (12 → ≥100 real MCP asks, grind); criterion 3 (silent-wrong-answer axis, E-09-blocked); criterion 4 (temporal, E-09/GLOBAL-037-blocked). D-06 run 2 (staleness-CI red + demand-signal) + D-04 `NLQDB_MEMORY_DB` var still open | mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md) |
-| | Memory-quality eval (`SK-QUAL-023`) | **27-q free-chain EX 59.26 % (16/27)** — run 30413719690 (2026-07-29). Temporal 2/7 (synthetic 2/3, ops 0/4) — the weak axis gating criterion 4, E-09/GLOBAL-037-blocked | 27 gold-verified questions, 5 axes; free-only, no baseline |
+| | Memory-quality eval (`SK-QUAL-023`) | **39-q free-chain EX 43.59 % (17/39)** — run [32796849658](https://github.com/nlqdb/nlqdb/actions/runs/32796849658) (**2026-08-25, live this run**; post-#1041 Qwen head + first scoring of the +12-q language-tutor pack). Per-axis: retrieval/consolidation/analytical 4/7, forgetting 3/7, **temporal 2/11 = 18.18 %** (weak axis = weekly focus). Failure = categorical value-linking / vocabulary drift (`'open question'`≠`'open_question'`); fix is per-goal-pack declared vocabulary (GLOBAL-037 lane-1 schema/evidence, not the founder-gated `value-retrieval` lane) — next-run lever | 39 gold-verified questions, 5 axes; free-only, no baseline |
 
 ## Shipped distribution
 
 **41 canonical `/solve` pages** + **40 `/blog` posts** + **31 `/vs` pages** live under `nlqdb.com/`
 (`SK-SOLVE-001` / `SK-BLOG-001` / `SK-CMP-001`). The registries are `apps/web/src/data/{solve,blog,competitors}.ts`.
 
-- **This run (184):** **null run** — no new page, no publish (step 3 skipped). Step-1 refresh only.
-- **Run 183:** CTR lever — hand-written `metaTitle`/`metaDescription` for the two page-1 zero-click
-  `/solve` pages (`count-rows-per-day` pos 8.6, `pivot-rows-into-columns` pos 12.8).
-- **Run 182:** re-dispatched the hermetic E2E suites (row #15) — caught + fixed `e2e-mcp` red on `main`.
+- **This run (185):** drained one dev.to variant — `model-preset-fail-loud` →
+  [dev.to](https://dev.to/omer_hochman/your-best-model-toggle-quietly-serves-the-cheap-model-ship-a-409-instead-77o)
+  (step 3.3; 18 variants remain). No new `/blog` page (blog-draft queue empty).
+- **Run 184:** null run — no new page, no publish.
+- **Run 183:** CTR lever — hand-written SERP meta for two page-1 zero-click `/solve` pages.
 
 ## Last change
 
-**2026-08-24 (run 184)** — **NULL RUN. No P1/P2/engine lever cleared the step-2 bar; ships only the
-step-1 scorecard refresh (rule 2 valid null outcome). Finding recorded in place of a delta.**
+**2026-08-25 (run 185)** — **ENGINE MEASUREMENT RUN. Pulled the weekly-focus lever the loop was waiting
+to sequence after #1041 (now merged): re-measured the 26-day-stale memory-quality free-chain EX on the
+post-#1041 Qwen planner head. Number moved (memory row): 59.26 % (27 q, 07-29) → 43.59 % (17/39, 08-25).**
 
-**Finding (why no lever was pullable — the step-2 waiver):**
-- **P1 acquisition/distribution — genuinely exhausted for a single run.** Fresh GSC (28d, live):
-  7 clicks / 662 impr / pos 24.5. Run 183 already fixed the only two page-1 zero-click *snippet-fixable*
-  pages; their CTR is SEO-lagging (still 0 clicks, expected — snippets change first, clicks weeks
-  later). The GSC "Strengthen next" winnable list is now **authority-gated, not snippet-gated**:
-  `running-total…` (106 impr, pos 37.9), `find-rows-with-no-match…` (52 impr, pos 19.9) — both read this
-  run and verified **content-complete** (rich painContext + 6 FAQs + 3 sources), so no agent-movable
-  content lever; page-2/page-4 depth means CTR-meta wouldn't convert. `/integrations/` (pos 8.8, 16
-  impr) already carries hand-written, non-truncated meta. Canonical (self-referential https),
-  FAQ/HowTo/Breadcrumb JSON-LD, and npm/README/MCP utm-attribution are all present and test-guarded.
-  New channels are founder/`/reach`-gated.
-- **P2 UX-flow — green.** FLOW-005 walker re-run live: **6/6 PASS** (row #21). Known stranger-path
-  dead-ends already fixed (#1037/#1036/#1029). Playwright walks are CI-only from a container.
-- **Engine (weekly focus) — best sequenced after #1041.** The memory-eval temporal-axis lever is a
-  design-heavy engine change (DDL categorical domains + separate wrong-answer judgement), async-measured
-  via a `quality-eval-memory` dispatch, and overlaps the engine lane owned by open PR **#1041** (which
-  re-heads the strict-$0 planner from the 404-dead `zai-glm-4.7` to Qwen3.6-27B). Re-measuring memory-eval
-  on current `main` would score the dead-head fallback state #1041 replaces. Honest sequence: #1041
-  merges → re-measure. BIRD/Spider dark (29 d / 36 d, same #1041 dependency).
+**The measurement (weekly focus, live):** first `quality-eval-memory` dispatch since #1041 landed
+([run 32796849658](https://github.com/nlqdb/nlqdb/actions/runs/32796849658), free lane, main `aec2c6f`):
+EX **43.59 % (17/39)**, `transport_failed:false` / `resumable:false`. Two confounds vs the 07-29 27-q
+reading — the new planner head **and** the first-ever scoring of the +12-q language-tutor pack (added
+after 07-29) — so this is a fresh 39-q baseline, not a regression delta. Per-axis: retrieval/
+consolidation/analytical 4/7, forgetting 3/7, **temporal 2/11 = 18.18 %** (the weak axis, still the
+weekly focus). Full row + confound in `progress/quality-score-verification-log.md`.
 
-**Step-1 measurements refreshed (live this run):**
-- **Main health GREEN** — `typecheck` 0, `bun run check` 0, `bun run test` 1381 pass / 20 skip (exit 0);
-  all four `deploy-*` workflows green on their latest code SHAs. No red-main lever (rule 6).
-- **RUM (row #1)** — 308 pl / 295 vis raw; real-browser floor 63/51 (245 synthetic cut); genuine nlqdb
-  floor ≈ 45 (18-pl `rateme12.com` is referrer-spam noise).
-- **GSC (row #7)** — 7 clicks / 662 impr / pos 24.5 (28d).
-- **FLOW-005 (row #21)** — 6/6 PASS.
-- **Open PRs** — 1 (#1041, engine/LLM), oldest 2 d. No overlap with this run (scorecard only).
-- Step 3 skipped (null run): no `/blog` publish (queue empty), no dev.to drain.
+**Diagnosis (from the run-summary mismatch SQL) + next-run lever:** the dominant failure class is
+**categorical value-linking / vocabulary drift** — the planner guesses a plausible-but-wrong literal
+for `kind`/`predicate`/`role` (`'open question'`≠`'open_question'`, `'current_city'`≠`'city'`,
+`'doc-sync'`≠`'sync'`, `'vocabulary'`≠`'vocab_encounter'`, `'tracker'`≠`'tracker_row'`,
+`role='tutor'`≠`'lesson'`); a second, harder class is structural (`entity_facts` traversal;
+`student:alex` mistaken for an `agent_id`). **Why the fix is a design lever, not a snippet
+(GLOBAL-037):** surfacing distinct `kind`/`role` values to the planner IS the `value-retrieval`
+cell-value lane — explicitly **unbuilt and founder-gated** (planning = schema-only). The generic
+`agent_memory_v1` preset is deliberately **open-vocabulary** `TEXT`, so a static `CHECK`-enum would
+wrongly reject legitimate agent writes. The in-bounds path is a **per-goal-pack declared categorical
+vocabulary** (schema / hand-authored evidence — GLOBAL-037 lane-1 legal), which needs a pack-schema
+layer that does not exist in production yet. That is a real feature (next-run engine lever), not a
+value-decidable snippet; no founder action needed (GLOBAL-033).
 
-**Anti-rut (rule 7):** recent daily levers — CTR (183), UX-flow (182), distribution-page (181/180/179),
-null (178). Last run was a real lever, not a null → the four-nulls proposal rule does not fire.
+**Step-1 refreshed (live):** health GREEN (`typecheck`/`check` 0, `test` 1390 pass; deploys carried,
+docs-only diff); RUM 317/304 raw, floor 72/60 (genuine ≈54); GSC 7 clicks / 675 impr / pos 25.1 (P1
+exhausted); FLOW-005 carried 6/6 (nothing in its path changed); step 3 drained one dev.to variant; open PRs 0.
 
-**KPI (GLOBAL-025):** no code change ⇒ advances no pillar and **degrades none** (scorecard-only diff).
-This is a measurement run, not a build.
+**Anti-rut (rule 7):** recent daily levers — engine-measure (185), null (184), CTR (183), UX-flow (182),
+distribution-page (181/180/179). No 5-in-a-row same category; the engine lane is a fresh pull.
+
+**KPI (GLOBAL-025):** advances **engine quality** (pillar #1) — the wedge's headline quality number is
+now fresh on the shipped head with the weak axis + its exact failure mode pinpointed. Diff is docs-only;
+**degrades none.**
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
