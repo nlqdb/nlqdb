@@ -46,7 +46,8 @@ type PostHogBatchItem = {
 // distinct_id per event — mirrors how logsnag.ts picks `user_id`:
 // authed events → `userId`; demand-signal / lifecycle events →
 // `principalId` (authed id or the anon/wl: bucket); `ask.completed`
-// is anonymised so the DB is its closest stable identity; eval runs are
+// is anonymised so the DB is its closest stable identity (`db.*` share
+// it, per SK-EVENTS-014); eval runs are
 // a system actor keyed by dataset.
 function distinctId(event: ProductEvent): string {
   switch (event.name) {
@@ -66,6 +67,12 @@ function distinctId(event: ProductEvent): string {
     case "pricing.plan_selected":
       return event.principalId;
     case "ask.completed":
+    case "db.created":
+    case "db.adopted":
+      // SK-EVENTS-014: the dbId is the one identity that survives the
+      // whole activation journey (created → asked → adopted), and
+      // server-side events have no distinct_id continuity of their own.
+      // Keying all three on it makes the funnel joinable in PostHog.
       return event.dbId;
     case "feature.eval.weekly":
     case "feature.eval.regression":

@@ -20,6 +20,8 @@ import type { EventEnvelope, ProductEvent } from "./types.ts";
 
 export type {
   AskCompletedEvent,
+  DbAdoptedEvent,
+  DbCreatedEvent,
   EventEnvelope,
   FeatureEvalRegressionEvent,
   FeatureEvalWeeklyEvent,
@@ -114,6 +116,16 @@ function defaultId(event: ProductEvent): string {
       // Random UUID lets the queue dedupe transport-level retries
       // without collapsing legitimate repeats at the sink.
       return `evt.${crypto.randomUUID()}`;
+    case "db.created":
+      // SK-EVENTS-014: the dbId is minted per create and never reused,
+      // so it IS the natural idempotency key — a queue redelivery of the
+      // same create collapses without suppressing anything real.
+      return `${event.name}.${event.dbId}`;
+    case "db.adopted":
+      // SK-EVENTS-014: at most one adoption per (user, db). The replay
+      // arm of `recordAnonAdoption` emits with the same key, so a
+      // re-signed-in user can't double-count the adoption.
+      return `${event.name}.${event.userId}.${event.dbId}`;
     case "feature.requested.ddl_via_ask":
     case "feature.requested.heavier_tier":
     case "feature.requested.larger_account":

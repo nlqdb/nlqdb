@@ -302,6 +302,43 @@ describe("buildPayload", () => {
     expect(out.tags).not.toHaveProperty("invoice-url");
   });
 
+  it("maps db.created to the activation channel without notifying — SK-EVENTS-014", () => {
+    const out = buildPayload("nlqdb", {
+      name: "db.created",
+      dbId: "db_sales_ab12cd",
+      principalId: "anon:deadbeef",
+      anon: true,
+      engine: "postgres",
+      preset: false,
+      tableCount: 3,
+      synthetic: false,
+    });
+    expect(out).toMatchObject({
+      channel: "activation",
+      event: "DB created",
+      notify: false,
+      user_id: "anon:deadbeef",
+      tags: { "db-id": "db_sales_ab12cd", anon: "true", engine: "postgres", synthetic: "false" },
+    });
+  });
+
+  it("notifies on a first db.adopted but not on a replay — SK-EVENTS-014", () => {
+    const first = buildPayload("nlqdb", {
+      name: "db.adopted",
+      userId: "u_1",
+      dbId: "db_sales_ab12cd",
+      replay: false,
+    });
+    const replay = buildPayload("nlqdb", {
+      name: "db.adopted",
+      userId: "u_1",
+      dbId: "db_sales_ab12cd",
+      replay: true,
+    });
+    expect(first).toMatchObject({ channel: "activation", notify: true, user_id: "u_1" });
+    expect(replay).toMatchObject({ notify: false, tags: { replay: "true" } });
+  });
+
   it("maps pricing.page_viewed to the pricing channel with email tag (authed) — SK-EVENTS-012", () => {
     const out = buildPayload("nlqdb", {
       name: "pricing.page_viewed",

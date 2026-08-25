@@ -17,6 +17,38 @@ describe("makeQueueEmitter", () => {
     expect(typeof env.ts).toBe("number");
   });
 
+  it("keys db.created on the dbId — SK-EVENTS-014", async () => {
+    const queue = makeFakeQueue();
+    const emitter = makeQueueEmitter(queue);
+
+    await emitter.emit({
+      name: "db.created",
+      dbId: "db_sales_ab12cd",
+      principalId: "anon:deadbeef",
+      anon: true,
+      engine: "postgres",
+      preset: false,
+      tableCount: 3,
+      synthetic: false,
+    });
+
+    expect(queue.sent[0]?.id).toBe("db.created.db_sales_ab12cd");
+  });
+
+  it("keys db.adopted on (userId, dbId) so a replay can't double-count — SK-EVENTS-014", async () => {
+    const queue = makeFakeQueue();
+    const emitter = makeQueueEmitter(queue);
+
+    const event = { name: "db.adopted", userId: "u_1", dbId: "db_sales_ab12cd" } as const;
+    await emitter.emit({ ...event, replay: false });
+    await emitter.emit({ ...event, replay: true });
+
+    expect(queue.sent.map((e) => e.id)).toEqual([
+      "db.adopted.u_1.db_sales_ab12cd",
+      "db.adopted.u_1.db_sales_ab12cd",
+    ]);
+  });
+
   it("uses subscriptionId for billing.subscription_created defaultId", async () => {
     const queue = makeFakeQueue();
     const emitter = makeQueueEmitter(queue);

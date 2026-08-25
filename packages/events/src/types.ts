@@ -10,7 +10,7 @@
 //
 // Convention: `name` is `<domain>.<verb_noun>` (e.g. `user.first_query`,
 // `billing.subscription_created`, `ask.completed`). Domains today:
-// `user`, `billing`, `ask`, `feature`, `home`, `pricing`.
+// `user`, `billing`, `ask`, `db`, `feature`, `home`, `pricing`.
 
 // Originating surface for a request. Single source of truth for both
 // the `nlqdb.surface` OTel attribute (performance.md §3.3) and the
@@ -164,6 +164,46 @@ export type PricingPlanSelectedEvent = {
   email: string | null;
 };
 
+// `db.*` is the activation-funnel domain (SK-EVENTS-014). Two events
+// close the two ends of the anonymous-mode journey that were previously
+// unmeasured: a DB coming into existence, and an anonymous DB being
+// kept by a real account.
+//
+// `db.created` fires once per successful `orchestrateDbCreate` — the
+// single funnel entry for every create surface (`/v1/ask kind=create`,
+// `POST /v1/databases`, the pack-import preset path). `anon` is derived
+// from the `anon:` tenant prefix (`principal.ts`), so "anonymous instant
+// DB" is a filter rather than a guess. `synthetic` mirrors the
+// `databases` row stamp (SK-GTM-005) so GTM reads can exclude nlqdb's
+// own robots without a join.
+export type DbCreatedEvent = {
+  name: "db.created";
+  dbId: string;
+  // Tenant that owns the new DB: `anon:<hash>` or the authed userId.
+  // Same shape as `nlqdb.user.id` / the `feature.*` `principalId`.
+  principalId: string;
+  anon: boolean;
+  engine: "postgres" | "clickhouse";
+  // SK-HDC-020 preset provision (deterministic `agent_memory_v1`) vs an
+  // LLM-inferred schema — the two have different activation profiles.
+  preset: boolean;
+  tableCount: number;
+  synthetic: boolean;
+};
+
+// `db.adopted` is "sign-in to keep": the SK-ANON-012 adoption hook
+// migrated an anonymous DB to a freshly-authed user. This is NOT a
+// sign-in event (`SK-EVENTS-006` bars those) — it fires only when an
+// anon session actually carried a database across the auth boundary,
+// at most once per (user, db). `replay` marks the idempotent re-run of
+// an already-adopted token so the funnel counts first adoptions only.
+export type DbAdoptedEvent = {
+  name: "db.adopted";
+  userId: string;
+  dbId: string;
+  replay: boolean;
+};
+
 // `feature.eval.*` is the quality-eval domain (SK-QUAL-002). Emitted by
 // the on-demand GH-Actions run after the BIRD Mini-Dev pass completes.
 // Per-run dedup is on `runId` (the ISO timestamp the eval started) so
@@ -246,6 +286,8 @@ export type ProductEvent =
       hostedInvoiceUrl: string | null;
     }
   | AskCompletedEvent
+  | DbCreatedEvent
+  | DbAdoptedEvent
   | FeatureRequestedDdlViaAskEvent
   | FeatureRequestedHeavierTierEvent
   | FeatureRequestedLargerAccountEvent

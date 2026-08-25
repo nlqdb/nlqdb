@@ -31,6 +31,7 @@
 // `kind=create` branch routes here from `/v1/ask` per SK-ASK-001
 // in `docs/features/ask-pipeline/FEATURE.md`.
 
+import type { EventEmitter } from "@nlqdb/events";
 import type { RecentTablesStore } from "../ask/recent-tables.ts";
 import { deriveSlug } from "../databases/list.ts";
 import type { EngineClassifyDeps, EngineClassifyResult } from "./engine-classify.ts";
@@ -94,6 +95,11 @@ export type DbCreateDeps = {
   // `build-deps.ts`. Failures inside `touch` are swallowed by the
   // store and never propagate to the response.
   recentTables?: RecentTablesStore;
+  // SK-EVENTS-014 — activation-funnel emitter. Optional so the existing
+  // orchestrator unit tests need no stub; production wires the
+  // EVENTS_QUEUE emitter via `build-deps.ts`. `emit()` never throws
+  // (SK-EVENTS-003), so no call-site try/catch.
+  events?: EventEmitter;
   // SK-HDC-013 — push tail steps (KV writes, RAG embedding) off the
   // user-visible response path. Production wires
   // `c.executionCtx.waitUntil`; tests can pass a no-op or an awaitable
@@ -394,6 +400,27 @@ export async function orchestrateDbCreate(
   let pkLive: string | null = null;
   if (deps.mintPkLive) {
     pkLive = await deps.mintPkLive(dbId, args.tenantId).catch(() => null);
+  }
+
+  // 8. SK-EVENTS-014 — activation-funnel entry. Emitted here, not at the
+  //    routes, because all three create surfaces (`/v1/ask kind=create`,
+  //    `POST /v1/databases`, the pack-import preset) funnel through this
+  //    one success path — a per-route emit would drift the moment a
+  //    fourth surface lands. `anon` reads off the `anon:` tenant prefix
+  //    (`principal.ts`), the same convention the rate limiter uses.
+  if (deps.events) {
+    const emit = deps.events.emit({
+      name: "db.created",
+      dbId,
+      principalId: args.tenantId,
+      anon: args.tenantId.startsWith("anon:"),
+      engine,
+      preset: isPreset,
+      tableCount: plan.tables.length,
+      synthetic: args.synthetic === true,
+    });
+    if (deps.waitUntil) deps.waitUntil(emit);
+    else await emit;
   }
 
   return {
