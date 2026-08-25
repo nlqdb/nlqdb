@@ -18,6 +18,7 @@ import { fingerprintSchema } from "@nlqdb/db";
 import { apiKeyHmacSecret, mintPkLiveKey } from "../api-keys.ts";
 import { makeRecentTablesStore } from "../ask/recent-tables.ts";
 import { validateCompiledDdl } from "../ask/sql-validate-ddl.ts";
+import { buildEventEmitter } from "../events-emitter.ts";
 import { getLLMRouter } from "../llm-router.ts";
 import { compileDdl } from "./compile-ddl.ts";
 import { classifyEngine } from "./engine-classify.ts";
@@ -83,6 +84,10 @@ export function buildDbCreateDeps(
       // ask path so a fresh DB shows up in the principal's recent
       // tables on the very next /v1/ask classify hop.
       recentTables: makeRecentTablesStore(envBindings.KV),
+      // SK-EVENTS-014: activation-funnel emitter. Falls back to the
+      // noop emitter when EVENTS_QUEUE is unbound (local wrangler dev),
+      // per SK-EVENTS-003.
+      events: buildEventEmitter(envBindings.EVENTS_QUEUE),
       // SK-APIKEYS-001: mint pk_live_ key for the newly-provisioned DB.
       mintPkLive: (dbId, tenantId) =>
         mintPkLiveKey(envBindings.DB, apiKeyHmacSecret(envBindings), dbId, tenantId),

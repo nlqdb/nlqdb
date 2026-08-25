@@ -26,6 +26,33 @@ describe("toBatchItem", () => {
     expect(item.uuid).toMatch(UUID_RE);
   });
 
+  it("keys the whole db.* activation funnel on dbId — SK-EVENTS-014", async () => {
+    const created = await toBatchItem(
+      envelope("db.created.db_sales_ab12cd", {
+        name: "db.created",
+        dbId: "db_sales_ab12cd",
+        principalId: "anon:deadbeef",
+        anon: true,
+        engine: "postgres",
+        preset: false,
+        tableCount: 3,
+        synthetic: false,
+      }),
+    );
+    const adopted = await toBatchItem(
+      envelope("db.adopted.u_1.db_sales_ab12cd", {
+        name: "db.adopted",
+        userId: "u_1",
+        dbId: "db_sales_ab12cd",
+        replay: false,
+      }),
+    );
+    expect(created.distinct_id).toBe("db_sales_ab12cd");
+    expect(adopted.distinct_id).toBe("db_sales_ab12cd");
+    expect(created.properties).toMatchObject({ anon: true, engine: "postgres", tableCount: 3 });
+    expect(adopted.properties).toMatchObject({ userId: "u_1", replay: false });
+  });
+
   it("uses principalId as distinct_id for demand-signal events", async () => {
     const item = await toBatchItem(
       envelope("feature.requested.heavier_tier.anon:x.2026-07-16", {

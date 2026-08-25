@@ -9,6 +9,7 @@
 // never reaches `orchestrateDbCreate`. Tests for that gate live
 // alongside the classifier.
 
+import type { ProductEvent } from "@nlqdb/events";
 import type { LLMRouter } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
 import { type DbCreateDeps, orchestrateDbCreate } from "./orchestrate.ts";
@@ -157,6 +158,60 @@ const ARGS = {
   tenantId: "user_1",
   secretRef: "DATABASE_URL",
 };
+
+describe("db.created emission (SK-EVENTS-014)", () => {
+  it("emits one db.created per successful create, flagged anon by tenant prefix", async () => {
+    const emit = vi.fn(async (_event: ProductEvent) => {});
+    const out = await orchestrateDbCreate(makeDeps({ events: { emit } }), {
+      ...ARGS,
+      tenantId: "anon:deadbeef",
+      synthetic: false,
+    });
+
+    expect(out.ok).toBe(true);
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit.mock.calls[0]?.[0]).toEqual({
+      name: "db.created",
+      dbId: `db_orders_tracker_${FIXED_SUFFIX}`,
+      principalId: "anon:deadbeef",
+      anon: true,
+      engine: "postgres",
+      preset: false,
+      tableCount: 1,
+      synthetic: false,
+    });
+  });
+
+  it("marks an authed create as non-anon and carries the synthetic stamp", async () => {
+    const emit = vi.fn(async (_event: ProductEvent) => {});
+    await orchestrateDbCreate(makeDeps({ events: { emit } }), { ...ARGS, synthetic: true });
+
+    expect(emit.mock.calls[0]?.[0]).toMatchObject({
+      principalId: "user_1",
+      anon: false,
+      synthetic: true,
+    });
+  });
+
+  it("does not emit when the create fails", async () => {
+    const emit = vi.fn(async (_event: ProductEvent) => {});
+    const deps = makeDeps({
+      events: { emit },
+      validateCompiledDdl: vi.fn(
+        (): DdlValidationResult => ({
+          ok: false,
+          reason: "destructive_verb",
+          statement: "DROP TABLE orders",
+        }),
+      ),
+    });
+
+    const out = await orchestrateDbCreate(deps, ARGS);
+
+    expect(out.ok).toBe(false);
+    expect(emit).not.toHaveBeenCalled();
+  });
+});
 
 describe("orchestrateDbCreate", () => {
   it("happy path: returns ok with the expected dbId and runs sub-modules in order", async () => {

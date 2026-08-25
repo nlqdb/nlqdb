@@ -144,25 +144,18 @@ when-to-load:
 
 ### SK-EVENTS-012 — `pricing.*` funnel: first-party, identity-bearing pricing-page events
 
-- **Decision:** Two events instrument the marketing pricing page. `pricing.page_viewed` (one per visitor per day) and `pricing.plan_selected` (`plan: "hobby" | "pro"`, one per visitor per plan per day) both carry `principalId` + `email: string | null`. `POST /v1/events/pricing` is public (KV-throttled 20/min/IP) and resolves the session cookie **server-side** to attribute a signed-in visitor to their `userId` + account email; a logged-out visitor falls back to a per-day IP-hash bucket `pv:<16hex>`. Both land on a dedicated LogSnag `pricing` channel (`notify: false`). Client capture is a `keepalive` fetch from `apps/web/src/pages/pricing.astro` (`credentials: "include"`), never the Cloudflare Web Analytics beacon.
-- **Core value:** Free, Bullet-proof, Honest latency
-- **Why:** Cloudflare Web Analytics ([`GLOBAL-034`](../../decisions/GLOBAL-034-analytics-stack.md)) is the wrong tool for the founder's actual question — "how many **unique** people looked at pricing / picked a paid plan, and which are me". Its beacon (`static.cloudflareinsights.com`) is on every ad/privacy blocklist, so the technical-founder ICP is exactly who it under-counts (a founder's own visits never registered at all); its free tier rounds page counts to buckets of 10 and drops sub-floor pages; and a pageview carries no identity to dedupe or self-exclude. A first-party POST to our own origin survives blockers, and a server-derived `principalId` makes unique-count + self-exclusion (`tags.email`) answerable on the existing LogSnag `user_id` facet — no new sink, no client SDK, so GLOBAL-034's Lighthouse / no-cookie-banner posture holds. Per-day `defaultId` dedup makes "unique" the default unit and keeps the 2,500/mo quota safe.
-- **Consequence in code:**
-  - `packages/events/src/types.ts`: `PricingPlan`, `PricingPageViewedEvent`, `PricingPlanSelectedEvent` join `ProductEvent`; `pricing` added to the domain list (`SK-EVENTS-006`). `defaultId()` keys page-view per-(principal, day) and plan-select per-(principal, plan, day).
-  - `apps/events-worker/src/sinks/logsnag.ts`: both variants route to the `pricing` channel; `user_id = principalId`, `tags` carry `authed` + optional `email` + (for select) `plan`.
-  - `apps/api/src/events-feature.ts`: `recordPricingEvent()` derives identity (authed `userId` + email, else `pv:` IP-hash bucket) and never trusts a client-supplied identifier.
-  - `apps/api/src/index.ts`: `POST /v1/events/pricing` rides the existing `/v1/events/*` credentialed CORS and resolves the session opportunistically (degrades to anon on resolver failure).
-  - `apps/web/src/pages/pricing.astro`: page-view emit on load; plan-select emit at the top of the CTA handler (fires for logged-out clicks too — the redirect-to-sign-in path is still intent).
-- **Alternatives rejected:**
-  - **Fix the Cloudflare beacon instead.** Can't — blockers, 10-rounding, and zero identity are inherent to the tool, not a wiring bug.
-  - **Client-supplied email / identifier.** Spoofable; a visitor could inflate or forge the unique-user count. Identity is server-derived from the session cookie.
-  - **A dedicated PostHog integration for this question.** The question was answerable on the existing LogSnag `user_id` facet + tags; the `SK-EVENTS-013` generic sink now carries `pricing.*` to PostHog with no per-event work.
-  - **Mint an anon-bearer for logged-out views.** Coerces every visitor into an auth artifact for a page load; the per-day IP bucket is the honest anon floor (`SK-EVENTS-011` precedent).
+**Body:** [`decisions/SK-EVENTS-012-pricing-funnel.md`](./decisions/SK-EVENTS-012-pricing-funnel.md).
+`pricing.page_viewed` + `pricing.plan_selected` (per-visitor-per-day `defaultId`) carry a **server-derived** `principalId` + `email`; `POST /v1/events/pricing` resolves the session cookie, logged-out visitors fall back to a per-day IP-hash bucket. LogSnag `pricing` channel, `notify: false`. First-party POST instead of the blocker-prone Cloudflare beacon (`GLOBAL-034`).
 
 ### SK-EVENTS-013 — PostHog sink: server-side fan-out of every `ProductEvent`
 
 **Body:** [`decisions/SK-EVENTS-013-posthog-sink.md`](./decisions/SK-EVENTS-013-posthog-sink.md).
 `src/sinks/posthog.ts` drains every `EventEnvelope` to PostHog in one `/batch` POST per queue batch (plain `fetch`, no SDK); envelope `id` → deterministic `uuid` for dedup; env-gated per `SK-EVENTS-005`, best-effort — never touches ack/retry. Client half is [`SK-WEB-024`](../web-app/decisions/SK-WEB-024-posthog-app-surfaces-only.md).
+
+### SK-EVENTS-014 — `db.*` activation events: close the anon-create → adopt funnel gap
+
+**Body:** [`decisions/SK-EVENTS-014-activation-funnel.md`](./decisions/SK-EVENTS-014-activation-funnel.md).
+`db.created` (from `orchestrateDbCreate`, anon creates included) and `db.adopted` (from the `SK-ANON-012` sign-in hook, `replay`-flagged) make create → ask → adopt measurable. Both use **`dbId` as the PostHog `distinct_id`**, matching `ask.completed`, so the funnel joins without server-side identity. LogSnag `activation` channel.
 
 ## GLOBALs governing this feature
 

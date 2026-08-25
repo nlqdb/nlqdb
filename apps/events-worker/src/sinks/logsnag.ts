@@ -229,6 +229,39 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
           ...(event.email ? { email: event.email } : {}),
         },
       };
+    case "db.created":
+      // SK-EVENTS-014 — activation funnel entry. `notify: false`: creates
+      // are a rate to read on a dashboard, not a per-event page.
+      return {
+        project,
+        channel: "activation",
+        event: "DB created",
+        description: `${event.anon ? "Anonymous" : "Authed"} ${event.engine} DB ${event.dbId} provisioned with ${event.tableCount} table(s)`,
+        icon: "🗄️",
+        notify: false,
+        user_id: event.principalId,
+        tags: {
+          "db-id": event.dbId,
+          anon: String(event.anon),
+          engine: event.engine,
+          preset: String(event.preset),
+          synthetic: String(event.synthetic),
+        },
+      };
+    case "db.adopted":
+      // The one moment an anonymous session becomes a retained user —
+      // rare, high-signal, and the founder wants to know. `notify` only
+      // on a first adoption; replays are bookkeeping.
+      return {
+        project,
+        channel: "activation",
+        event: "DB kept after sign-in",
+        description: `Anonymous db ${event.dbId} adopted by a signed-in user${event.replay ? " (replay)" : ""}`,
+        icon: "🔐",
+        notify: !event.replay,
+        user_id: event.userId,
+        tags: { "db-id": event.dbId, replay: String(event.replay) },
+      };
     case "feature.eval.weekly": {
       // SK-QUAL-002: the eval run summary lands in `#north-star`. Lane EAs
       // are emitted as separate tags so the LogSnag dashboard can chart

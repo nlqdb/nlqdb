@@ -27,6 +27,7 @@ import { hashEmail, makeMagicLinkThrottle } from "./auth/magic-link-throttle.ts"
 import { sinkEmail } from "./auth/mock-email-sink.ts";
 import { captureVerifyUrl } from "./auth/mock-idp.ts";
 import { notify } from "./email-notify.ts";
+import { buildEventEmitter } from "./events-emitter.ts";
 
 // `isDev` is the localhost gate — only the literal `development` value
 // (set in `apps/api/.dev.vars` for `wrangler dev`) takes the dev path.
@@ -205,6 +206,18 @@ export const auth = betterAuth({
           );
           if (result.ok) {
             span.setAttribute("nlqdb.anon.adopt.outcome", result.adopted ? "adopted" : "replay");
+            // SK-EVENTS-014 — "sign-in to keep". Only emitted when a DB
+            // actually crossed the auth boundary (`dbId !== null`), so
+            // this stays an activation event and never degenerates into
+            // the sign-in stream `SK-EVENTS-006` bars.
+            if (result.dbId) {
+              await buildEventEmitter(env.EVENTS_QUEUE).emit({
+                name: "db.adopted",
+                userId: newSession.user.id,
+                dbId: result.dbId,
+                replay: !result.adopted,
+              });
+            }
           } else {
             span.setAttribute("nlqdb.anon.adopt.outcome", result.reason);
           }
