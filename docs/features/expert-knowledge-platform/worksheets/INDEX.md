@@ -113,8 +113,11 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
   cross-tenant reach denied direct + via JOIN, SELECT-only, FORCE RLS;
   granted-read RESOLVE leg shipped 2026-08-24 — `grant-resolve.ts`
   `resolveGrantedRead` fail-closes to `no_grant`/`owner_db_missing`/`not_grantable`
-  and resolves the owner DB from the trusted grant row, hosted-only; remaining:
-  the buyer's live `/v1/ask` exec route branch + revoke-in-flight measurement)
+  and resolves the owner DB from the trusted grant row, hosted-only;
+  granted-read EXECUTOR shipped 2026-08-25 — `grant-orchestrate.ts`
+  `executeGrantedRead` composes resolve → plan → run → meter → rows-only, pure
+  over injected I/O, full reject/meter matrix unit-tested; remaining: wiring the
+  executor into the buyer's live `/v1/ask` route + revoke-in-flight measurement)
 - [ ] EK-07 — sovereign hosting 1-click (roadmap)
 - [ ] EK-08 — launch motion + acceptance criteria
 - [ ] EK-09 — trust hardening (F1-B): narration skip + no-training provider pin

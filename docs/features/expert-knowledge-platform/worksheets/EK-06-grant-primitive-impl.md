@@ -107,10 +107,24 @@ fail-closed choices: the owner DB is resolved under the OWNER's tenant from the
 holds); the returned grant's (grantee, ownerDb) identity is re-asserted against
 the request; and hosted-Postgres is re-checked at resolve (SK-EKP-008 v1) so a
 BYO/ClickHouse target the grant role + FORCE-RLS don't fit fails closed rather
-than mis-executing. Still box 2's open work: the live `/v1/ask` **exec** route
-branch that calls `resolveGrantedRead` → `planGrantedRead` → run `execSteps` →
-skip narration → meter, and the live revoke-while-in-flight latency measurement
-(its own box below).
+than mis-executing.
+**Box 2 — granted-read EXECUTOR shipped 2026-08-25 (sub-piece g, the execution
+keystone):** `apps/api/src/grant-orchestrate.ts` (`executeGrantedRead`) — the
+pure composition the live route reduces to: `resolveGrantedRead` →
+`planGrantedRead` → run `execSteps` (injected owner-DB runner) → meter
+(`grant-usage.ts`) → return the owner's rows UN-NARRATED. Pure over injected I/O
+(no D1/env/PG), so the full happy + reject + meter matrix is unit-tested without
+a live DB (`grant-orchestrate.test.ts`, 10 cases), pinning three load-bearing
+contracts: every resolve/plan reject fails closed **before** any exec runs and
+**before** any usage is metered; usage is metered **only** after a successful
+exec (a thrown exec propagates and meters nothing — SK-EKP-008's "errored query
+emits nothing"), with the client's idempotency key or a synthesized one, and a
+replay records nothing new while the read still returns; and the result is
+rows-only (no summarize seam) so cell values never reach narration
+(GLOBAL-037 / EK-09 box 2). Still box 2's open work: wiring `executeGrantedRead`
+into the buyer's live `/v1/ask` route (detect the granted DB, thread the owner
+schema to the schema-only planner, render rows-only) plus the live
+revoke-while-in-flight latency measurement (its own box below).
 
 ## Goal
 
@@ -179,17 +193,23 @@ satisfy):
       `grant-resolve.ts` `resolveGrantedRead` (fail-closed `no_grant` /
       `owner_db_missing` / `not_grantable`; owner DB resolved under the owner
       tenant from the trusted grant row; hosted-only re-check; unit-tested).
-      The buyer's live `/v1/ask` exec route branch that composes it is the
-      remaining box-2 work; see header.)*
+      Granted-read EXECUTOR shipped 2026-08-25 — `grant-orchestrate.ts`
+      `executeGrantedRead` composes resolve → plan → run → meter → rows-only,
+      pure over injected I/O, full reject/meter matrix unit-tested. Wiring it
+      into the buyer's live `/v1/ask` route is the remaining box-2 work; see
+      header.)*
 - [ ] Usage records emitted per granted query, idempotent under retry.
       *(Meter primitive shipped 2026-08-10 — migration `0028_grant_usage.sql`
       + `apps/api/src/grant-usage.ts` `recordGrantUsage`: one row per
       successful granted query, attributed to (grant, buyer, seller),
       idempotent by the `UNIQUE (grant_id, idempotency_key)` constraint so a
       retry never double-counts (SK-EKP-008's 2026-08-07 hardening). No fee
-      logic — public-half meter only (SK-EKP-002/003). Live per-query
-      emission from the granted `/v1/ask` route awaits box 2's executor
-      wiring; this is the primitive it calls on HTTP 200.)*
+      logic — public-half meter only (SK-EKP-002/003). The meter-after-success
+      + idempotency-key-synthesis composition landed 2026-08-25 in
+      `grant-orchestrate.ts` `executeGrantedRead` (metered only after a
+      successful exec; a synthesized key when the client omits one; replay
+      records nothing new — unit-tested). Live per-query emission awaits wiring
+      that executor into the granted `/v1/ask` route.)*
 - [ ] Revocation latency measured and within the EK-02 bound — including
       the in-flight half (`statement_timeout` ≤ the 30 s cache bound; the
       env knob may only tighten). *(Bound primitive shipped 2026-08-10 —
