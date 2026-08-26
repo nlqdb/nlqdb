@@ -48,6 +48,8 @@ export type GtmMetrics = {
     dbsWithSource: number;
     dbsBySource: Array<{ source: string; total: number; last7d: number }>;
     strangersBySource: Array<{ source: string; strangers: number }>;
+    // SK-GTM-010 — creating surface (hero/chat/embed/cli/mcp); orthogonal to channel.
+    dbsBySurface: Array<{ surface: string; total: number; last7d: number }>;
   };
   pmf: {
     premiumInterest: number;

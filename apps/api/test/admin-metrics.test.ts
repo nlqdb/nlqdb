@@ -53,13 +53,15 @@ async function seedDb(
     lastQueriedAt?: number | null;
     synthetic?: boolean;
     sourceJson?: string | null;
+    /** SK-GTM-010 — creating surface (hero/chat/embed/cli/mcp); null = pre-instrument. */
+    sourceSurface?: string | null;
     /** Explicit create time — the SK-GTM-007 last7d/earliest-touch
         assertions need determinism, not the real-clock default. */
     createdAt?: number;
   } = {},
 ) {
   await env.DB.prepare(
-    "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, first10_asks, first10_ok, last_queried_at, synthetic, source_json, created_at) VALUES (?, ?, 'postgres', 'ref', ?, ?, ?, ?, ?, COALESCE(?, unixepoch()))",
+    "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, first10_asks, first10_ok, last_queried_at, synthetic, source_json, source_surface, created_at) VALUES (?, ?, 'postgres', 'ref', ?, ?, ?, ?, ?, ?, COALESCE(?, unixepoch()))",
   )
     .bind(
       id,
@@ -69,6 +71,7 @@ async function seedDb(
       opts.lastQueriedAt ?? null,
       opts.synthetic ? 1 : 0,
       opts.sourceJson ?? null,
+      opts.sourceSurface ?? null,
       opts.createdAt ?? null,
     )
     .run();
@@ -95,6 +98,7 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
       ok: 5,
       lastQueriedAt: nowSec - DAY,
       sourceJson: JSON.stringify({ utm_source: "devto", ref: "dev.to", landing: "/blog/x/" }),
+      sourceSurface: "chat",
       createdAt: nowSec - 10 * DAY,
     });
     // Founder DB: activated but internal — must not count as stranger.
@@ -112,17 +116,27 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
       asks: 1,
       ok: 1,
       lastQueriedAt: nowSec - 2 * DAY,
+      sourceSurface: "hero",
       createdAt: nowSec - 3 * DAY,
     });
     await seedDb("db_a2", "anon:bbbb000011112222", {
       sourceJson: JSON.stringify({ ref: "news.ycombinator.com", landing: "/" }),
+      sourceSurface: "hero",
       createdAt: nowSec - 2 * DAY,
     });
     // SK-GTM-005 — one walker device with two synthetic DBs: the device
     // and its rows must be excludable from the organic anon counts. No
     // source captured, so both group under 'untracked' in the ledger.
-    await seedDb("db_w1", "anon:cccc000011112222", { synthetic: true, createdAt: nowSec - DAY });
-    await seedDb("db_w2", "anon:cccc000011112222", { synthetic: true, createdAt: nowSec - DAY });
+    await seedDb("db_w1", "anon:cccc000011112222", {
+      synthetic: true,
+      sourceSurface: "hero",
+      createdAt: nowSec - DAY,
+    });
+    await seedDb("db_w2", "anon:cccc000011112222", {
+      synthetic: true,
+      sourceSurface: "hero",
+      createdAt: nowSec - DAY,
+    });
     await env.DB.prepare(
       "INSERT INTO anon_adoptions (token, user_id, database_id, created_at) VALUES ('tok1', 'u_s1', 'db_a1', ?)",
     )
@@ -217,6 +231,16 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
       { source: "untracked", strangers: 1 },
     ]);
 
+    // SK-GTM-010 — creating surface, orthogonal to channel. hero = the 4
+    // anon/adopted/walker DBs (all created ≤ 3d ago); chat = db_s1 (10d,
+    // outside 7d); untracked = db_f1 (no surface stamped). Ordered by
+    // total DESC then surface ASC (chat < untracked).
+    expect(m.acquisition.dbsBySurface).toEqual([
+      { surface: "hero", total: 4, last7d: 4 },
+      { surface: "chat", total: 1, last7d: 0 },
+      { surface: "untracked", total: 1, last7d: 0 },
+    ]);
+
     expect(m.pmf.premiumInterest).toBe(1);
     expect(m.pmf.payingCustomers).toBe(1);
     expect(m.pmf.customersByStatus).toEqual({ active: 1, incomplete: 1 });
@@ -264,6 +288,7 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
     expect(m.acquisition.dbsWithSource).toBe(0);
     expect(m.acquisition.dbsBySource).toEqual([]);
     expect(m.acquisition.strangersBySource).toEqual([]);
+    expect(m.acquisition.dbsBySurface).toEqual([]);
     expect(m.customers).toEqual([]);
     expect(m.trend).toEqual([]);
     expect(m.launchGate).toEqual({
