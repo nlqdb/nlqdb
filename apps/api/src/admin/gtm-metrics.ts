@@ -127,6 +127,13 @@ export type GtmMetrics = {
     dbsBySource: Array<{ source: string; total: number; last7d: number }>;
     /** Real strangers by their earliest captured channel. */
     strangersBySource: Array<{ source: string; strangers: number }>;
+    /**
+     * SK-GTM-010 — all DBs grouped by the CREATING surface
+     * (principal-derived: hero/chat/embed/cli/mcp); 'untracked' = created
+     * before the instrument. Orthogonal to `dbsBySource` (channel): this
+     * answers which client minted the DB, not which channel brought it.
+     */
+    dbsBySurface: Array<{ surface: string; total: number; last7d: number }>;
   };
   pmf: {
     premiumInterest: number;
@@ -239,6 +246,7 @@ export async function computeGtmMetrics(
     signupDays,
     dbCounts,
     dbsBySource,
+    dbsBySurface,
     strangersBySource,
     first10,
     strangerDbs,
@@ -280,6 +288,13 @@ export async function computeGtmMetrics(
         COUNT(*) AS total,
         SUM(CASE WHEN created_at >= ?1 THEN 1 ELSE 0 END) AS last7d
       FROM databases GROUP BY source ORDER BY total DESC, source`)
+      .bind(cut7d),
+    // SK-GTM-010 — creating surface (principal-derived); NULL = pre-instrument.
+    db
+      .prepare(`SELECT COALESCE(source_surface, 'untracked') AS surface,
+        COUNT(*) AS total,
+        SUM(CASE WHEN created_at >= ?1 THEN 1 ELSE 0 END) AS last7d
+      FROM databases GROUP BY surface ORDER BY total DESC, surface`)
       .bind(cut7d),
     db.prepare(`SELECT src AS source, COUNT(*) AS strangers FROM (
         SELECT COALESCE((
@@ -500,6 +515,11 @@ export async function computeGtmMetrics(
       strangersBySource: ((strangersBySource?.results ?? []) as CountsRow[]).map((r) => ({
         source: String(r["source"]),
         strangers: num(r, "strangers"),
+      })),
+      dbsBySurface: ((dbsBySurface?.results ?? []) as CountsRow[]).map((r) => ({
+        surface: String(r["surface"]),
+        total: num(r, "total"),
+        last7d: num(r, "last7d"),
       })),
     },
     pmf: {

@@ -229,10 +229,40 @@ function Metrics({ m }: { m: GtmMetrics }) {
           </table>
         )}
         <p className="admin__note">
-          Channel = utm_source, else external referrer host, else “direct”; “untracked” = created
-          before the instrument or via CLI/SDK/MCP. {m.acquisition.dbsWithSource} of{" "}
-          {m.funnel.dbsTotal} DBs carry a source. Channel keys are canonical in
-          docs/research/acquisition-channels.md.
+          Channel = utm_source, else external referrer host, else “direct” — web-only (a headless
+          client sends no referrer or UTM). “untracked” here = no channel captured;{" "}
+          {m.acquisition.dbsWithSource} of {m.funnel.dbsTotal} DBs carry a channel. For which client
+          minted the DB (cli/mcp/embed vs web), see the surface table below. Channel keys are
+          canonical in docs/research/acquisition-channels.md.
+        </p>
+
+        <h3 id="admin-h-surfaces">By creating surface (SK-GTM-010)</h3>
+        {m.acquisition.dbsBySurface.length === 0 ? (
+          <p className="admin__note">No DBs yet — surfaces appear with the first create.</p>
+        ) : (
+          <table className="admin__table" data-testid="surfaces-table">
+            <thead>
+              <tr>
+                <th scope="col">Surface</th>
+                <th scope="col">DBs (all time)</th>
+                <th scope="col">DBs (7d)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {m.acquisition.dbsBySurface.map((row) => (
+                <tr key={row.surface}>
+                  <td>{row.surface}</td>
+                  <td>{row.total}</td>
+                  <td>{row.last7d}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="admin__note">
+          Surface = the client that created the DB, derived server-side from the credential: hero
+          (anon web), chat (signed-in web), embed (pk_live), cli (sk_live — includes the server
+          SDK), mcp (sk_mcp). “untracked” = created before this instrument.
         </p>
       </section>
 
