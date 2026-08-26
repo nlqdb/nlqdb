@@ -1029,10 +1029,11 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           synthetic: isSyntheticRequest(c.req.header("user-agent"), c.env),
         });
         if (result.ok) await commitAnonCreate();
-        // SK-GTM-007 — persist the client's first-touch acquisition
-        // source on the freshly-created row (see `persistSourceJson`).
-        if (result.ok && parsed.body.source) {
-          persistSourceJson(c, result.dbId, parsed.body.source);
+        // SK-GTM-007 / SK-GTM-010 — stamp the creating surface (always,
+        // principal-derived) and the client's first-touch channel (optional,
+        // web-only) on the freshly-created row (see `persistDbSource`).
+        if (result.ok) {
+          persistDbSource(c, result.dbId, surfaceFromPrincipal(principal), parsed.body.source);
         }
         return formatCreateJsonResponse(result);
       } finally {
@@ -4224,14 +4225,13 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
       }
       span.setAttribute("nlqdb.db.connect.outcome", "ok");
       span.setAttribute("nlqdb.db.connect.db_id", result.dbId);
-      // SK-GTM-007 — persist the first-touch source on the freshly
-      // connected BYO row (see `persistSourceJson`). Without this, a
-      // stranger who lands from a developer channel (github/npm) and
-      // connects their own DB — rather than ask-creating a demo — is
-      // counted `untracked` in GTM reads.
-      if (source) {
-        persistSourceJson(c, result.dbId, source);
-      }
+      // SK-GTM-007 / SK-GTM-010 — stamp the creating surface (always) and
+      // the first-touch channel (optional) on the freshly connected BYO row
+      // (see `persistDbSource`). Without the channel, a stranger who lands
+      // from a developer channel (github/npm) and connects their own DB —
+      // rather than ask-creating a demo — is counted `untracked` in GTM
+      // channel reads.
+      persistDbSource(c, result.dbId, surfaceFromPrincipal(principal), source);
       if (kvKey) {
         // Store the dbId for 24h so a retry within the client's window
         // dedupes. Fire-and-forget — a KV write failure must not fail an
@@ -4409,15 +4409,26 @@ function serializeEvent(event: OrchestrateEvent): string {
   return JSON.stringify(event);
 }
 
-// SK-GTM-007 — persist the first-touch acquisition source on a freshly
-// minted `databases` row, off the response path. Best-effort telemetry:
-// `source_json IS NULL` keeps it first-touch-only (idempotent-replay-safe),
-// a failed write only logs. Shared by the create + connect arms so the
-// bound-param SQL, the guard, and the log key can never diverge.
-function persistSourceJson(c: Context, dbId: string, source: AskSource): void {
+// SK-GTM-007 / SK-GTM-010 — persist the acquisition source columns on a
+// freshly minted `databases` row, off the response path. Best-effort
+// telemetry: `COALESCE(...)` keeps both columns first-write-wins
+// (idempotent-replay-safe) and never clobbers an existing value with a
+// null; a failed write only logs. Shared by the create + connect arms so
+// the bound-param SQL, the guard, and the log key can never diverge.
+//   surface — the creating client (principal-derived), always known.
+//   source  — the web first touch (channel), optional; a headless client
+//             sends none, so the column stays NULL there.
+function persistDbSource(
+  c: Context,
+  dbId: string,
+  surface: ReturnType<typeof surfaceFromPrincipal>,
+  source?: AskSource,
+): void {
   c.executionCtx.waitUntil(
-    c.env.DB.prepare("UPDATE databases SET source_json = ?1 WHERE id = ?2 AND source_json IS NULL")
-      .bind(JSON.stringify(source), dbId)
+    c.env.DB.prepare(
+      "UPDATE databases SET source_surface = COALESCE(source_surface, ?1), source_json = COALESCE(source_json, ?2) WHERE id = ?3",
+    )
+      .bind(surface, source ? JSON.stringify(source) : null, dbId)
       .run()
       .catch((err: unknown) => console.warn("gtm_source_write_failed", String(err))),
   );
