@@ -311,6 +311,39 @@ export const MEMORY_QUALITY_SCHEMAS: MemorySchema[] = [
   LANGUAGE_TUTOR_MEMORY,
 ];
 
+// Per-goal-pack declared categorical vocabulary (SK-QUAL-023 vocabulary
+// lever). run 185 diagnosed the dominant free-lane failure class as
+// categorical value-linking drift: the planner guesses a plausible-but-wrong
+// literal for a `kind`/`predicate`/`role` filter (`'open question'`≠
+// `'open_question'`, `'doc-sync'`≠`'sync'`, `'vocabulary'`≠`'vocab_encounter'`,
+// `'current_city'`≠`'city'`), so a correctly-shaped query returns the empty
+// set. The fix is to declare each goal-pack's closed categorical domains — a
+// schema-level fact of the pack, not a runtime cell-value — as hand-authored
+// evidence. That is squarely on GLOBAL-037 planning lane 1 ("schema … and
+// hand-authored evidence/descriptions"); it never samples real user
+// cell-values (the `value-retrieval` lane stays unbuilt/founder-gated). The
+// runner appends this to the goal as an `Evidence:` block, exactly as it
+// feeds BIRD's annotator hints.
+//
+// Evidence declares ONLY the categorical column domains. A first cut also
+// carried an `agent_id` identifier-convention sentence and an append-only
+// recency note; the run 32919537669 mismatch diagnostics showed both
+// backfiring — the planner injected the prose verbatim as a literal
+// (`agent_id = 'the memory-owning agent'`, q19/q32/q38) and over-applied
+// recency on a plain-retrieval question (q0) — cancelling the vocabulary
+// gain. Column domains are the proven, on-target signal; keep only those.
+export const MEMORY_SCHEMA_EVIDENCE: Record<string, string> = {
+  agent_memory_v1:
+    "facts.predicate is one of {city, likes, owner, plan, promo, status, trial}. " +
+    "entities.kind is one of {org, person}.",
+  repo_ops_memory_v1:
+    "facts.kind is one of {blocked, decision_status, open_question, reference, retired, tracker_row}. " +
+    "entities.kind is one of {decision, feature, queue_item}. episodes.role is one of {sync}.",
+  language_tutor_memory_v1:
+    "facts.kind is one of {mistake, pricing_heuristic, retired, student_profile, vocab_encounter}. " +
+    "entities.kind is one of {grammar_rule, student, topic, word}. episodes.role is one of {lesson}.",
+};
+
 // Gold SQL is hand-checked against the seed above — every query returns a
 // non-empty result; every ORDER BY gold is tie-free (SK-QUAL-019).
 export const MEMORY_QUALITY_QUESTIONS: MemoryQuestion[] = [
@@ -830,8 +863,12 @@ export async function loadMemoryQuality(
   };
 }
 
-// Project to the canonical harness type — `evidence` is empty (like persona
-// rows). `axis` narrows to one quality axis for a lever-focused run.
+// Project to the canonical harness type. `evidence` carries the goal-pack's
+// declared categorical vocabulary (MEMORY_SCHEMA_EVIDENCE) so the planner
+// value-links `kind`/`predicate`/`role` filters against a fixed domain
+// instead of guessing a drifted literal (SK-QUAL-023 vocabulary lever;
+// GLOBAL-037 planning lane 1). `axis` narrows to one quality axis for a
+// lever-focused run.
 export function toEvalQuestions(opts: { axis?: MemoryAxis; limit?: number } = {}): EvalQuestion[] {
   let qs = MEMORY_QUALITY_QUESTIONS;
   if (opts.axis) qs = qs.filter((q) => q.axis === opts.axis);
@@ -840,7 +877,7 @@ export function toEvalQuestions(opts: { axis?: MemoryAxis; limit?: number } = {}
     question_id: q.question_id,
     db_id: q.db_id,
     question: q.question,
-    evidence: "",
+    evidence: MEMORY_SCHEMA_EVIDENCE[q.db_id] ?? "",
     sql: q.sql,
     difficulty: q.difficulty,
   }));
