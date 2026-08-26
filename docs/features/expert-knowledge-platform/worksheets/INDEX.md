@@ -122,8 +122,13 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
   `recordGrantUsage`, uuid default; unit-tested over a fake D1) +
   `grant-ask-wire.ts` `runGrantExecSteps`/`grantedReadIo(d1)` (Neon runner over
   the pre-built grant exec batch, `db.query`-spanned, fail-closed on a missing
-  connection ref); remaining: the buyer's live `/v1/ask` route branch +
-  revoke-in-flight measurement)
+  connection ref); schema-only planning half shipped 2026-08-26 —
+  `grant-ask.ts` `orchestrateGrantedAsk` (resolve owner schema → plan the goal
+  against the OWNER schema, schema-only, never owner cell values → normalise
+  schema-relative → `executeGrantedRead`; pure over injected I/O, full
+  reject/schema-only/rows-only matrix unit-tested driving the real executor);
+  remaining: the thin buyer `/v1/ask` route branch (detect → `orchestrateGrantedAsk`
+  → render rows-only) + revoke-in-flight measurement)
 - [ ] EK-07 — sovereign hosting 1-click (roadmap)
 - [ ] EK-08 — launch motion + acceptance criteria
   (box 1 shipped 2026-08-26 — the six-criterion first-paying-expert launch
