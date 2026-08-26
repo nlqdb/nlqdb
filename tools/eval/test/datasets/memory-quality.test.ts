@@ -379,61 +379,70 @@ describe("loadMemoryQuality (runner wiring)", () => {
 // as fixtures grow — a new `kind`/`role` in a pack fails the test until the
 // evidence names it.
 describe("MEMORY_SCHEMA_EVIDENCE — declared vocabulary matches the seed", () => {
-  // The categorical columns the evidence declares a closed domain for. Their
-  // distinct seed values are the only literals the evidence may contain
-  // inside a `{…}` set, and every one of them must be named.
+  // Categorical columns whose closed domain the evidence must declare. Every
+  // such column present in a pack is checked per column (never pooled) so a
+  // real value can't be smuggled under the wrong column's domain as packs grow.
   const CATEGORICAL: Record<string, string[]> = {
     facts: ["predicate", "kind"],
     episodes: ["role"],
     entities: ["kind"],
   };
 
-  function seedValues(db_id: string): Set<string> {
-    const db = seeded(db_id);
-    const vals = new Set<string>();
-    for (const [table, cols] of Object.entries(CATEGORICAL)) {
-      const present = (
-        db.query(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
-      ).map((r) => r.name);
-      for (const col of cols) {
-        if (!present.includes(col)) continue;
-        for (const row of db.query(`SELECT DISTINCT ${col} AS v FROM ${table}`).all() as Array<{
-          v: string;
-        }>) {
-          vals.add(row.v);
-        }
-      }
+  // Distinct seed values of one column, or null if the column is absent here.
+  function seedDomain(db: Database, table: string, col: string): Set<string> | null {
+    const present = (db.query(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map(
+      (r) => r.name,
+    );
+    if (!present.includes(col)) return null;
+    const out = new Set<string>();
+    for (const row of db.query(`SELECT DISTINCT ${col} AS v FROM ${table}`).all() as Array<{
+      v: string;
+    }>) {
+      out.add(row.v);
     }
-    db.close();
-    return vals;
+    return out;
   }
 
-  // Every literal the evidence lists inside a `{a, b, c}` set.
-  function declaredLiterals(evidence: string): string[] {
-    const out: string[] = [];
-    for (const m of evidence.matchAll(/\{([^}]*)\}/g)) {
-      for (const tok of (m[1] ?? "").split(",")) {
-        const t = tok.trim();
-        if (t) out.push(t);
-      }
+  // The `{a, b, c}` set the evidence declares for one `table.column`.
+  function declaredDomain(evidence: string, table: string, col: string): Set<string> {
+    const m = evidence.match(new RegExp(`${table}\\.${col} is one of \\{([^}]*)\\}`));
+    const out = new Set<string>();
+    for (const tok of (m?.[1] ?? "").split(",")) {
+      const t = tok.trim();
+      if (t) out.add(t);
     }
     return out;
   }
 
   for (const db_id of Object.keys(MEMORY_SCHEMA_EVIDENCE)) {
-    it(`${db_id}: evidence names every seed categorical value and invents none`, () => {
+    it(`${db_id}: each declared domain equals its column's seed values exactly`, () => {
       const evidence = MEMORY_SCHEMA_EVIDENCE[db_id] ?? "";
       expect(evidence.length, `${db_id} has evidence`).toBeGreaterThan(0);
-      const seed = seedValues(db_id);
-      const declared = new Set(declaredLiterals(evidence));
-      // Forward: every real categorical literal is declared (no missing value).
-      for (const v of seed) {
-        expect(declared.has(v), `${db_id} evidence declares seed value '${v}'`).toBe(true);
+      const db = seeded(db_id);
+      let checked = 0;
+      try {
+        for (const [table, cols] of Object.entries(CATEGORICAL)) {
+          for (const col of cols) {
+            const seed = seedDomain(db, table, col);
+            if (seed === null) continue; // column absent in this pack
+            checked++;
+            const declared = declaredDomain(evidence, table, col);
+            // Forward: every real value is declared (a missing literal is drift).
+            for (const v of seed) {
+              expect(declared.has(v), `${db_id} ${table}.${col} declares '${v}'`).toBe(true);
+            }
+            // Reverse: every declared value is real for THIS column (no false domain).
+            for (const v of declared) {
+              expect(seed.has(v), `${db_id} ${table}.${col} '${v}' is a real seed value`).toBe(
+                true,
+              );
+            }
+          }
+        }
+      } finally {
+        db.close();
       }
-      // Reverse: every declared literal is a real seed value (no invented domain).
-      for (const v of declared) {
-        expect(seed.has(v), `${db_id} declared literal '${v}' exists in the seed`).toBe(true);
-      }
+      expect(checked, `${db_id} declares at least one categorical domain`).toBeGreaterThan(0);
     });
   }
 
