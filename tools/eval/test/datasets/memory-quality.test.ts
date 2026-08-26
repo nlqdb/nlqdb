@@ -10,6 +10,7 @@ import {
   loadMemoryQuality,
   MEMORY_QUALITY_QUESTIONS,
   MEMORY_QUALITY_SCHEMAS,
+  MEMORY_SCHEMA_EVIDENCE,
   type MemoryAxis,
   type MemoryDb,
   type MemorySchema,
@@ -308,11 +309,19 @@ describe("language-tutor pack axis semantics", () => {
 });
 
 describe("toEvalQuestions", () => {
-  it("projects to the canonical EvalQuestion shape (empty evidence, gold sql)", () => {
+  it("projects to the canonical EvalQuestion shape (declared vocab evidence, gold sql)", () => {
     const out = toEvalQuestions();
     expect(out).toHaveLength(MEMORY_QUALITY_QUESTIONS.length);
-    expect(out[0]?.evidence).toBe("");
-    expect(out[0]?.sql.length).toBeGreaterThan(0);
+    const first = out[0];
+    if (!first) throw new Error("no questions");
+    // Evidence now carries the goal-pack's declared categorical vocabulary
+    // (SK-QUAL-023 lever), keyed by db_id — never empty for a pack that
+    // declares one.
+    const firstEvidence = MEMORY_SCHEMA_EVIDENCE[first.db_id];
+    if (firstEvidence === undefined) throw new Error(`no evidence for ${first.db_id}`);
+    expect(first.evidence).toBe(firstEvidence);
+    expect(first.evidence.length).toBeGreaterThan(0);
+    expect(first.sql.length).toBeGreaterThan(0);
   });
 
   it("applies axis filter and limit", () => {
@@ -359,5 +368,82 @@ describe("loadMemoryQuality (runner wiring)", () => {
     const { questions } = await loadMemoryQuality({ axis: "consolidation", dbDir });
     expect(questions.length).toBeGreaterThan(0);
     for (const q of questions) expect(axisFor(q.question_id)).toBe("consolidation");
+  });
+});
+
+// The declared categorical vocabulary (MEMORY_SCHEMA_EVIDENCE) is the
+// SK-QUAL-023 value-linking lever: it must stay a truthful description of the
+// seed, or it leaks a false domain (a value the DB never stores) or misses a
+// real literal (leaving the drift it was meant to fix). This block pins both
+// directions to the actual seed so the evidence can never silently diverge
+// as fixtures grow — a new `kind`/`role` in a pack fails the test until the
+// evidence names it.
+describe("MEMORY_SCHEMA_EVIDENCE — declared vocabulary matches the seed", () => {
+  // The categorical columns the evidence declares a closed domain for. Their
+  // distinct seed values are the only literals the evidence may contain
+  // inside a `{…}` set, and every one of them must be named.
+  const CATEGORICAL: Record<string, string[]> = {
+    facts: ["predicate", "kind"],
+    episodes: ["role"],
+    entities: ["kind"],
+  };
+
+  function seedValues(db_id: string): Set<string> {
+    const db = seeded(db_id);
+    const vals = new Set<string>();
+    for (const [table, cols] of Object.entries(CATEGORICAL)) {
+      const present = (
+        db.query(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+      ).map((r) => r.name);
+      for (const col of cols) {
+        if (!present.includes(col)) continue;
+        for (const row of db.query(`SELECT DISTINCT ${col} AS v FROM ${table}`).all() as Array<{
+          v: string;
+        }>) {
+          vals.add(row.v);
+        }
+      }
+    }
+    db.close();
+    return vals;
+  }
+
+  // Every literal the evidence lists inside a `{a, b, c}` set.
+  function declaredLiterals(evidence: string): string[] {
+    const out: string[] = [];
+    for (const m of evidence.matchAll(/\{([^}]*)\}/g)) {
+      for (const tok of (m[1] ?? "").split(",")) {
+        const t = tok.trim();
+        if (t) out.push(t);
+      }
+    }
+    return out;
+  }
+
+  for (const db_id of Object.keys(MEMORY_SCHEMA_EVIDENCE)) {
+    it(`${db_id}: evidence names every seed categorical value and invents none`, () => {
+      const evidence = MEMORY_SCHEMA_EVIDENCE[db_id] ?? "";
+      expect(evidence.length, `${db_id} has evidence`).toBeGreaterThan(0);
+      const seed = seedValues(db_id);
+      const declared = new Set(declaredLiterals(evidence));
+      // Forward: every real categorical literal is declared (no missing value).
+      for (const v of seed) {
+        expect(declared.has(v), `${db_id} evidence declares seed value '${v}'`).toBe(true);
+      }
+      // Reverse: every declared literal is a real seed value (no invented domain).
+      for (const v of declared) {
+        expect(seed.has(v), `${db_id} declared literal '${v}' exists in the seed`).toBe(true);
+      }
+    });
+  }
+
+  it("every schema with declared vocabulary attaches it to its questions", () => {
+    for (const db_id of Object.keys(MEMORY_SCHEMA_EVIDENCE)) {
+      const qs = toEvalQuestions().filter((q) => q.db_id === db_id);
+      expect(qs.length, `${db_id} has questions`).toBeGreaterThan(0);
+      const evidence = MEMORY_SCHEMA_EVIDENCE[db_id];
+      if (evidence === undefined) throw new Error(`no evidence for ${db_id}`);
+      for (const q of qs) expect(q.evidence).toBe(evidence);
+    }
   });
 });
