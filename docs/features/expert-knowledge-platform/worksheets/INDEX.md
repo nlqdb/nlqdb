@@ -116,8 +116,14 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
   and resolves the owner DB from the trusted grant row, hosted-only;
   granted-read EXECUTOR shipped 2026-08-25 — `grant-orchestrate.ts`
   `executeGrantedRead` composes resolve → plan → run → meter → rows-only, pure
-  over injected I/O, full reject/meter matrix unit-tested; remaining: wiring the
-  executor into the buyer's live `/v1/ask` route + revoke-in-flight measurement)
+  over injected I/O, full reject/meter matrix unit-tested; production I/O wiring
+  shipped 2026-08-26 — `grant-ask-io.ts` `buildGrantedReadIo` (node-safe
+  composition: active grant behind the ≤30 s status cache, `resolveDb`,
+  `recordGrantUsage`, uuid default; unit-tested over a fake D1) +
+  `grant-ask-wire.ts` `runGrantExecSteps`/`grantedReadIo(d1)` (Neon runner over
+  the pre-built grant exec batch, `db.query`-spanned, fail-closed on a missing
+  connection ref); remaining: the buyer's live `/v1/ask` route branch +
+  revoke-in-flight measurement)
 - [ ] EK-07 — sovereign hosting 1-click (roadmap)
 - [ ] EK-08 — launch motion + acceptance criteria
 - [ ] EK-09 — trust hardening (F1-B): narration skip + no-training provider pin
