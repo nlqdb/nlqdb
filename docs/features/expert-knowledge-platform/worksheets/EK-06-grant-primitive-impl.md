@@ -125,6 +125,23 @@ rows-only (no summarize seam) so cell values never reach narration
 into the buyer's live `/v1/ask` route (detect the granted DB, thread the owner
 schema to the schema-only planner, render rows-only) plus the live
 revoke-while-in-flight latency measurement (its own box below).
+**Box 2 — production I/O wiring shipped 2026-08-26 (sub-piece h, "the caller
+wires"):** the executor is pure over an injected `GrantedReadIo`; this ships the
+production assembly of that IO from live deps (all already shipped). Split for
+test-safety: `apps/api/src/grant-ask-io.ts` (`buildGrantedReadIo`) is the
+node-safe composition — active-grant lookup behind the ≤30 s `grant-status.ts`
+cache keyed per (buyer, owner-DB), `resolveDb` for the owner DB, `recordGrantUsage`
+on the same D1 handle, `crypto.randomUUID` idempotency default — unit-tested end
+to end over a fake D1 (`grant-ask-io.test.ts`, 7 cases); `apps/api/src/grant-ask-wire.ts`
+owns the two runtime-touching pieces the test must never import — the
+isolate-local status cache (one per isolate, env-tunable downward only) and
+`runGrantExecSteps`, the Neon runner that executes the pre-built grant exec batch
+verbatim (grant `statement_timeout` + owner RLS GUCs + non-owner role already
+baked by `buildGrantExecSteps`) under a `db.query` span, resolving the owner URL
+from `env[connectionSecretRef]` and failing closed on a missing ref. `grantedReadIo(d1)`
+is the single call the forthcoming route branch makes. Still box 2's open work:
+the `/v1/ask` route branch itself (detect + render rows-only) + the live
+revoke-in-flight measurement.
 
 ## Goal
 
