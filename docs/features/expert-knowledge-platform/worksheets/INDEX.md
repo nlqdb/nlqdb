@@ -120,5 +120,9 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
   executor into the buyer's live `/v1/ask` route + revoke-in-flight measurement)
 - [ ] EK-07 — sovereign hosting 1-click (roadmap)
 - [ ] EK-08 — launch motion + acceptance criteria
+  (box 1 shipped 2026-08-26 — the six-criterion first-paying-expert launch
+  gate, each criterion owned by its proving slice, agent-tightenable /
+  founder-loosenable, kept off `SK-PIVOT-016`; boxes 2–3 — motion pick +
+  launch bullet — remain)
 - [ ] EK-09 — trust hardening (F1-B): narration skip + no-training provider pin
   (box 1 shipped 2026-08-09 — knowledge-DB narration skip by default; granted-path skip awaits EK-06, provider pin awaits EK-05)
