@@ -22,9 +22,7 @@ _(none — the dogfood-run draft shipped run 179 as `/blog/success-rate-cant-see
 
 ## Published — canonical `/blog` copies live; venue variants pending
 
-The dev.to variant posts autonomously (daily loop, `SK-BLOG-003`) and is
-dropped from the line on success; Reddit/HN/lobste.rs are posted by a human and
-removed by hand. Delete the whole line once no venues remain.
+Delete the whole line once no venues remain (drain rules in the intro above).
 
 Venue variant = venue list + anchor; the gist lives in the linked post.
 
