@@ -77,6 +77,7 @@ import {
 import { makeRecentTablesStore } from "./ask/recent-tables.ts";
 import { withStageRetry } from "./ask/retry.ts";
 import { ROUTE_CONFIDENCE_FLOOR, routeAsk } from "./ask/route-ask.ts";
+import { tryGrantedRead } from "./ask/route-granted-ask.ts";
 import type { OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
@@ -122,6 +123,7 @@ import {
 } from "./error-envelope.ts";
 import { recordEvalReport, recordPricingEvent, recordWishlist } from "./events-feature.ts";
 import { notifyFirstServerError } from "./first-error-email.ts";
+import { grantedReadIo } from "./grant-ask-wire.ts";
 import {
   listGrantsByTenant,
   mintGrant,
@@ -1778,6 +1780,43 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         skipSummary: wantsJsonOnly,
       });
       if (!outcome.ok) {
+        // EK-06 box 2 (SK-EKP-008) — cross-tenant granted read. A pinned dbId that
+        // isn't the buyer's own resolves to `db_not_found`; before surfacing that,
+        // check for a live grant for this (buyer, DB) and, if present, run the
+        // audited schema-only read and render the owner's rows UN-NARRATED. The
+        // lookup fires ONLY on this error branch, so an own-DB ask never pays for
+        // it. Buyer identity v1 = an authenticated tenant (session or API key),
+        // never anon or the read-only `pk_live` embed.
+        const isGrantBuyer =
+          principal.kind === "user" || principal.kind === "sk_live" || principal.kind === "sk_mcp";
+        if (outcome.error.code === "db_not_found" && isGrantBuyer) {
+          const idempotencyKey = c.req.header("idempotency-key");
+          const grantRender = await tryGrantedRead(
+            {
+              buyerTenantId: principal.id,
+              requestedDbId: resolvedDbId,
+              goal: parsed.body.goal,
+              ...(idempotencyKey ? { idempotencyKey } : {}),
+            },
+            {
+              io: grantedReadIo(c.env.DB),
+              // Schema-only planner (GLOBAL-037): owner SCHEMA in, read SQL out —
+              // the buyer's goal never sees an owner cell value.
+              planReadSql: (goal, schema) =>
+                routing.router.plan({ goal, schema, dialect: "postgres" }).then((r) => r.sql),
+            },
+          );
+          if (grantRender.served === "rows") {
+            span.setAttribute("nlqdb.ask.outcome", "granted_read");
+            return c.json(grantRender.body);
+          }
+          if (grantRender.served === "error") {
+            span.setAttribute("nlqdb.ask.outcome", `granted_${grantRender.body.error}`);
+            return c.json(grantRender.body, grantRender.status);
+          }
+          // `fallthrough` — no live grant for this buyer; keep the plain
+          // `db_not_found` below (fail-closed, never confirms the DB exists).
+        }
         // RFC 9110 X-RateLimit-* headers (SK-RL-004 / GLOBAL-002 parity).
         if (outcome.error.code === "rate_limited") {
           const { limit, count, resetAt } = outcome.error;
