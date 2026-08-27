@@ -139,8 +139,25 @@ isolate-local status cache (one per isolate, env-tunable downward only) and
 verbatim (grant `statement_timeout` + owner RLS GUCs + non-owner role already
 baked by `buildGrantExecSteps`) under a `db.query` span, resolving the owner URL
 from `env[connectionSecretRef]` and failing closed on a missing ref. `grantedReadIo(d1)`
-is the single call the forthcoming route branch makes. Still box 2's open work:
-the `/v1/ask` route branch itself (detect + render rows-only) + the live
+is the single call the forthcoming route branch makes.
+**Box 2 — schema-only planning half shipped 2026-08-26 (sub-piece i, "thread the
+owner schema to the planner"):** `apps/api/src/grant-ask.ts`
+(`orchestrateGrantedAsk`) — the granted-read analogue of `orchestrateAsk`, and the
+one piece above `executeGrantedRead` that was still missing: it resolves the grant
+for the owner's schema, plans the buyer's goal against that OWNER schema
+(schema-only — owner table/column names in, **never** owner cell values;
+GLOBAL-037 / SK-EKP-001), normalises the plan schema-relative (`schemaRelativeSql`,
+so the exec `search_path` resolves it AND `validateGrantScope` sees bare names —
+SK-ASK-025 applied to the owner schema), then delegates the audited resolve →
+guardrail → run → meter → rows-only flow to `executeGrantedRead` unchanged. Pure
+over injected I/O (the `GrantedReadIo` + a `planReadSql` wrapper), so the full
+matrix — every resolve/scope reject fails closed with no plan/exec/meter, an
+unschema'd owner DB is `schema_unavailable`, the planner sees schema-only, and the
+plan is stripped schema-relative before the scope guardrail — is unit-tested
+without a live DB (`grant-ask.test.ts`, 9 cases, driving the REAL executor over
+fake I/O). Still box 2's open work: the thin `/v1/ask` route branch (detect a
+granted DB → `orchestrateGrantedAsk` → render rows-only as `Accept:
+application/json` would, wrapping `deps.llm.plan` as `planReadSql`) + the live
 revoke-in-flight measurement.
 
 ## Goal
