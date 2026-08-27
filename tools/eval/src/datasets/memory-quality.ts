@@ -64,7 +64,18 @@ const AGENT_MEMORY_V1: MemorySchema = {
   shape: "agent memory — agents, facts (with TTL + supersession), episodes, entities",
   setup: [
     "CREATE TABLE agents (id INTEGER PRIMARY KEY, name TEXT NOT NULL)",
-    "CREATE TABLE facts (id INTEGER PRIMARY KEY, agent_id INTEGER NOT NULL REFERENCES agents(id), subject TEXT NOT NULL, predicate TEXT NOT NULL, object TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT)",
+    // Structural hints ride in `-- comments`, which SQLite preserves in
+    // sqlite_master.sql and the runner feeds to the planner as schema (not as
+    // prose Evidence, which run 186 saw literal-injected). SK-QUAL-023 lever.
+    "CREATE TABLE facts (\n" +
+      "  id INTEGER PRIMARY KEY,\n" +
+      "  agent_id INTEGER NOT NULL REFERENCES agents(id),\n" +
+      "  subject TEXT NOT NULL,\n" +
+      "  predicate TEXT NOT NULL,\n" +
+      "  object TEXT NOT NULL,\n" +
+      "  created_at TEXT NOT NULL, -- when the fact was recorded; the CURRENT value of a repeated (subject, predicate) is the row with the largest created_at (ORDER BY created_at DESC LIMIT 1)\n" +
+      "  expires_at TEXT -- optional TTL; a fact is expired when expires_at is not null and in the past. A null expires_at does NOT make a superseded older value current\n" +
+      ")",
     "CREATE TABLE episodes (id INTEGER PRIMARY KEY, agent_id INTEGER NOT NULL REFERENCES agents(id), content TEXT NOT NULL, created_at TEXT NOT NULL)",
     "CREATE TABLE entities (id INTEGER PRIMARY KEY, agent_id INTEGER NOT NULL REFERENCES agents(id), kind TEXT NOT NULL, canonical_name TEXT NOT NULL)",
     "INSERT INTO agents (id, name) VALUES (1,'support-bot'),(2,'sales-bot')",
@@ -127,10 +138,36 @@ const REPO_OPS_MEMORY: MemorySchema = {
   shape:
     "repo-ops docs→memory pack — agent_memory_v1 shape (facts / episodes / entities / entity_facts) extracted from a repo's markdown",
   setup: [
-    "CREATE TABLE facts (id INTEGER PRIMARY KEY, agent_id TEXT NOT NULL, kind TEXT NOT NULL, content TEXT NOT NULL, tags TEXT NOT NULL DEFAULT '', source TEXT, created_at TEXT NOT NULL, expires_at TEXT)",
-    "CREATE TABLE episodes (id INTEGER PRIMARY KEY, agent_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, occurred_at TEXT NOT NULL)",
-    "CREATE TABLE entities (id INTEGER PRIMARY KEY, agent_id TEXT NOT NULL, kind TEXT NOT NULL, canonical_name TEXT NOT NULL, first_seen_at TEXT, last_seen_at TEXT, UNIQUE (agent_id, kind, canonical_name))",
-    "CREATE TABLE entity_facts (entity_id INTEGER NOT NULL REFERENCES entities(id), fact_id INTEGER NOT NULL REFERENCES facts(id), PRIMARY KEY (entity_id, fact_id))",
+    // Structural hints as `-- comments` (SQLite keeps them in sqlite_master.sql;
+    // the runner feeds that to the planner as schema, not prose Evidence).
+    "CREATE TABLE facts (\n" +
+      "  id INTEGER PRIMARY KEY,\n" +
+      "  agent_id TEXT NOT NULL, -- the owning agent; here 'repo-ops'. Multiple agents can share these tables, so every read must be scoped: WHERE agent_id = 'repo-ops'. A decision/feature/subject is an entity, never the agent_id\n" +
+      "  kind TEXT NOT NULL, -- the fact's category label (see declared domain); the readable text is in content\n" +
+      "  content TEXT NOT NULL, -- the fact's own text (the question, the status line). The decision/feature it is ABOUT is an entity reached via entity_facts, not parsed out of this string\n" +
+      "  tags TEXT NOT NULL DEFAULT '',\n" +
+      "  source TEXT,\n" +
+      "  created_at TEXT NOT NULL, -- when first recorded; use for 'first seen'/age, and ORDER BY created_at DESC for the current row of a superseded fact\n" +
+      "  expires_at TEXT)",
+    "CREATE TABLE episodes (\n" +
+      "  id INTEGER PRIMARY KEY,\n" +
+      "  agent_id TEXT NOT NULL,\n" +
+      "  role TEXT NOT NULL,\n" +
+      "  content TEXT NOT NULL,\n" +
+      "  occurred_at TEXT NOT NULL) -- episodes are the agent's interaction log (sync runs); durable knowledge (questions, statuses, references) lives in facts, not here",
+    "CREATE TABLE entities (\n" +
+      "  id INTEGER PRIMARY KEY,\n" +
+      "  agent_id TEXT NOT NULL,\n" +
+      "  kind TEXT NOT NULL, -- entity type: decision, feature, queue_item\n" +
+      "  canonical_name TEXT NOT NULL, -- the entity's stable id (e.g. 'GLOBAL-013', 'SK-ASK-011', 'auth'); SELECT/GROUP BY this when a question asks WHICH decision/feature\n" +
+      "  first_seen_at TEXT,\n" +
+      "  last_seen_at TEXT,\n" +
+      "  UNIQUE (agent_id, kind, canonical_name))",
+    "CREATE TABLE entity_facts (\n" +
+      "  -- M:N join: each row links one fact to one entity it is about. Traverse facts -> entity_facts -> entities to filter or name a fact's entity (a reference fact links to BOTH its endpoints)\n" +
+      "  entity_id INTEGER NOT NULL REFERENCES entities(id),\n" +
+      "  fact_id INTEGER NOT NULL REFERENCES facts(id),\n" +
+      "  PRIMARY KEY (entity_id, fact_id))",
     "INSERT INTO entities (id, agent_id, kind, canonical_name, first_seen_at, last_seen_at) VALUES " +
       "(1,'repo-ops','feature','auth','2026-04-02','2026-07-27')," +
       "(2,'repo-ops','feature','ask-pipeline','2026-05-10','2026-07-27')," +
@@ -212,10 +249,36 @@ const LANGUAGE_TUTOR_MEMORY: MemorySchema = {
   shape:
     "language-tutor expert pack — agent_memory_v1 shape (facts / episodes / entities / entity_facts): mistakes, vocabulary, student profile, lessons, pricing",
   setup: [
-    "CREATE TABLE facts (id INTEGER PRIMARY KEY, agent_id TEXT NOT NULL, kind TEXT NOT NULL, content TEXT NOT NULL, tags TEXT NOT NULL DEFAULT '', source TEXT, created_at TEXT NOT NULL, expires_at TEXT)",
-    "CREATE TABLE episodes (id INTEGER PRIMARY KEY, agent_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, occurred_at TEXT NOT NULL)",
-    "CREATE TABLE entities (id INTEGER PRIMARY KEY, agent_id TEXT NOT NULL, kind TEXT NOT NULL, canonical_name TEXT NOT NULL, first_seen_at TEXT, last_seen_at TEXT, UNIQUE (agent_id, kind, canonical_name))",
-    "CREATE TABLE entity_facts (entity_id INTEGER NOT NULL REFERENCES entities(id), fact_id INTEGER NOT NULL REFERENCES facts(id), PRIMARY KEY (entity_id, fact_id))",
+    // Structural hints as `-- comments` (SQLite keeps them in sqlite_master.sql;
+    // the runner feeds that to the planner as schema, not prose Evidence).
+    "CREATE TABLE facts (\n" +
+      "  id INTEGER PRIMARY KEY,\n" +
+      "  agent_id TEXT NOT NULL, -- the owning tutor agent; here 'tutor'. Multiple agents can share these tables, so every read must be scoped: WHERE agent_id = 'tutor'. The STUDENT (e.g. student:alex) is a subject/entity, never the agent_id\n" +
+      "  kind TEXT NOT NULL, -- the fact's category (see declared domain: mistake, vocab_encounter, student_profile, ...); the readable text is in content\n" +
+      "  content TEXT NOT NULL, -- the fact's own text (the mistake, the vocab card, 'level: B2'). The word/rule/topic it is ABOUT is an entity reached via entity_facts, not this string\n" +
+      "  tags TEXT NOT NULL DEFAULT '',\n" +
+      "  source TEXT,\n" +
+      "  created_at TEXT NOT NULL, -- when recorded; ORDER BY created_at DESC for the current row of a superseded fact (e.g. the student's current level)\n" +
+      "  expires_at TEXT)",
+    "CREATE TABLE episodes (\n" +
+      "  id INTEGER PRIMARY KEY,\n" +
+      "  agent_id TEXT NOT NULL,\n" +
+      "  role TEXT NOT NULL,\n" +
+      "  content TEXT NOT NULL,\n" +
+      "  occurred_at TEXT NOT NULL) -- episodes are the lesson-session log; vocabulary, mistakes and profiles are facts, not episodes",
+    "CREATE TABLE entities (\n" +
+      "  id INTEGER PRIMARY KEY,\n" +
+      "  agent_id TEXT NOT NULL,\n" +
+      "  kind TEXT NOT NULL, -- entity type: word, grammar_rule, topic, student\n" +
+      "  canonical_name TEXT NOT NULL, -- the entity's stable id (e.g. 'effect', 'subjunctive', 'travel', 'student:alex'); SELECT/GROUP BY this when a question asks WHICH word/rule/topic\n" +
+      "  first_seen_at TEXT,\n" +
+      "  last_seen_at TEXT,\n" +
+      "  UNIQUE (agent_id, kind, canonical_name))",
+    "CREATE TABLE entity_facts (\n" +
+      "  -- M:N join: each row links one fact to one entity it is about. Traverse facts -> entity_facts -> entities to name or group a fact by its word/rule/topic\n" +
+      "  entity_id INTEGER NOT NULL REFERENCES entities(id),\n" +
+      "  fact_id INTEGER NOT NULL REFERENCES facts(id),\n" +
+      "  PRIMARY KEY (entity_id, fact_id))",
     "INSERT INTO entities (id, agent_id, kind, canonical_name, first_seen_at, last_seen_at) VALUES " +
       "(1,'tutor','word','effect','2026-07-02','2026-07-24')," +
       "(2,'tutor','word','loose','2026-07-06','2026-07-21')," +
