@@ -1808,7 +1808,16 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           );
           if (grantRender.served === "rows") {
             span.setAttribute("nlqdb.ask.outcome", "granted_read");
-            return c.json(grantRender.body);
+            // A granted read is still a premium-lane dispatch when the buyer is
+            // on hosted premium, so settle the allowance + surface the trace like
+            // any other successful /v1/ask (SK-PREMIUM-009); the trace is the
+            // buyer's own billing state, never owner data, so it doesn't breach
+            // the rows-only seam.
+            const premiumTrace = await settlePremium();
+            return c.json({
+              ...grantRender.body,
+              ...(premiumTrace ? { premium: premiumTrace } : {}),
+            });
           }
           if (grantRender.served === "error") {
             span.setAttribute("nlqdb.ask.outcome", `granted_${grantRender.body.error}`);
