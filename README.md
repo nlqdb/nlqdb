@@ -203,12 +203,14 @@ parallel with the wedge
 
 - ◯ Interview authoring — answer questions about your craft, get queryable
   rows (pilot: language tutor)
-- ~ Cross-tenant read grants — mint/list/revoke control plane live;
-  fail-closed read enforcement + per-query metering pending
+- ~ Cross-tenant read grants — mint/list/revoke control plane + live
+  fail-closed granted read on `/v1/ask` (schema-only plan, rows-only
+  egress, per-query metering); live revoke-in-flight measurement pending
 - ◯ One catalog — free packs + paid expert knowledge DBs
 - ~ Trust hardening — buyer queries schema-only end-to-end: knowledge-DB
-  asks now skip narration by default (returned rows never reach an LLM);
-  granted-path skip + no-training interview-provider pin pending
+  asks skip narration by default and the granted cross-tenant read is
+  un-narrated (returned rows never reach an LLM); no-training
+  interview-provider pin pending
 
 ### Phase 0 — Foundations ✓
 
