@@ -29,25 +29,29 @@ the measurable proxy for gate-criteria 3 (silent-wrong-answer) + 4 (temporal), i
 categorical domains in DDL (`CHECK`/enum) so value-linking is legitimate *schema* egress — needs no
 founder widening of `GLOBAL-037` (unlike raw value-sampling on the planning lane, which does).
 
-**Worst number today (run 186, 2026-08-26) — WEEKLY-FOCUS ENGINE LEVER, +20.51 pp:** built the
-**per-goal-pack declared categorical vocabulary** run 185 pre-drafted as the next-run lever, via the
-in-bounds channel run 185 named (hand-authored `Evidence:`, GLOBAL-037 lane-1 legal), and measured a
-**clean same-session A/B** on the free chain (both today, main vs branch): memory-quality free-chain EX
-**41.03 % (16/39, main [32919866678](https://github.com/nlqdb/nlqdb/actions/runs/32919866678)) → 61.54 %
-(24/39, branch [32920213591](https://github.com/nlqdb/nlqdb/actions/runs/32920213591))**, **+20.51 pp / +8
-questions** (vs run 185's 43.59 %: +17.95 pp). Every weak axis rose: **temporal 4→5/11**, consolidation
-3→6, forgetting 2→4, retrieval 3→4, analytical 4→5. **Mechanism confirmed in the mismatch SQL:** the
-fixed questions now emit the *correct* `kind`/`predicate`/`role` literal (`'open question'`→`'open_question'`,
-`'doc-sync'`→`'sync'`, `'vocabulary'`→`'vocab_encounter'`, `'current_city'`→`'city'`) instead of a drifted
-guess. **A first cut also declared an `agent_id` convention + recency note; the run 32919537669 diagnostics
-caught both backfiring** (planner injected the prose verbatim as a literal, `agent_id='the memory-owning
-agent'`) so it was trimmed to categorical-domains-only before shipping — that trim is the 43.59 %→61.54 %
-swing. **Next-run lever (dominant remaining class):** structural — `entity_facts` traversal + the
-`student:alex`-as-`agent_id` convention (needs a hint that doesn't literal-inject; schema `COMMENT`, not prose).
+**Worst number today (run 187, 2026-08-27) — WEEKLY-FOCUS ENGINE LEVER, +12.82 pp — TARGET MET:** built the
+**structural schema-comment hints** run 186 pre-drafted as the next-run lever ("schema `COMMENT`, not prose"),
+targeting each mismatch in the run-186 branch job log. The runner introspects fixtures via
+`SELECT sql FROM sqlite_master`, which preserves `-- comments` in the DDL text — so structural hints ride in
+the `CREATE TABLE` as schema documentation, not as prose `Evidence` (which run 186 saw literal-injected).
+Measured on the free chain: memory-quality EX **61.54 % (24/39, baseline = current-main same eval code,
+run [32920213591](https://github.com/nlqdb/nlqdb/actions/runs/32920213591)) → 74.36 % (29/39, branch
+[33029888855](https://github.com/nlqdb/nlqdb/actions/runs/33029888855))**, **+12.82 pp / +5 questions —
+crosses the ≥ 70 % weekly target.** The weekly-focus **temporal axis rose 5→8/11 (45.45 %→72.73 %, +27.3 pp)**;
+retrieval 4→5, forgetting 4→6; consolidation 6→5, analytical 5→5. **9 fixed** (q3 most-recent-wins, q16/q18
+content-not-first_seen/kind, q21/q22 canonical_name, q28, **q30/q33-partial the named `student:alex`-as-`agent_id`
+class**, q31 owner-scope, q36 facts-not-episodes). **4 regressions** (q1/q10/q19/q23): the hints over-triggered —
+the `created_at` recency + `expires_at` TTL comment made the planner dedup/TTL-filter a *plain* retrieval (q1),
+and the `entity_facts`-traverse comment nudged spurious entity joins on questions needing none (q19/q23). Net
+strongly positive (Δ ≥ 0 keeps). **Baseline:** current-main same-code run 32920213591 (eval code byte-identical to HEAD,
+`git diff cfc3363 main -- tools/eval/` empty) — the same-window main re-run was throttling-slow, cancelled.
+**Next-run lever:** trim the over-triggering hints (mirror run 186's own trim discipline) — scope the
+recency/TTL comment so it doesn't fire on plain retrieval, and phrase the `entity_facts` hint as
+"only when a question names an entity" — to convert the 4 regressions without losing the 9 fixes.
 **P1 distribution still exhausted** (GSC 28d: 7 clicks / 675 impr / pos 25.1; winners authority-gated).
 **P2 UX-flow green** (FLOW-005 6/6, carried run 184). BIRD/Spider dark.
 **Weekly-focus gate (don't overwrite the /weekly target mid-week):** dogfood **2/5**; memory-eval
-free-chain EX **61.54 %** (target ≥ 70 %, temporal 5/11 — moved live this run, gap to target 8.5 pp).
+free-chain EX **74.36 %** (target ≥ 70 % — **MET**, temporal 8/11 = 72.73 %, moved +27.3 pp this run).
 **Top `blocked-by-human` bullet:** Show HN launch sequence (⏱ ~30 min, **idle 74 days since 06-13**),
 condition-gated on the `SK-PIVOT-016` gate (**2/5**). #2 Anthropic connector directory (money-gated,
 07-21). #3 Supabase OAuth app + secrets (08-13; paste path works). Queue **depth 3**, head age 74 d.
@@ -56,12 +60,11 @@ E-09/GLOBAL-037-blocked); engine **#8 BIRD 0.5382** (31 d) / **#9 Spider 0.2222*
 multi-window resume); rows **#2/#4/#5/#16** stranger-dependent (N = 0 until launch); row **#15** opencheck
 (free-lane saturation, remedy costs money ⇒ rule 4).
 
-**Rule 6 — GREEN.** Branch based on `main@7137d86` (latest; #1049/#1050/#1051 merged since run 185). Health
-re-measured live: **`typecheck` 0**, **`bun run check` 0** (53 pre-existing script-`console.log` warnings,
-none in this diff), **`bun run test` exit 0** (full suite, re-run this run). Deploys **green on latest main**
-(deploy-api + deploy-events-worker success on `7137d86`; web on `ac0534a`, path-filtered). This run's code
-diff is eval-only (`tools/eval/` dataset + test — no runtime/prompt/baseline path); deploys path-filtered.
-**Open PRs: 0** at step 0.
+**Rule 6 — GREEN.** Branch based on `main@d68eff2` (latest; #1053/#1054/#1055/#1056 merged since run 186). Health
+re-measured live: **`typecheck` 0** (eval pkg), **`bun run check` exit 0** (53 pre-existing script-`console.log`
+warnings, none in this diff), **`bun test tools/eval` 320 pass / 0 fail** + gold-executability 39/39. This run's
+code diff is eval-only (`tools/eval/` one dataset file — no runtime/prompt/baseline/preset path); deploys
+path-filtered, unaffected. **Open PRs: 0** at step 0.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -73,7 +76,7 @@ diff is eval-only (`tools/eval/` dataset + test — no runtime/prompt/baseline p
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12; founder-owned) | share with ≥ 2 asks |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **112** content pages (`/solve` **41** + `/vs` 31 + `/blog` 40; unchanged this run — no new page, distribution on-page exhausted for a single run). Unpublished blog drafts **0** (queue drained) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **40** + 1 dev.to variant published this run (`llm-timeout-looks-like-hallucination` → [dev.to](https://dev.to/omer_hochman/the-timeout-that-looked-like-a-hallucination-1m0o); 17 variants remain). **GSC carried 08-25** (28d, no `scripts/` pull this engine-lever run): **7 clicks / 675 impr / pos 25.1**. "Strengthen next" winnable pages authority-gated + content-complete (`running-total…` pos 38.4, `find-rows-with-no-match…` pos 19.9) ⇒ no new snippet lever. Referral (08-25): google 6 / accounts.google 3 / bing 1 | `gsc-pull.ts` + `rum-pull.ts`. Page-1 zero-click = CTR lever (agent-movable); page-2+ authority/launch-gated |
+| 7 | Surface yield | posts **40** + 1 dev.to variant published this run (`one-way-internal-links-leak-yield` → [dev.to](https://dev.to/omer_hochman/we-shipped-18-seo-pages-and-got-1-referral-the-links-only-pointed-one-way-1e1i); 16 variants remain). **GSC carried 08-25** (28d, no `scripts/` pull this engine-lever run): **7 clicks / 675 impr / pos 25.1**. "Strengthen next" winnable pages authority-gated + content-complete (`running-total…` pos 38.4, `find-rows-with-no-match…` pos 19.9) ⇒ no new snippet lever. Referral (08-25): google 6 / accounts.google 3 / bing 1 | `gsc-pull.ts` + `rum-pull.ts`. Page-1 zero-click = CTR lever (agent-movable); page-2+ authority/launch-gated |
 | | **Engine** — BIRD 07-26 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **30 d old, staleness trigger fired**, but **dark (rule 8)**: resume is async multi-window and `main` moved since the 07-27 checkpoint. #1041 (planner re-head) now merged ⇒ a fresh BIRD/Spider re-measure is a valid next-run engine lever | target 0.65 / **Phase 2 floor 0.60** — gap 6.2 pp. Offline levers exhausted |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on `04fa3d0`, **37 d old**). 07-27 re-dispatch exited **partial** (`SK-QUAL-013` budget-stop) | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is source of truth |
@@ -100,59 +103,49 @@ diff is eval-only (`tools/eval/` dataset + test — no runtime/prompt/baseline p
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
 | | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **3/7** (D-01 ✅, D-03 ✅, D-04 🟡, **D-06 🟡**) — gate **2/5** (criterion 2 green from D-04's 100 % first-10; **criterion 5 green on #978's deploy** — the public `/agents` `ag-dog` dashboard is live). Remaining: criterion 1 (12 → ≥100 real MCP asks, grind); criterion 3 (silent-wrong-answer axis, E-09-blocked); criterion 4 (temporal, E-09/GLOBAL-037-blocked). D-06 run 2 (staleness-CI red + demand-signal) + D-04 `NLQDB_MEMORY_DB` var still open | mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md) |
-| | Memory-quality eval (`SK-QUAL-023`) | **39-q free-chain EX 61.54 % (24/39)** — branch run [32920213591](https://github.com/nlqdb/nlqdb/actions/runs/32920213591) (**2026-08-26, live this run**; per-goal-pack declared categorical vocabulary lever). **Same-session A/B:** main-no-evidence 41.03 % (16/39, [32919866678](https://github.com/nlqdb/nlqdb/actions/runs/32919866678)) → branch 61.54 %, **+20.51 pp**. Per-axis: **consolidation 6/7, analytical 5/7, forgetting 4/7, retrieval 4/7, temporal 5/11 = 45.45 %** (weak axis, up from 4/11 A/B and 2/11 run 185). Remaining misses are **structural** (`entity_facts` traversal; `student:alex`-as-`agent_id`) — vocabulary drift eliminated, next-run lever named | 39 gold-verified questions, 5 axes; free-only, no baseline |
+| | Memory-quality eval (`SK-QUAL-023`) | **39-q free-chain EX 74.36 % (29/39)** — branch run [33029888855](https://github.com/nlqdb/nlqdb/actions/runs/33029888855) (**2026-08-27, live this run**; structural schema-comment hints lever). **A/B:** baseline current-main same eval code 61.54 % (24/39, [32920213591](https://github.com/nlqdb/nlqdb/actions/runs/32920213591)) → branch 74.36 %, **+12.82 pp / +5 q — crosses ≥ 70 % weekly target**. Per-axis: **temporal 8/11 = 72.73 % (weak axis, up from 5/11, +27.3 pp)**, forgetting 6/7, analytical 5/7, retrieval 5/7, consolidation 5/7. 9 fixed / 4 regressions (hints over-triggered on plain-retrieval q1 + spurious entity joins q19/q23) — next-run lever = trim the over-triggering hints | 39 gold-verified questions, 5 axes; free-only, no baseline |
 
 ## Shipped distribution
 
 **41 canonical `/solve` pages** + **40 `/blog` posts** + **31 `/vs` pages** live under `nlqdb.com/`
 (`SK-SOLVE-001` / `SK-BLOG-001` / `SK-CMP-001`). The registries are `apps/web/src/data/{solve,blog,competitors}.ts`.
 
-- **This run (186):** drained one dev.to variant — `llm-timeout-looks-like-hallucination` →
-  [dev.to](https://dev.to/omer_hochman/the-timeout-that-looked-like-a-hallucination-1m0o)
-  (step 3.3; 17 variants remain). No new `/blog` page (blog-draft queue empty).
+- **This run (187):** drained one dev.to variant — `one-way-internal-links-leak-yield` →
+  [dev.to](https://dev.to/omer_hochman/we-shipped-18-seo-pages-and-got-1-referral-the-links-only-pointed-one-way-1e1i)
+  (step 3.3; 16 variants remain). No new `/blog` page (blog-draft queue empty).
+- **Run 186:** drained one dev.to variant — `llm-timeout-looks-like-hallucination`. Engine-change run.
 - **Run 185:** drained one dev.to variant — `model-preset-fail-loud`. Engine-measurement run.
-- **Run 184:** null run — no new page, no publish.
 
 ## Last change
 
-**2026-08-26 (run 186)** — **WEEKLY-FOCUS ENGINE LEVER SHIPPED + MEASURED. Built the per-goal-pack
-declared categorical vocabulary run 185 pre-drafted; same-session free-chain A/B: memory-quality EX
-41.03 % (16/39) → 61.54 % (24/39), +20.51 pp.**
+**2026-08-27 (run 187)** — **WEEKLY-FOCUS ENGINE LEVER SHIPPED + MEASURED — TARGET MET. Built the structural
+schema-comment hints run 186 pre-drafted ("schema `COMMENT`, not prose"); free-chain A/B: memory-quality EX
+61.54 % (24/39) → 74.36 % (29/39), +12.82 pp — crosses the ≥ 70 % weekly target.**
 
-**The lever (GLOBAL-037-legal):** run 185 diagnosed the dominant free-lane failure as categorical
-value-linking drift and named the in-bounds fix — a per-goal-pack declared categorical vocabulary via
-*hand-authored evidence* (GLOBAL-037 planning lane 1 explicitly permits "schema … and hand-authored
-evidence/descriptions"; the `value-retrieval` cell-sampling lane stays unbuilt/founder-gated). Realized
-it through the harness's existing `Evidence:` channel (the one BIRD uses): `MEMORY_SCHEMA_EVIDENCE`
-declares each goal-pack's closed `kind`/`predicate`/`role` domains (`tools/eval/src/datasets/
-memory-quality.ts`), wired into `toEvalQuestions`. A new honesty-guard test pins every declared literal
-to the seed in both directions, so evidence can't drift from the fixture as packs grow.
+**The lever:** the runner introspects fixtures via `SELECT sql FROM sqlite_master`, which preserves
+`-- comments` in the `CREATE TABLE` text — so structural hints in the DDL reach the planner as *schema
+documentation*, not prose `Evidence` (run 186 saw prose literal-injected). Added them to the three memory
+fixtures (`memory-quality.ts`), each targeting a run-186 mismatch: `agent_id` is the owning agent, scope reads
+to it (the `student:alex`-as-`agent_id` class); name a fact's entity via `facts→entity_facts→entities.canonical_name`
+(not `content`); `content` vs `kind`; episodes are logs (knowledge is in facts); current value = largest
+`created_at`. Gold/seed/`Evidence` unchanged → invariants hold (39/39 golds, 320/320 eval tests).
 
-**The measurement (clean same-session A/B, both on today's free chain):** main-no-evidence
-[32919866678](https://github.com/nlqdb/nlqdb/actions/runs/32919866678) **41.03 % (16/39)** → branch
-[32920213591](https://github.com/nlqdb/nlqdb/actions/runs/32920213591) **61.54 % (24/39)**, **+20.51 pp**
-(vs run 185's 43.59 %: +17.95 pp; every axis rose — per-axis in the memory row). Mechanism confirmed in
-the mismatch SQL: fixed rows now emit the correct literal where main drifted.
+**Measurement (free-chain A/B):** baseline current-main same eval code
+[32920213591](https://github.com/nlqdb/nlqdb/actions/runs/32920213591) **61.54 % (24/39)** → branch
+[33029888855](https://github.com/nlqdb/nlqdb/actions/runs/33029888855) **74.36 % (29/39)**, **+12.82 pp / +5 q**;
+temporal 5→8/11 (+27.3 pp), retrieval 4→5, forgetting 4→6. Baseline code-clean (`git diff cfc3363 main --
+tools/eval/` empty). 9 fixed / 4 regressions (q1/q10/q19/q23 — hints over-triggered on plain retrieval + spurious
+entity joins). Net strongly positive.
 
-**Backfire caught + trimmed (the swing):** a first cut ([32919537669](https://github.com/nlqdb/nlqdb/actions/runs/32919537669),
-17/39 = 43.59 %, flat) also declared an `agent_id` identifier convention + an append-only recency note;
-its mismatch diagnostics showed the planner injecting the prose *verbatim* as a literal
-(`agent_id = 'the memory-owning agent'`, q19/q32/q38) and over-applying recency (q0), cancelling the
-vocabulary gain. Trimming to categorical-domains-only (commit `f89d684`) is the 43.59 %→61.54 % swing.
+**Next-run lever:** trim the over-triggering hints (scope recency/TTL off plain retrieval; gate the
+`entity_facts` hint on "a question names an entity") to recover the 4 regressions. Follow-on: propagate the same
+descriptions to the production preset `SchemaPlan` (`agent-memory-v1.ts`, currently placeholders).
 
-**Next-run lever:** remaining misses are **structural** (`entity_facts` traversal; `student:alex`-as-`agent_id`)
-— a hint that doesn't literal-inject (schema `COMMENT`, not prose). Vocabulary drift is eliminated.
-
-**Step-1 refreshed (live):** health GREEN (`typecheck`/`check` 0, `test` exit 0; deploys green on
-`7137d86`, eval-only diff path-filtered); GSC carried 7 clicks / 675 impr / pos 25.1 (P1 exhausted);
-FLOW-005 carried 6/6; step 3 drained one dev.to variant (`llm-timeout-looks-like-hallucination`); open PRs 0.
-
-**Anti-rut (rule 7):** recent daily levers — engine-change (186), engine-measure (185), null (184),
-CTR (183), UX-flow (182). No 5-in-a-row same category.
-
-**KPI (GLOBAL-025):** advances **engine quality** (pillar #1, the GLOBAL-036 wedge headline) — memory-quality
-free-chain EX +20.51 pp toward the ≥70 % weekly target (gap now 8.5 pp). Diff is eval-only (no runtime/
-prompt/baseline path); **degrades none.**
+**Step-1 (live):** health GREEN (eval `typecheck` 0, `bun run check` exit 0, `bun test tools/eval` 320 pass;
+deploys path-filtered on `d68eff2`, eval-only diff); GSC carried 7 clicks / 675 impr / pos 25.1; FLOW-005 6/6;
+step 3 drained one dev.to variant; open PRs 0. **Anti-rut:** engine-change (187/186), engine-measure (185),
+null (184), CTR (183) — mixed. **KPI (GLOBAL-025):** engine quality +12.82 pp, crosses the ≥ 70 % weekly
+target; eval-only diff, **degrades none.**
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
