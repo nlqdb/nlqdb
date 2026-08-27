@@ -155,9 +155,19 @@ matrix — every resolve/scope reject fails closed with no plan/exec/meter, an
 unschema'd owner DB is `schema_unavailable`, the planner sees schema-only, and the
 plan is stripped schema-relative before the scope guardrail — is unit-tested
 without a live DB (`grant-ask.test.ts`, 9 cases, driving the REAL executor over
-fake I/O). Still box 2's open work: the thin `/v1/ask` route branch (detect a
-granted DB → `orchestrateGrantedAsk` → render rows-only as `Accept:
-application/json` would, wrapping `deps.llm.plan` as `planReadSql`) + the live
+fake I/O).
+**Box 2 — the `/v1/ask` route branch shipped 2026-08-27 (sub-piece j, the live
+keystone):** `apps/api/src/ask/route-granted-ask.ts` — `tryGrantedRead` + the pure
+exhaustive `renderGrantedAsk` mapping `orchestrateGrantedAsk`'s union to an HTTP
+render: rows-only 200 (UN-NARRATED — GLOBAL-037 / EK-09 box 2); `no_grant` →
+`fallthrough` so the handler keeps its plain `db_not_found` (fail-closed, never
+confirms the DB to a non-grantee); typed 403/404/409 for authorized-but-unservable
+rejects. Wired in `index.ts` on the JSON `/v1/ask` `db_not_found` branch ONLY (a
+pinned dbId that isn't the buyer's own), so an own-DB ask never pays the grant
+lookup; buyer identity v1 = an authenticated tenant (session / `sk_live` /
+`sk_mcp`). Exhaustively unit-tested (`route-granted-ask.test.ts` over the REAL
+orchestrator); the executor's live-PG proof stays
+`grant-scoping.integration.test.ts`. Remaining EK-06 work: the box-4 live
 revoke-in-flight measurement.
 
 ## Goal
@@ -203,7 +213,7 @@ satisfy):
 - [x] Grant mint/revoke/list shipped behind the public API with
       idempotency + spans. *(2026-08-08 — HTTP API; the SDK/CLI/MCP/
       elements sweep is box 5.)*
-- [ ] Cross-tenant read works only through a live grant; kill-tests for
+- [x] Cross-tenant read works only through a live grant; kill-tests for
       RLS bypass, GUC spoofing, and join-leakage pass. *(Layer 1 shipped
       2026-08-09 — `validateGrantScope`: join-leakage + validation-layer
       GUC-spoof + read-only + schema-widening kill-tests pass. Role-name
@@ -229,9 +239,9 @@ satisfy):
       tenant from the trusted grant row; hosted-only re-check; unit-tested).
       Granted-read EXECUTOR shipped 2026-08-25 — `grant-orchestrate.ts`
       `executeGrantedRead` composes resolve → plan → run → meter → rows-only,
-      pure over injected I/O, full reject/meter matrix unit-tested. Wiring it
-      into the buyer's live `/v1/ask` route is the remaining box-2 work; see
-      header.)*
+      pure over injected I/O, full reject/meter matrix unit-tested. The buyer's
+      live `/v1/ask` route branch is wired 2026-08-27 (see header) — no grant ⇒
+      `db_not_found`, fail-closed.)*
 - [ ] Usage records emitted per granted query, idempotent under retry.
       *(Meter primitive shipped 2026-08-10 — migration `0028_grant_usage.sql`
       + `apps/api/src/grant-usage.ts` `recordGrantUsage`: one row per
@@ -242,8 +252,9 @@ satisfy):
       + idempotency-key-synthesis composition landed 2026-08-25 in
       `grant-orchestrate.ts` `executeGrantedRead` (metered only after a
       successful exec; a synthesized key when the client omits one; replay
-      records nothing new — unit-tested). Live per-query emission awaits wiring
-      that executor into the granted `/v1/ask` route.)*
+      records nothing new — unit-tested). The route branch is wired 2026-08-27
+      (header sub-piece j), so live per-query emission now runs on the granted
+      `/v1/ask`; a route-level live assertion rides the box-4 Neon test.)*
 - [ ] Revocation latency measured and within the EK-02 bound — including
       the in-flight half (`statement_timeout` ≤ the 30 s cache bound; the
       env knob may only tighten). *(Bound primitive shipped 2026-08-10 —
@@ -256,10 +267,10 @@ satisfy):
       is the fail-closed NEW-query cache — positive-only, so a revoke
       propagates within the TTL and a null/errored status is never cached;
       the injected clock makes the ≤ TTL latency deterministically
-      unit-measured (`grant-status.test.ts`). Live per-route measurement —
-      revoke a wired grant, assert rejection within the bound — awaits box
-      2's executor wiring, which sets this `statement_timeout` and consumes
-      this cache.)*
+      unit-measured (`grant-status.test.ts`). Box 2's route wiring landed
+      2026-08-27, so this `statement_timeout` + cache now run live; the per-route
+      measurement — revoke a wired grant, assert rejection within the bound — is
+      the remaining EK-06 work.)*
 - [x] SDK/CLI/MCP/elements updated or gap tracked. *(SDK 2026-08-08:
       `mintGrant`/`listGrants`/`revokeGrant`, session-only, mirroring the key
       verbs. CLI 2026-08-09: `nlq grants list/revoke`, session-only, mirroring

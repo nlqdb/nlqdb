@@ -98,6 +98,7 @@ export default defineConfig(async () => {
               "src/grant-scoping.integration.test.ts",
               "src/ask/grant-scope.test.ts",
               "src/ask/route-ask.test.ts",
+              "src/ask/route-granted-ask.test.ts",
               "src/ask/prelude.test.ts",
               "src/ask/recent-tables.test.ts",
               "src/ask/retry.test.ts",

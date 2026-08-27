@@ -127,8 +127,10 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
   against the OWNER schema, schema-only, never owner cell values → normalise
   schema-relative → `executeGrantedRead`; pure over injected I/O, full
   reject/schema-only/rows-only matrix unit-tested driving the real executor);
-  remaining: the thin buyer `/v1/ask` route branch (detect → `orchestrateGrantedAsk`
-  → render rows-only) + revoke-in-flight measurement)
+  the buyer `/v1/ask` route branch shipped 2026-08-26..27 — `route-granted-ask.ts`
+  `tryGrantedRead`/`renderGrantedAsk` wired on the handler's `db_not_found` branch
+  (rows-only 200, `no_grant`→`db_not_found` fail-closed, typed 403/404/409),
+  ticking box 2; remaining EK-06 work: the box-4 live revoke-in-flight measurement)
 - [ ] EK-07 — sovereign hosting 1-click (roadmap)
 - [ ] EK-08 — launch motion + acceptance criteria
   (box 1 shipped 2026-08-26 — the six-criterion first-paying-expert launch
