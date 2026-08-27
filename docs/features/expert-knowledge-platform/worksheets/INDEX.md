@@ -130,7 +130,11 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
   the buyer `/v1/ask` route branch shipped 2026-08-26..27 — `route-granted-ask.ts`
   `tryGrantedRead`/`renderGrantedAsk` wired on the handler's `db_not_found` branch
   (rows-only 200, `no_grant`→`db_not_found` fail-closed, typed 403/404/409),
-  ticking box 2; remaining EK-06 work: the box-4 live revoke-in-flight measurement)
+  ticking box 2; box-4 live in-flight revocation measurement shipped 2026-08-27 —
+  `grant-revocation.integration.test.ts` proves against a live Neon branch that
+  the wired granted batch sets `statement_timeout` to the ≤30 s ceiling and that
+  Postgres cancels a granted read that outlives it (57014); remaining EK-06 work:
+  the box-3 route-level live usage-emission assertion)
 - [ ] EK-07 — sovereign hosting 1-click (roadmap)
 - [ ] EK-08 — launch motion + acceptance criteria
   (box 1 shipped 2026-08-26 — the six-criterion first-paying-expert launch

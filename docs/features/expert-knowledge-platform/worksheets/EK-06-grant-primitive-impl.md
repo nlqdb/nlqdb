@@ -167,8 +167,21 @@ pinned dbId that isn't the buyer's own), so an own-DB ask never pays the grant
 lookup; buyer identity v1 = an authenticated tenant (session / `sk_live` /
 `sk_mcp`). Exhaustively unit-tested (`route-granted-ask.test.ts` over the REAL
 orchestrator); the executor's live-PG proof stays
-`grant-scoping.integration.test.ts`. Remaining EK-06 work: the box-4 live
-revoke-in-flight measurement.
+`grant-scoping.integration.test.ts`.
+**Box 4 — live in-flight revocation measurement shipped 2026-08-27 (the last
+box-4 gap):** `apps/api/src/grant-revocation.integration.test.ts` — the
+IN-FLIGHT half of SK-EKP-008's ≤30 s revocation bound, measured by Postgres
+against a live Neon branch (gated on `NEON_TEST_BRANCH_URL`, skips in CI —
+the `grant-scoping.integration.test.ts` idiom). Two facts compose the
+measurement: the production `buildGrantExecSteps` batch sets the session
+`statement_timeout` to `GRANT_STATEMENT_TIMEOUT` (read back with `SHOW`, so
+the value that reached Postgres is proven, and asserted ≤ the 30 s ceiling);
+and Postgres actually **cancels** a granted read that outlives the bound
+(SQLSTATE 57014) under the exact non-owner grant role and batch order, bound
+tightened downward (module-blessed) to keep the suite fast. The NEW-query
+half stays deterministically unit-measured in `grant-status.test.ts`
+(injected clock). Remaining EK-06 work: the box-3 route-level live
+usage-emission assertion.
 
 ## Goal
 
@@ -255,7 +268,7 @@ satisfy):
       records nothing new — unit-tested). The route branch is wired 2026-08-27
       (header sub-piece j), so live per-query emission now runs on the granted
       `/v1/ask`; a route-level live assertion rides the box-4 Neon test.)*
-- [ ] Revocation latency measured and within the EK-02 bound — including
+- [x] Revocation latency measured and within the EK-02 bound — including
       the in-flight half (`statement_timeout` ≤ the 30 s cache bound; the
       env knob may only tighten). *(Bound primitive shipped 2026-08-10 —
       `apps/api/src/grant-status.ts`: `GRANT_REVOCATION_BOUND_MS` = 30 s is
@@ -268,9 +281,12 @@ satisfy):
       propagates within the TTL and a null/errored status is never cached;
       the injected clock makes the ≤ TTL latency deterministically
       unit-measured (`grant-status.test.ts`). Box 2's route wiring landed
-      2026-08-27, so this `statement_timeout` + cache now run live; the per-route
-      measurement — revoke a wired grant, assert rejection within the bound — is
-      the remaining EK-06 work.)*
+      2026-08-27, so this `statement_timeout` + cache run live; the in-flight
+      measurement shipped 2026-08-27 —
+      `grant-revocation.integration.test.ts` proves against a live Neon branch
+      that the wired batch sets `statement_timeout` to the ≤30 s ceiling
+      (`SHOW`) and that Postgres cancels a granted read that outlives the bound
+      (57014), under the real grant role and batch order.)*
 - [x] SDK/CLI/MCP/elements updated or gap tracked. *(SDK 2026-08-08:
       `mintGrant`/`listGrants`/`revokeGrant`, session-only, mirroring the key
       verbs. CLI 2026-08-09: `nlq grants list/revoke`, session-only, mirroring
