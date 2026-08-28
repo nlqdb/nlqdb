@@ -142,4 +142,7 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
   founder-loosenable, kept off `SK-PIVOT-016`; boxes 2–3 — motion pick +
   launch bullet — remain)
 - [ ] EK-09 — trust hardening (F1-B): narration skip + no-training provider pin
-  (box 1 shipped 2026-08-09 — knowledge-DB narration skip by default; granted-path skip awaits EK-06, provider pin awaits EK-05)
+  (box 1 shipped 2026-08-09 — knowledge-DB narration skip by default; box 2 shipped
+  2026-08-28 — granted-path asks skip narration by construction now EK-06's granted
+  read landed, `route-granted-ask.test.ts` guards it rows-only + size-independent;
+  box 3 egress-test extension + provider pin await EK-05)

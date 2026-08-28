@@ -6,8 +6,9 @@
 //      the handler's plain `db_not_found`, never a "grant exists" signal) and
 //      (b) rows-only success (no `summary` seam — GLOBAL-037 / EK-09 box 2).
 //   2. `tryGrantedRead` — drives the REAL `orchestrateGrantedAsk` over fake I/O
-//      (the `grant-ask.test.ts` idiom), proving the branch renders live rows and
-//      passes a scope reject through as a 403.
+//      (the `grant-ask.test.ts` idiom), proving the branch renders live rows,
+//      skips narration regardless of result size (EK-09 box 2: the skip is the
+//      path, not the payload), and passes a scope reject through as a 403.
 
 import { describe, expect, it, vi } from "vitest";
 import type { GrantedReadIo } from "../grant-orchestrate.ts";
@@ -149,6 +150,26 @@ describe("tryGrantedRead — real orchestrator over fake I/O", () => {
       status: 200,
       body: { granted: true, rows: ROWS.rows, row_count: 2 },
     });
+  });
+
+  it("skips narration regardless of result size — the skip is the path, not the payload (EK-09 box 2)", async () => {
+    // The normal `/v1/ask` path narrates its rows (summarize hop). The granted
+    // path never does — it has no summarize seam, so a large result set is
+    // served rows-only exactly like a small one. Proving size-independence here
+    // is the guard against a future "narrate small granted reads" convenience
+    // re-opening the GLOBAL-037 / SK-EKP-001 lane on cross-tenant queries.
+    const bigRows = Array.from({ length: 200 }, (_, i) => ({ id: i }));
+    const render = await run(
+      makeIo({ runExecSteps: vi.fn(async () => ({ rows: bigRows, rowCount: bigRows.length })) }),
+      vi.fn(async () => `SELECT * FROM ${OWNER_SCHEMA}.lessons`),
+    );
+    expect(render).toEqual({
+      served: "rows",
+      status: 200,
+      body: { granted: true, rows: bigRows, row_count: 200 },
+    });
+    // No prose/summary field a caller could narrate through, at any size.
+    expect(render.served === "rows" && "summary" in render.body).toBe(false);
   });
 
   it("no live grant renders fallthrough (handler keeps its db_not_found)", async () => {
