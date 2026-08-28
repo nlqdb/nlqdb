@@ -52,7 +52,6 @@ const OWNER_TENANT = "user_ek06_revoke_owner";
 // A fixed grant id ⇒ a deterministic `grant_<hex>` role name, so teardown can
 // drop it idempotently across runs.
 const GRANT_ID = "grant_ek06_revocation_test";
-const OWNER_AGENT = "owner_agent_r";
 const SCOPE = ["facts", "episodes", "entities", "entity_facts"];
 
 // A tightened in-flight bound for the cancellation measurement (fact 2). The
@@ -109,11 +108,9 @@ describeIntegration("granted-read in-flight revocation bound — Neon (EK-06 / S
     await sql.transaction(provisionSchema(SCHEMA_OWNER, OWNER_TENANT), {
       isolationLevel: "ReadCommitted",
     });
-    await sql.query(
-      `INSERT INTO "${SCHEMA_OWNER}"."facts" (agent_id, kind, content) VALUES ($1, 'fact', 'owner-1')`,
-      [OWNER_AGENT],
-    );
 
+    // No row seeding: the measurements read a GUC (`SHOW`), a constant, and
+    // `pg_sleep` — none touch the table, so an empty scoped schema suffices.
     const ddl = await buildGrantRoleDdl({
       grantId: GRANT_ID,
       schemaName: SCHEMA_OWNER,

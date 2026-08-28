@@ -256,7 +256,8 @@ satisfy):
       successful exec; a synthesized key when the client omits one; replay
       records nothing new — unit-tested). The route branch is wired 2026-08-27
       (header sub-piece j), so live per-query emission now runs on the granted
-      `/v1/ask`; a route-level live assertion rides the box-4 Neon test.)*
+      `/v1/ask`; the route-level live usage-emission assertion is the remaining
+      box-3 work.)*
 - [x] Revocation latency measured and within the EK-02 bound — including
       the in-flight half (`statement_timeout` ≤ the 30 s cache bound; the
       env knob may only tighten). *(Bound primitive shipped 2026-08-10 —
