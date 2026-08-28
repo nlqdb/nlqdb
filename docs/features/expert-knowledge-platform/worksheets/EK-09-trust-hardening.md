@@ -9,13 +9,8 @@ provider pin to have a surface · **Box 1 shipped 2026-08-09:**
 `orchestrateAsk` skips the summarize hop by default for `agent_memory_v1`
 DBs (`isAgentMemoryV1Db`), guarded by an `orchestrate.test.ts` assertion
 that no `summarize` call fires and no summary is returned. **Box 2 shipped
-2026-08-28** (the granted-path half, once EK-06's granted read landed): the
-cross-tenant `/v1/ask` branch skips narration by construction — the granted
-executor (`grant-orchestrate.ts` contract #3) and its render
-(`route-granted-ask.ts`) carry no summarize seam, so rows go back un-narrated
-and no owner cell value can transit the narration lane; guarded rows-only at
-the orchestrator (`grant-ask.test.ts`), render, and now size-independent path
-level (`route-granted-ask.test.ts`).
+2026-08-28** — the granted-path half, unlocked by EK-06's granted read;
+detail on its box below.
 
 ## Goal
 
