@@ -73,8 +73,8 @@ const AGENT_MEMORY_V1: MemorySchema = {
       "  subject TEXT NOT NULL,\n" +
       "  predicate TEXT NOT NULL,\n" +
       "  object TEXT NOT NULL,\n" +
-      "  created_at TEXT NOT NULL, -- when the fact was recorded. Apply recency ONLY when a question asks for the CURRENT/latest value of a repeated (subject, predicate): ORDER BY created_at DESC LIMIT 1. A plain 'what does X know about Y' / 'list all' returns every matching row, unfiltered by recency\n" +
-      "  expires_at TEXT -- optional TTL, relevant ONLY to questions about expiry/active/stale. A fact is expired when expires_at is not null and in the past; a null expires_at never expires and never makes a superseded value current\n" +
+      "  created_at TEXT NOT NULL, -- when the fact was recorded; the CURRENT value of a repeated (subject, predicate) is the row with the largest created_at (ORDER BY created_at DESC LIMIT 1)\n" +
+      "  expires_at TEXT -- optional TTL; a fact is expired when expires_at is not null and in the past. A null expires_at does NOT make a superseded older value current\n" +
       ")",
     "CREATE TABLE episodes (id INTEGER PRIMARY KEY, agent_id INTEGER NOT NULL REFERENCES agents(id), content TEXT NOT NULL, created_at TEXT NOT NULL)",
     "CREATE TABLE entities (id INTEGER PRIMARY KEY, agent_id INTEGER NOT NULL REFERENCES agents(id), kind TEXT NOT NULL, canonical_name TEXT NOT NULL)",
@@ -147,7 +147,7 @@ const REPO_OPS_MEMORY: MemorySchema = {
       "  content TEXT NOT NULL, -- the fact's own text (the question, the status line). The decision/feature it is ABOUT is an entity reached via entity_facts, not parsed out of this string\n" +
       "  tags TEXT NOT NULL DEFAULT '',\n" +
       "  source TEXT,\n" +
-      "  created_at TEXT NOT NULL, -- when first recorded; use for 'first seen'/age/'since when'. ORDER BY created_at DESC LIMIT 1 ONLY when a question asks for the current/latest status of a superseded fact\n" +
+      "  created_at TEXT NOT NULL, -- when first recorded; use for 'first seen'/age, and ORDER BY created_at DESC for the current row of a superseded fact\n" +
       "  expires_at TEXT)",
     "CREATE TABLE episodes (\n" +
       "  id INTEGER PRIMARY KEY,\n" +
@@ -164,7 +164,7 @@ const REPO_OPS_MEMORY: MemorySchema = {
       "  last_seen_at TEXT,\n" +
       "  UNIQUE (agent_id, kind, canonical_name))",
     "CREATE TABLE entity_facts (\n" +
-      "  -- M:N join linking a fact to the entity/entities it is about. Traverse facts -> entity_facts -> entities ONLY when a question names a specific decision/feature or asks WHICH one (a reference fact links to BOTH its endpoints). A question that just lists, counts, or filters facts by kind or date needs NO entity join\n" +
+      "  -- M:N join: each row links one fact to one entity it is about. Traverse facts -> entity_facts -> entities to filter or name a fact's entity (a reference fact links to BOTH its endpoints)\n" +
       "  entity_id INTEGER NOT NULL REFERENCES entities(id),\n" +
       "  fact_id INTEGER NOT NULL REFERENCES facts(id),\n" +
       "  PRIMARY KEY (entity_id, fact_id))",
@@ -258,7 +258,7 @@ const LANGUAGE_TUTOR_MEMORY: MemorySchema = {
       "  content TEXT NOT NULL, -- the fact's own text (the mistake, the vocab card, 'level: B2'). The word/rule/topic it is ABOUT is an entity reached via entity_facts, not this string\n" +
       "  tags TEXT NOT NULL DEFAULT '',\n" +
       "  source TEXT,\n" +
-      "  created_at TEXT NOT NULL, -- when recorded; use for age/time windows. ORDER BY created_at DESC LIMIT 1 ONLY when a question asks for the current/latest value of a superseded fact (e.g. the student's current level)\n" +
+      "  created_at TEXT NOT NULL, -- when recorded; ORDER BY created_at DESC for the current row of a superseded fact (e.g. the student's current level)\n" +
       "  expires_at TEXT)",
     "CREATE TABLE episodes (\n" +
       "  id INTEGER PRIMARY KEY,\n" +
@@ -275,7 +275,7 @@ const LANGUAGE_TUTOR_MEMORY: MemorySchema = {
       "  last_seen_at TEXT,\n" +
       "  UNIQUE (agent_id, kind, canonical_name))",
     "CREATE TABLE entity_facts (\n" +
-      "  -- M:N join linking a fact to the entity/entities it is about. Traverse facts -> entity_facts -> entities ONLY when a question names a specific word/rule/topic/student or asks WHICH one. A question that just lists or counts facts by kind or date needs NO entity join\n" +
+      "  -- M:N join: each row links one fact to one entity it is about. Traverse facts -> entity_facts -> entities to name or group a fact by its word/rule/topic\n" +
       "  entity_id INTEGER NOT NULL REFERENCES entities(id),\n" +
       "  fact_id INTEGER NOT NULL REFERENCES facts(id),\n" +
       "  PRIMARY KEY (entity_id, fact_id))",
