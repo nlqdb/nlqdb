@@ -18,7 +18,7 @@ primitive. Fail-closed on unparseable SQL (base allowlist rejects
 half — the non-owner SELECT-only role assumed via `SET LOCAL ROLE` and
 `FORCE ROW LEVEL SECURITY` (guardrails #2–3, where the RLS-bypass
 kill-test lives) — and the live wiring into the buyer's `/v1/ask` route
-remain box 2's open work.
+remained box 2's open work (shipped in the sub-pieces below).
 **Box 2 — DB-role half, role-name convention shipped 2026-08-10:**
 `apps/api/src/grant-role.ts` (`grantRoleName`/`assertGrantRoleName`) — the
 single source of truth for the per-grant, non-owner, SELECT-only role name
@@ -270,5 +270,4 @@ satisfy):
       (minting is the marketplace selling flow, not the terminal). MCP +
       elements are out-of-scope-by-design — a session-only cross-tenant
       control-plane op never rides a bearer or a display element; rationale in
-      the FEATURE.md gap note. The `GLOBAL-003` surface-parity gap is closed;
-      EK-06's engine boxes 2–4 remain the slice's open work.)*
+      the FEATURE.md gap note. The `GLOBAL-003` surface-parity gap is closed.)*
