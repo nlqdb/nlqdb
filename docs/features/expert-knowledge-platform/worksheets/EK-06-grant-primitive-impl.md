@@ -167,20 +167,9 @@ pinned dbId that isn't the buyer's own), so an own-DB ask never pays the grant
 lookup; buyer identity v1 = an authenticated tenant (session / `sk_live` /
 `sk_mcp`). Exhaustively unit-tested (`route-granted-ask.test.ts` over the REAL
 orchestrator); the executor's live-PG proof stays
-`grant-scoping.integration.test.ts`.
-**Box 4 — live in-flight revocation measurement shipped 2026-08-27 (the last
-box-4 gap):** `apps/api/src/grant-revocation.integration.test.ts` — the
-IN-FLIGHT half of SK-EKP-008's ≤30 s revocation bound, measured by Postgres
-against a live Neon branch (gated on `NEON_TEST_BRANCH_URL`, skips in CI —
-the `grant-scoping.integration.test.ts` idiom). Two facts compose the
-measurement: the production `buildGrantExecSteps` batch sets the session
-`statement_timeout` to `GRANT_STATEMENT_TIMEOUT` (read back with `SHOW`, so
-the value that reached Postgres is proven, and asserted ≤ the 30 s ceiling);
-and Postgres actually **cancels** a granted read that outlives the bound
-(SQLSTATE 57014) under the exact non-owner grant role and batch order, bound
-tightened downward (module-blessed) to keep the suite fast. The NEW-query
-half stays deterministically unit-measured in `grant-status.test.ts`
-(injected clock). Remaining EK-06 work: the box-3 route-level live
+`grant-scoping.integration.test.ts`; box 4's in-flight revocation bound is now
+measured live by `grant-revocation.integration.test.ts` (detail in the box-4
+row under *Done when*). Remaining EK-06 work: the box-3 route-level live
 usage-emission assertion.
 
 ## Goal
