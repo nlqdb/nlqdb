@@ -96,6 +96,7 @@ export default defineConfig(async () => {
               "src/grant-ask-io.test.ts",
               "src/grant-ask.test.ts",
               "src/grant-scoping.integration.test.ts",
+              "src/grant-revocation.integration.test.ts",
               "src/ask/grant-scope.test.ts",
               "src/ask/route-ask.test.ts",
               "src/ask/route-granted-ask.test.ts",

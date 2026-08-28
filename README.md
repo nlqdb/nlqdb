@@ -205,7 +205,8 @@ parallel with the wedge
   rows (pilot: language tutor)
 - ~ Cross-tenant read grants — mint/list/revoke control plane + live
   fail-closed granted read on `/v1/ask` (schema-only plan, rows-only
-  egress, per-query metering); live revoke-in-flight measurement pending
+  egress, per-query metering); live revoke-in-flight bound now measured
+  against Postgres, route-level usage-emission assertion pending
 - ◯ One catalog — free packs + paid expert knowledge DBs
 - ~ Trust hardening — buyer queries schema-only end-to-end: knowledge-DB
   asks skip narration by default and the granted cross-tenant read is
