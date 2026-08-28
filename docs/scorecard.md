@@ -63,7 +63,7 @@ multi-window resume); rows **#2/#4/#5/#16** stranger-dependent (N = 0 until laun
 **Rule 6 — GREEN.** Branch based on `main@c73d679` (latest; #1057/#1058/#1059 merged since run 187). Health
 re-measured live: **`typecheck` 0** (workspace), **`bun run check` exit 0** on the changed file, **`bun test tools/eval`
 320 pass / 0 fail** + gold-executability 39/39 (measured on the trim before reverting). After the Δ<0 revert this run's
-**net code diff is zero** — the only shipped change is `docs/scorecard.md`; deploys path-filtered, unaffected. **Open PRs: 0** at step 0.
+**net code diff is zero** — shipped changes are docs-only (`docs/scorecard.md` + evidence-log rows); deploys path-filtered, unaffected. **Open PRs: 0** at step 0.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
