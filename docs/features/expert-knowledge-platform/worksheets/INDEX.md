@@ -107,7 +107,7 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
   `INV-EKP-037` egress guard shipped 2026-08-12 — box 5; live end-to-end import
   remains, gated on the `experts` interview endpoint)
 - [ ] EK-05 — marketplace surface v0 (`experts`) — unparked 2026-08-10 (direct agent push confirmed); box 4 boundary guard landed (experts#2, merged; CI to run it in experts#3, open), boxes 1–3 gated on EK-04/EK-06
-- [ ] EK-06 — grant primitive implementation
+- [x] EK-06 — grant primitive implementation (complete 2026-08-28)
   (control plane + all box-2 pure builders shipped; live-PG RLS-bypass kill-test
   shipped 2026-08-23 — `grant-scoping.integration.test.ts` proves owner-rows-only,
   cross-tenant reach denied direct + via JOIN, SELECT-only, FORCE RLS;
@@ -133,8 +133,13 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
   ticking box 2; box-4 live in-flight revocation measurement shipped 2026-08-27 —
   `grant-revocation.integration.test.ts` proves against a live Neon branch that
   the wired granted batch sets `statement_timeout` to the ≤30 s ceiling and that
-  Postgres cancels a granted read that outlives it (57014); remaining EK-06 work:
-  the box-3 route-level live usage-emission assertion)
+  Postgres cancels a granted read that outlives it (57014); box-3 route-level live
+  usage-emission assertion shipped 2026-08-28 — `grant-usage-route.test.ts` drives
+  the real `tryGrantedRead` through the production `buildGrantedReadIo(env.DB)` over
+  real Miniflare D1 (migration 0028; only the Neon owner-read injected), proving a
+  successful granted read renders rows-only 200 AND emits exactly one attributed
+  usage row, a same-key retry re-serves the rows AND records no second event, and a
+  scope reject renders 403 AND bills nothing — every EK-06 box now ticked)
 - [ ] EK-07 — sovereign hosting 1-click (roadmap)
 - [ ] EK-08 — launch motion + acceptance criteria
   (box 1 shipped 2026-08-26 — the six-criterion first-paying-expert launch

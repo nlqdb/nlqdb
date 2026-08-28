@@ -1,6 +1,6 @@
 # EK-06 — Cross-tenant read-grant primitive (implementation)
 
-**Status:** in-flight · **Repo:** nlqdb (engine) · **Risk:** high ·
+**Status:** done (2026-08-28) · **Repo:** nlqdb (engine) · **Risk:** high ·
 **Runs:** multi · **Prereqs:** EK-02 design record + minted decision —
 satisfied: [`SK-EKP-008`](../decisions/SK-EKP-008-grant-primitive-design.md) ·
 **Box 1 shipped 2026-08-08:** `grants` control plane (migration 0026 +
@@ -18,7 +18,7 @@ primitive. Fail-closed on unparseable SQL (base allowlist rejects
 half — the non-owner SELECT-only role assumed via `SET LOCAL ROLE` and
 `FORCE ROW LEVEL SECURITY` (guardrails #2–3, where the RLS-bypass
 kill-test lives) — and the live wiring into the buyer's `/v1/ask` route
-remain box 2's open work.
+remained box 2's open work (shipped in the sub-pieces below).
 **Box 2 — DB-role half, role-name convention shipped 2026-08-10:**
 `apps/api/src/grant-role.ts` (`grantRoleName`/`assertGrantRoleName`) — the
 single source of truth for the per-grant, non-owner, SELECT-only role name
@@ -77,9 +77,7 @@ join-leakage) passed through unchanged; then the derived `grant_<hex>` role
 30 s in-flight bound, non-owner role last). Pure — no D1/env/PG (the caller
 owns the `getActiveGrant` + `grant-status.ts` cache lookup and passes the
 already-resolved grant) — so the full reject matrix is unit-tested
-(`grant-read.test.ts`) without a live DB. The forthcoming `/v1/ask` branch
-reduces to: resolve grant → `planGrantedRead` → run `execSteps` → skip
-narration (EK-09 box 2) → meter (`grant-usage.ts`). **Box 2 — live-PG RLS-bypass kill-test shipped 2026-08-23 (sub-piece e):**
+(`grant-read.test.ts`) without a live DB. **Box 2 — live-PG RLS-bypass kill-test shipped 2026-08-23 (sub-piece e):**
 `apps/api/src/grant-scoping.integration.test.ts` — the "owner rows, nothing
 else" invariant executed by Postgres, not asserted about a string. It
 provisions a grant role from the real `buildGrantRoleDdl` and runs reads
@@ -121,10 +119,7 @@ exec (a thrown exec propagates and meters nothing — SK-EKP-008's "errored quer
 emits nothing"), with the client's idempotency key or a synthesized one, and a
 replay records nothing new while the read still returns; and the result is
 rows-only (no summarize seam) so cell values never reach narration
-(GLOBAL-037 / EK-09 box 2). Still box 2's open work: wiring `executeGrantedRead`
-into the buyer's live `/v1/ask` route (detect the granted DB, thread the owner
-schema to the schema-only planner, render rows-only) plus the live
-revoke-while-in-flight latency measurement (its own box below).
+(GLOBAL-037 / EK-09 box 2).
 **Box 2 — production I/O wiring shipped 2026-08-26 (sub-piece h, "the caller
 wires"):** the executor is pure over an injected `GrantedReadIo`; this ships the
 production assembly of that IO from live deps (all already shipped). Split for
@@ -139,7 +134,7 @@ isolate-local status cache (one per isolate, env-tunable downward only) and
 verbatim (grant `statement_timeout` + owner RLS GUCs + non-owner role already
 baked by `buildGrantExecSteps`) under a `db.query` span, resolving the owner URL
 from `env[connectionSecretRef]` and failing closed on a missing ref. `grantedReadIo(d1)`
-is the single call the forthcoming route branch makes.
+is the single call the route branch makes (wired sub-piece j).
 **Box 2 — schema-only planning half shipped 2026-08-26 (sub-piece i, "thread the
 owner schema to the planner"):** `apps/api/src/grant-ask.ts`
 (`orchestrateGrantedAsk`) — the granted-read analogue of `orchestrateAsk`, and the
@@ -169,8 +164,9 @@ lookup; buyer identity v1 = an authenticated tenant (session / `sk_live` /
 orchestrator); the executor's live-PG proof stays
 `grant-scoping.integration.test.ts`; box 4's in-flight revocation bound is now
 measured live by `grant-revocation.integration.test.ts` (detail in the box-4
-row under *Done when*). Remaining EK-06 work: the box-3 route-level live
-usage-emission assertion.
+row under *Done when*). **Box 3 — route-level live usage-emission assertion
+shipped 2026-08-28 (the last open box; detail in the box-3 row under *Done
+when*): EK-06 is now complete** — every *Done when* box ticked.
 
 ## Goal
 
@@ -216,35 +212,18 @@ satisfy):
       idempotency + spans. *(2026-08-08 — HTTP API; the SDK/CLI/MCP/
       elements sweep is box 5.)*
 - [x] Cross-tenant read works only through a live grant; kill-tests for
-      RLS bypass, GUC spoofing, and join-leakage pass. *(Layer 1 shipped
-      2026-08-09 — `validateGrantScope`: join-leakage + validation-layer
-      GUC-spoof + read-only + schema-widening kill-tests pass. Role-name
-      convention shipped 2026-08-10 — `grant-role.ts` (per-grant non-owner
-      SELECT-only role, fail-closed on missing). Provisioning DDL builder
-      shipped 2026-08-17 — `grant-provision.ts` `buildGrantRoleDdl`
-      (SELECT-only on exactly the scope, `WITH SET TRUE`, FORCE RLS,
-      re-scope-safe REVOKE, unit-tested). Granted-exec step builder shipped
-      2026-08-18 — `grant-exec.ts` `buildGrantExecSteps` (the
-      `buildHostedExecSteps` analogue: grant role asserted, in-flight
-      `statement_timeout` pinned to the revocation bound, owner-scoped RLS
-      GUCs; load-bearing order shared via `ask/exec-steps.ts` so hosted and
-      grant paths can't drift; unit-tested). Provisioning wired into mint
-      2026-08-19 — `grant-provision-exec.ts` `provisionGrantRole` runs the
-      DDL batch in one spanned transaction and `POST /v1/grants` calls it
-      before the D1 write (Postgres-first, fail-closed). RLS-bypass kill-test
-      shipped 2026-08-23 — `grant-scoping.integration.test.ts` proves against a
-      live Neon branch: owner rows across every owner agent, cross-tenant reach
-      (direct + JOIN) `permission denied`, SELECT-only writes denied, FORCE RLS
-      on every scoped table. Granted-read RESOLVE leg shipped 2026-08-24 —
-      `grant-resolve.ts` `resolveGrantedRead` (fail-closed `no_grant` /
-      `owner_db_missing` / `not_grantable`; owner DB resolved under the owner
-      tenant from the trusted grant row; hosted-only re-check; unit-tested).
-      Granted-read EXECUTOR shipped 2026-08-25 — `grant-orchestrate.ts`
-      `executeGrantedRead` composes resolve → plan → run → meter → rows-only,
-      pure over injected I/O, full reject/meter matrix unit-tested. The buyer's
-      live `/v1/ask` route branch is wired 2026-08-27 (see header) — no grant ⇒
-      `db_not_found`, fail-closed.)*
-- [ ] Usage records emitted per granted query, idempotent under retry.
+      RLS bypass, GUC spoofing, and join-leakage pass. *(Shipped as box-2
+      sub-pieces a–j, 2026-08-09..27 — validation-layer scope guard
+      (`validateGrantScope`), per-grant non-owner role (`grant-role.ts` +
+      `grant-provision.ts`), the shared exec batch (`grant-exec.ts`), provisioning
+      wired into mint (`grant-provision-exec.ts`), the live-PG RLS-bypass kill-test
+      (`grant-scoping.integration.test.ts`), the resolve/plan/execute keystones
+      (`grant-resolve.ts` / `grant-read.ts` / `grant-orchestrate.ts`), the
+      production I/O wiring (`grant-ask-io.ts` / `grant-ask-wire.ts`), the
+      schema-only planning half (`grant-ask.ts`), and the buyer's live `/v1/ask`
+      route branch (`route-granted-ask.ts`, no grant ⇒ `db_not_found`,
+      fail-closed). Per-sub-piece provenance in the header above.)*
+- [x] Usage records emitted per granted query, idempotent under retry.
       *(Meter primitive shipped 2026-08-10 — migration `0028_grant_usage.sql`
       + `apps/api/src/grant-usage.ts` `recordGrantUsage`: one row per
       successful granted query, attributed to (grant, buyer, seller),
@@ -255,9 +234,16 @@ satisfy):
       `grant-orchestrate.ts` `executeGrantedRead` (metered only after a
       successful exec; a synthesized key when the client omits one; replay
       records nothing new — unit-tested). The route branch is wired 2026-08-27
-      (header sub-piece j), so live per-query emission now runs on the granted
-      `/v1/ask`; the route-level live usage-emission assertion is the remaining
-      box-3 work.)*
+      (header sub-piece j). The route-level live usage-emission assertion shipped
+      2026-08-28 — `apps/api/test/grant-usage-route.test.ts` drives the real
+      `tryGrantedRead` through the PRODUCTION `buildGrantedReadIo(env.DB)` over
+      real Miniflare D1 (migration 0028; grant lookup, owner-DB resolve, and
+      usage emission all live, only the Neon owner-read injected — proven live by
+      `grant-scoping.integration.test.ts`), asserting at the route boundary: a
+      successful read renders rows-only 200 AND emits exactly one attributed usage
+      row under the client's key; a same-key retry re-serves the rows AND the
+      `grant_usage` UNIQUE constraint suppresses a second (no double-count); a
+      scope reject renders 403 AND bills nothing. Closes box 3 — EK-06's last.)*
 - [x] Revocation latency measured and within the EK-02 bound — including
       the in-flight half (`statement_timeout` ≤ the 30 s cache bound; the
       env knob may only tighten). *(Bound primitive shipped 2026-08-10 —
@@ -284,5 +270,4 @@ satisfy):
       (minting is the marketplace selling flow, not the terminal). MCP +
       elements are out-of-scope-by-design — a session-only cross-tenant
       control-plane op never rides a bearer or a display element; rationale in
-      the FEATURE.md gap note. The `GLOBAL-003` surface-parity gap is closed;
-      EK-06's engine boxes 2–4 remain the slice's open work.)*
+      the FEATURE.md gap note. The `GLOBAL-003` surface-parity gap is closed.)*

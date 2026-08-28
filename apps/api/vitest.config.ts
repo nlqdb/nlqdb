@@ -166,6 +166,7 @@ export default defineConfig(async () => {
               "test/keys-mint.test.ts",
               "test/grants.test.ts",
               "test/grant-usage.test.ts",
+              "test/grant-usage-route.test.ts",
               "test/byollm-account.test.ts",
               "test/byollm-endpoints.test.ts",
               "test/premium-interest.test.ts",
