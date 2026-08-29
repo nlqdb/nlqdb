@@ -17,17 +17,19 @@ only the founder may loosen one, and the gate is condition-gated — never dated
 yield → ≥ 5 (row #22, now 4), [`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-instrumentation.md).
 Acquisition levers stay pullable when no dogfood lever is — premium-chain work now **live**
 (row #20, meter firing 08-14), so that lane is done, not one-rank-below.
-**Weekly focus (`/weekly` 2026-08-22 — keeps the founder's 07-28 gate frame, re-points the
-agent-movable number):** = **memory-quality eval free-chain EX 59.26 % → ≥ 70 %, driven by the
-temporal axis (2/7).** Why re-point: the 08-15 pick — criterion 1, real MCP asks 12 → ≥ 100 —
-proved **dark** (rule 8): it moves only on real external agents using the MCP surface, which needs
-launch, which is gated on the whole gate — circular and stranger-gated, so no daily run moved it in
-a week (the loop fell back to yieldless distribution breadth, checks 2/4 in `weekly-review.md`). The
-memory-eval temporal axis is the **only gate-advancing lever a daily run can honestly move**: it is
-the measurable proxy for gate-criteria 3 (silent-wrong-answer) + 4 (temporal), it runs **offline**
-(no strangers), and its GLOBAL-037-compatible path — a separate wrong-answer judgement + declaring
-categorical domains in DDL (`CHECK`/enum) so value-linking is legitimate *schema* egress — needs no
-founder widening of `GLOBAL-037` (unlike raw value-sampling on the planning lane, which does).
+**Weekly focus (`/weekly` 2026-08-29 — keeps the founder's 07-28 gate frame, converts the proven
+proxy into gate movement):** = **dogfood gate `SK-PIVOT-016` 2/5 → ≥ 3/5, by landing the run-186/187
+declared-categorical-vocabulary lever in the production per-goal-pack schema layer so criterion 4
+(temporal) flips.** Why re-point: the 08-22 pick — memory-quality free-chain EX 59.26 % → ≥ 70 % — is
+**MET at 79.49 %** (runs 185–188), and run 188 proved the offline eval is **noise-dominated at ±5 pp**,
+so climbing it further is volume without gate-yield (`weekly-review.md` check 2). The eval work already
+**found and proved** the GLOBAL-037-legal lever the dogfood
+[`INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md) criterion-4 row still calls "no
+compliant agent-movable lever" (now **stale**): declared categorical vocabulary took the eval temporal
+axis **2/11 → 8/11**. The only thing between that proven lever and a gate flip is landing it in the
+production pack-schema layer — a real feature, agent-movable, GLOBAL-037-compliant (no founder
+widening). The gate sat **frozen at 2/5 all week** while the proxy climbed 43 → 79 %; this re-point
+makes the daily loop move the number the proxy exists to serve.
 
 **Worst number today (run 189, 2026-08-29) — LANE-1 CTR LEVER PULLED (row #7): weekly focus MET, so diversify off engine.**
 The weekly-focus number (memory-quality free-chain EX ≥ 70 %) is **comfortably MET at 79.49 %**, and runs **185–188 all

@@ -1,64 +1,63 @@
-# Weekly review — 2026-08-22
+# Weekly review — 2026-08-29
 
 Current-state audit of the `/daily` loop (≤ 4 KB, overwritten weekly, no
-changelog). Worst finding first. Window 2026-08-15→08-22: `/daily` runs
-178–181 (#1003/#1015/#1024/#1032), `/reach` cycles (#1005/#1017/#1023/#1034),
-and the founder-sanctioned parallel tracks — EK marketplace (~5 PRs) + premium
-hardening (~7) + a large ask-pipeline/trust/UX hardening bucket (~16).
+changelog). Worst finding first. Window 2026-08-22→08-29: `/daily` runs
+183–189 plus the founder-sanctioned EK-06 grant-primitive + EK-08 launch-motion
+track (~10 PRs).
 
-## Worst — the weekly focus number was un-movable all week (checks 4 + 1)
+## Worst — the focus proxy hit target, the gate it serves stayed frozen (checks 2 + 4)
 
-The 08-15 `/weekly` pick — dogfood **criterion 1, real MCP asks 12 → ≥ 100** —
-is **dark** (rule 8), not a live target. It moves only on real external agents
-hitting the MCP surface, which needs a launch, which is gated on the whole
-`SK-PIVOT-016` gate — circular and stranger-gated. So no `/daily` run touched it
-in seven days; the gate sat frozen at **2/5** (scorecard). Setting a focus number
-no run can honestly move is the root cause of this week's monoculture. Fixed in
-this PR: re-pointed the agent-movable number to the **memory-quality eval temporal
-axis (2/7)** — the only gate-advancing lever a daily run can move *offline* and
-without widening `GLOBAL-037` (the DDL-`CHECK`/enum + separate-judgement path, not
-raw value-sampling). The founder's 07-28 gate frame is untouched (P1).
+4 of the 6 non-null daily runs (**185–188**) climbed the memory-quality eval
+proxy: EX **43.59 % → 79.49 %**, temporal axis **2/11 → 8/11** — the 08-22 focus
+target (≥ 70 %) is comfortably **MET**, and run 188 proved the offline eval is now
+**noise-dominated at ±5 pp** (a refined trim measured −5.13 pp, inside the floor →
+reverted). Real proxy-yield — but the **dogfood gate the proxy exists to serve sat
+frozen at 2/5 all week** (scorecard row #1). The proxy outran its consumer: another
+run climbing it is volume without gate-yield. Crucially, the eval work already
+**proved** the GLOBAL-037-legal lever (declared categorical vocabulary, runs
+186/187) that the dogfood `INDEX.md` criterion-4 row still calls "no compliant
+agent-movable lever" — that doc is now stale. Fix in this PR: re-point the focus to
+**landing that proven lever in the production per-goal-pack schema layer so gate
+criterion 4 flips (2/5 → ≥ 3/5)**. Founder's 07-28 gate frame untouched (P1).
 
-## Monoculture — `/daily` fell to yieldless distribution breadth (check 2)
+## Monoculture — 4/6 runs on one offline lever; org itself is diversified (check 2)
 
-With no movable focus, 3 of 4 daily runs pulled **distribution breadth** (179 blog
-publish, 180 `/solve` link-graph, 181 new `/solve` page); 178 was the outage-record
-null. Yield evidence is absent: GSC ~12 clicks / 930 impr (row #7, ~flat vs last
-week's 11c), real strangers still **0** (row #2). Surfaces grew 111 → 112 with no
-click lift — volume without yield. The org *at large* is healthily diversified
-(the ~16-PR UX/ask-pipeline bucket is the real center of gravity, not breadth), so
-this is a `/daily`-loop finding, and the focus re-point above is its fix.
+memory-quality (185–188) = **67 %** of non-null daily runs; the other two (183/189)
+were the row-#7 CTR lever. Unlike last week's *yieldless* distribution breadth, this
+monoculture had real proxy-yield (verified below) — the problem is the proxy is
+maxed and its downstream gate is frozen, which the focus re-point fixes. The org at
+large is healthily diversified: the ~10-PR EK-06/EK-08 grant + launch-motion track
+is the real center of gravity, so this is a `/daily`-loop finding, not an org one.
 
-## Trend — no fresh regression; UX up, engine stale below floor (check 1)
+## Trend — memory-quality up sharply; engine floor stale; no GLOBAL-025 regression (check 1)
 
-No `GLOBAL-025` alert threshold stands tripped this week. Last week's worst (the
-08-14 `/v1/ask` outage) is resolved **and hardened** — #992 fix, #993 direct-provider
-fallback, #1001 free-chain fallback. UX pillar clearly advancing (GLOBAL-040 guided
-clarify #1036, ask misroute fixes #1008/#1029/#1037, billing #1010, model-picker
-honesty #1007). Engine flat and **dark**: BIRD 0.5382 (27 d), Spider 0.2222 (34 d),
-both below the 0.60 floor (row #8/#9). Funnel flat, strangers 0.
+No `GLOBAL-025` alert threshold tripped. Engine (memory axis) **clearly up** (43 → 79 %).
+Funnel edged up: GSC **9 c / 827 impr / pos 23.1** vs last week's 7 / 675 / 25.1 (row
+#7). UX green (FLOW-005 6/6, carried). BIRD **0.5382** (33 d) / Spider **0.2222** (40 d)
+still below the 0.60 floor and **stale** — dark, but #1041's planner re-head now makes a
+fresh re-measure a valid engine lever (rows #8/#9). Strangers **0** (row #2, launch-gated).
 
-## Delta integrity — sampled 3 daily PRs, all verify (check 5)
+## Delta integrity — sampled 4 memory + 1 CTR run, all verify (check 5)
 
-Re-measured same-instrument: run 181 (#1032) `/solve` = **41** and the
-`moving-average-rolling-average-in-sql` entry is present; run 179 (#1015)
-`/blog` = **40**, `success-rate-cant-see-a-wrong-answer` present; run 180 (#1024)
-link-graph edit consistent with `/solve` 41. Total surfaces = 112 = row #6. No
-fabricated delta.
+Strong. Every memory-quality delta carries a real GHA A/B link in
+`progress/quality-score-verification-log.md`: run 186 41.03 → 61.54 %
+([32919866678] → [32920213591]), run 187 61.54 → 74.36 % ([…] → [33029888855]),
+run 188 baseline 79.49 % ([33132370698]) with the −5.13 pp trim reverted. Run 189's
+CTR edit is present in `apps/web/src/data/solve.ts` (55-char `metaTitle`, completed
+`metaDescription` on `count-consecutive-days-streak-in-sql`). No fabricated delta.
 
-## Inert output — none in the loop (check 3)
+## Inert output — none new in the loop (check 3)
 
-Distribution queue **drained** (0 unpublished drafts < 3); dev.to drip active and
-self-throttling. The breadth-without-yield above is yield-*lag* on live surfaces,
-not inert-by-loop. `blocked-by-human.md` head (Show HN, **70 d** idle since 06-13)
-is gate-blocked, not inert — its root blocker is named and ranked.
+Distribution queue **drained** (0 unpublished drafts); dev.to drip self-throttling
+(15 variants remain, 1/run). `blocked-by-human.md` head (Show HN, **77 d** idle since
+06-13) is gate-blocked, not inert — root named and ranked. The one emerging inert
+risk *is* the maxed eval proxy above; the focus re-point retires it before it loops.
 
-## Prompt drift — `daily.md` gated on the wrong command; fixed (check 6)
+## Prompt drift — `daily.md` clean, no fix needed (check 6)
 
-`daily.md` rule 6 + step 4 gated pushes on `bun run typecheck && bun run lint`, but
-CLAUDE.md §8 makes **`bun run check`** the CI gate and warns `lint` alone "skips
-formatting and misses format-only failures" — so a format-only break passes daily's
-local gate then reddens CI. Smallest fix applied: `lint` → `check` in both spots. All
-cited paths + `GLOBAL`/`SK` IDs in `daily.md`/`weekly.md` resolve (GLOBAL-027's
-canonical file now exists — the check-6 archetype in `weekly.md` is stale but left
-untouched, per the daily.md-only fix scope).
+All `daily.md` decision IDs (GLOBAL-025/026/033/038, SK-*) resolve to canonical
+files; all cited paths exist; last week's `lint → check` gate fix holds (rules 6 +
+step 4). No dangling references, dead rules, or contradictions found — no `daily.md`
+edit this week. (Note: this file's own GLOBAL-027 "canonical file missing" archetype
+in `weekly.md` is now itself stale — the file exists — but that is prompt-illustrative
+and outside the `daily.md`-only fix scope.)
