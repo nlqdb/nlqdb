@@ -31,7 +31,7 @@ when-to-load:
 
 ### SK-LLM-003 — Day-1 strict-$0 chain: Gemini Flash → Groq → Workers-AI → OpenRouter free
 
-**Body:** [`decisions/SK-LLM-003-strict-zero-chain.md`](./decisions/SK-LLM-003-strict-zero-chain.md). **Current planner tier:** Qwen3.6-27B head per [`SK-LLM-053`](#sk-llm-053) (gpt-oss-120b fallback, [`SK-LLM-023`](#sk-llm-023)), Mistral tail per [`SK-LLM-028`](#sk-llm-028).
+**Body:** [`decisions/SK-LLM-003-strict-zero-chain.md`](./decisions/SK-LLM-003-strict-zero-chain.md). **Current planner tier:** Qwen3.8-27B head per [`SK-LLM-054`](#sk-llm-054) (gpt-oss-120b fallback, [`SK-LLM-023`](#sk-llm-023)), Mistral tail per [`SK-LLM-028`](#sk-llm-028).
 
 ### SK-LLM-004 — Cloudflare AI Gateway sits in front of every paid provider
 
@@ -71,7 +71,7 @@ when-to-load:
 
 ### SK-LLM-014 — Hedged-request race on free-tier chains for planner-tier ops
 
-**Body:** [`decisions/SK-LLM-014-hedged-request-race.md`](./decisions/SK-LLM-014-hedged-request-race.md). `LLMRouterOptions.hedge` opts an op into a two-way hedged race after `afterMs` head-start; loser aborted (`HEDGE_LOST`) without tripping the breaker. Free-tier only; prod wires `schema_infer` + `plan` at `afterMs: 2000` ([`SK-LLM-048`](#sk-llm-048) re-tune, retained by [`SK-LLM-053`](#sk-llm-053)).
+**Body:** [`decisions/SK-LLM-014-hedged-request-race.md`](./decisions/SK-LLM-014-hedged-request-race.md). `LLMRouterOptions.hedge` opts an op into a two-way hedged race after `afterMs` head-start; loser aborted (`HEDGE_LOST`) without tripping the breaker. Free-tier only; prod wires `schema_infer` + `plan` at `afterMs: 2000` ([`SK-LLM-048`](#sk-llm-048) re-tune, retained by [`SK-LLM-053`](#sk-llm-053)/[`SK-LLM-054`](#sk-llm-054)).
 
 ### SK-LLM-016 — BYOLLM dispatch lane: per-request override → account-stored → hosted-premium → free
 
@@ -221,9 +221,13 @@ when-to-load:
 
 **Body:** [`decisions/SK-LLM-052-auth-denied-never-falls-back.md`](./decisions/SK-LLM-052-auth-denied-never-falls-back.md). Narrows `SK-PREMIUM-020`: the lane fallback covers a gateway *fault*, not rejected credentials — those hide a dead paid lane behind a working-looking free answer, on every request after it too.
 
-### SK-LLM-053 — Qwen3.6-27B (`qwen/qwen3.6-27b`, Groq) leads the strict-$0 planner tier
+### SK-LLM-053 — Qwen3.6-27B (`qwen/qwen3.6-27b`, Groq) leads the strict-$0 planner tier — SUPERSEDED by SK-LLM-054
 
-**Body:** [`decisions/SK-LLM-053-qwen3.6-27b-planner-head.md`](./decisions/SK-LLM-053-qwen3.6-27b-planner-head.md). Supersedes [`SK-LLM-048`](#sk-llm-048) (Cerebras 404'd `zai-glm-4.7`, 2026-08-22): Qwen3.6-27B (`groq-qwen`) heads `plan` / `schema_infer` on the card-free Groq key, dispatched **plain** (forcing `reasoning_effort` empties `content`); gpt-oss-120b retained fallback ([`SK-LLM-023`](#sk-llm-023)). Measurement-gated — BIRD/Spider dispatch before merge; one-line revert.
+**Body:** [`decisions/SK-LLM-053-qwen3.6-27b-planner-head.md`](./decisions/SK-LLM-053-qwen3.6-27b-planner-head.md). Superseded 2026-08-29 by [`SK-LLM-054`](#sk-llm-054) (within-family upgrade 3.6 → 3.8 on the same Groq key). Original: supersedes [`SK-LLM-048`](#sk-llm-048) (Cerebras 404'd `zai-glm-4.7`, 2026-08-22); Qwen3.6-27B (`groq-qwen`) heads `plan` / `schema_infer` on the card-free Groq key, dispatched **plain**; gpt-oss-120b retained fallback ([`SK-LLM-023`](#sk-llm-023)).
+
+### SK-LLM-054 — Qwen3.8-27B (`qwen/qwen3.8-27b`, Groq) leads the strict-$0 planner tier
+
+**Body:** [`decisions/SK-LLM-054-qwen3.8-27b-planner-head.md`](./decisions/SK-LLM-054-qwen3.8-27b-planner-head.md). Supersedes [`SK-LLM-053`](#sk-llm-053) (within-family upgrade): the newer Qwen3.8-27B (released 2026-08-14, now live on our Groq key) replaces 3.6 as the `groq-qwen` planner head — benchlm.ai overall 72.5 vs 53.8, SWE-bench Pro 61.7, LiveCodeBench v6 90.3. Same key, same renewable no-card free tier, dispatched **plain**, gpt-oss-120b retained fallback. Live-verified 2026-08-29 (clean JSON on simple + JOIN/GROUP-BY/HAVING prompts, ~0.6–0.7 s); measurement-gated — BIRD/Spider dispatch confirms non-regression; one-line revert to 3.6.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 

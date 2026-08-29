@@ -12,16 +12,17 @@ import { openAICompatibleChat } from "./openai-compatible.ts";
 
 const DEFAULT_BASE_URL = "https://api.groq.com/openai/v1";
 
-// SK-LLM-053 — Qwen3.6-27B (`qwen/qwen3.6-27b`), served on the same card-free
-// Groq key as gpt-oss. A 27B dense coder/reasoner at ~77% SWE-bench Verified
-// (above the pulled GLM-4.7's 73.8% and far above gpt-oss-120b's ~30%). It
-// emits a short bounded reasoning trace then clean JSON `content` in its
-// DEFAULT decoding mode (verified live 2026-08-22, ~1.2 s on a small planner
-// prompt) — so, unlike GLM-4.7 on Cerebras, it needs NO `reasoning_effort`.
-// The opposite is true here: forcing `reasoning_effort` returns empty
-// `content` (a silent `parse` outage, verified 2026-08-22), so this head is
-// deliberately dispatched plain.
-const QWEN_PLANNER_MODEL = "qwen/qwen3.6-27b";
+// SK-LLM-054 — Qwen3.8-27B (`qwen/qwen3.8-27b`), served on the same card-free
+// Groq key as gpt-oss. A within-family upgrade of the SK-LLM-053 head: the
+// newer 3.8 (released 2026-08-14) is now live on our Groq key and scores far
+// above the 3.6 it replaces (benchlm.ai overall 72.5 vs 53.8; SWE-bench Pro
+// 61.7, LiveCodeBench v6 90.3). Like 3.6 it returns clean JSON `content` in its
+// DEFAULT decoding mode (verified live 2026-08-29 — a simple AND a JOIN +
+// date-range + GROUP BY/HAVING/ORDER-BY planner prompt both returned correct,
+// well-formed SQL in ~0.6–0.7 s, no leaked reasoning), so it is dispatched
+// PLAIN with NO `reasoning_effort`, same as 3.6. Same key, same renewable
+// no-card free tier — no new credential, one-line revert to 3.6.
+const QWEN_PLANNER_MODEL = "qwen/qwen3.8-27b";
 
 const DEFAULT_MODELS: Record<LLMOperation, string> = {
   // SK-ASK-009 — merged routeAsk rides the cheap-tier model. Prompt
@@ -45,7 +46,7 @@ export type GroqProviderOptions = {
   // has Authenticated Gateway enabled (SK-LLM-046). Unset ⇒ no header.
   gatewayToken?: string;
   models?: Partial<Record<LLMOperation, string>>;
-  // SK-LLM-053 — chain-name override so a Qwen3.6-27B instance and the default
+  // SK-LLM-054 — chain-name override so a Qwen3.8-27B instance and the default
   // gpt-oss instance can both sit in the chain off the same key (mirrors the
   // `createCerebrasGlmProvider` pattern).
   name?: ProviderName;
@@ -73,13 +74,12 @@ export function createGroqProvider(opts: GroqProviderOptions): Provider {
   });
 }
 
-// SK-LLM-053 — the Qwen3.6-27B planner head. Same Groq key/base as
-// `createGroqProvider`, distinct chain name `groq-qwen`, Qwen on the two
-// planner ops (`plan` / `schema_infer`); the other ops keep the gpt-oss
-// defaults but are never named in a chain for this instance. Dispatched plain
-// (no `reasoning_effort`) — the model self-bounds its reasoning and returns
-// clean JSON `content` in default mode, and forcing the effort param empties
-// `content` (verified live 2026-08-22). The slug lives once, here.
+// SK-LLM-054 — the Qwen3.8-27B planner head (was 3.6 under SK-LLM-053). Same
+// Groq key/base as `createGroqProvider`, distinct chain name `groq-qwen`, Qwen
+// on the two planner ops (`plan` / `schema_infer`); the other ops keep the
+// gpt-oss defaults but are never named in a chain for this instance. Dispatched
+// plain (no `reasoning_effort`) — the model self-bounds its reasoning and
+// returns clean JSON `content` in default mode. The slug lives once, here.
 export function createGroqQwenProvider(
   opts: Pick<GroqProviderOptions, "apiKey" | "baseUrl" | "gatewayToken">,
 ): Provider {

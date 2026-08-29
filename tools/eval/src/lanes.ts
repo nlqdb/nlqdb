@@ -78,7 +78,7 @@ export type Lane = {
 
 function buildFreeLane(env: EvalEnv): Lane | null {
   const providers = [];
-  // SK-LLM-053 — Qwen3.6-27B planner head, off the same Groq key as the
+  // SK-LLM-054 — Qwen3.8-27B planner head, off the same Groq key as the
   // gpt-oss `groq` leg below (distinct model ⇒ distinct per-model quota).
   if (env.GROQ_API_KEY) {
     providers.push(createGroqQwenProvider({ apiKey: env.GROQ_API_KEY }));
@@ -99,7 +99,7 @@ function buildFreeLane(env: EvalEnv): Lane | null {
   if (env.MISTRAL_API_KEY) providers.push(createMistralProvider({ apiKey: env.MISTRAL_API_KEY }));
   if (providers.length === 0) return null;
   // Chain order matches apps/api/src/llm-router.ts so the eval measures what
-  // production ships — Qwen3.6-27B planner head per SK-LLM-053 (gpt-oss-120b
+  // production ships — Qwen3.8-27B planner head per SK-LLM-054 (gpt-oss-120b
   // retained third), Mistral tail capacity backstop per SK-LLM-028. The router
   // skips any provider whose key is absent, so a partial-key CI run still runs.
   const router = createLLMRouter({
