@@ -29,53 +29,50 @@ the measurable proxy for gate-criteria 3 (silent-wrong-answer) + 4 (temporal), i
 categorical domains in DDL (`CHECK`/enum) so value-linking is legitimate *schema* egress — needs no
 founder widening of `GLOBAL-037` (unlike raw value-sampling on the planning lane, which does).
 
-**Worst number today (run 188, 2026-08-28) — WEEKLY-FOCUS ENGINE LEVER MEASURED NEGATIVE → REVERTED (Δ −5.13 pp):**
-built + measured the run-187 pre-drafted lever — **trim the over-triggering structural hints** (scope the
-recency/TTL comment off plain retrieval; gate the `entity_facts` traversal on "a question names an entity").
-Ran a **fresh same-window free-chain A/B** (both dispatched < 5 min apart on the current free chain, controlling
-day-to-day drift): baseline current-main HEAD [33132370698](https://github.com/nlqdb/nlqdb/actions/runs/33132370698)
-**79.49 % (31/39)** → branch-with-trim [33132372079](https://github.com/nlqdb/nlqdb/actions/runs/33132372079)
-**74.36 % (29/39)**, **Δ −5.13 pp / −2 questions.** Per-question (controlled): the trim **fixed its two intended
-targets** — q1 (recency/TTL over-trigger on a plain retrieval — gone) + q11 (spurious entity+TTL join — consolidation
-6/7 → 7/7) — but **drew 4 new failures**: q28/q29 (spurious *student* entity double-joins — my entity hint now *names*
-"student" in the ONLY-when list, inviting an extra student join on word/rule questions) + q12/q17 (dropped agent scope /
-malformed `strftime` — free-chain noise). Net −2. **Rule 3: Δ < 0 reverts** — the fixture is restored to main byte-for-byte
-(`git diff origin/main -- tools/eval/…` empty); this run ships only the scorecard finding (null-run posture).
-**Key positive by-product measured:** today's same-window baseline re-measures the **merged run-187 code at 79.49 % (31/39)**
-— +5.13 pp above the 74.36 % run 187 recorded yesterday (free-chain non-determinism), so the ≥ 70 % weekly target is
-**comfortably held, not at risk**.
-**Next-run lever (refined):** re-trim the entity hint **without naming "student"** in the ONLY-when list (the q28/q29
-evidence: naming a category that is *also* a decoy sub-entity nudges the spurious join) — keep only "names a specific
-word/rule/topic or asks WHICH one" — and re-run the same-window A/B. q1/q11 already flip on the current trim, so a
-noise-free re-measure should clear Δ ≥ 0.
-**P1 distribution still exhausted** (GSC 28d: 7 clicks / 675 impr / pos 25.1; winners authority-gated).
-**P2 UX-flow green** (FLOW-005 6/6, carried run 184). BIRD/Spider dark.
+**Worst number today (run 189, 2026-08-29) — LANE-1 CTR LEVER PULLED (row #7): weekly focus MET, so diversify off engine.**
+The weekly-focus number (memory-quality free-chain EX ≥ 70 %) is **comfortably MET at 79.49 %**, and runs **185–188 all
+pulled the memory-quality engine lever** (188 net-zero/reverted, and it *proved the free-chain is noise-dominated at
+±5 pp for small trims* — so the run-188 refined trim would land inside the noise floor). Rule 7 (anti-rut) + a met target
+⇒ pull a **different lane**, highest first. Lane 1 (acquisition/distribution) has a real pullable lever, so it wins over
+lane 2/3.
+**Fresh GSC (28d, 2026-07-30 → 08-27):** **9 clicks / 827 impr / pos 23.1** (up from carried 7 / 675 / 25.1). Swept every
+page-1 / page-1-adjacent `/solve` page for a snippet defect: all strict page-1 pages (`count-rows-per-day` pos 7.8,
+`expire-old-agent-memory` pos 8.8) **already carry hand-written meta** (runs 183 + wedge work). The **one untouched
+page-1-adjacent page with a genuine defect** is **`count-consecutive-days-streak-in-sql`** (**pos 10.8, 36 impr, 0 clicks**
+— best-positioned untouched page): the auto-title keeps the `How do I…? — nlqdb` framing (59 ≤ 60, so the ` — nlqdb` brand
+suffix is never stripped, spending ~8 chars on brand not a keyword) and the auto-description **clamps mid-value-prop** at
+`…nlqdb compiles the…`. **Lever:** hand-wrote `metaTitle` (55 ch — `Count consecutive-day streaks in SQL — gaps and
+islands`, front-loads intent + the searched pattern name) + `metaDescription` (150 ch — completes the value prop). Before →
+after is a concrete change on the row-#7 CTR input; the **click delta realizes in a future GSC window** (the deferred
+re-measure pattern run 183 established — that run's 2 pages are still pre-yield at 3–5 d).
+**P2 UX-flow green** (FLOW-005 6/6, carried run 184). BIRD/Spider dark; memory-quality target MET, off-lever this run.
 **Weekly-focus gate (don't overwrite the /weekly target mid-week):** dogfood **2/5**; memory-eval
-free-chain EX **79.49 %** (current-main same-window baseline, target ≥ 70 % — **MET**; the trim measured 74.36 % and reverted).
-**Top `blocked-by-human` bullet:** Show HN launch sequence (⏱ ~30 min, **idle 76 days since 06-13**),
+free-chain EX **79.49 %** (current-main same-window baseline from run 188, target ≥ 70 % — **MET**, not this run's lever).
+**Top `blocked-by-human` bullet:** Show HN launch sequence (⏱ ~30 min, **idle 77 days since 06-13**),
 condition-gated on the `SK-PIVOT-016` gate (**2/5**). #2 Anthropic connector directory (money-gated,
-07-21). #3 Supabase OAuth app + secrets (08-13; paste path works). Queue **depth 3**, head age 76 d.
+07-21). Queue **depth 2**, head age 77 d (#3 Supabase OAuth bullet dropped by #1063 — paste path works).
 **Dark (rule 8, reported not pulled):** dogfood gate (criterion 1 grind-only; criteria 3/4
 E-09/GLOBAL-037-blocked); engine **#8 BIRD 0.5382** (33 d) / **#9 Spider 0.2222** (**40 d** stale, async
 multi-window resume); rows **#2/#4/#5/#16** stranger-dependent (N = 0 until launch); row **#15** opencheck
 (free-lane saturation, remedy costs money ⇒ rule 4).
 
-**Rule 6 — GREEN.** Branch based on `main@c73d679` (latest; #1057/#1058/#1059 merged since run 187). Health
-re-measured live: **`typecheck` 0** (workspace), **`bun run check` exit 0** on the changed file, **`bun test tools/eval`
-320 pass / 0 fail** + gold-executability 39/39 (measured on the trim before reverting). After the Δ<0 revert this run's
-**net code diff is zero** — shipped changes are docs-only (`docs/scorecard.md` + evidence-log rows); deploys path-filtered, unaffected. **Open PRs: 0** at step 0.
+**Rule 6 — GREEN.** Branch based on `main@89bfed4` (latest; #1060–#1063 merged since run 187). Health
+re-measured live: **`typecheck` 0** (workspace, post-`bun install`), **`bun run check` exit 0** (858 files; 53 pre-existing
+warnings on main, 0 errors) + biome clean on the changed file, **meta-length-integrity + solve data tests 22 pass / 0 fail**.
+`deploy-web` + `deploy-api` latest `main` runs both **success**. Diff is one data file (`apps/web/src/data/solve.ts`, +meta on
+one `/solve` entry) + this scorecard. **Open PRs: 0** at step 0.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
 | | **Funnel, bot-filtered** (RUM + GSC **carried from 08-25** — no `scripts/` pull this engine-lever run; Users/DBs carried from 07-27 remote-D1) | | exclude synthetic stranger-test walker traffic |
-| 1 | Visits, 7d (CF RUM) | **carried 08-25:** floor **72 pl / 60 vis** (genuine ≈54 after `rateme12.com` spam cut); real nlqdb landings led by `app.nlqdb.com/` (7), `nlqdb.com/` (6), `hall-of-fame/` (4), `/agents/` (3) | cut rule: `bot=1` / `userAgentBrowser ∈ {Unknown, ChromeHeadless}` / CF-bot ⇒ real-browser is a floor. 7d SAMPLED — sub-interval buckets are noise |
+| 1 | Visits, 7d (CF RUM) | **live 08-29** (08-22→08-29): raw 368 pl / 333 vis; real-browser floor **97 pl / 90 vis** (genuine ≈52 after the `rateme12.com` spam cut of 38 — GLOBAL-039 residual http noise); real nlqdb landings led by `app.nlqdb.com/oauth/mcp-authorize/` (6), `nlqdb.com/` (5), `/auth/post-signin/` (4), `app.nlqdb.com/` (3), `/vs/vanna/` + `/agent-memory-benchmarks` (2 each). Referral: google 4 / accounts.google 4 | cut rule: `bot=1` / `userAgentBrowser ∈ {Unknown, ChromeHeadless}` / CF-bot ⇒ real-browser is a floor. 7d SAMPLED — sub-interval buckets are noise |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company + 5 test/dev — live remote-D1 07-27; no channel newly live to produce a signal. **Dark** (rule 8) — moves only on launch |
 | 3 | DBs total | **254** (07-27 live remote-D1) + **1 dogfood** (`db_agent_memory_v1_3a8a72`, internal) | stranger subset ~0 (row #2) |
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not measurable** (`SK-ONBOARD-007`). The **dogfood workload** (run 176): **100 % (10/10)** through the public MCP surface (= gate criterion 2) | target ≥ 95 %. Instruments live: TTFV + chips + drop-off funnel |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12; founder-owned) | share with ≥ 2 asks |
 | | **Distribution** — count *and* yield | | |
-| 6 | Indexable surfaces | **112** content pages (`/solve` **41** + `/vs` 31 + `/blog` 40; unchanged this run — no new page, distribution on-page exhausted for a single run). Unpublished blog drafts **0** (queue drained) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **40** + 1 dev.to variant published run 187 (`one-way-internal-links-leak-yield` → [dev.to](https://dev.to/omer_hochman/we-shipped-18-seo-pages-and-got-1-referral-the-links-only-pointed-one-way-1e1i); 16 variants remain). **GSC carried 08-25** (28d, no `scripts/` pull this engine-lever run): **7 clicks / 675 impr / pos 25.1**. "Strengthen next" winnable pages authority-gated + content-complete (`running-total…` pos 38.4, `find-rows-with-no-match…` pos 19.9) ⇒ no new snippet lever. Referral (08-25): google 6 / accounts.google 3 / bing 1 | `gsc-pull.ts` + `rum-pull.ts`. Page-1 zero-click = CTR lever (agent-movable); page-2+ authority/launch-gated |
+| 6 | Indexable surfaces | **112** content pages (`/solve` **41** + `/vs` 31 + `/blog` 40; unchanged this run — CTR lever, not a new page). Unpublished blog drafts **0** (queue drained) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
+| 7 | Surface yield | posts **40** + **dev.to variant drained this run** (`agent-memory-benchmarks-measure-recall-not-analysis` → [dev.to](https://dev.to/omer_hochman/we-read-the-agent-memory-benchmarks-almost-none-measure-analysis-4khi); **15 variants remain**). **GSC live 08-29** (28d 07-30→08-27): **9 clicks / 827 impr / pos 23.1** (↑ from 7/675/25.1). **This run's CTR lever:** hand-wrote SERP meta on `count-consecutive-days-streak-in-sql` (pos 10.8, 36 impr, 0 clk — auto-desc clamped mid-value-prop, auto-title kept `— nlqdb` brand suffix); all strict page-1 `/solve` pages already carry hand-written meta. GSC "Strengthen next" winners (`running-total…` pos 39.3 / 89 impr, `countif-sumif…` pos 22.6 / 68 impr) are page-3+ ⇒ position (authority-gated), not snippet. Referral (live 08-29): google 4 / accounts.google 4 | `gsc-pull.ts` + `rum-pull.ts`. Page-1 zero-click = CTR lever (agent-movable); page-2+ authority/launch-gated |
 | | **Engine** — BIRD 07-26 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **33 d old, staleness trigger fired**, but **dark (rule 8)**: resume is async multi-window and `main` moved since the 07-27 checkpoint. #1041 (planner re-head) now merged ⇒ a fresh BIRD/Spider re-measure is a valid next-run engine lever | target 0.65 / **Phase 2 floor 0.60** — gap 6.2 pp. Offline levers exhausted |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on `04fa3d0`, **40 d old**). 07-27 re-dispatch exited **partial** (`SK-QUAL-013` budget-stop) | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is source of truth |
@@ -97,42 +94,44 @@ re-measured live: **`typecheck` 0** (workspace), **`bun run check` exit 0** on t
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **FLOW-005 re-walked live run 184: 6/6 PASS** (curl-based MCP discovery + auth-wall, agent-runnable) — RFC 9728/8414 discovery green, unauth `initialize`/`tools/list` both 401 with matching `resource_metadata` challenge. Playwright walks still **not container-runnable** (Chromium pin mismatch, CI-only via `acquisition-health.yml`); those carried **0 failed / 9 blocked** from 07-26. #999 (08-16) fixed the `/app/new/` 428 dead-end | target **0 `failed`** ✅; anon walks stop at the 428 `challenge_required` (Turnstile, `SK-ANON-012`) |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub. MCP official registry published 07-22; Glama crawl-listed; Smithery/PulseMCP 0. First-touch attribution live since 07-19; `source_json` non-null **0**, for want of strangers, not instrument | **weekly focus (superseded): → ≥ 5 live.** Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
-| | **Human queue** — the one non-automatable actor | **depth 3**; head is the Show HN launch, oldest bullet **76 days** (`SK-PIVOT-016` gate **2/5**); #2 Anthropic connector directory (money-gated, 07-21); #3 Supabase OAuth app + secrets (08-13) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: **0** at step 0 (#1057/#1058/#1059 merged since run 187) |
+| | **Human queue** — the one non-automatable actor | **depth 2**; head is the Show HN launch, oldest bullet **77 days** (`SK-PIVOT-016` gate **2/5**); #2 Anthropic connector directory (money-gated, 07-21). #3 Supabase OAuth bullet dropped by #1063 | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: **0** at step 0 (#1060–#1063 merged since run 187) |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
 | | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **3/7** (D-01 ✅, D-03 ✅, D-04 🟡, **D-06 🟡**) — gate **2/5** (criterion 2 green from D-04's 100 % first-10; **criterion 5 green on #978's deploy** — the public `/agents` `ag-dog` dashboard is live). Remaining: criterion 1 (12 → ≥100 real MCP asks, grind); criterion 3 (silent-wrong-answer axis, E-09-blocked); criterion 4 (temporal, E-09/GLOBAL-037-blocked). D-06 run 2 (staleness-CI red + demand-signal) + D-04 `NLQDB_MEMORY_DB` var still open | mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md) |
-| | Memory-quality eval (`SK-QUAL-023`) | **39-q free-chain EX 79.49 % (31/39)** — current-main same-window baseline [33132370698](https://github.com/nlqdb/nlqdb/actions/runs/33132370698) (**2026-08-28, live this run**). Per-axis (baseline): consolidation 6/7, forgetting 6/7, temporal 9/11, retrieval 5/7, analytical 5/7. **This run's trim lever measured 74.36 % (29/39, branch [33132372079](https://github.com/nlqdb/nlqdb/actions/runs/33132372079)), Δ −5.13 pp → REVERTED** (fixed q1/q11, drew q28/q29 student-join + q12/q17 noise). ≥ 70 % weekly target comfortably held (79.49 % on main) | 39 gold-verified questions, 5 axes; free-only, no baseline |
+| | Memory-quality eval (`SK-QUAL-023`) | **39-q free-chain EX 79.49 % (31/39)** — current-main same-window baseline [33132370698](https://github.com/nlqdb/nlqdb/actions/runs/33132370698) (2026-08-28). Per-axis: consolidation 6/7, forgetting 6/7, temporal 9/11, retrieval 5/7, analytical 5/7. ≥ 70 % weekly target **MET, off-lever this run** (run 188's trim measured Δ −5.13 pp inside the ±5 pp free-chain noise floor → reverted; small trims are unmeasurable here). Next engine lever candidate: a full BIRD/Spider re-measure on the post-#1041 planner head (rows #8/#9) | 39 gold-verified questions, 5 axes; free-only, no baseline |
 
 ## Shipped distribution
 
 **41 canonical `/solve` pages** + **40 `/blog` posts** + **31 `/vs` pages** live under `nlqdb.com/`
 (`SK-SOLVE-001` / `SK-BLOG-001` / `SK-CMP-001`). The registries are `apps/web/src/data/{solve,blog,competitors}.ts`.
 
-- **This run (188):** null run (engine lever measured Δ<0 → reverted); step 3 skipped per the loop (a null run ships
-  only the step-1 scorecard update; the dev.to queue drains on the next non-null run). 16 dev.to variants remain.
+- **This run (189):** drained one dev.to variant — `agent-memory-benchmarks-measure-recall-not-analysis` →
+  [dev.to](https://dev.to/omer_hochman/we-read-the-agent-memory-benchmarks-almost-none-measure-analysis-4khi)
+  (**15 variants remain**). No new `/blog` page (blog-draft queue empty). CTR-lever run.
+- **Run 188:** null run (engine lever measured Δ<0 → reverted); step 3 skipped (null run). 16 dev.to variants remained.
 - **Run 187:** drained one dev.to variant — `one-way-internal-links-leak-yield` →
-  [dev.to](https://dev.to/omer_hochman/we-shipped-18-seo-pages-and-got-1-referral-the-links-only-pointed-one-way-1e1i)
-  (16 variants remain). No new `/blog` page (blog-draft queue empty).
-- **Run 186:** drained one dev.to variant — `llm-timeout-looks-like-hallucination`. Engine-change run.
+  [dev.to](https://dev.to/omer_hochman/we-shipped-18-seo-pages-and-got-1-referral-the-links-only-pointed-one-way-1e1i).
 
 ## Last change
 
-**2026-08-28 (run 188)** — **WEEKLY-FOCUS ENGINE LEVER MEASURED NEGATIVE → REVERTED (Δ −5.13 pp). Built + measured
-the run-187 pre-drafted trim (scope recency/TTL off plain retrieval; gate `entity_facts` on "a question names an
-entity"); fresh same-window free-chain A/B came back −2 questions, so per rule 3 the fixture is reverted to main
-byte-for-byte and this run ships only the scorecard finding.**
+**2026-08-29 (run 189)** — **LANE-1 CTR LEVER (row #7): hand-wrote SERP meta on the highest-impression untouched
+page-1-adjacent `/solve` page. Weekly-focus number (memory-quality EX ≥ 70 %) is MET at 79.49 % and runs 185–188 all
+pulled the memory-quality engine lever (188 net-zero, proving small trims sit inside the ±5 pp free-chain noise) → rule 7
+anti-rut + met target ⇒ diversify to lane 1, which has a real pullable lever.**
 
-**Measurement + next-run lever:** full detail in the "Worst number" block above. In short: fresh same-window A/B
-(baseline main [33132370698](https://github.com/nlqdb/nlqdb/actions/runs/33132370698) 79.49 % 31/39 → trim
-[33132372079](https://github.com/nlqdb/nlqdb/actions/runs/33132372079) 74.36 % 29/39, Δ −5.13 pp). Fixed q1/q11, drew
-q28/q29 (student-join) + q12/q17 (noise) → **Δ<0 reverts** (`git diff origin/main -- tools/eval/…` empty). **Refined
-next-run lever:** re-trim the entity hint *without naming "student"* in the ONLY-when list; q1/q11 already flip, so a
-noise-free re-measure should clear Δ ≥ 0.
+**Number moved (row #7 surface yield / CTR):** `count-consecutive-days-streak-in-sql` — GSC **pos 10.8, 36 impr, 0 clicks**;
+its auto-`<title>` kept the `How do I…? — nlqdb` framing (59 ≤ 60 so the brand suffix is never stripped) and its
+auto-description clamped mid-value-prop at `…nlqdb compiles the…`. **Before → after:** shipped a hand-written `metaTitle`
+(55 ch, front-loads `Count consecutive-day streaks in SQL — gaps and islands`) + `metaDescription` (150 ch, completes the
+value prop). All strict page-1 `/solve` pages already carried hand-written meta, so this is the next candidate. **Click
+delta realizes in a future GSC window** — the deferred CTR re-measure pattern run 183 established. Also drained one dev.to
+variant (agent-memory-benchmarks; 15 remain).
 
-**Step-1 (live):** health GREEN (`typecheck` 0, `bun run check` exit 0 on the changed file, `bun test tools/eval` 320 pass,
-golds 39/39; net code diff zero after revert — deploys path-filtered on `c73d679`); GSC carried 7 clicks / 675 impr / pos
-25.1; FLOW-005 6/6; step 3 skipped (null run); open PRs 0. **KPI (GLOBAL-025):** engine quality measured (no delta kept; degrades none — net code diff is zero).
+**Step-1 (live):** GSC **9 clicks / 827 impr / pos 23.1** (28d, ↑ from 7/675/25.1); health GREEN (`typecheck` 0,
+`bun run check` exit 0, meta-length + solve tests 22 pass; `deploy-web`/`deploy-api` both success on `main`); FLOW-005 6/6
+(carried); open PRs 0. **KPI (GLOBAL-025 — distribution/UX pillar):** surface yield advanced (SERP snippet quality on a
+page-1-adjacent page + 1 dev.to cross-post); no KPI degrades (docs + one data file, all guards green).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

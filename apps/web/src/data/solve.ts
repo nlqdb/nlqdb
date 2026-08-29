@@ -2164,6 +2164,16 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "count-consecutive-days-streak-in-sql",
     persona: "P3 analyst",
+    // Hand-written SERP meta (GSC 28d: pos ~10.8, 36 impr, 0 clicks — the
+    // best-positioned untouched page-1-adjacent page). The auto-title keeps
+    // the "How do I…? — nlqdb" framing (59 ≤ 60, so the brand suffix is never
+    // stripped), spending ~8 chars on brand instead of a keyword; the auto
+    // description clamps mid-value-prop at "…nlqdb compiles the…". Both
+    // front-load the intent + the "gaps and islands" pattern name — see
+    // lib/meta.ts.
+    metaTitle: "Count consecutive-day streaks in SQL — gaps and islands",
+    metaDescription:
+      "Find each user's longest run of consecutive active days — not their total. Ask in plain English; nlqdb compiles the gaps-and-islands SQL and shows it.",
     searchTitle: "How do I count a streak of consecutive days in SQL?",
     oneLiner:
       "If you want each user's longest run of consecutive active days — not just their total active days — ask in plain English. nlqdb compiles the gaps-and-islands query (the date-minus-row-number trick that turns each unbroken run into one group), counts the days per run, and shows the SQL.",
