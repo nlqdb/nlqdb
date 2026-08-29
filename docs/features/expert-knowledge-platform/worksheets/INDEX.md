@@ -144,8 +144,12 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
 - [ ] EK-08 — launch motion + acceptance criteria
   (box 1 shipped 2026-08-26 — the six-criterion first-paying-expert launch
   gate, each criterion owned by its proving slice, agent-tightenable /
-  founder-loosenable, kept off `SK-PIVOT-016`; boxes 2–3 — motion pick +
-  launch bullet — remain)
+  founder-loosenable, kept off `SK-PIVOT-016`; box 2 `P2` research shipped
+  2026-08-29 — three candidate motions + 2026 receipts + conservative default
+  Motion 1 (supply-first single-vertical hand-recruited wedge) applied, founder
+  pick deferred/not-queued since the launch is condition-gated on the criteria;
+  remaining: the founder motion pick + box 3 launch bullet, both once criteria
+  approach green)
 - [ ] EK-09 — trust hardening (F1-B): narration skip + no-training provider pin
   (box 1 shipped 2026-08-09 — knowledge-DB narration skip by default; box 2 shipped
   2026-08-28 — granted-path asks skip narration by construction now EK-06's granted
