@@ -76,6 +76,7 @@ swap.
 | [11](WS-11-selfhost-container.md) | Pull the self-host container forward (`ghcr.io/nlqdb/api`) | high | multi | 10 | infra-gated |
 | [12](WS-12-home-reweight.md) ✅ | Home reweight: agent-memory primary + demote P1/P3/P4 to an "also works for…" fold | med | ~2 | 06, 07 | — |
 | [13](WS-13-headline-reposition.md) | Headline reposition (wordmark / README / llms.txt / JSON-LD lead) | high | ~2 | 07, 12 | **FOUNDER-GATED** |
+| [14](WS-14-memori-response.md) | Memori response: `/vs/memori` + "recall-only surface" copy sharpen | low | ~2 | — | — |
 
 **Why this order:** WS-01–05 are additive content on existing machinery
 (lowest risk, immediate distribution artifacts). WS-06–09 build the wedge's
@@ -102,3 +103,4 @@ Tick on merge. Keep this list as the durable pivot status (the scorecard's
 - [ ] WS-11 — self-host container (infra-gated)
 - [x] WS-12 — home reweight + demote personas: **band ✅** (2026-06-21, run 43, branch `claude/vibrant-newton-2ou3c2` — `AgentMemoryBand.astro` inserted after `<Hero />`: wedge statement + WS-06 matrix teaser + `/agents` CTA firing `home.agents_cta_clicked`; hero lede untouched, gated to WS-13); **demote P1/P3/P4 to "also works for…" fold ✅** (2026-06-21, run 44, branch `claude/vibrant-newton-nqwd8q` — `AlsoWorksFor.astro` quiet divider before `CodePanel` + `Replaces`, composition-only, nothing deleted, hero untouched). WS-12 closed.
 - [ ] WS-13 — headline reposition (founder-gated)
+- [ ] WS-14 — Memori response (added 2026-08-30 — Memori anchored in `competitors.md §4` the same day; carries two founder-gated cross-track questions: auto-capture parity, WS-11 priority)
