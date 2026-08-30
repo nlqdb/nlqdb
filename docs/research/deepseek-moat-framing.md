@@ -1,3 +1,15 @@
+> **Dated caveat (2026-08-30):** Written before the SQL-native turn in agent
+> memory. The Mem0/Zep/Letta "facts, not tables" claim was re-verified
+> 2026-08-30 and still holds (Mem0 v2 filters remain filter-and-retrieve; no
+> aggregation) — but it no longer describes the whole market: SQL-native
+> engines exist (Memori / Memori Labs — Apache-2.0, SQL storage, recall-only
+> agent surface; academic MemoriesDB), and Memori also occupies the
+> "Apache-2.0 self-host" position §"Open Source as a Distribution Weapon"
+> recommends, so the open/free angle is no longer uncontested. The durable
+> wedge is narrower than "they can't do SQL": agent-facing NL→SQL analytics
+> + agent-designed schema + the typed-plan trust boundary. Current landscape:
+> `docs/competitors.md §4` and `docs/research/agent-memory-quality-landscape.md`.
+
 This is the real question. Let me reframe the battlefield honestly first.
 
 ---

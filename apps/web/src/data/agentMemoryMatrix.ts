@@ -25,6 +25,12 @@
 // Landscape also added Hindsight + GBrain in docs/competitors.md §4 (recall /
 // personal-brain shaped). SK-PIVOT-001 keeps this matrix at four columns —
 // new recall-only entrants do not change the wedge glyphs.
+//
+// 2026-08-30 spot re-verify (Mem0 only — docs.mem0.ai v2 filters, 2026
+// release notes): filters are eq/ne/in/gt/lt/contains + AND/OR/NOT —
+// filter-and-retrieve, still no aggregation; the "no" cells hold. Memori
+// (Memori Labs, SQL-native storage but recall-only agent surface) added to
+// competitors.md §4; per SK-PIVOT-001 it does not become a fifth column.
 
 import type { ComparisonClaim } from "./competitors.ts";
 
@@ -79,7 +85,7 @@ export const AGENT_MEMORY_MATRIX: MatrixRow[] = [
     zep: "no",
     letta: "no",
     nlqdb: "shipped",
-    note: "A vector/graph store returns matches; the LLM would have to do the arithmetic. nlqdb runs GROUP BY in Postgres.",
+    note: "A vector/graph store returns matches; the LLM would have to do the arithmetic in-context — plausible at demo size, not correct or repeatable past the context window. nlqdb runs GROUP BY in Postgres.",
   },
   {
     capability: 'Time-window analytics ("deals closing this month")',
