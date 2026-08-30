@@ -159,3 +159,9 @@ well the queue bullet was prepared, not by the action itself.
 | Date | Action (surface) | Unblocked | Replay note |
 |---|---|---|---|
 | 2026-08-24 | **Waived the SK-LLM-053 planner-head measurement gate on record** (in-session, path b): approved merging PR #1041 (re-head strict-$0 planner from the 404-dead `zai-glm-4.7` to `qwen/qwen3.6-27b` on the existing `GROQ_API_KEY`) without a pre-merge BIRD/Spider dispatch | discharges `blocked-by-human.md` bullet #2 — prod was already on the weaker gpt-oss-120b/Gemini fallback, so a working 77%-SWE-bench head cannot regress below today's floor; revert is one line | ~1 min; a confirming quality-eval dispatch may still run post-merge but no longer blocks. Squash `0c07820`. Reviewed 3× (0 code issues), CI 35/35 green |
+
+## Era 13 — 2026-08-30 (planner-head free-tier confirm)
+
+| Date | Action (surface) | Unblocked | Replay note |
+|---|---|---|---|
+| 2026-08-30 | **Confirmed `qwen/qwen3.8-27b` bills $0 on the card-free Groq key** and approved merging PR #1067 (re-head strict-$0 planner Qwen3.6-27B → Qwen3.8-27B on the existing `GROQ_API_KEY`) | discharges `blocked-by-human.md` bullet #2 (queued via #1071) — the one check CI can't do (LLM keys mocked, `SK-QUAL-002`); the swap holds strict-$0 (`GLOBAL-013`/`GLOBAL-026`). Revert to 3.6 is one line | in-session approval; independent review found 0 code issues + a D4 net-shrink on the router FEATURE.md; SK-LLM-054 is the decision record |
