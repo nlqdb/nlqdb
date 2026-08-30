@@ -36,11 +36,12 @@ values and criteria live. Read those only when you sit down to do the thing.
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
-| 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 2 | ~5 min | Confirm `qwen/qwen3.8-27b` bills $0 on the card-free Groq key before PR #1067 merges — primary Groq docs show no free/developer-tier rate limit for it (the incumbent 3.6 has one) | 2026-08-30 |
+| 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 
 Only #1 can move real strangers (scorecard row #2); the hosted-premium meter
 went **live 2026-08-14** (`premium.live=true` in prod — the full activation,
-AI Gateway included, is done and off this queue); #2 costs money and waits per
+AI Gateway included, is done and off this queue); #3 costs money and waits per
 `docs/cost-ladder.md` unless a Team org already exists. No founder action remains on the SK-PIVOT-016 gate path itself: with
 `NLQDB_API_KEY` set (2026-08-04), D-04 — provisioning the memory DB through
 the product's own authed create surface — is **agent work** (the 08-08 weekly
@@ -92,7 +93,30 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    criterion 1 = 12 real MCP asks, criterion 3 surfaced one silent wrong-answer
    incident. This founder-only launch half stays gated until all five are green).
 
-2. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+2. **⏱ ~5 min · blocked since 2026-08-30 — Confirm `qwen/qwen3.8-27b` is on
+   Groq's card-free FREE tier before PR #1067 (`claude/festive-noether-22r2mw`)
+   merges** — the PR re-heads the strict-$0 planner tier from Qwen3.6-27B to
+   Qwen3.8-27B ([`SK-LLM-054`](./features/llm-router/decisions/SK-LLM-054-qwen3.8-27b-planner-head.md))
+   on the same `GROQ_API_KEY`. Independent review found primary Groq docs
+   (`console.groq.com/docs/models`) list a developer/free-tier rate limit for
+   `qwen/qwen3.6-27b` (**250K TPM / 1K RPM**) but a **dash for `qwen/qwen3.8-27b`**
+   — i.e. 3.8 may be paid-on-demand only ($0.80/$4.00 vs 3.6's $0.60/$3.00).
+   Catalog presence in `GET /v1/models` (the PR's stated evidence) does **not**
+   prove free-tier usability. If 3.8 is not free, the swap breaks
+   [`GLOBAL-013`](./decisions/GLOBAL-013-free-tier-bundle-budget.md) /
+   [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)
+   (strict-$0): either silent per-token billing or a dead planner head that
+   4xx-fails to Gemini on every free request. **CI cannot catch this** — LLM
+   keys are mocked ([`SK-QUAL-002`](./features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md)).
+   **Action:** on the card-free key, POST `qwen/qwen3.8-27b` to
+   `api.groq.com/openai/v1/chat/completions` (a `curl`, or the console
+   playground) and confirm a **200 on the free tier**, not a paid-tier /
+   402 / 403 refusal. **If free → merge #1067** (otherwise review-clean,
+   CI-green, D4 net-shrink applied). If not, revert `QWEN_PLANNER_MODEL` to
+   `qwen/qwen3.6-27b`. Conservative default already applied: **not merged; the
+   free head stays on the confirmed-free 3.6.**
+
+3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
