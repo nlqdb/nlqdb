@@ -1,4 +1,4 @@
-// SK-ICP-001 (HN) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to) + SK-ICP-009 (GitHub Discussions) + SK-ICP-011 (Reddit app-only OAuth) + SK-ICP-012 (Bluesky) + SK-ICP-013 (Mastodon). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
+// SK-ICP-001 (HN) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to) + SK-ICP-009 (GitHub Discussions) + SK-ICP-011 (Reddit app-only OAuth) + SK-ICP-012 (Bluesky) + SK-ICP-013 (Mastodon). SK-ICP-015: writes raw items to KV at icp:items:<YYYYMMDD> (one JSON array, 30d) and dedups against the single icp:seen index (id → first-seen ms, pruned to 90d on write).
 
 import { type Span, trace } from "@opentelemetry/api";
 
@@ -38,6 +38,24 @@ export type IcpItem = {
 
 const SEEN_TTL_SECONDS = 90 * 24 * 60 * 60; // 90 days
 const ITEM_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
+
+// SK-ICP-015: the whole 90-day dedup window in one key — `<source>:<id>` →
+// first-seen epoch ms, pruned to the window on every write. One put per run
+// instead of one per item (the free-tier KV budget is 1000 puts/day).
+const SEEN_INDEX_KEY = "icp:seen";
+type SeenIndex = Record<string, number>;
+
+async function readSeenIndex(kv: KVNamespace): Promise<SeenIndex> {
+  const raw = await kv.get(SEEN_INDEX_KEY);
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as SeenIndex;
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    console.warn(JSON.stringify({ msg: "icp_seen_index_malformed" }));
+    return {};
+  }
+}
 
 // SK-ICP-014: single snapshot of the most recent scrape's per-source yield.
 // `runIcpCluster` reads it on a starved run to name what the last harvest
@@ -1230,41 +1248,41 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
     ...mastItems,
   ];
 
-  // Batch dedup check in parallel.
-  const seenKeys = allItems.map((item) => `icp:seen:${item.source}:${item.id}`);
-  const seenValues = await Promise.all(seenKeys.map((key) => deps.kv.get(key)));
+  // SK-ICP-015: one read of the consolidated seen-index replaces one KV get
+  // per item; marking each id as we go also dedups within this run.
+  const seen = await readSeenIndex(deps.kv);
 
-  let newItems = 0;
   let skipped = 0;
   const sources: Record<string, number> = {};
   const storedItems: IcpItem[] = [];
 
-  const writePromises: Promise<void>[] = [];
-
-  for (let i = 0; i < allItems.length; i++) {
-    const item = allItems[i];
-    if (!item || seenValues[i] !== null) {
+  for (const item of allItems) {
+    const seenKey = `${item.source}:${item.id}`;
+    if (seen[seenKey] !== undefined) {
       skipped++;
       continue;
     }
-
-    // New item — write seen-key and item-key in parallel.
-    const seenKey = `icp:seen:${item.source}:${item.id}`;
-    const itemKey = `icp:item:${dateStr}:${item.source}:${item.id}`;
-
-    writePromises.push(
-      deps.kv.put(seenKey, "1", { expirationTtl: SEEN_TTL_SECONDS }).then(() => {}),
-      deps.kv
-        .put(itemKey, JSON.stringify(item), { expirationTtl: ITEM_TTL_SECONDS })
-        .then(() => {}),
-    );
-
-    newItems++;
+    seen[seenKey] = now;
     sources[item.source] = (sources[item.source] ?? 0) + 1;
     storedItems.push(item);
   }
 
-  await Promise.all(writePromises);
+  const newItems = storedItems.length;
+
+  // SK-ICP-015: two whole-run puts (seen-index + this run's item array)
+  // instead of two per item. Nothing new ⇒ nothing to write.
+  if (newItems > 0) {
+    const cutoff = now - SEEN_TTL_SECONDS * 1000;
+    for (const [key, ts] of Object.entries(seen)) {
+      if (ts < cutoff) delete seen[key];
+    }
+    await Promise.all([
+      deps.kv.put(SEEN_INDEX_KEY, JSON.stringify(seen), { expirationTtl: SEEN_TTL_SECONDS }),
+      deps.kv.put(`icp:items:${dateStr}`, JSON.stringify(storedItems), {
+        expirationTtl: ITEM_TTL_SECONDS,
+      }),
+    ]);
+  }
 
   const result: IcpScrapeResult = { newItems, skipped, sources, items: storedItems };
 

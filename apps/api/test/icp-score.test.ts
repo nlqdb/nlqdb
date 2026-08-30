@@ -86,10 +86,28 @@ describe("runIcpScore", () => {
 
     expect(result.scored).toBe(1);
     expect(result.stored).toBe(1);
+    // SK-ICP-015: one run-scoped array key, not one key per scored item.
     expect(kv.put).toHaveBeenCalledOnce();
     const call = (kv.put as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];
-    expect(call[0]).toMatch(/^icp:scored:/);
-    expect(JSON.parse(call[1])).toMatchObject({ p1: 8, quote: "hate writing SQL" });
+    expect(call[0]).toMatch(/^icp:scored:\d{8}$/);
+    expect(JSON.parse(call[1])).toMatchObject([{ p1: 8, quote: "hate writing SQL" }]);
+  });
+
+  it("writes one KV key for a multi-batch run (SK-ICP-015 put budget)", async () => {
+    // 45 items span three 20-item LLM batches; the old per-item schema cost 45
+    // puts, the batched one costs exactly 1 — the free-tier KV budget is 1000/day.
+    const kv = stubKv();
+    const items = Array.from({ length: 45 }, (_, i) => makeItem({ id: `item-${i}` }));
+    const scores = items.map((item) => ({ id: item.id, p1: 8, p2: 0, p3: 0, p6: 0, quote: "" }));
+    const fetcher = vi.fn(async () => groqResponse(scores));
+
+    const result = await runIcpScore(items, { kv, groqApiKey: "key", fetch: fetcher });
+
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(result.stored).toBe(45);
+    expect(kv.put).toHaveBeenCalledOnce();
+    const [, value] = (kv.put as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];
+    expect(JSON.parse(value)).toHaveLength(45);
   });
 
   it("falls back to Gemini when Groq fails", async () => {

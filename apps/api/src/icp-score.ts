@@ -4,8 +4,8 @@
 // RELEVANCE_FLOOR is the only relevance gate — items scoring below the floor
 // on every persona are discarded.
 //
-// KV key schema:
-//   icp:scored:<YYYYMMDD>:<source>:<id>  → JSON IcpScoredItem  TTL 30 days
+// KV key schema (SK-ICP-015 — one put per run, not one per item):
+//   icp:scored:<YYYYMMDD>  → JSON IcpScoredItem[]  TTL 30 days
 
 import { type Span, trace } from "@opentelemetry/api";
 import type { IcpItem } from "./icp-scrape.ts";
@@ -169,7 +169,7 @@ export async function runIcpScore(items: IcpItem[], deps: IcpScoreDeps): Promise
     })();
 
   const dateStr = yyyymmdd(Date.now());
-  let stored = 0;
+  const scoredItems: IcpScoredItem[] = [];
 
   for (let i = 0; i < items.length; i += BATCH_SIZE) {
     const batch = items.slice(i, i + BATCH_SIZE);
@@ -210,14 +210,13 @@ export async function runIcpScore(items: IcpItem[], deps: IcpScoreDeps): Promise
     await tracer.startActiveSpan("nlqdb.icp.score", doScore);
 
     const itemMap = new Map(batch.map((item) => [item.id, item]));
-    const writes: Promise<void>[] = [];
 
     for (const raw of rawScores) {
       const item = itemMap.get(raw.id);
       if (!item) continue;
       if (Math.max(raw.p1, raw.p2, raw.p3, raw.p6) < RELEVANCE_FLOOR) continue;
 
-      const scored: IcpScoredItem = {
+      scoredItems.push({
         source: item.source,
         id: item.id,
         url: item.url,
@@ -228,20 +227,16 @@ export async function runIcpScore(items: IcpItem[], deps: IcpScoreDeps): Promise
         p3: raw.p3,
         p6: raw.p6,
         quote: raw.quote,
-      };
-
-      writes.push(
-        deps.kv
-          .put(`icp:scored:${dateStr}:${item.source}:${item.id}`, JSON.stringify(scored), {
-            expirationTtl: SCORED_TTL_SECONDS,
-          })
-          .then(() => {}),
-      );
-      stored++;
+      });
     }
-
-    await Promise.all(writes);
   }
 
-  return { scored: items.length, skipped: 0, stored };
+  // SK-ICP-015: a single run-scoped array, not one KV put per scored item.
+  if (scoredItems.length > 0) {
+    await deps.kv.put(`icp:scored:${dateStr}`, JSON.stringify(scoredItems), {
+      expirationTtl: SCORED_TTL_SECONDS,
+    });
+  }
+
+  return { scored: items.length, skipped: 0, stored: scoredItems.length };
 }

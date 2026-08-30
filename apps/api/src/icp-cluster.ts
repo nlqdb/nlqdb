@@ -1,4 +1,4 @@
-// SK-ICP-003: reads icp:scored:* KV keys (written by icp-score.ts), clusters per persona, writes monthly evidence file to GitHub.
+// SK-ICP-003: reads the icp:scored:<YYYYMMDD> KV keys (one JSON array per scored run, written by icp-score.ts per SK-ICP-015), clusters per persona, writes monthly evidence file to GitHub.
 
 import { type Span, trace } from "@opentelemetry/api";
 import type { IcpScoredItem } from "./icp-score.ts";
@@ -103,21 +103,21 @@ async function listAllScoredKeys(kv: KVNamespace): Promise<string[]> {
   return keys;
 }
 
+// One key per scored run (SK-ICP-015), each holding that run's whole array —
+// at most ~30 keys inside the 30-day TTL window, so a single parallel read.
 async function readScoredItems(kv: KVNamespace, keys: string[]): Promise<IcpScoredItem[]> {
-  const BATCH = 50; // avoid hitting KV read limits in one tick
+  const values = await Promise.all(keys.map((k) => kv.get(k)));
   const items: IcpScoredItem[] = [];
 
-  for (let i = 0; i < keys.length; i += BATCH) {
-    const batch = keys.slice(i, i + BATCH);
-    const values = await Promise.all(batch.map((k) => kv.get(k)));
-    for (let j = 0; j < values.length; j++) {
-      const v = values[j];
-      if (!v) continue;
-      try {
-        items.push(JSON.parse(v) as IcpScoredItem);
-      } catch {
-        console.warn(JSON.stringify({ msg: "icp_cluster_malformed_kv", key: batch[j] }));
-      }
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (!v) continue;
+    try {
+      const batch = JSON.parse(v) as IcpScoredItem[];
+      if (!Array.isArray(batch)) throw new Error("not an array");
+      for (const item of batch) items.push(item);
+    } catch {
+      console.warn(JSON.stringify({ msg: "icp_cluster_malformed_kv", key: keys[i] }));
     }
   }
 
