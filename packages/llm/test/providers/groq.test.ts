@@ -205,12 +205,12 @@ describe("createGroqProvider", () => {
   });
 });
 
-describe("createGroqQwenProvider (SK-LLM-053)", () => {
-  it("names the chain entry groq-qwen and serves Qwen3.6-27B on the planner ops", () => {
+describe("createGroqQwenProvider (SK-LLM-054)", () => {
+  it("names the chain entry groq-qwen and serves Qwen3.8-27B on the planner ops", () => {
     const provider = createGroqQwenProvider({ apiKey });
     expect(provider.name).toBe("groq-qwen");
-    expect(provider.model("plan")).toBe("qwen/qwen3.6-27b");
-    expect(provider.model("schema_infer")).toBe("qwen/qwen3.6-27b");
+    expect(provider.model("plan")).toBe("qwen/qwen3.8-27b");
+    expect(provider.model("schema_infer")).toBe("qwen/qwen3.8-27b");
   });
 
   it("dispatches the planner head PLAIN — no reasoning_effort (forcing it empties content on Groq)", async () => {
@@ -230,7 +230,7 @@ describe("createGroqQwenProvider (SK-LLM-053)", () => {
       { fetch },
     );
     expect(res.sql).toBe("SELECT 1");
-    expect(sent["model"]).toBe("qwen/qwen3.6-27b");
+    expect(sent["model"]).toBe("qwen/qwen3.8-27b");
     expect(sent["reasoning_effort"]).toBeUndefined();
     expect(sent["max_completion_tokens"]).toBeUndefined();
     // Greedy (SK-LLM-024) like every other planner leg.

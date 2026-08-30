@@ -73,10 +73,11 @@ export function getLLMRouter(): LLMRouter {
   // `undefined` when the token or the gateway is unconfigured ⇒ no header.
   const gwToken = env.AI_GATEWAY_TOKEN || undefined;
   const providers = [
-    // SK-LLM-053 — Qwen3.6-27B (qwen/qwen3.6-27b) leads the planner tier,
-    // served on the same card-free Groq key as gpt-oss (below). A 27B dense
-    // coder/reasoner at ~77% SWE-bench Verified — above the pulled GLM-4.7
-    // (73.8%, now 404 on Cerebras) and far above gpt-oss-120b (~30%). Dispatched
+    // SK-LLM-054 — Qwen3.8-27B (qwen/qwen3.8-27b) leads the planner tier,
+    // served on the same card-free Groq key as gpt-oss (below). A within-family
+    // upgrade of the SK-LLM-053 head (3.6 → 3.8): the newer 3.8 scores far above
+    // it (benchlm.ai overall 72.5 vs 53.8) and is now live on our Groq key.
+    // Dispatched
     // plain (no reasoning_effort); it self-bounds reasoning and returns clean
     // JSON in default mode. Gateway-routed like the gpt-oss `groq` leg (rides
     // gw.groq — Groq is a gateway provider per SK-LLM-047); Gemini sits second
@@ -122,7 +123,7 @@ export function getLLMRouter(): LLMRouter {
       // Cerebras + Mistral are the SK-LLM-047 direct (non-gateway) tail:
       // no chain may be gateway-only, or one AI-Gateway fault fails the op.
       route: ["groq", "gemini", "workers-ai", "openrouter", "cerebras", "mistral"],
-      // SK-LLM-053 — Qwen3.6-27B (groq-qwen) leads the planner tier; Gemini sits
+      // SK-LLM-054 — Qwen3.8-27B (groq-qwen) leads the planner tier; Gemini sits
       // second as the independent-pool failover for a Groq-Qwen 429, with
       // gpt-oss-120b (cerebras) retained third. `groq` (gpt-oss-120b) is a
       // distinct Groq model with its own per-model daily quota, so it does not
@@ -169,13 +170,13 @@ export function getLLMRouter(): LLMRouter {
     // request 8 s of wall-clock for a result the hedge could have
     // delivered ~3 s after start.
     //
-    // SK-LLM-053 — head-start = ~p90 of the *head* model's latency so the
+    // SK-LLM-054 — head-start = ~p90 of the *head* model's latency so the
     // typical fast-path skips the hedge and only the slow tail is raced. The
-    // head is now Qwen3.6-27B (groq-qwen), measured live at ~1.2 s on a small
-    // planner prompt — inside the 2000 ms head-start inherited from the
-    // GLM-4.7 head (SK-LLM-048), so the hedge still fires only on the slow
-    // tail and rarely doubles provider[1] (Gemini) load. Provisional pending
-    // the quality-eval latency histogram at real traffic.
+    // head is now Qwen3.8-27B (groq-qwen), measured live at ~0.6–0.7 s on a
+    // small planner prompt — comfortably inside the 2000 ms head-start (carried
+    // over from the 3.6 head, SK-LLM-053), so the hedge still fires only on the
+    // slow tail and rarely doubles provider[1] (Gemini) load. Provisional
+    // pending the quality-eval latency histogram at real traffic.
     hedge: {
       schema_infer: { afterMs: 2000 },
       plan: { afterMs: 2000 },
