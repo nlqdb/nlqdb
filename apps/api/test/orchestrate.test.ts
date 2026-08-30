@@ -10,6 +10,7 @@ import { type OrchestrateDeps, orchestrateAsk } from "../src/ask/orchestrate.ts"
 import { hashGoal, type PlanCache } from "../src/ask/plan-cache.ts";
 import type { CachedPlan, DbRecord, OrchestrateEvent, QueryResult } from "../src/ask/types.ts";
 import { DbConfigError } from "../src/ask/types.ts";
+import { agentMemoryV1Ddl } from "../src/db-create/presets/agent-memory-v1.ts";
 
 function stubEmitter() {
   return { emit: vi.fn<(event: ProductEvent) => Promise<void>>(async () => {}) };
@@ -738,6 +739,66 @@ describe("orchestrateAsk", () => {
     if (!out.ok) throw new Error("unreachable");
     expect(llm.summarize).not.toHaveBeenCalled();
     expect(out.result.summary).toBeUndefined();
+  });
+
+  it("EK-09: a knowledge-DB ask sends zero expert row values to any LLM hop, end-to-end", async () => {
+    // GLOBAL-037 lane 1+2 as a single runtime invariant (EK-09 box 4 / goal 3):
+    // the ToS sentence "when buyers query your knowledge, your rows are never
+    // sent to a language-model provider" made a guarded assertion against the
+    // ACTUAL orchestrate run — not a reconstruction of the plan builder
+    // (`packs/language-tutor.egress.test.ts`) nor the narration-skip proven in
+    // isolation (the EK-09 test above). Here the real `orchestrateAsk` drives an
+    // `agent_memory_v1` knowledge DB whose `exec` returns a tutor's distinctive
+    // authored rows, and we assert that every argument that reached an LLM hop
+    // (`plan`, and — were it ever to fire — `summarize`) is free of those row
+    // values. A regression that sampled exec rows into the plan prompt, or that
+    // dropped the agent_memory_v1 summarize skip, fails here where neither
+    // existing test would catch it.
+    const schema = agentMemoryV1Ddl("db_agent_memory_v1_egress01").join("\n");
+    // The paid product: a tutor's authored episode/fact/entity content. A buyer
+    // query answer would return these very rows.
+    const expertRows = [
+      { canonical_name: "Alex Rivera" },
+      { content: "indicative used where the subjunctive was required" },
+      { content: "charge a premium for exam-prep intensive lessons" },
+    ];
+    const expertValues = [
+      "Alex Rivera",
+      "indicative used where the subjunctive was required",
+      "charge a premium for exam-prep intensive lessons",
+    ];
+    // rowCount > 0 so a non-skipped path WOULD narrate — the skip is the reason
+    // rows don't transit, not an empty result.
+    const llm = stubLLM({ summary: { summary: "should never render" } });
+    const goal = "list the pricing heuristics and the grammar mistakes I recorded";
+    const out = await orchestrateAsk(
+      makeDeps({
+        llm,
+        resolveDb: vi.fn(async () =>
+          stubDb({ id: "db_agent_memory_v1_egress01", schemaText: schema }),
+        ),
+        exec: stubExec({ rows: expertRows, rowCount: expertRows.length }),
+      }),
+      { goal, dbId: "db_agent_memory_v1_egress01", userId: "user_1" },
+    );
+    if (!out.ok) throw new Error("unreachable");
+
+    // Every argument that reached the model, serialised. `plan` is the only hop
+    // a knowledge-DB read reaches; `summarize` must never have been called.
+    expect(llm.summarize).not.toHaveBeenCalled();
+    expect(llm.plan).toHaveBeenCalled();
+    const egress = JSON.stringify(vi.mocked(llm.plan).mock.calls);
+
+    for (const value of expertValues) expect(egress).not.toContain(value);
+    // The rows are genuinely in the result the caller got back — proving the
+    // guard targets values that really flowed through the run, not absent ones.
+    expect(out.result.rows).toEqual(expertRows);
+
+    // Positive control: the schema DDL and the buyer's own goal DO transit —
+    // the only tokens GLOBAL-037 permits — so the absence above is a real
+    // boundary, not a builder that dropped everything.
+    expect(egress).toContain("entity_facts");
+    expect(egress).toContain(goal);
   });
 
   it("emits SSE events in order: plan_pending → plan → rows → summary", async () => {

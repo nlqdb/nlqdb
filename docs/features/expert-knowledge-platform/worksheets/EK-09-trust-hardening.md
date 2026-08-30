@@ -53,7 +53,19 @@ is literally true before it publishes.
       here, size-independence: a 200-row granted result is still served
       un-narrated, so the skip is the path, not the payload.)
 - [ ] Interview provider pinned + CI-asserted in `experts`.
-- [ ] Egress test extended; EK-03's stronger copy drafted into the
+- [~] Egress test extended (2026-08-30 — `apps/api/test/orchestrate.test.ts`
+      `EK-09: a knowledge-DB ask sends zero expert row values to any LLM hop,
+      end-to-end`: the real `orchestrateAsk` drives an `agent_memory_v1`
+      knowledge DB whose `exec` returns a tutor's authored rows, and every
+      argument that reached an LLM hop — the `plan` call args, and `summarize`
+      proven never to fire — is asserted free of those values, with the schema
+      DDL + buyer goal as the positive control. This guards the *runtime path*,
+      closing the gap the two prior halves left: `packs/language-tutor.egress.test.ts`
+      only reconstructs the plan builder, and the box-1 test only proves the
+      narration skip in isolation — neither catches a regression that samples
+      exec rows into the plan prompt or drops the `agent_memory_v1` skip).
+      Remaining before this box ticks: EK-03's stronger copy drafted into the
       approved delta file and a one-sentence wording sign-off re-queued in
-      `blocked-by-human.md` (the Option A base text was founder-signed
-      2026-08-10 and publishes with EK-05 without waiting here).
+      `blocked-by-human.md` — both gate on EK-09 going fully green (box 3's
+      provider pin is EK-05-gated). The Option A base text was founder-signed
+      2026-08-10 and publishes with EK-05 without waiting here.
