@@ -154,4 +154,9 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
   (box 1 shipped 2026-08-09 — knowledge-DB narration skip by default; box 2 shipped
   2026-08-28 — granted-path asks skip narration by construction now EK-06's granted
   read landed, `route-granted-ask.test.ts` guards it rows-only + size-independent;
-  box 3 egress-test extension + provider pin await EK-05)
+  end-to-end egress guard shipped 2026-08-30 — `orchestrate.test.ts` drives the
+  real `orchestrateAsk` over an `agent_memory_v1` knowledge DB returning a tutor's
+  authored rows and asserts zero row values reach any LLM hop (plan args +
+  summarize-never-fires), turning the ToS "your rows are never sent to a provider"
+  sentence into a runtime-path invariant; remaining box-4 copy draft + provider
+  pin await EK-05/EK-09-green)
