@@ -1552,6 +1552,18 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "countif-sumif-conditional-aggregate-in-sql",
     persona: "P3 analyst",
+    // Hand-written SERP meta (GSC 28d: the page ranks pos ~5.7 — page 1 — for
+    // "postgres countif" with 7 impr / 0 clicks; a click winnable now, not
+    // position-gated). The auto-title clamped to "How do I do a COUNTIF or
+    // SUMIF (conditional count or sum)…" — 13 chars spent on "How do I do a",
+    // keyword buried, "SQL"/"Postgres" clamped off entirely; the auto
+    // description clamped mid-sentence at "…ask in plain English…" before the
+    // value prop. Both hand-writes front-load the searched function names +
+    // both keywords (SQL, Postgres) and land the FILTER-form payoff — see
+    // lib/meta.ts.
+    metaTitle: "COUNTIF & SUMIF in SQL — conditional count/sum (Postgres)",
+    metaDescription:
+      "SQL has no COUNTIF or SUMIF keyword, and COUNT(x='paid') over-counts silently. Ask in plain English; nlqdb compiles the FILTER form and shows the SQL.",
     searchTitle: "How do I do a COUNTIF or SUMIF (conditional count or sum) in SQL?",
     oneLiner:
       "If you need a COUNTIF or SUMIF — count or total only the rows that meet a condition, like paid orders or signups from one plan — ask in plain English instead of hand-writing the aggregate. nlqdb compiles `COUNT(*) FILTER (WHERE ...)`, runs it in Postgres, and shows the SQL so you can verify the condition.",
