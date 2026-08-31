@@ -274,19 +274,18 @@ in our repo), **crawl** (aggregators index it; nothing to submit), **submit**
 indexed-pages-at-0-impressions and the 0/10 answer-engine retrieval (nlqdb.com
 DR 0.0 vs mem0.ai 74.0, first read 2026-08-04); authority is what ranks the
 already-shipped R-02/R-03 surface.
-**Do:** (a) **Homepage-link sweep** — re-verify every live listing/venue in
-[`acquisition-channels.md`](../../../../research/acquisition-channels.md) that
-permits a homepage/website field points at an `nlqdb.com` URL (with its utm
-key), not `github.com/nlqdb/nlqdb` — DR-97 github.com absorbs the link equity
-today. (b) **Linkable-asset play** — the agent-memory benchmark blog content is
-the only surface earning agent-memory query impressions; promote it into a
-citable standalone asset (public leaderboard / dataset page) — benchmarks earn
-links, product pages don't. (c) **Measurement** — a DR line each run via
-`bun scripts/ahrefs-dr.ts` (`AHREF_API_KEY`; free public endpoint).
+**Did (all agent-doable levers, now done):** (a) homepage-link sweep — every
+live listing/venue in
+[`acquisition-channels.md`](../../../../research/acquisition-channels.md) with a
+homepage field points at an `nlqdb.com` utm URL, not DR-97 `github.com` which
+would absorb the equity; (b) linkable asset — promote the benchmark blog (the
+only surface earning agent-memory impressions) into a citable standalone page;
+(c) measurement — a DR line each run via `bun scripts/ahrefs-dr.ts`
+(`AHREF_API_KEY`; free public endpoint).
 **Honest constraint:** at $0 the largest referring-domain events are launches
 and community posts, which are founder-shaped (hard rule 3 /
 [`blocked-by-human.md`](../../../../blocked-by-human.md) #1) — this slice
-maximizes what's agent-doable; it does not replace the launch.
+maximized what's agent-doable; it does not replace the launch.
 **Done when:** ✅ homepage-link sweep done across all live venues (live-verified
 2026-08-05 — see [`NUMBERS.md`](NUMBERS.md)) · ✅ linkable asset live + in
 llms.txt — the **benchmark-landscape reference page**
@@ -296,14 +295,14 @@ llms.txt — the **benchmark-landscape reference page**
 [`.test.ts`](../../../../../apps/web/src/data/memoryBenchmarks.test.ts)), a
 citable survey of the field's benchmarks (LoCoMo/LongMemEval/DMR/Mem0/Zep) every
 number sourced + flagged self-reported/disputed, promoting the survey blog post
-(the only agent-memory surface earning impressions — "agent memory benchmark"
-pos 53, "locomo benchmark ai memory" pos 83) into a standalone asset; in
+(the only agent-memory surface earning impressions) into a standalone asset; in
 sitemap + `llms.txt` + a Footer link (escapes the orphan-crawl trap the
 never-crawled `/solve` wedge pages sit in). **Distinct from SK-PIVOT-019** —
 that harness publishes *nlqdb's own* cross-strategy results on `/agents` and is
 still corpus-blocked (D-07); this page carries **no nlqdb score** (hard rule 1),
-only the field survey + the analysis-gap framing · ⬜ DR / referring domains ≥
-first nonzero read.
+only the field survey + the analysis-gap framing · ✅ DR / referring domains ≥
+first nonzero read (2026-08-31: nlqdb.com + docs.nlqdb.com **0.0 → 0.1**, first
+move off the floor since the 08-04 first read; see [`NUMBERS.md`](NUMBERS.md)).
 
 ## Current numbers
 
@@ -324,4 +323,4 @@ Tick on merge; full state per slice is in § Slices above, only what is still
 - [ ] R-07 — droppable in-repo artifacts — **owed:** external distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`)
 - [x] R-08 — answer-engine citation baseline
 - [ ] R-09 — host plugin/skill venues — **owed:** one real `claude-plugin` visit in `/app/admin` (5/5 venues resolved)
-- [ ] R-10 — authority / referring domains — sweep ✅ (08-05), asset ✅ (08-06, `/agent-memory-benchmarks`), crawl lever ✅ (08-07: `/agents` links 4 wedge `/solve` pages; verifies 08-22); **owed:** first nonzero DR read
+- [x] R-10 — authority / referring domains — sweep ✅ (08-05), asset ✅ (08-06, `/agent-memory-benchmarks`), crawl lever ✅ (08-07: `/agents` links 4 wedge `/solve` pages), first nonzero DR ✅ (08-31: nlqdb.com + docs.nlqdb.com 0.0 → 0.1)
