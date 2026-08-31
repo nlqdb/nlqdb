@@ -18,10 +18,19 @@ N+1 proof). **`INV-EKP-037` egress guard landed 2026-08-12 (box 5):**
 values to the exact planner egress a buyer's `/v1/ask` plan hop emits
 (`buildPlanSystem` + `buildPlanUser`, now exported from `@nlqdb/llm`) over the
 real `agent_memory_v1` DDL, and asserts zero expert row values transit — the
-schema-only floor under `SK-EKP-001`. Remaining: `acquire`'s live transcript
-endpoint is wired only via injected `fetch` until the `experts` interview
-service ships (box 2, gates on EK-05), which is what the live-import box (2)
-needs.
+schema-only floor under `SK-EKP-001`. **Box 3 shipped 2026-08-31:**
+`packs/language-tutor.integration.test.ts` drives the whole runner journey
+(createDraft → advance → verify) over a fixture transcript against a **live
+Neon `agent_memory_v1` branch**, writing every row through
+`buildRememberInsert` (the deterministic `nlqdb_remember` builder —
+allow-listed identifiers, bound params) under the same tenant + `app.agent_id`
+scope and non-owner role production runs, then reconciles planned-vs-written
+from a real read-back and asserts the golden-query vocabulary + `source_episode`
+provenance land and stay agent-isolated — proving the write side is real on the
+engine, not just faithful in a mock (gated on `NEON_TEST_BRANCH_URL`, skips
+without it). Remaining: `acquire`'s live transcript endpoint is wired only via
+injected `fetch` until the `experts` interview service ships (box 2, gates on
+EK-05), which is what the live-import box (2) needs.
 
 ## Goal
 
@@ -79,7 +88,17 @@ takes, this slice owns everything on the nlqdb side of it.
 - [ ] Runner executes an interview-sourced import end-to-end (draft →
       progress counters → verify → proof → delete) with zero
       runner-code forks.
-- [ ] Rows verifiably on `agent_memory_v1` via public surfaces only.
+- [x] Rows verifiably on `agent_memory_v1` via public surfaces only.
+      (2026-08-31 — `packs/language-tutor.integration.test.ts`: the pilot pack's
+      interview import lands on a live Neon `agent_memory_v1` branch through
+      `buildRememberInsert` — the `nlqdb_remember` write builder, allow-listed
+      identifiers + bound params, run under the production tenant/`app.agent_id`
+      scope + non-owner role — and reads back under scope with the exact
+      golden-query vocabulary (episodes `lesson`; facts `mistake` /
+      `pricing_heuristic` / `student_profile` each carrying `source_episode`
+      provenance; entities `grammar_rule` / `student`); `verifying` reconciles
+      planned-vs-written from the real read-back, and a second agent scope in the
+      same DB reads none of it. Gated on `NEON_TEST_BRANCH_URL`.)
 - [x] The N+1 claim holds: diff shows pack content + adapter, no rebuilt
       journey machinery. (2026-08-11 — `packs/language-tutor.ts` + one `PACKS`
       entry in `deps.ts`; zero edits to `runner.ts`/`types.ts`/the journey. The

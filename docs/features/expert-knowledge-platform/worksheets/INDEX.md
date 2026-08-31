@@ -104,7 +104,12 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
 - [ ] EK-04 — pilot authoring rails (language-tutor expert pack, public half)
   (box 1 golden-query corpus shipped 2026-08-08; interview-source `PackAdapter`
   — instance #2, N+1 box — landed 2026-08-11 with zero runner edits;
-  `INV-EKP-037` egress guard shipped 2026-08-12 — box 5; live end-to-end import
+  `INV-EKP-037` egress guard shipped 2026-08-12 — box 5; box 3 rows-land-on-
+  `agent_memory_v1`-via-public-surfaces shipped 2026-08-31 —
+  `packs/language-tutor.integration.test.ts` drives the runner over a fixture
+  transcript against a live Neon branch, writing through the `nlqdb_remember`
+  builder and reconciling planned-vs-written from a real read-back with
+  golden-query vocabulary + provenance; only box 2 live end-to-end import
   remains, gated on the `experts` interview endpoint)
 - [ ] EK-05 — marketplace surface v0 (`experts`) — unparked 2026-08-10 (direct agent push confirmed); box 4 boundary guard landed (experts#2, merged; CI to run it in experts#3, open), boxes 1–3 gated on EK-04/EK-06
 - [x] EK-06 — grant primitive implementation (complete 2026-08-28)
