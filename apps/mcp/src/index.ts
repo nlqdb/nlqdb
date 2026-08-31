@@ -99,6 +99,14 @@ const oauth = new OAuthProvider<Env>({
   scopesSupported: ["mcp"],
   allowImplicitFlow: false,
   allowPlainPKCE: false,
+  // Every refresh writes 2 KV records (rotated grant + new `token:*`). The
+  // library default of 1 h made always-connected hosts refresh hourly —
+  // ~400 puts/day, ~40% of the Workers Free 1000 puts/day cap
+  // (`GLOBAL-013`). 24 h drops that to ~2 puts per grant per day.
+  // Revocation is unaffected: the DO re-probes `/v1/keys/:hash/status`
+  // every second (`SK-MCP-009` / `SK-MCP-014`), so a revoked
+  // `sk_mcp_*` still dies within 1 s regardless of this token's lifetime.
+  accessTokenTTL: 24 * 60 * 60,
   onError: recordOAuthError,
 });
 
