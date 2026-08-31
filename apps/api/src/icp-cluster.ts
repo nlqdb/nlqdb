@@ -8,6 +8,7 @@ const TOP_N = 100;
 const GH_API = "https://api.github.com";
 const DEFAULT_REPO = "nlqdb/nlqdb";
 const SCORED_KEY_PREFIX = "icp:scored:";
+const SCORED_KEY_RE = /^icp:scored:\d{8}$/;
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 // GitHub REST rejects no-User-Agent requests with 403.
@@ -95,7 +96,8 @@ async function listAllScoredKeys(kv: KVNamespace): Promise<string[]> {
       ...(cursor ? { cursor } : {}),
     });
     for (const key of result.keys) {
-      keys.push(key.name);
+      // SK-ICP-015: only the run-scoped array keys; skips old per-item keys still in their 30d TTL so the migration window doesn't spam `icp_cluster_malformed_kv`.
+      if (SCORED_KEY_RE.test(key.name)) keys.push(key.name);
     }
     cursor = result.list_complete ? undefined : result.cursor;
   } while (cursor);

@@ -182,6 +182,19 @@ describe("runIcpCluster", () => {
     expect(result.written).toBe(false);
   });
 
+  it("SK-ICP-015: skips old per-item scored keys still in their 30d TTL (no fetch, no malformed warn)", async () => {
+    // A run-scoped array key coexists with a legacy per-item key during the migration window.
+    const item = makeScored("a1");
+    const kv = stubKv({
+      "icp:scored:20260522": JSON.stringify([item]),
+      "icp:scored:20260522:hn:legacy1": JSON.stringify(item),
+    });
+    await runIcpCluster({ kv, ghToken: "tok", fetch: vi.fn() });
+    const gotKeys = (kv.get as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+    expect(gotKeys).toContain("icp:scored:20260522");
+    expect(gotKeys).not.toContain("icp:scored:20260522:hn:legacy1");
+  });
+
   it("writes evidence file to GitHub for new file (no existing SHA)", async () => {
     const item = makeScored("b1");
     const kv = stubKv({ "icp:scored:20260522": JSON.stringify([item]) });
