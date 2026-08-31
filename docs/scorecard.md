@@ -31,37 +31,40 @@ production pack-schema layer — a real feature, agent-movable, GLOBAL-037-compl
 widening). The gate sat **frozen at 2/5 all week** while the proxy climbed 43 → 79 %; this re-point
 makes the daily loop move the number the proxy exists to serve.
 
-**Worst number today (run 190, 2026-08-30) — LANE-1 CTR LEVER PULLED (row #7): weekly focus still MET, engine lane owned by open PR #1067.**
-The weekly-focus number (memory-quality free-chain EX ≥ 70 %) stays **MET at 79.49 %**; the engine lane is **owned by open PR
-#1067** (planner re-head Qwen3.6→3.8) at step 0 — touching engine would duplicate it (step 0). So the run diversifies to
-**lane 1 (acquisition/distribution) — a genuine, non-overlapping CTR lever**.
-**Fresh GSC (28d, 2026-07-31 → 08-28):** **9 clicks / 824 impr / pos 24.2** (flat vs run 189's 9/827/23.1). The query cut
-surfaced a **sharper CTR defect than run 189's**: **`countif-sumif-conditional-aggregate-in-sql` already ranks pos 5.7 — page
-1 — for the query `postgres countif`** (7 impr, 0 clicks; also matches `count if sql`, `sql countif`, `sql sumif`), yet its
-aggregate position (22.5) kept it out of the "strict page-1" meta sweep. So the click is **winnable now, not authority-gated**
-(unlike the page-2/3+ GSC "Strengthen next" leaders — position plays). Its auto-title clamped to `How do I do a COUNTIF or
-SUMIF (conditional count or sum)…` (keyword buried, `SQL`/`Postgres` clamped off), auto-desc clamped at `…ask in plain
-English…` before the value prop. **Lever:** hand-wrote `metaTitle` (57 ch — `COUNTIF & SUMIF in SQL — conditional count/sum
-(Postgres)`) + `metaDescription` (150 ch — leads with the COUNT-trap, lands the FILTER-form payoff). **Click delta realizes
-in a future GSC window** (deferred CTR re-measure pattern, run 183).
-**P2 UX-flow green** (FLOW-005 6/6, carried run 184). BIRD/Spider dark; memory-quality target MET, off-lever this run.
-**Weekly-focus gate (don't overwrite the /weekly target mid-week — #1066 re-points it but is unmerged):** dogfood **2/5**;
-memory-eval free-chain EX **79.49 %** (current-main same-window baseline from run 188, target ≥ 70 % — **MET**, not this
-run's lever).
-**Top `blocked-by-human` bullet:** Show HN launch sequence (⏱ ~30 min, **idle 78 days since 06-13**),
-condition-gated on the `SK-PIVOT-016` gate (**2/5**). #2 Anthropic connector directory (money-gated,
-07-21). Queue **depth 2**, head age 78 d.
-**Dark (rule 8, reported not pulled):** dogfood gate (criterion 1 grind-only; criteria 3/4
-E-09/GLOBAL-037-blocked); engine **#8 BIRD 0.5382** (34 d) / **#9 Spider 0.2222** (**41 d** stale, async
-multi-window resume — engine lane also owned by #1067 this run); rows **#2/#4/#5/#16** stranger-dependent (N = 0 until
-launch); row **#15** opencheck (free-lane saturation, remedy costs money ⇒ rule 4).
+**Worst number today (run 191, 2026-08-31) — WEEKLY-FOCUS LEVER PULLED: landed the eval-proven criterion-4 schema hints in the production preset.**
+The `/weekly` (08-29) focus is **dogfood gate `SK-PIVOT-016` 2/5 → ≥ 3/5, by landing the run-186/187 declared-vocabulary/structural
+lever in the production per-goal-pack schema layer so criterion 4 (temporal) flips.** Both open PRs from run 190 (#1066 weekly
+re-point, #1067 engine planner re-head) **merged**, so step 0 is clear and the engine/schema lane is no longer owned — this run
+pulls the weekly-focus lever directly.
+**Lever (this run):** the memory-quality eval (`SK-QUAL-023`, runs 186–187) proved that hand-authored **schema-structure hints**
+(not cell-values, GLOBAL-037 lane-1) take the eval temporal axis **2/11 → 8/11**. But those hints lived only in the eval
+fixtures; the **production** `agent_memory_v1` preset served the planner a bare DDL with **zero** guidance — so the 8/11 was
+un-backed in prod. Run 191 ports the generic structural hints (owning-agent scoping, `kind`-is-an-exact-categorical-token,
+`content`-vs-entity, `facts → entity_facts → entities` traversal, `GROUP BY canonical_name`, `ORDER BY created_at DESC` for
+supersession, TTL semantics) into `apps/api/src/db-create/presets/agent-memory-v1.ts` as inline `-- comments`, which **on the
+preset path ARE the planner's `Schema:` block verbatim** (`schema_text = ddl.join`, no live introspection — traced this run).
+`schema_hash` is keyed off the separate `agentMemoryV1Plan()` projection, so the comments **don't touch the plan cache**
+(GLOBAL-006). **Before → after:** production `schema_text` **2112 ch / 0 hint markers → 3833 ch / 14 hint markers**; 25/25 preset
+tests green incl. the libpg_query validator (inline comments pass the allowlist) + a new cell-value-egress guard; db-create suite
+142 pass. **Number moved:** criterion-4 direct input — production schema's declared temporal/structural hints **absent → present**
+(the eval-measured 2/11 → 8/11 now transfers to a real memory agent). **Remaining to flip criterion 4 green:** re-dispatch
+SK-QUAL-023 on a post-run-191 SHA to confirm ops temporal on the current head (the 0/4 predates runs 186–187). The pack-**specific**
+value sets are the follow-on (per-pack recipe, SK-PIVOT-007 keeps them off the shared base DDL).
+**P2 UX-flow green** (FLOW-005 6/6, carried run 184). BIRD/Spider dark; memory-quality proxy MET at 79.49 % (off-lever — the
+production landing, not the proxy, is this week's number).
+**Top `blocked-by-human` bullet:** Show HN launch sequence (⏱ ~30 min, **idle 79 days since 06-13**),
+condition-gated on the `SK-PIVOT-016` gate (**2/5**; this run advances the criterion-4 input toward its flip). #2 Anthropic
+connector directory (money-gated, 07-21). Queue **depth 2**, head age 79 d.
+**Dark (rule 8, reported not pulled):** dogfood criterion 1 (grind-only); criterion 3 (silent-wrong-answer, E-09/GLOBAL-037 —
+same schema-value-linking gap this run's hints attack); engine **#8 BIRD 0.5382** (35 d) / **#9 Spider 0.2222** (**42 d** stale,
+async multi-window resume); rows **#2/#4/#5/#16** stranger-dependent (N = 0 until launch); row **#15** opencheck (free-lane
+saturation, remedy costs money ⇒ rule 4).
 
-**Rule 6 — GREEN.** Branch based on `main@d40aab2` (latest; #1064–#1065 merged since run 189). Health
+**Rule 6 — GREEN.** Branch based on `main@e1050d9` (latest; #1066/#1067/#1072/#1073/#1074 merged since run 190). Health
 re-measured live: **`typecheck` 0** (workspace, post-`bun install`), **`bun run check` exit 0** (858 files; 53 pre-existing
-warnings on main, 0 errors) + biome clean on the changed file, **meta-length-integrity 4 pass + solve data 107 pass / 0 fail**.
-`deploy-web` + `deploy-api` latest `main` runs both **success**. Diff is one data file (`apps/web/src/data/solve.ts`, +meta on
-one `/solve` entry) + the dev.to queue-line + this scorecard. **Open PRs: 2** at step 0 (#1066 weekly re-point, #1067 engine
-planner re-head — this lever avoids both).
+warnings on main, 0 errors) + biome clean on the changed files, **preset 25 pass + db-create 142 pass**.
+`deploy-web` + `deploy-api` latest `main` runs both **success**. Diff is the preset DDL + its test (`apps/api/src/db-create/presets/agent-memory-v1.{ts,test.ts}`)
++ the dogfood `INDEX.md` criterion-4 note + the dev.to queue-line + this scorecard. **Open PRs: 0** at step 0.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -99,7 +102,7 @@ planner re-head — this lever avoids both).
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
-| | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **3/7** (D-01 ✅, D-03 ✅, D-04 🟡, **D-06 🟡**) — gate **2/5** (criterion 2 green from D-04's 100 % first-10; **criterion 5 green on #978's deploy** — the public `/agents` `ag-dog` dashboard is live). Remaining: criterion 1 (12 → ≥100 real MCP asks, grind); criterion 3 (silent-wrong-answer axis, E-09-blocked); criterion 4 (temporal, E-09/GLOBAL-037-blocked). D-06 run 2 (staleness-CI red + demand-signal) + D-04 `NLQDB_MEMORY_DB` var still open | mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md) |
+| | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **3/7** (D-01 ✅, D-03 ✅, D-04 🟡, **D-06 🟡**) — gate **2/5** (criterion 2 green from D-04's 100 % first-10; **criterion 5 green on #978's deploy** — the public `/agents` `ag-dog` dashboard is live). Remaining: criterion 1 (12 → ≥100 real MCP asks, grind); criterion 3 (silent-wrong-answer axis, E-09-blocked); criterion 4 (temporal) — **compliant lever landed run 191** (schema-structure hints in the production preset DDL, GLOBAL-037 lane-1; eval measured 8/11), remaining is a SK-QUAL-023 re-dispatch to confirm ops temporal then flip green. D-06 run 2 (staleness-CI red + demand-signal) + D-04 `NLQDB_MEMORY_DB` var still open | mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md) |
 | | Memory-quality eval (`SK-QUAL-023`) | **39-q free-chain EX 79.49 % (31/39)** — current-main same-window baseline [33132370698](https://github.com/nlqdb/nlqdb/actions/runs/33132370698) (2026-08-28). Per-axis: consolidation 6/7, forgetting 6/7, temporal 9/11, retrieval 5/7, analytical 5/7. ≥ 70 % weekly target **MET, off-lever this run** (run 188's trim measured Δ −5.13 pp inside the ±5 pp free-chain noise floor → reverted; small trims are unmeasurable here). Next engine lever candidate: a full BIRD/Spider re-measure on the post-#1041 planner head (rows #8/#9) | 39 gold-verified questions, 5 axes; free-only, no baseline |
 
 ## Shipped distribution
@@ -107,35 +110,25 @@ planner re-head — this lever avoids both).
 **41 canonical `/solve` pages** + **40 `/blog` posts** + **31 `/vs` pages** live under `nlqdb.com/`
 (`SK-SOLVE-001` / `SK-BLOG-001` / `SK-CMP-001`). The registries are `apps/web/src/data/{solve,blog,competitors}.ts`.
 
-- **This run (190):** drained one dev.to variant — `postgres-validator-rejects-valid-clickhouse-sql` →
+- **This run (191):** drained one dev.to variant — `text-to-sql-planner-told-wrong-dialect` →
+  [dev.to](https://dev.to/omer_hochman/you-added-a-second-sql-engine-your-text-to-sql-model-is-still-being-told-its-the-first-one-2d92)
+  (**13 variants remain**). No new `/blog` page (blog-draft queue empty). Weekly-focus engine/schema lever run.
+- **Run 190:** drained one dev.to variant — `postgres-validator-rejects-valid-clickhouse-sql` →
   [dev.to](https://dev.to/omer_hochman/you-added-clickhouse-your-postgres-sql-validator-now-rejects-valid-queries-quietly-2okd)
-  (**14 variants remain**). No new `/blog` page (blog-draft queue empty). CTR-lever run.
+  (14 variants remained). No new `/blog` page (blog-draft queue empty). CTR-lever run.
 - **Run 189:** drained one dev.to variant — `agent-memory-benchmarks-measure-recall-not-analysis` →
   [dev.to](https://dev.to/omer_hochman/we-read-the-agent-memory-benchmarks-almost-none-measure-analysis-4khi). CTR-lever run.
-- **Run 188:** null run (engine lever measured Δ<0 → reverted); step 3 skipped (null run). 16 dev.to variants remained.
 
 ## Last change
 
-**2026-08-30 (run 190)** — **LANE-1 CTR LEVER (row #7): hand-wrote SERP meta on a `/solve` page that already ranks page-1
-(pos 5.7) for a real query but was missed by the strict-page-1 sweep. Weekly-focus number (memory-quality EX ≥ 70 %) stays
-MET at 79.49 %; the engine lane is owned by open PR #1067 (step 0), so the run diversifies to lane 1 with a non-overlapping
-CTR lever.**
-
-**Number moved (row #7 surface yield / CTR):** `countif-sumif-conditional-aggregate-in-sql` — GSC shows it at **pos 5.7 —
-page 1 — for the query `postgres countif`** (7 impr, 0 clicks; also matches `count if sql`, `sql countif`, `sql sumif`), a
-**winnable click, not authority-gated**, that the strict-page-1 meta sweep skipped because the page's *aggregate* position is
-22.5. Its auto-`<title>` clamped to `How do I do a COUNTIF or SUMIF (conditional count or sum)…` (keyword buried behind
-`How do I do a`, `SQL`/`Postgres` clamped off); its auto-description clamped mid-sentence at `…ask in plain English…` before
-the value prop. **Before → after:** shipped a hand-written `metaTitle` (57 ch — `COUNTIF & SUMIF in SQL — conditional
-count/sum (Postgres)`, front-loads the searched function names + both keywords) + `metaDescription` (150 ch — leads with the
-`COUNT(x='paid')` over-count trap, lands the FILTER-form payoff). **Click delta realizes in a future GSC window** — the
-deferred CTR re-measure pattern run 183 established. Also drained one dev.to variant
-(`postgres-validator-rejects-valid-clickhouse-sql`; 14 remain).
-
-**Step-1 (live):** GSC **9 clicks / 824 impr / pos 24.2** (28d, flat); RUM real-browser floor 90 pl / 85 vis (genuine ≈54
-after the spam cut, row #1); health GREEN (`typecheck` 0, `bun run check` exit 0, meta-length 4 + solve data 107 pass;
-deploys both success); FLOW-005 6/6 (carried); open PRs 2 (lever avoids both). **KPI (GLOBAL-025 — distribution/UX pillar):**
-surface yield advanced (SERP snippet on a page-1 query with 0 clicks + 1 dev.to cross-post); no KPI degrades.
+**2026-08-31 (run 191)** — **WEEKLY-FOCUS LEVER (dogfood gate `SK-PIVOT-016` criterion 4): landed the eval-proven schema-structure
+hints in the PRODUCTION `agent_memory_v1` preset DDL.** Full narrative + before/after in the "Worst number today" block above.
+**Number moved (criterion-4 direct input):** production `schema_text` hint markers **0 → 14** (2112 → 3833 ch) — the temporal
+guidance the eval measured at 8/11 (runs 186–187, GLOBAL-037 lane-1, not cell-values) now reaches a real memory agent's planner
+verbatim (`schema_text = ddl.join`, no live introspection; `schema_hash` from the separate projection ⇒ plan cache untouched).
+Green flip needs a SK-QUAL-023 re-dispatch on a post-run-191 SHA (last ops-temporal 0/4 predates the hints). Guards: 25/25 preset
+tests incl. libpg_query validator + a cell-value-egress guard; db-create 142 pass. Drained one dev.to variant (13 remain).
+**KPI (GLOBAL-025 — engine-quality pillar):** engine quality on the memory workload advanced; no KPI degrades.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

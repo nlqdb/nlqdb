@@ -80,6 +80,37 @@ describe("agent_memory_v1 preset", () => {
     expect(validateCompiledDdl(agentMemoryV1Ddl(SCHEMA))).toEqual({ ok: true });
   });
 
+  // The inline `-- comment` hints ARE the planner's `Schema:` block for a
+  // memory-preset DB (this DDL text is stored verbatim as `schema_text`),
+  // so pin the load-bearing structural hints (SK-QUAL-023 criterion-4
+  // lever). They are GLOBAL-037 lane-1 schema descriptions — no cell-value
+  // may appear, which the next assertion guards.
+  it("carries the planner-facing structural hints (SK-PIVOT-016 criterion-4)", () => {
+    const ddl = agentMemoryV1Ddl(SCHEMA).join("\n");
+    // owning-agent scoping, kind-is-categorical, content-vs-entity,
+    // supersession-by-recency, entity_facts traversal, group-by canonical_name.
+    expect(ddl).toContain("the OWNING agent");
+    expect(ddl).toContain("categorical token");
+    expect(ddl).toContain("entity_facts -> entities");
+    expect(ddl).toContain(`ORDER BY "created_at" DESC`);
+    expect(ddl).toContain("Traverse facts -> entity_facts -> entities");
+    expect(ddl).toContain("GROUP BY this when a question asks WHICH entity");
+  });
+
+  it("keeps the hints schema-only — no seed/user cell-value egress (GLOBAL-037)", () => {
+    // Comment text may name columns/tables and query conventions, never a
+    // real stored value. Guard against the pack-specific example literals the
+    // eval fixtures carry ever leaking into the shared base DDL.
+    const comments = agentMemoryV1Ddl(SCHEMA)
+      .join("\n")
+      .split("\n")
+      .filter((l) => l.includes("--"))
+      .join("\n");
+    for (const leak of ["open_question", "decision_status", "GLOBAL-", "student:", "repo-ops"]) {
+      expect(comments, `hint must not embed the value "${leak}"`).not.toContain(leak);
+    }
+  });
+
   it("rejects an unsafe schema name before quoting (SK-HDC-009)", () => {
     expect(() => agentMemoryV1Ddl(`evil"; DROP SCHEMA public; --`)).toThrow(/unsafe schema name/);
     expect(() => agentMemoryV1Ddl("a".repeat(64))).toThrow(/63-char/);

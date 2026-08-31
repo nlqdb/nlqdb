@@ -144,10 +144,25 @@ values wrong (`kind='question'` vs `'open_question'`, `role='doc-sync'` vs
 then found E-09 is ⛔ BLOCKED by [`GLOBAL-037`](../../../../decisions/GLOBAL-037-schema-only-llm-egress.md)
 (P1):** its mechanism — sampling real cell-values into the LLM prompt — is the
 `value-retrieval` lever GLOBAL-037 forbids by name (schema-only egress; never
-send user cell-values). So criterion 4 has **no agent-movable, GLOBAL-037-
-compliant lever** today; the compliant re-scope (declare the categorical domains
-as DDL `ENUM`/`CHECK` constraints so they're legitimate schema egress) is a
-preset-schema design question for a future engine-track run, not a daily patch.
+send user cell-values). **Resolved 2026-08-31 (daily run 191):** the compliant
+re-scope was found and landed. The memory-quality eval (`SK-QUAL-023`, /daily
+runs 186–187) proved that hand-authored **schema-structure hints** — not
+cell-values — take the eval temporal axis **2/11 → 8/11**: owning-agent scoping,
+`kind`-is-an-exact-categorical-token, `content`-vs-entity, the
+`facts → entity_facts → entities` traversal, `GROUP BY canonical_name`, and
+`ORDER BY created_at DESC` for supersession. These are GLOBAL-037 lane-1
+"hand-authored evidence/descriptions", so they are legitimate planning egress.
+Run 191 ported them into the production preset DDL
+(`apps/api/src/db-create/presets/agent-memory-v1.ts`) as inline `-- comments`,
+which — on the preset path — ARE the planner's `Schema:` block verbatim
+(`schema_text = ddl.join`, no live introspection). So the production planner a
+real memory agent hits now carries the same temporal hints the eval measured at
+8/11. **Remaining to flip criterion 4 green:** re-dispatch the SK-QUAL-023 eval
+on a post-run-191 `main` SHA and confirm ops temporal passes on the current head
+(the 0/4 below predates runs 186–187). The pack-**specific** categorical value
+sets (`kind ∈ {open_question, …}`, which differ per pack) are the follow-on
+slice — a per-pack recipe emitting its own taxonomy as design-time schema
+description, kept off the shared base DDL (SK-PIVOT-007).
 `/daily` step 1 restates this beside
 the launch bullet's age every run. The founder also reads it on
 **`/app/admin` → "Launch gate — SK-PIVOT-016"** (`SK-GTM-008`), which renders
@@ -160,7 +175,7 @@ stays canonical, so a criterion that moves is updated here **and** in
 | 1 | ≥ 100 real `/v1/ask` calls through the public MCP surface from the ops workload | 🟡 **12** (D-04 run 1, 2026-08-11 — real, measured; < 100, grows via sustained use) | D-04 (+ D-02, D-05) |
 | 2 | First-10-queries success ≥ 95 % **on that workload** | ✅ **100 % (10/10)** (D-04 run 1, 2026-08-11 — meets ≥ 95 %) | D-04 |
 | 3 | Zero silent data loss / wrong-answer-accepted incidents | ⬜ **1 incident found** (D-04 run 1: ask #8 `kind='question'` vs stored `open_question` → 0 rows, true 11 — E-09/GLOBAL-037-blocked) | D-04 |
-| 4 | Temporal golden queries pass | ⬜ **temporal 2/7** — synthetic 2/3 + **ops 0/4** (measured 2026-07-29, run 30413719690) | D-03 ✅ (measured) → [E-09](../engine/E-09-schema-value-linking.md) ⛔ **BLOCKED (P1, [`GLOBAL-037`](../../../../decisions/GLOBAL-037-schema-only-llm-egress.md), run 158)** — value-sampling into the prompt is forbidden egress; no compliant agent-movable lever until a DDL-`ENUM`/`CHECK` re-scope |
+| 4 | Temporal golden queries pass | ⬜ **temporal 2/7** — synthetic 2/3 + **ops 0/4** (measured 2026-07-29, run 30413719690, **predates the run 186–187 hints**) | D-03 ✅ (measured). **Compliant lever landed run 191** — schema-structure hints (not cell-values, GLOBAL-037 lane-1) ported into the production preset DDL; the eval measured them at temporal **8/11**. Remaining: re-dispatch SK-QUAL-023 on a post-run-191 SHA to confirm ops temporal, then flip green |
 | 5 | Live memory dashboard public on `/agents` | 🟡 **built, shipping** (D-06 run 1, 2026-08-12) — server-rendered `ag-dog` block renders the real corpus aggregates (13 facts / 9 entities / 12 asks / first-10 100 %) + 2 GROUP-BY tables + as-of date; **green on deploy of the PR** | D-06 |
 
 Criterion 4's synthetic half stays `2/3`; D-03 added the **ops** corpus's 4
