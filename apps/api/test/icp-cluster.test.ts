@@ -150,7 +150,7 @@ describe("runIcpCluster", () => {
     // list returns keys but get returns null (TTL expired between list and get).
     const kv = {
       list: vi.fn(async () => ({
-        keys: [{ name: "icp:scored:20260522:hn:x1" }],
+        keys: [{ name: "icp:scored:20260522" }],
         list_complete: true,
       })),
       get: vi.fn(async () => null),
@@ -175,16 +175,29 @@ describe("runIcpCluster", () => {
 
   it("returns written=false when no LLM key is set", async () => {
     const item = makeScored("a1");
-    const kv = stubKv({ "icp:scored:20260522:hn:a1": JSON.stringify(item) });
+    const kv = stubKv({ "icp:scored:20260522": JSON.stringify([item]) });
     const fetcher = vi.fn();
     const result = await runIcpCluster({ kv, ghToken: "tok", fetch: fetcher });
     expect(result.clustered).toBe(0);
     expect(result.written).toBe(false);
   });
 
+  it("SK-ICP-015: skips old per-item scored keys still in their 30d TTL (no fetch, no malformed warn)", async () => {
+    // A run-scoped array key coexists with a legacy per-item key during the migration window.
+    const item = makeScored("a1");
+    const kv = stubKv({
+      "icp:scored:20260522": JSON.stringify([item]),
+      "icp:scored:20260522:hn:legacy1": JSON.stringify(item),
+    });
+    await runIcpCluster({ kv, ghToken: "tok", fetch: vi.fn() });
+    const gotKeys = (kv.get as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+    expect(gotKeys).toContain("icp:scored:20260522");
+    expect(gotKeys).not.toContain("icp:scored:20260522:hn:legacy1");
+  });
+
   it("writes evidence file to GitHub for new file (no existing SHA)", async () => {
     const item = makeScored("b1");
-    const kv = stubKv({ "icp:scored:20260522:hn:b1": JSON.stringify(item) });
+    const kv = stubKv({ "icp:scored:20260522": JSON.stringify([item]) });
 
     const fetcher = vi.fn(
       async (url: string | URL | Request, opts?: { method?: string; body?: string }) => {
@@ -220,7 +233,7 @@ describe("runIcpCluster", () => {
 
   it("includes existing SHA in PUT when file already exists", async () => {
     const item = makeScored("c1");
-    const kv = stubKv({ "icp:scored:20260522:hn:c1": JSON.stringify(item) });
+    const kv = stubKv({ "icp:scored:20260522": JSON.stringify([item]) });
 
     const fetcher = vi.fn(async (url: string | URL | Request, opts?: { method?: string }) => {
       const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
@@ -246,7 +259,7 @@ describe("runIcpCluster", () => {
 
   it("returns written=false when GitHub write fails, without throwing", async () => {
     const item = makeScored("d1");
-    const kv = stubKv({ "icp:scored:20260522:hn:d1": JSON.stringify(item) });
+    const kv = stubKv({ "icp:scored:20260522": JSON.stringify([item]) });
 
     const fetcher = vi.fn(async (url: string | URL | Request, opts?: { method?: string }) => {
       const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
@@ -265,7 +278,7 @@ describe("runIcpCluster", () => {
 
   it("falls back to Gemini when Groq fails during clustering", async () => {
     const item = makeScored("e1");
-    const kv = stubKv({ "icp:scored:20260522:hn:e1": JSON.stringify(item) });
+    const kv = stubKv({ "icp:scored:20260522": JSON.stringify([item]) });
 
     const fetcher = vi.fn(async (url: string | URL | Request, opts?: { method?: string }) => {
       const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
@@ -301,7 +314,7 @@ describe("runIcpCluster", () => {
 
   it("does not retry Gemini when Gemini is the only provider and it fails", async () => {
     const item = makeScored("e2");
-    const kv = stubKv({ "icp:scored:20260522:hn:e2": JSON.stringify(item) });
+    const kv = stubKv({ "icp:scored:20260522": JSON.stringify([item]) });
     let geminiCallCount = 0;
 
     const fetcher = vi.fn(async (url: string | URL | Request, opts?: { method?: string }) => {
@@ -330,7 +343,7 @@ describe("runIcpCluster", () => {
 
   it("gracefully handles malformed LLM cluster JSON without throwing", async () => {
     const item = makeScored("f1");
-    const kv = stubKv({ "icp:scored:20260522:hn:f1": JSON.stringify(item) });
+    const kv = stubKv({ "icp:scored:20260522": JSON.stringify([item]) });
 
     const fetcher = vi.fn(async (url: string | URL | Request, opts?: { method?: string }) => {
       const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
@@ -360,7 +373,7 @@ describe("runIcpCluster", () => {
         callCount++;
         if (callCount === 1) {
           return {
-            keys: [{ name: "icp:scored:20260522:hn:g1" }],
+            keys: [{ name: "icp:scored:20260522" }],
             list_complete: false,
             cursor: "cursor-page-2",
           };
@@ -368,7 +381,7 @@ describe("runIcpCluster", () => {
         return { keys: [], list_complete: true, cursor: undefined };
       }),
       get: vi.fn(async (k: string) => {
-        if (k === "icp:scored:20260522:hn:g1") return JSON.stringify(item);
+        if (k === "icp:scored:20260522") return JSON.stringify([item]);
         return null;
       }),
       put: vi.fn(),
@@ -393,7 +406,7 @@ describe("runIcpCluster", () => {
 
   it("sends LogSnag notification when credentials are provided", async () => {
     const item = makeScored("h1");
-    const kv = stubKv({ "icp:scored:20260522:hn:h1": JSON.stringify(item) });
+    const kv = stubKv({ "icp:scored:20260522": JSON.stringify([item]) });
 
     const fetcher = vi.fn(async (url: string | URL | Request, opts?: { method?: string }) => {
       const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
@@ -425,7 +438,7 @@ describe("runIcpCluster", () => {
 
   it("sends User-Agent header on every GitHub call (REST API rejects no-UA with 403)", async () => {
     const item = makeScored("ua1");
-    const kv = stubKv({ "icp:scored:20260522:hn:ua1": JSON.stringify(item) });
+    const kv = stubKv({ "icp:scored:20260522": JSON.stringify([item]) });
 
     const fetcher = vi.fn(async (url: string | URL | Request, opts?: { method?: string }) => {
       const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
@@ -453,14 +466,15 @@ describe("runIcpCluster", () => {
 
   it("§2.4 verdict: confirms primary when one persona ≥3× runner-up and ≥30 quotes", async () => {
     // 35 P1 items + 5 P2 items → P1 weight 35*8 = 280, P2 weight 5*7 = 35; ratio 8× → confirmed.
-    const scored: Record<string, string> = {};
-    for (let i = 0; i < 35; i++) {
-      scored[`icp:scored:20260522:hn:p1-${i}`] = JSON.stringify(makeScored(`p1-${i}`, "p1"));
-    }
-    for (let i = 0; i < 5; i++) {
-      scored[`icp:scored:20260522:hn:p2-${i}`] = JSON.stringify(makeScored(`p2-${i}`, "p2"));
-    }
-    const kv = stubKv(scored);
+    // Two scored runs, each one KV key holding that run's whole array.
+    const kv = stubKv({
+      "icp:scored:20260515": JSON.stringify(
+        Array.from({ length: 35 }, (_, i) => makeScored(`p1-${i}`, "p1")),
+      ),
+      "icp:scored:20260522": JSON.stringify(
+        Array.from({ length: 5 }, (_, i) => makeScored(`p2-${i}`, "p2")),
+      ),
+    });
 
     let written: string | undefined;
     const fetcher = vi.fn(
@@ -490,7 +504,7 @@ describe("runIcpCluster", () => {
 
   it("§2.4 verdict: directional when leader has <30 quotes", async () => {
     const item = makeScored("d1");
-    const kv = stubKv({ "icp:scored:20260522:hn:d1": JSON.stringify(item) });
+    const kv = stubKv({ "icp:scored:20260522": JSON.stringify([item]) });
 
     const fetcher = vi.fn(async (url: string | URL | Request, opts?: { method?: string }) => {
       const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
@@ -510,7 +524,7 @@ describe("runIcpCluster", () => {
   it("clamps LLM-hallucinated cluster.count to the input item count", async () => {
     // Single input item but LLM claims count=999 in the cluster.
     const item = makeScored("c1");
-    const kv = stubKv({ "icp:scored:20260522:hn:c1": JSON.stringify(item) });
+    const kv = stubKv({ "icp:scored:20260522": JSON.stringify([item]) });
 
     let writtenMd: string | undefined;
     const inflatedCluster = [{ ...CLUSTER_PAYLOAD[0], count: 999 }];

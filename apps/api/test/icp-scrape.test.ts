@@ -19,6 +19,29 @@ function stubKv(initial: Record<string, string> = {}): KVNamespace {
   } as unknown as KVNamespace;
 }
 
+// SK-ICP-015: a run stores every new item in one `icp:items:<YYYYMMDD>` array
+// and the whole 90-day dedup window in one `icp:seen` map, so assertions read
+// those two payloads instead of counting per-item keys.
+function putCallsOf(kv: KVNamespace): Array<[string, string]> {
+  return (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<[string, string]>;
+}
+
+function storedItems(kv: KVNamespace): Array<Record<string, unknown>> {
+  const call = putCallsOf(kv).find(([k]) => k.startsWith("icp:items:"));
+  return call ? (JSON.parse(call[1]) as Array<Record<string, unknown>>) : [];
+}
+
+function storedItem(kv: KVNamespace, source: string, id: string): Record<string, unknown> {
+  const item = storedItems(kv).find((i) => i["source"] === source && i["id"] === id);
+  expect(item).toBeDefined();
+  return item as Record<string, unknown>;
+}
+
+function seenIds(kv: KVNamespace): string[] {
+  const call = putCallsOf(kv).find(([k]) => k === "icp:seen");
+  return call ? Object.keys(JSON.parse(call[1]) as Record<string, number>) : [];
+}
+
 // A minimal stub tracer that runs the callback with a no-op span.
 const stubTracer: IcpScrapeDeps["tracer"] = {
   startActiveSpan: async (_name: string, fn: (span: Span) => Promise<unknown>) => {
@@ -195,28 +218,23 @@ describe("runIcpScrape", () => {
     expect(result.sources["hn"]).toBe(1);
     expect(result.sources["reddit"]).toBe(1);
 
-    const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
-      [string, ...unknown[]]
-    >;
-
-    // Both seen-keys should be written.
-    expect(putCalls.some(([k]) => k.startsWith("icp:seen:hn:story-abc"))).toBe(true);
-    expect(putCalls.some(([k]) => k.startsWith("icp:seen:reddit:reddit-xyz"))).toBe(true);
-
-    // Both item-keys should be written.
-    expect(putCalls.some(([k]) => k.includes("icp:item:") && k.includes(":hn:story-abc"))).toBe(
-      true,
+    // Both ids land in the run's seen-index and its item array.
+    expect(seenIds(kv)).toEqual(expect.arrayContaining(["hn:story-abc", "reddit:reddit-xyz"]));
+    expect(storedItems(kv).map((i) => `${i["source"]}:${i["id"]}`)).toEqual(
+      expect.arrayContaining(["hn:story-abc", "reddit:reddit-xyz"]),
     );
-    expect(
-      putCalls.some(([k]) => k.includes("icp:item:") && k.includes(":reddit:reddit-xyz")),
-    ).toBe(true);
+
+    // SK-ICP-015: the whole run costs a bounded number of puts, not 2/item.
+    expect(putCallsOf(kv).length).toBeLessThanOrEqual(4);
   });
 
   it("skips already-seen items (dedup works)", async () => {
-    // Pre-populate the seen-keys for both items.
+    // Pre-populate the consolidated seen-index for both items.
     const kv = stubKv({
-      "icp:seen:hn:story-abc": "1",
-      "icp:seen:reddit:reddit-xyz": "1",
+      "icp:seen": JSON.stringify({
+        "hn:story-abc": Date.now(),
+        "reddit:reddit-xyz": Date.now(),
+      }),
       // Pre-seed a cached Reddit token so dedup asserts no extra writes.
       "icp:reddit:token": "test-reddit-token",
     });
@@ -263,13 +281,11 @@ describe("runIcpScrape", () => {
     expect(result.skipped).toBe(2);
     expect(result.sources).toEqual({});
     // No new seen/item puts after construction — only the SK-ICP-014 stats snapshot.
-    const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
-      [string, ...unknown[]]
-    >;
+    const putCalls = putCallsOf(kv);
     expect(putCalls.length).toBe(initialPutCount + 1);
-    expect(
-      putCalls.filter(([k]) => k.startsWith("icp:seen:") || k.startsWith("icp:item:")),
-    ).toHaveLength(0);
+    expect(putCalls.filter(([k]) => k === "icp:seen" || k.startsWith("icp:items:"))).toHaveLength(
+      0,
+    );
     expect(putCalls.some(([k]) => k === "icp:last_scrape_stats")).toBe(true);
   });
 
@@ -448,13 +464,8 @@ describe("runIcpScrape", () => {
       const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
       expect(result.sources["stackoverflow"]).toBeGreaterThanOrEqual(1);
 
-      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
-        [string, ...unknown[]]
-      >;
-      expect(putCalls.some(([k]) => k.startsWith("icp:seen:stackoverflow:so-424242"))).toBe(true);
-      expect(
-        putCalls.some(([k]) => k.includes("icp:item:") && k.includes(":stackoverflow:so-424242")),
-      ).toBe(true);
+      expect(seenIds(kv)).toContain("stackoverflow:so-424242");
+      expect(storedItem(kv, "stackoverflow", "so-424242")).toBeDefined();
     });
 
     it("requests scoped by tag, site=stackoverflow, and fromdate (7-day window)", async () => {
@@ -567,10 +578,7 @@ describe("runIcpScrape", () => {
       expect(result.sources["github"]).toBeGreaterThanOrEqual(1);
       expect(result.newItems).toBeGreaterThanOrEqual(1);
 
-      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
-        [string, ...unknown[]]
-      >;
-      expect(putCalls.some(([k]) => k.includes(":github:"))).toBe(true);
+      expect(storedItems(kv).some((i) => i["source"] === "github")).toBe(true);
     });
 
     it("skips GitHub source when ghToken is absent", async () => {
@@ -737,17 +745,9 @@ describe("runIcpScrape", () => {
         ghToken: "t",
       });
 
-      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
-        [string, string, ...unknown[]]
-      >;
-      const itemPuts = putCalls.filter(
-        ([k]) => k.startsWith("icp:item:") && k.includes(":github:"),
-      );
-      expect(itemPuts.length).toBe(1);
-      for (const [, value] of itemPuts) {
-        const stored = JSON.parse(value) as { ts: number };
-        expect(Number.isFinite(stored.ts)).toBe(true);
-      }
+      const ghItems = storedItems(kv).filter((i) => i["source"] === "github");
+      expect(ghItems.length).toBe(1);
+      for (const item of ghItems) expect(Number.isFinite(item["ts"])).toBe(true);
       expect(result.sources["github"]).toBe(1);
     });
   });
@@ -816,17 +816,8 @@ describe("runIcpScrape", () => {
 
       expect(result.sources["github_discussions"]).toBeGreaterThanOrEqual(1);
 
-      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
-        [string, ...unknown[]]
-      >;
-      expect(putCalls.some(([k]) => k === "icp:seen:github_discussions:ghd-D_kw_test_1")).toBe(
-        true,
-      );
-      expect(
-        putCalls.some(
-          ([k]) => k.startsWith("icp:item:") && k.endsWith(":github_discussions:ghd-D_kw_test_1"),
-        ),
-      ).toBe(true);
+      expect(seenIds(kv)).toContain("github_discussions:ghd-D_kw_test_1");
+      expect(storedItem(kv, "github_discussions", "ghd-D_kw_test_1")).toBeDefined();
     });
 
     it("sends POST with Bearer token, bot User-Agent, and a `created:>` date filter", async () => {
@@ -1036,13 +1027,8 @@ describe("runIcpScrape", () => {
       const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
       expect(result.sources["indiehackers"]).toBeGreaterThanOrEqual(1);
 
-      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
-        [string, ...unknown[]]
-      >;
-      expect(putCalls.some(([k]) => k.startsWith("icp:seen:indiehackers:a66b5fbe33"))).toBe(true);
-      expect(
-        putCalls.some(([k]) => k.includes("icp:item:") && k.includes(":indiehackers:a66b5fbe33")),
-      ).toBe(true);
+      expect(seenIds(kv)).toContain("indiehackers:a66b5fbe33");
+      expect(storedItem(kv, "indiehackers", "a66b5fbe33")).toBeDefined();
     });
 
     it("requests the IH feed with q=, exclude=link-post, and the IH bot User-Agent", async () => {
@@ -1211,13 +1197,8 @@ describe("runIcpScrape", () => {
       const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
       expect(result.sources["devto"]).toBeGreaterThanOrEqual(1);
 
-      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
-        [string, ...unknown[]]
-      >;
-      expect(putCalls.some(([k]) => k === "icp:seen:devto:devto-3718736")).toBe(true);
-      expect(
-        putCalls.some(([k]) => k.startsWith("icp:item:") && k.endsWith(":devto:devto-3718736")),
-      ).toBe(true);
+      expect(seenIds(kv)).toContain("devto:devto-3718736");
+      expect(storedItem(kv, "devto", "devto-3718736")).toBeDefined();
     });
 
     it("requests Dev.to with the bot User-Agent and the top=7 server-side 7-day filter", async () => {
@@ -1365,17 +1346,10 @@ describe("runIcpScrape", () => {
       const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
       expect(result.sources["bluesky"]).toBeGreaterThanOrEqual(1);
 
-      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
-        [string, ...unknown[]]
-      >;
-      expect(putCalls.some(([k]) => k === "icp:seen:bluesky:bsky-bafycid123")).toBe(true);
-      const itemCall = putCalls.find(
-        ([k]) => k.startsWith("icp:item:") && k.endsWith(":bluesky:bsky-bafycid123"),
-      );
-      expect(itemCall).toBeDefined();
-      const stored = JSON.parse(itemCall?.[1] as string);
-      expect(stored.url).toBe("https://bsky.app/profile/alice.bsky.social/post/3kabcdef123");
-      expect(stored.score).toBe(7);
+      expect(seenIds(kv)).toContain("bluesky:bsky-bafycid123");
+      const stored = storedItem(kv, "bluesky", "bsky-bafycid123");
+      expect(stored["url"]).toBe("https://bsky.app/profile/alice.bsky.social/post/3kabcdef123");
+      expect(stored["score"]).toBe(7);
     });
 
     it("requests Bluesky with sort=latest, a since=<7d> filter, and the bot User-Agent", async () => {
@@ -1590,21 +1564,14 @@ describe("runIcpScrape", () => {
       const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
       expect(result.sources["mastodon"]).toBeGreaterThanOrEqual(1);
 
-      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
-        [string, ...unknown[]]
-      >;
-      expect(putCalls.some(([k]) => k === "icp:seen:mastodon:mast-116690000000000001")).toBe(true);
-      const itemCall = putCalls.find(
-        ([k]) => k.startsWith("icp:item:") && k.endsWith(":mastodon:mast-116690000000000001"),
-      );
-      expect(itemCall).toBeDefined();
-      const stored = JSON.parse(itemCall?.[1] as string);
+      expect(seenIds(kv)).toContain("mastodon:mast-116690000000000001");
+      const stored = storedItem(kv, "mastodon", "mast-116690000000000001");
       // HTML tags must be stripped from the stored text — the LLM scoring pass
       // sees plain language, never <p>/<em>/<a> markup leaking through.
-      expect(stored.text).toBe("my postgres setup is painful");
-      expect(stored.title).toBe("my postgres setup is painful");
-      expect(stored.url).toBe("https://mastodon.social/@dev/statuses/116690000000000001");
-      expect(stored.score).toBe(4);
+      expect(stored["text"]).toBe("my postgres setup is painful");
+      expect(stored["title"]).toBe("my postgres setup is painful");
+      expect(stored["url"]).toBe("https://mastodon.social/@dev/statuses/116690000000000001");
+      expect(stored["score"]).toBe(4);
     });
 
     it("requests Mastodon with limit=25, local=false, and the bot User-Agent", async () => {
@@ -1899,15 +1866,9 @@ describe("runIcpScrape", () => {
       }) as unknown as typeof fetch;
 
       await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
-      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
-        [string, ...unknown[]]
-      >;
-      const itemCall = putCalls.find(
-        ([k]) => k.startsWith("icp:item:") && k.endsWith(":mastodon:mast-html-entity-1"),
+      expect(storedItem(kv, "mastodon", "mast-html-entity-1")["text"]).toBe(
+        "How to escape &lt; in HTML",
       );
-      expect(itemCall).toBeDefined();
-      const stored = JSON.parse(itemCall?.[1] as string);
-      expect(stored.text).toBe("How to escape &lt; in HTML");
     });
 
     it("handles Mastodon 503 gracefully — other sources still complete", async () => {
