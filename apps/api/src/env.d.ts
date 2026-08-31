@@ -224,7 +224,7 @@ declare global {
       EVAL_INGEST_TOKEN?: string;
 
       // LogSnag credentials for product-event notifications. Used by
-      // the ICP pain-signal scraper (`0 6 * * 1` cron) and may be
+      // the ICP pain-signal scraper (`0 6 * * MON` cron) and may be
       // shared with apps/events-worker for other channels. When unset,
       // the scraper skips the LogSnag notification (non-fatal).
       LOGSNAG_TOKEN?: string;

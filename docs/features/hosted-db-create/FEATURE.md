@@ -58,7 +58,7 @@ block.
 - [**SK-HDC-011**](decisions/SK-HDC-011-drop-schema-and-registry-rollback.md) — `dropSchemaAndRegistry` is the idempotent, best-effort, paired Postgres + D1 rollback primitive.
 - [**SK-HDC-012**](decisions/SK-HDC-012-batched-neon-transaction.md) — Provisioner batches DDL + RLS + sample inserts in a single Neon HTTP transaction.
 - [**SK-HDC-013**](decisions/SK-HDC-013-waituntil-tail-steps.md) — Tail steps (recent-tables MRU, table-card embed) run via `ctx.waitUntil`, off the response path.
-- [**SK-HDC-014**](decisions/SK-HDC-014-neon-keep-warm-cron.md) — Neon Free-tier keep-warm cron `*/4 13-21 * * 1-5` UTC (one `SELECT 1`).
+- [**SK-HDC-014**](decisions/SK-HDC-014-neon-keep-warm-cron.md) — Neon Free-tier keep-warm cron `*/4 13-21 * * MON-FRI` UTC (one `SELECT 1`).
 - [**SK-HDC-015**](decisions/SK-HDC-015-pk-auto-defaults.md) — Compiler auto-generates defaults for single-column integer/uuid primary keys.
 - [**SK-HDC-016**](decisions/SK-HDC-016-delete-database.md) — `DELETE /v1/databases/:id` reuses `dropSchemaAndRegistry`; UI gates with typed-name confirmation.
 - [**SK-HDC-017**](decisions/SK-HDC-017-provision-sqlstate-fidelity.md) — Provisioner maps SQLSTATE classes and pins the raw SQLSTATE on the failure span.
