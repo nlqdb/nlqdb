@@ -4831,9 +4831,13 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
 // and wrangler.toml shouldn't accidentally route the keep-warm
 // schedule through the heavy daily workload-analyser path (which
 // would burn D1 quotas + LLM credits firing 210x/day).
-const NEON_KEEP_WARM_CRON = "*/4 13-21 * * 1-5";
+//
+// Weekdays are spelled with Cloudflare's 3-letter day names, not
+// numbers: its day-of-week field is 1-7 = SUN-SAT (Unix cron is
+// 0-6 = SUN-SAT), so a numeric weekday fires one day early.
+const NEON_KEEP_WARM_CRON = "*/4 13-21 * * MON-FRI";
 const WORKLOAD_ANALYSER_CRON = "0 4 * * *";
-const ICP_SCRAPE_CRON = "0 6 * * 1";
+const ICP_SCRAPE_CRON = "0 6 * * MON";
 
 // W5 daily workload-analyser cron handler (`SK-MIGRATE-001`). Schedule
 // is `0 4 * * *` UTC, configured in `wrangler.toml`'s `[triggers]`.
@@ -4842,7 +4846,7 @@ const ICP_SCRAPE_CRON = "0 6 * * 1";
 // through `@nlqdb/db`'s typed surface per `GLOBAL-021`.
 //
 // SK-HDC-014 — `controller.cron` dispatches between branches. The
-// Neon keep-warm branch (`*/4 13-21 * * 1-5`) fires far more often and
+// Neon keep-warm branch (`*/4 13-21 * * MON-FRI`) fires far more often and
 // does a tiny `SELECT 1` to defer compute auto-suspend; the workload
 // analyser branch (`0 4 * * *`) does the heavy daily roll-up.
 async function scheduled(
