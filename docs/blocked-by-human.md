@@ -37,6 +37,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
 | 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 3 | ~10 min | Submit nlqdb to PulseMCP + mcp.directory — two manual directory submits (registry cascade never reached them); lowest-yield, payloads ready | 2026-09-01 |
 
 Only #1 can move real strangers (scorecard row #2); the hosted-premium meter
 went **live 2026-08-14** (`premium.live=true` in prod — the full activation,
@@ -121,6 +122,28 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
      shipped 2026-07-29 (#835), so a signed-in reviewer can now exercise **all five tools**
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
+
+3. **⏱ ~10 min · since 2026-09-01 — Submit nlqdb to PulseMCP + mcp.directory**
+   (reach R-05; ledger rows #5 + #23). Both are MCP directories the
+   official-registry publish (row #3, 07-22) was expected to reach by crawl;
+   re-checked live 2026-09-01, **both still show 0 results ~40 days later**, so
+   the narrow-cascade finding holds and each needs a manual submit. Lowest yield
+   in this queue (small directories, `github`/`mcp-registry`-ref traffic, not
+   authority movers) — below the launch, do it only when the queue head is
+   parked. Payloads:
+   - **PulseMCP** — `pulsemcp.com/submit` (account-walled; 403 to anon).
+     Server URL `https://mcp.nlqdb.com/mcp` (streamable HTTP); name `nlqdb`;
+     homepage `https://nlqdb.com/agents/?utm_source=pulsemcp` (carries the
+     ledger key); description `Analytical memory for AI agents: a real Postgres
+     your agent connects to over MCP and queries in plain English — GROUP BY,
+     JOIN, aggregate over what it remembered. One command.` On submit, flip
+     ledger row #5 to **in-flight**.
+   - **mcp.directory** — the no-account submit form at `mcp.directory/submit`
+     (a Next.js SPA, so not agent-POST-able). Required: GitHub repo URL
+     `https://github.com/nlqdb/nlqdb`; homepage
+     `https://nlqdb.com/agents/?utm_source=mcpdir`; description as above; then
+     email to claim the listing (so yield carries `mcpdir`, not the inherited
+     `mcp-registry` key). On submit, flip ledger row #23 to **in-flight**.
 
 (P6 was approved and merged by the founder 2026-08-04, #885 — it is binding
 in CLAUDE.md/AGENTS.md.)
