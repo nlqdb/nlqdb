@@ -127,7 +127,8 @@ measured (**12**, < 100). **Criterion 3** gained evidence **against** it — one
 silent wrong-answer (ask #8: planner guessed `kind='question'` for stored
 `open_question`, returned 0 vs true 11), the exact E-09 schema-value-linking gap
 manifesting live, so it stays not-green and GLOBAL-037-blocked. Criterion 4 is
-**measured on both corpora** — temporal **2/7** (synthetic 2/3, ops 0/4).
+**measured on both corpora** — temporal **5/7** (synthetic 2/3, ops 3/4),
+re-measured on the post-hint head (run 192, was 2/7 / ops 0/4 pre-hint).
 **Criterion 5** is **built and shipping** (D-06 run 1, 2026-08-12): the
 `/agents` page now carries a server-rendered block rendering the real corpus
 aggregates + two GROUP-BY result tables + the as-of date — it went **green on
@@ -135,7 +136,8 @@ aggregates + two GROUP-BY result tables + the as-of date — it went **green on
 launch is still far off (criterion 1 ≪ 100, criteria 3/4 not green); what
 changed is the gate is now driven by a live workload, not a bet.
 
-**Criterion 4 detail** — the ops temporal axis sits at a concrete **0/4**.
+**Criterion 4 detail** — the ops temporal axis, **0/4** pre-hint (2026-07-29),
+now sits at **3/4** on the post-hint head (run 192 reconciliation, below).
 Run 156 read the SK-QUAL-023 run summary and diagnosed the root cause —
 the planner is given DDL-only schema and guesses low-cardinality categorical
 values wrong (`kind='question'` vs `'open_question'`, `role='doc-sync'` vs
@@ -157,12 +159,24 @@ Run 191 ported them into the production preset DDL
 which — on the preset path — ARE the planner's `Schema:` block verbatim
 (`schema_text = ddl.join`, no live introspection). So the production planner a
 real memory agent hits now carries the same temporal hints the eval measured at
-8/11. **Remaining to flip criterion 4 green:** re-dispatch the SK-QUAL-023 eval
-on a post-run-191 `main` SHA and confirm ops temporal passes on the current head
-(the 0/4 below predates runs 186–187). The pack-**specific** categorical value
-sets (`kind ∈ {open_question, …}`, which differ per pack) are the follow-on
-slice — a per-pack recipe emitting its own taxonomy as design-time schema
-description, kept off the shared base DDL (SK-PIVOT-007).
+8/11. **Yield reconciled 2026-08-31 (daily run 192):** the post-hint head was
+already measured — run 33132370698 (SHA `c73d679`, 2026-08-28) — and its per-axis
+diagnostic shows the ops temporal axis at **3/4**: q17 (age-of-open-questions),
+q18 (SK-ASK-011 current status via `ORDER BY created_at DESC`) and q20 (doc-sync
+runs, `episodes.role='sync'`) all pass; only **q19** ("what is blocked, and since
+when?") still misses. So the run-186/187/191 hints moved ops temporal **0/4 →
+3/4** — the gate tracker's `0/4` was a 33-day-stale pre-hint number, not the
+current reality. **Remaining to flip criterion 4 green:** q19 + the synthetic-core
+miss q4 — **both query-shape, not vocabulary** (q19's SQL over-joins `episodes`
+and `entities` to answer a question the gold reads straight off
+`facts WHERE kind='blocked' ORDER BY created_at`; the categorical token `blocked`
+was guessed correctly, so this is not the value-linking gap the hints closed).
+The offline eval is noise-dominated at ±5 pp (run 188), so the last two are a
+query-shape / per-pack-recipe lever, **not** more hint grinding. The
+pack-**specific** categorical value sets (`kind ∈ {open_question, …}`, which
+differ per pack) remain the separate follow-on slice — a per-pack recipe emitting
+its own taxonomy as design-time schema description, kept off the shared base DDL
+(SK-PIVOT-007).
 `/daily` step 1 restates this beside
 the launch bullet's age every run. The founder also reads it on
 **`/app/admin` → "Launch gate — SK-PIVOT-016"** (`SK-GTM-008`), which renders
@@ -175,13 +189,15 @@ stays canonical, so a criterion that moves is updated here **and** in
 | 1 | ≥ 100 real `/v1/ask` calls through the public MCP surface from the ops workload | 🟡 **12** (D-04 run 1, 2026-08-11 — real, measured; < 100, grows via sustained use) | D-04 (+ D-02, D-05) |
 | 2 | First-10-queries success ≥ 95 % **on that workload** | ✅ **100 % (10/10)** (D-04 run 1, 2026-08-11 — meets ≥ 95 %) | D-04 |
 | 3 | Zero silent data loss / wrong-answer-accepted incidents | ⬜ **1 incident found** (D-04 run 1: ask #8 `kind='question'` vs stored `open_question` → 0 rows, true 11 — E-09/GLOBAL-037-blocked) | D-04 |
-| 4 | Temporal golden queries pass | ⬜ **temporal 2/7** — synthetic 2/3 + **ops 0/4** (measured 2026-07-29, run 30413719690, **predates the run 186–187 hints**) | D-03 ✅ (measured). **Compliant lever landed run 191** — schema-structure hints (not cell-values, GLOBAL-037 lane-1) ported into the production preset DDL; the eval measured them at temporal **8/11**. Remaining: re-dispatch SK-QUAL-023 on a post-run-191 SHA to confirm ops temporal, then flip green |
+| 4 | Temporal golden queries pass | ⬜ **temporal 5/7** — synthetic 2/3 + **ops 3/4** (re-measured on the post-hint head, run 33132370698 / SHA `c73d679`, 2026-08-28 — was 2/7 / ops 0/4 on the pre-hint 2026-07-29 run) | D-03 ✅ (measured). **Compliant lever landed run 191** — schema-structure hints (not cell-values, GLOBAL-037 lane-1) ported into the production preset DDL. **Yield reconciled run 192:** the hints took ops temporal **0/4 → 3/4** (q17/q18/q20 pass; only q19 misses). Remaining to flip green: q19 (over-joins episodes for a self-contained `blocked` fact's own `created_at`) + synthetic q4 — both **query-shape, not vocabulary**; the offline eval is noise-dominated at ±5 pp so the last two are a query-shape / per-pack-recipe lever, not more hint grinding |
 | 5 | Live memory dashboard public on `/agents` | 🟡 **built, shipping** (D-06 run 1, 2026-08-12) — server-rendered `ag-dog` block renders the real corpus aggregates (13 facts / 9 entities / 12 asks / first-10 100 %) + 2 GROUP-BY tables + as-of date; **green on deploy of the PR** | D-06 |
 
 Criterion 4's synthetic half stays `2/3`; D-03 added the **ops** corpus's 4
-temporal queries and measured them for the first time — **0/4** on the free
-chain (run 30413719690). Both halves must be green, which is a tightening, not a
-loosening; the ops half is now the binding constraint.
+temporal queries — first measured **0/4** on the free chain (run 30413719690,
+pre-hint), now **3/4** on the post-hint head (run 33132370698). Both halves must
+be green, which is a tightening, not a loosening; the last miss on each half (ops
+q19, synthetic q4) is the binding constraint, and it is query-shape, not the
+categorical-value gap the hints closed.
 
 ## Tracker
 

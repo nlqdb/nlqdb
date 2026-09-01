@@ -31,40 +31,30 @@ production pack-schema layer — a real feature, agent-movable, GLOBAL-037-compl
 widening). The gate sat **frozen at 2/5 all week** while the proxy climbed 43 → 79 %; this re-point
 makes the daily loop move the number the proxy exists to serve.
 
-**Worst number today (run 191, 2026-08-31) — WEEKLY-FOCUS LEVER PULLED: landed the eval-proven criterion-4 schema hints in the production preset.**
-The `/weekly` (08-29) focus is **dogfood gate `SK-PIVOT-016` 2/5 → ≥ 3/5, by landing the run-186/187 declared-vocabulary/structural
-lever in the production per-goal-pack schema layer so criterion 4 (temporal) flips.** Both open PRs from run 190 (#1066 weekly
-re-point, #1067 engine planner re-head) **merged**, so step 0 is clear and the engine/schema lane is no longer owned — this run
-pulls the weekly-focus lever directly.
-**Lever (this run):** the memory-quality eval (`SK-QUAL-023`, runs 186–187) proved that hand-authored **schema-structure hints**
-(not cell-values, GLOBAL-037 lane-1) take the eval temporal axis **2/11 → 8/11**. But those hints lived only in the eval
-fixtures; the **production** `agent_memory_v1` preset served the planner a bare DDL with **zero** guidance — so the 8/11 was
-un-backed in prod. Run 191 ports the generic structural hints (owning-agent scoping, `kind`-is-an-exact-categorical-token,
-`content`-vs-entity, `facts → entity_facts → entities` traversal, `GROUP BY canonical_name`, `ORDER BY created_at DESC` for
-supersession, TTL semantics) into `apps/api/src/db-create/presets/agent-memory-v1.ts` as inline `-- comments`, which **on the
-preset path ARE the planner's `Schema:` block verbatim** (`schema_text = ddl.join`, no live introspection — traced this run).
-`schema_hash` is keyed off the separate `agentMemoryV1Plan()` projection, so the comments **don't touch the plan cache**
-(GLOBAL-006). **Before → after:** production `schema_text` **2112 ch / 0 hint markers → 3833 ch / 14 hint markers**; 25/25 preset
-tests green incl. the libpg_query validator (inline comments pass the allowlist) + a new cell-value-egress guard; db-create suite
-142 pass. **Number moved:** criterion-4 direct input — production schema's declared temporal/structural hints **absent → present**
-(the eval-measured 2/11 → 8/11 now transfers to a real memory agent). **Remaining to flip criterion 4 green:** re-dispatch
-SK-QUAL-023 on a post-run-191 SHA to confirm ops temporal on the current head (the 0/4 predates runs 186–187). The pack-**specific**
-value sets are the follow-on (per-pack recipe, SK-PIVOT-007 keeps them off the shared base DDL).
-**P2 UX-flow green** (FLOW-005 6/6, carried run 184). BIRD/Spider dark; memory-quality proxy MET at 79.49 % (off-lever — the
-production landing, not the proxy, is this week's number).
-**Top `blocked-by-human` bullet:** Show HN launch sequence (⏱ ~30 min, **idle 79 days since 06-13**),
-condition-gated on the `SK-PIVOT-016` gate (**2/5**; this run advances the criterion-4 input toward its flip). #2 Anthropic
-connector directory (money-gated, 07-21). Queue **depth 2**, head age 79 d.
-**Dark (rule 8, reported not pulled):** dogfood criterion 1 (grind-only); criterion 3 (silent-wrong-answer, E-09/GLOBAL-037 —
-same schema-value-linking gap this run's hints attack); engine **#8 BIRD 0.5382** (35 d) / **#9 Spider 0.2222** (**42 d** stale,
-async multi-window resume); rows **#2/#4/#5/#16** stranger-dependent (N = 0 until launch); row **#15** opencheck (free-lane
-saturation, remedy costs money ⇒ rule 4).
+**Worst number today (run 192, 2026-09-01) — WEEKLY-FOCUS LEVER: reconciled the criterion-4 yield — ops temporal 0/4 → 3/4 (the gate tracker was 33-day-stale).**
+The `/weekly` (08-29) focus is **dogfood gate `SK-PIVOT-016` 2/5 → ≥ 3/5, by landing the schema-structure lever so criterion 4 (temporal) flips.**
+Step 0 clear: **open PRs = 0** (run 191's #1075 merged). Run 191 landed the schema-structure hints in the production preset but **never measured
+their yield** — the gate tracker (INDEX + founder `/app/admin` launch-gate) still recorded ops temporal **0/4**, the pre-hint 2026-07-29 number.
+Rule 3 (measure → change → re-measure) + rule 7 (a rutting lever must have its yield measured) both say this run **measures**, not grinds.
+**Lever (this run):** mined the per-axis + mismatch diagnostic of the already-run post-hint eval (run 33132370698, SHA `c73d679`, 08-28, the same
+hints run 191 shipped). Ops golden queries q17/q18/q20 **pass**, only **q19** misses ⇒ ops temporal **0/4 → 3/4** — the tracker's `0/4` was a stale
+pre-hint number. Reconciled across its three homes: `launch-gate.ts` (`GATE_STATIC.temporal` 2/7 → 5/7), dogfood `INDEX.md`, this scorecard.
+**Number moved:** criterion-4 golden temporal **2/7 → 5/7** (synthetic 2/3 + ops **0/4 → 3/4**), measured. **Criterion 4 stays ⬜** (both halves
+must be fully green): q19 (over-joins `episodes` for a self-contained `blocked` fact — token guessed **correctly**, so query-shape not vocabulary)
++ synthetic q4 remain, ±5 pp noise-floor (run 188) ⇒ query-shape / pack-recipe lever, not more hint grinding. Gate stays **2/5**, honestly 5/7 golden.
+**P2 UX-flow green** (FLOW-005 6/6, carried run 184). BIRD/Spider dark; memory-quality proxy MET at 79.49 % (off-lever).
+**Top `blocked-by-human` bullet:** Show HN launch sequence (⏱ ~30 min, **idle 80 days since 06-13**),
+condition-gated on the `SK-PIVOT-016` gate (**2/5**; criterion 4 now 5/7 golden). #2 Anthropic
+connector directory (money-gated, 07-21). Queue **depth 2**, head age 80 d.
+**Dark (rule 8, reported not pulled):** dogfood criterion 1 (grind-only); criterion 3 (silent-wrong-answer, E-09/GLOBAL-037);
+engine **#8 BIRD 0.5382** (36 d) / **#9 Spider 0.2222** (**43 d** stale, async multi-window resume); rows **#2/#4/#5/#16**
+stranger-dependent (N = 0 until launch); row **#15** opencheck (free-lane saturation, remedy costs money ⇒ rule 4).
 
-**Rule 6 — GREEN.** Branch based on `main@e1050d9` (latest; #1066/#1067/#1072/#1073/#1074 merged since run 190). Health
-re-measured live: **`typecheck` 0** (workspace, post-`bun install`), **`bun run check` exit 0** (858 files; 53 pre-existing
-warnings on main, 0 errors) + biome clean on the changed files, **preset 25 pass + db-create 142 pass**.
-`deploy-web` + `deploy-api` latest `main` runs both **success**. Diff is the preset DDL + its test (`apps/api/src/db-create/presets/agent-memory-v1.{ts,test.ts}`)
-+ the dogfood `INDEX.md` criterion-4 note + the dev.to queue-line + this scorecard. **Open PRs: 0** at step 0.
+**Rule 6 — GREEN.** Branch based on `main@cd2c08d` (latest; run 191 #1075 merged). Health
+re-measured live: **`typecheck` 0** (workspace, post-`bun install`), **biome check clean** on the changed TS file,
+**launch-gate test 7 pass** (the only code file changed). `deploy-web` + `deploy-api` latest `main` runs both **success**.
+Diff is docs + measurement reconciliation only: the founder-facing `launch-gate.ts` (`GATE_STATIC.temporal` 2/7 → 5/7),
+the dogfood `INDEX.md` criterion-4 rows, the dev.to queue-line drain, + this scorecard. **Open PRs: 0** at step 0.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -98,21 +88,24 @@ warnings on main, 0 errors) + biome clean on the changed files, **preset 25 pass
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **FLOW-005 re-walked live run 184: 6/6 PASS** (curl-based MCP discovery + auth-wall, agent-runnable) — RFC 9728/8414 discovery green, unauth `initialize`/`tools/list` both 401 with matching `resource_metadata` challenge. Playwright walks still **not container-runnable** (Chromium pin mismatch, CI-only via `acquisition-health.yml`); those carried **0 failed / 9 blocked** from 07-26. #999 (08-16) fixed the `/app/new/` 428 dead-end | target **0 `failed`** ✅; anon walks stop at the 428 `challenge_required` (Turnstile, `SK-ANON-012`) |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub. MCP official registry published 07-22; Glama crawl-listed; Smithery/PulseMCP 0. First-touch attribution live since 07-19; `source_json` non-null **0**, for want of strangers, not instrument | **weekly focus (superseded): → ≥ 5 live.** Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
-| | **Human queue** — the one non-automatable actor | **depth 2**; head is the Show HN launch, oldest bullet **78 days** (`SK-PIVOT-016` gate **2/5**); #2 Anthropic connector directory (money-gated, 07-21) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: **2** at step 0 (#1066 weekly re-point, #1067 engine planner re-head) |
+| | **Human queue** — the one non-automatable actor | **depth 2**; head is the Show HN launch, oldest bullet **80 days** (`SK-PIVOT-016` gate **2/5**; criterion 4 now 5/7 golden); #2 Anthropic connector directory (money-gated, 07-21) | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: **0** at step 0 |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
-| | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **3/7** (D-01 ✅, D-03 ✅, D-04 🟡, **D-06 🟡**) — gate **2/5** (criterion 2 green from D-04's 100 % first-10; **criterion 5 green on #978's deploy** — the public `/agents` `ag-dog` dashboard is live). Remaining: criterion 1 (12 → ≥100 real MCP asks, grind); criterion 3 (silent-wrong-answer axis, E-09-blocked); criterion 4 (temporal) — **compliant lever landed run 191** (schema-structure hints in the production preset DDL, GLOBAL-037 lane-1; eval measured 8/11), remaining is a SK-QUAL-023 re-dispatch to confirm ops temporal then flip green. D-06 run 2 (staleness-CI red + demand-signal) + D-04 `NLQDB_MEMORY_DB` var still open | mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md) |
-| | Memory-quality eval (`SK-QUAL-023`) | **39-q free-chain EX 79.49 % (31/39)** — current-main same-window baseline [33132370698](https://github.com/nlqdb/nlqdb/actions/runs/33132370698) (2026-08-28). Per-axis: consolidation 6/7, forgetting 6/7, temporal 9/11, retrieval 5/7, analytical 5/7. ≥ 70 % weekly target **MET, off-lever this run** (run 188's trim measured Δ −5.13 pp inside the ±5 pp free-chain noise floor → reverted; small trims are unmeasurable here). Next engine lever candidate: a full BIRD/Spider re-measure on the post-#1041 planner head (rows #8/#9) | 39 gold-verified questions, 5 axes; free-only, no baseline |
+| | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **3/7** (D-01 ✅, D-03 ✅, D-04 🟡, **D-06 🟡**) — gate **2/5** (criterion 2 green from D-04's 100 % first-10; **criterion 5 green on #978's deploy** — the public `/agents` `ag-dog` dashboard is live). Remaining: criterion 1 (12 → ≥100 real MCP asks, grind); criterion 3 (silent-wrong-answer axis, E-09-blocked); criterion 4 (temporal) — hints landed run 191, **yield reconciled run 192: ops temporal 0/4 → 3/4, golden temporal 2/7 → 5/7** (only q19 ops + q4 synthetic miss, both query-shape). ⬜ until both halves fully green (±5 pp noise floor ⇒ query-shape/pack-recipe lever, not more grinding). D-06 run 2 (staleness-CI red + demand-signal) + D-04 `NLQDB_MEMORY_DB` var still open | mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md) |
+| | Memory-quality eval (`SK-QUAL-023`) | **39-q free-chain EX 79.49 % (31/39)** — current-main same-window baseline [33132370698](https://github.com/nlqdb/nlqdb/actions/runs/33132370698) (2026-08-28). Per-axis: consolidation 6/7, forgetting 6/7, temporal 9/11, retrieval 5/7, analytical 5/7. ≥ 70 % weekly target **MET**. **Run 192 mined the mismatch diagnostic**: the 2 temporal misses are q4 (synthetic core range scan) + q19 (ops `blocked` over-joins episodes) — the dogfood ops-temporal subset (q17-20) is **3/4**, which reconciled criterion 4's stale 0/4. Next engine lever candidate: a full BIRD/Spider re-measure on the post-#1041 planner head (rows #8/#9) | 39 gold-verified questions, 5 axes; free-only, no baseline |
 
 ## Shipped distribution
 
 **41 canonical `/solve` pages** + **40 `/blog` posts** + **31 `/vs` pages** live under `nlqdb.com/`
 (`SK-SOLVE-001` / `SK-BLOG-001` / `SK-CMP-001`). The registries are `apps/web/src/data/{solve,blog,competitors}.ts`.
 
-- **This run (191):** drained one dev.to variant — `text-to-sql-planner-told-wrong-dialect` →
+- **This run (192):** drained one dev.to variant — `rotate-encryption-key-without-a-version-column` →
+  [dev.to](https://dev.to/omer_hochman/you-need-to-rotate-an-encryption-key-you-dont-need-a-key-version-column-1h50)
+  (**12 variants remain**). No new `/blog` page (blog-draft queue empty). Weekly-focus measurement-reconciliation run.
+- **Run 191:** drained one dev.to variant — `text-to-sql-planner-told-wrong-dialect` →
   [dev.to](https://dev.to/omer_hochman/you-added-a-second-sql-engine-your-text-to-sql-model-is-still-being-told-its-the-first-one-2d92)
-  (**13 variants remain**). No new `/blog` page (blog-draft queue empty). Weekly-focus engine/schema lever run.
+  (13 variants remained). No new `/blog` page (blog-draft queue empty). Weekly-focus engine/schema lever run.
 - **Run 190:** drained one dev.to variant — `postgres-validator-rejects-valid-clickhouse-sql` →
   [dev.to](https://dev.to/omer_hochman/you-added-clickhouse-your-postgres-sql-validator-now-rejects-valid-queries-quietly-2okd)
   (14 variants remained). No new `/blog` page (blog-draft queue empty). CTR-lever run.
@@ -121,14 +114,17 @@ warnings on main, 0 errors) + biome clean on the changed files, **preset 25 pass
 
 ## Last change
 
-**2026-08-31 (run 191)** — **WEEKLY-FOCUS LEVER (dogfood gate `SK-PIVOT-016` criterion 4): landed the eval-proven schema-structure
-hints in the PRODUCTION `agent_memory_v1` preset DDL.** Full narrative + before/after in the "Worst number today" block above.
-**Number moved (criterion-4 direct input):** production `schema_text` hint markers **0 → 14** (2112 → 3833 ch) — the temporal
-guidance the eval measured at 8/11 (runs 186–187, GLOBAL-037 lane-1, not cell-values) now reaches a real memory agent's planner
-verbatim (`schema_text = ddl.join`, no live introspection; `schema_hash` from the separate projection ⇒ plan cache untouched).
-Green flip needs a SK-QUAL-023 re-dispatch on a post-run-191 SHA (last ops-temporal 0/4 predates the hints). Guards: 25/25 preset
-tests incl. libpg_query validator + a cell-value-egress guard; db-create 142 pass. Drained one dev.to variant (13 remain).
-**KPI (GLOBAL-025 — engine-quality pillar):** engine quality on the memory workload advanced; no KPI degrades.
+**2026-09-01 (run 192)** — **WEEKLY-FOCUS LEVER (dogfood gate `SK-PIVOT-016` criterion 4): reconciled the schema-hint lever's
+yield — ops temporal 0/4 → 3/4 — that run 191 landed but never measured.** Full narrative in the "Worst number today" block above.
+Run 191 shipped the schema-structure hints to the production preset but the gate tracker (INDEX + founder `/app/admin` launch-gate)
+still recorded ops temporal **0/4**, the pre-hint 2026-07-29 number. This run read the already-run post-hint eval (run 33132370698,
+SHA `c73d679`, 2026-08-28) per-axis + mismatch diagnostic: ops golden queries q17/q18/q20 **pass**, only q19 misses ⇒ ops
+temporal **3/4**. **Number moved:** dogfood criterion-4 golden temporal **2/7 → 5/7** (synthetic 2/3 + ops **0/4 → 3/4**), measured;
+reconciled in `launch-gate.ts` (`GATE_STATIC.temporal` 2/7 → 5/7), `dogfood/INDEX.md`, this scorecard. Criterion 4 stays ⬜ (both
+halves must be fully green; q19 ops + q4 synthetic remain, both **query-shape not vocabulary**, ±5 pp noise floor ⇒ query-shape /
+pack-recipe lever). Gate stays **2/5** but the criterion is now honestly 5/7 golden, not stuck at 2/7. Guards: biome clean +
+launch-gate test 7 pass. Drained one dev.to variant (12 remain).
+**KPI (GLOBAL-025 — engine-quality pillar):** measurement integrity on the engine-quality gate restored; no KPI degrades.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
