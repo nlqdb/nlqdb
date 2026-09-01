@@ -39,8 +39,11 @@ export const GATE_STATIC = {
   /** Criterion 3's actual evidence: tests + eval runs, not a counter. */
   invariants: { asOf: "2026-07-28", suite: "E-03 scoping invariant suite (unit + Neon-gated)" },
   /** Criterion 4 — per-axis EX lives in the CI run summary, never in D1.
-   * Now combined synthetic + ops (D-03 measured the repo-ops corpus). */
-  temporal: { pass: 2, total: 7, asOf: "2026-07-29", run: "GHA run 30413719690" },
+   * Now combined synthetic + ops (D-03 measured the repo-ops corpus).
+   * Re-measured on the post-hint head (the SK-QUAL-023 schema-structure
+   * hints, /daily runs 186–187, landed in the production preset run 191):
+   * synthetic 2/3 + ops 3/4 = 5/7 (up from the pre-hint 2/7). */
+  temporal: { pass: 5, total: 7, asOf: "2026-08-28", run: "GHA run 33132370698" },
   /** Criterion 5 — D-06 ships the public dashboard; this view is not it. */
   agentsDashboard: { shipped: false, slice: "D-06" },
   /** Dogfood track tracker (`worksheets/dogfood/INDEX.md`). */
@@ -87,7 +90,7 @@ export function launchGateCriteria(m: GtmMetrics): GateCriterion[] {
       state: "in-progress",
       measurement: "static",
       value: `${GATE_STATIC.temporal.pass} / ${GATE_STATIC.temporal.total} (synthetic + ops corpus)`,
-      detail: `Latest known value, as of ${GATE_STATIC.temporal.asOf} (${GATE_STATIC.temporal.run}, SK-QUAL-023) — per-axis EX lives in the CI run summary, not in D1, so this is static, not a live read. D-03 measured the 12-question repo-ops corpus (4 temporal) for the first time this run: overall temporal 2/7 — synthetic 2/3, ops 0/4. All four ops temporal queries currently miss on the free chain, which is the weak axis this criterion turns on and the lever the next run pulls.`,
+      detail: `Latest known value, as of ${GATE_STATIC.temporal.asOf} (${GATE_STATIC.temporal.run}, SK-QUAL-023) — per-axis EX lives in the CI run summary, not in D1, so this is static, not a live read. Re-measured on the post-hint head (the schema-structure hints from /daily runs 186–187, landed in the production preset run 191): overall temporal 5/7 — synthetic 2/3, ops 3/4, up from the pre-hint 2/7 (synthetic 2/3, ops 0/4). Three of the four ops temporal queries now pass; the two remaining misses (synthetic q4 range-scan, ops q19 over-joins episodes for a self-contained \`blocked\` fact's own \`created_at\`) are query-shape, not the categorical-vocabulary root cause the hints closed. Both temporal halves must be fully green for this criterion, so it stays in-progress; the offline eval is noise-dominated at ±5 pp, so the last two are a query-shape/pack-recipe lever, not more hint grinding.`,
     },
     {
       n: 5,
