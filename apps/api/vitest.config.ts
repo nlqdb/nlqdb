@@ -174,6 +174,7 @@ export default defineConfig(async () => {
               "test/models.test.ts",
               "test/databases-delete.test.ts",
               "test/databases-create.test.ts",
+              "test/pack-import-auth.test.ts",
               "test/db-connect.test.ts",
               "test/ask-dispatch.test.ts",
               "test/exec-acl-heal.test.ts",

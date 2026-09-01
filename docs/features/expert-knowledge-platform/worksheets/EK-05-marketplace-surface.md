@@ -6,7 +6,15 @@ PR #1 already merged there earlier), so the parked-on-access condition is
 lifted. Box 4's SK-EKP-003 boundary guard is the first slice pushed via direct
 access (experts#2, merged 2026-08-10). Boxes 1–3 (interview → listing, buy → grant, fee split) remain gated on
 their own prereqs: box 1 on EK-04's public write-path, boxes 2–3 on EK-06's
-live grant execution. · **Repo:** `experts` (private, all-rights-reserved) ·
+live grant execution. **Reuse mechanism decided** (`experts` `docs/design/runner-reuse.md`):
+option B, the private surface embeds the hosted D-08 runner over the SDK/API and
+never imports it (option A is barred by the box-4 boundary guard). That record
+surfaced two public-rail gaps; **gap 2 (auth) closed** — the runner's mutating
+legs (`/v1/packs/imports/:id` advance/retry/delete) now accept account-scoped
+`sk_live_`/`sk_mcp_` keys (`SK-PIVOT-010`), so a headless pilot/agent drives the
+hosted journey; **gap 1 (SDK wrapper) open** — the next public-half slice is an
+`sk_live`-drivable `@nlqdb/sdk` wrapper for that journey, then box 1 embeds it.
+· **Repo:** `experts` (private, all-rights-reserved) ·
 **Risk:** high · **Runs:** multi · **Prereqs:** EK-01, EK-02, EK-04 + repo
 access
 
