@@ -50,9 +50,12 @@ at the implementation gate, as designed.
    `blocked-by-human.md`** — parking an already-settled decision as a founder
    question is a rule-4 violation.
 
-Until one of those happens, `SK-PIVOT-016` criterion 4's ops-temporal 0/4 has no
-agent-movable, GLOBAL-037-compliant lever. The steps below are retained only as
-the record of the rejected mechanism; **do not implement them.**
+Until one of those happens, the **value-linking gap** this slice targets has no
+agent-movable, GLOBAL-037-compliant lever. (The compliant schema-**structure**
+hints since moved `SK-PIVOT-016` criterion 4's ops-temporal **0/4 → 3/4** — run 192
+reconciliation; the one remaining miss, q19, is query-shape, not value-linking, so
+it too sits outside this slice.) The steps below are retained only as the record of
+the rejected mechanism; **do not implement them.**
 
 ## Why this slice exists — the run-156 diagnosis
 
