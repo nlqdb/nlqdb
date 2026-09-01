@@ -3012,7 +3012,11 @@ app.delete("/v1/grants/:id", requireSession, async (c) => {
 // forbids. The opaque draft id is the capability that resumes it, and a
 // per-IP KV throttle is the abuse bound on the anonymous half (same posture
 // as the public wishlist endpoint). Nothing is written to a memory DB before
-// `advance`, which is session-only.
+// `advance`, which requires an account-scoped principal (a cookie session or
+// an `sk_live_`/`sk_mcp_` key) — never `anon`/`pk_live`. Per SK-PIVOT-010
+// (amended 2026-08-09) memory-DB provisioning is product-automated: an agent
+// drives this journey headlessly with its key, the same classes that already
+// provision the preset and write memory.
 app.use("/v1/packs/*", credentialedCors);
 
 // Public-half abuse bound: each source acquisition costs a GitHub archive
@@ -3146,11 +3150,25 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan(`nlqdb.pack.import.${mode}`, async (span) => {
     try {
-      const session = c.var.session;
+      const principal = c.var.principal;
+      span.setAttribute("nlqdb.principal.kind", principal.kind);
+      // SK-PIVOT-010 (amended 2026-08-09, founder-locked) — the runner journey
+      // provisions an agent_memory_v1 DB and writes memory, so it accepts any
+      // account-scoped principal (a cookie session or an `sk_live_`/`sk_mcp_`
+      // key), exactly as its siblings `POST /v1/databases {preset}` and
+      // `/v1/memory/remember` already do. `anon` and `pk_live` have no account
+      // tenant and stay rejected — the one boundary that must never move. This
+      // lets a headless pilot or agent drive the hosted runner over the
+      // SDK/API (the EK-05 runner-reuse gap, SK-EKP-003).
+      const tenantId = accountTenantIdFromPrincipal(principal);
+      if (!tenantId) {
+        span.setAttribute("nlqdb.pack.import.outcome", "account_required");
+        return fail(c, "account_required");
+      }
       // `Context<AppEnv>` is not path-generic, so the param is typed
       // optional; the route pattern guarantees it.
       const id = c.req.param("id") ?? "";
-      span.setAttribute("nlqdb.user.id", session.user.id);
+      span.setAttribute("nlqdb.user.id", tenantId);
       span.setAttribute("nlqdb.pack.import.id", id);
 
       const store = makeD1DraftStore(c.env.DB);
@@ -3163,16 +3181,16 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
       // returns from sign-in first, with no repeated input and no second
       // confirmation. `claim` is atomic, so a double return is safe.
       if (draft.tenantId === null) {
-        const claimed = await store.claim(id, session.user.id);
+        const claimed = await store.claim(id, tenantId);
         if (!claimed) {
           const fresh = await store.get(id);
-          if (fresh?.tenantId !== session.user.id) {
+          if (fresh?.tenantId !== tenantId) {
             span.setAttribute("nlqdb.pack.import.outcome", "import_not_found");
             return fail(c, "import_not_found");
           }
         }
-        draft = { ...draft, tenantId: session.user.id };
-      } else if (draft.tenantId !== session.user.id) {
+        draft = { ...draft, tenantId };
+      } else if (draft.tenantId !== tenantId) {
         span.setAttribute("nlqdb.pack.import.outcome", "import_not_found");
         return fail(c, "import_not_found");
       }
@@ -3183,7 +3201,7 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
       // consistent (`SK-IDEMP-005`), so two truly concurrent retries can both
       // miss it. The D1 lease below is what actually serialises them.
       const idemKey = c.req.header("Idempotency-Key") ?? undefined;
-      const prior = await idempotencyLookup(c.env.KV, `pack_${mode}`, session.user.id, idemKey);
+      const prior = await idempotencyLookup(c.env.KV, `pack_${mode}`, tenantId, idemKey);
       if (prior) {
         span.setAttribute("nlqdb.pack.import.outcome", "idempotent_replay");
         return c.json({ ...prior, replayed: true });
@@ -3191,7 +3209,7 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
 
       // One rate-limit check per user action. The per-row memory writes
       // inside the phase are not separately limited — see `deps.ts`.
-      const decision = await buildAskDeps(c.env).rateLimiter.check(session.user.id);
+      const decision = await buildAskDeps(c.env).rateLimiter.check(tenantId);
       if (!decision.allowed) {
         span.setAttribute("nlqdb.pack.import.outcome", "rate_limited");
         const now = Math.floor(Date.now() / 1000);
@@ -3220,7 +3238,7 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
         );
       }
       try {
-        const deps = buildPackRunnerDeps(c.env, session.user.id, draft.packId);
+        const deps = buildPackRunnerDeps(c.env, tenantId, draft.packId);
 
         // Every alpha import gets its own isolated `agent_memory_v1` DB
         // (D-08 §5) so "delete this test memory" and "import again" are both
@@ -3243,7 +3261,7 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
             goal: `${draft.packId} memory import`,
             name: `${draft.packId} import`,
             preset: AGENT_MEMORY_V1_VERSION,
-            tenantId: session.user.id,
+            tenantId,
             secretRef,
             synthetic: isSyntheticRequest(c.req.header("user-agent"), c.env),
           });
@@ -3270,7 +3288,7 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
         }
         span.setAttribute("nlqdb.pack.import.outcome", "ok");
         const body = { import: importView(settled) };
-        idempotencyStore(c.executionCtx, c.env.KV, `pack_${mode}`, session.user.id, idemKey, body);
+        idempotencyStore(c.executionCtx, c.env.KV, `pack_${mode}`, tenantId, idemKey, body);
         return c.json(body);
       } finally {
         // Best-effort: an unreleased lease still lapses on its own.
@@ -3288,8 +3306,8 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
   });
 }
 
-app.post("/v1/packs/imports/:id/advance", requireSession, (c) => handlePackAdvance(c, "advance"));
-app.post("/v1/packs/imports/:id/retry", requireSession, (c) => handlePackAdvance(c, "retry"));
+app.post("/v1/packs/imports/:id/advance", requirePrincipal, (c) => handlePackAdvance(c, "advance"));
+app.post("/v1/packs/imports/:id/retry", requirePrincipal, (c) => handlePackAdvance(c, "retry"));
 
 // `DELETE /v1/packs/imports/:id` — the alpha's "delete this test memory".
 // Reuses the SK-HDC-016 tenant-scoped deletion path verbatim (the
@@ -3299,23 +3317,33 @@ app.post("/v1/packs/imports/:id/retry", requireSession, (c) => handlePackAdvance
 // is never touched. Idempotent by construction (RFC 9110 / GLOBAL-005): a
 // re-DELETE of an already-removed draft is a 404, and a re-DELETE mid-flight
 // re-runs an idempotent drop.
-app.delete("/v1/packs/imports/:id", requireSession, async (c) => {
+app.delete("/v1/packs/imports/:id", requirePrincipal, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.pack.import.delete", async (span) => {
-    const session = c.var.session;
+    const principal = c.var.principal;
+    span.setAttribute("nlqdb.principal.kind", principal.kind);
+    // Same account-scoped boundary as advance/retry (SK-PIVOT-010): a session
+    // or an `sk_live_`/`sk_mcp_` key deletes its own import; `anon`/`pk_live`
+    // are rejected. The delete reuses the SK-HDC-016 tenant-scoped drop below.
+    const tenantId = accountTenantIdFromPrincipal(principal);
+    if (!tenantId) {
+      span.setAttribute("nlqdb.pack.import.outcome", "account_required");
+      span.end();
+      return fail(c, "account_required");
+    }
     const id = c.req.param("id");
-    span.setAttribute("nlqdb.user.id", session.user.id);
+    span.setAttribute("nlqdb.user.id", tenantId);
     span.setAttribute("nlqdb.pack.import.id", id);
     const store = makeD1DraftStore(c.env.DB);
     const draft = await store.get(id);
-    if (!draft || (draft.tenantId !== null && draft.tenantId !== session.user.id)) {
+    if (!draft || (draft.tenantId !== null && draft.tenantId !== tenantId)) {
       span.setAttribute("nlqdb.pack.import.outcome", "import_not_found");
       span.end();
       return fail(c, "import_not_found");
     }
     try {
       if (draft.dbId) {
-        const record = await resolveDb(c.env.DB, draft.dbId, session.user.id);
+        const record = await resolveDb(c.env.DB, draft.dbId, tenantId);
         if (record) {
           const { buildPgClient, resolveDatabaseUrl } = await import("./db-create/pg-client.ts");
           const { dropSchemaAndRegistry, stripDbPrefix } = await import(
