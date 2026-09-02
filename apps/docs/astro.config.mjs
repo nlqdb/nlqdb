@@ -24,8 +24,9 @@ export default defineConfig({
   integrations: [
     channelForward,
     starlight({
-      title: "nlqdb",
-      description: "A database you talk to. Documentation.",
+      title: "nlqdb docs",
+      description:
+        "Documentation for nlqdb, a database you talk to: quickstarts, the @nlqdb/sdk TypeScript reference, the HTTP API, MCP setup, the nlq CLI, and framework wrappers.",
       // Starlight emits og:title / og:type / og:url / og:description by default
       // but never og:image — one of the four required Open Graph tags — so every
       // page reads as an incomplete OG card in social/SEO crawlers. Inject a
