@@ -98,6 +98,26 @@ function stubClient(overrides: Partial<NlqClient> & { connect?: ConnectFn } = {}
     revokeGrant: async () => {
       throw new Error("revokeGrant not stubbed");
     },
+    packImports: {
+      // The pack-import runner (SK-SDK-014) is a hosted product journey the
+      // private `experts` surface drives over the SDK, not an MCP tool
+      // (out of scope by design); the stubs only satisfy the interface.
+      create: async () => {
+        throw new Error("packImports.create not stubbed");
+      },
+      get: async () => {
+        throw new Error("packImports.get not stubbed");
+      },
+      advance: async () => {
+        throw new Error("packImports.advance not stubbed");
+      },
+      retry: async () => {
+        throw new Error("packImports.retry not stubbed");
+      },
+      delete: async () => {
+        throw new Error("packImports.delete not stubbed");
+      },
+    },
   };
   const { connect, ...rest } = overrides;
   return {

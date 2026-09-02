@@ -822,6 +822,125 @@ export type RevokeGrantResult = {
   alreadyRevoked: boolean;
 };
 
+// SK-SDK-014 — the shared goal-pack import journey (`SK-PIVOT-021` runner,
+// EK-04/EK-05). One pack-agnostic surface drives create → advance → verify →
+// delete over `/v1/packs/imports/*`. Unlike the grant verbs it is
+// **bearer-drivable on purpose**: `advance`/`retry`/`delete` accept an
+// account-scoped `sk_live_`/`sk_mcp_` key (`SK-PIVOT-010`, amended
+// 2026-08-09), which is how the private `experts` marketplace surface
+// (`SK-EKP-003`) embeds the hosted runner headlessly instead of importing a
+// rail. `create`/`get` are the public preflight — no account required
+// (`GLOBAL-007`); an id is the capability that resumes a draft. A pack never
+// adds an endpoint here — it is content + a recipe (`SK-PIVOT-018`).
+
+// The five named journey phases the runner renders, in order (`complete` is
+// the terminal state, not a running phase). Progress is these names plus the
+// real counters below — never a percentage (`SK-PIVOT-021` / P6).
+export type PackImportPhase =
+  | "inspecting"
+  | "classifying"
+  | "extracting"
+  | "saving"
+  | "verifying"
+  | "complete";
+
+// Honest per-phase counters. `null` fields are phases not yet reached.
+export type PackImportProgress = {
+  phase: PackImportPhase;
+  items: {
+    total: number;
+    eligible: number;
+    skipped: number;
+    skipReasons: Record<string, number>;
+  } | null;
+  records: Record<string, number> | null;
+  written: Record<string, number>;
+  plannedWrites: Record<string, number> | null;
+  verification: {
+    planned: Record<string, number>;
+    written: Record<string, number>;
+    writtenSource: "read_back" | "save_cursor";
+    reconciled: boolean;
+    mismatches: string[];
+    golden: { query: string; answer: string | null }[];
+  } | null;
+};
+
+// The wire projection of an import draft — carries no source content, ever.
+export type PackImport = {
+  id: string;
+  packId: string;
+  source: { kind: string; ref: string; pin: string | null };
+  dbId: string | null;
+  claimed: boolean;
+  progress: PackImportProgress;
+  skippedSample: { id: string; reason: string }[];
+  error: { phase: PackImportPhase; reason: string } | null;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type CreatePackImportRequest = {
+  /** A registered pack id — an unknown one rejects with `unknown_pack`. */
+  packId: string;
+  /** The pack-shaped source string (a repo URL, an interview session ref). */
+  source: string;
+};
+
+/**
+ * Namespaced verbs for the shared pack-import runner (`SK-SDK-014`). See the
+ * type comment above for the auth model: preflight is public, the mutating
+ * legs are bearer-drivable so `experts` can embed the journey headlessly.
+ */
+export type PackImports = {
+  /**
+   * `POST /v1/packs/imports` — create a draft and run the public preflight
+   * (`inspecting` → `saving`) in one call, returning the previewed import.
+   * No account required (`GLOBAL-007`): pass an account key or a session and
+   * the draft is claimed immediately; otherwise it is claimed by the first
+   * authenticated {@link advance}. Errors: `unknown_pack` (400, with
+   * `body.allowed`), `source_required` (400), `rate_limited` (429),
+   * `source_unavailable` (422). Mutating: auto-keyed (`SK-SDK-006`).
+   */
+  create(
+    req: CreatePackImportRequest,
+    opts?: { signal?: AbortSignal; idempotencyKey?: string },
+  ): Promise<{ import: PackImport }>;
+  /**
+   * `GET /v1/packs/imports/:id` — the resume read: reopen the same phase. No
+   * account required for an unclaimed draft (the id is the capability); a
+   * claimed draft is readable only by its owner (`import_not_found` otherwise).
+   */
+  get(id: string, opts?: { signal?: AbortSignal }): Promise<{ import: PackImport }>;
+  /**
+   * `POST /v1/packs/imports/:id/advance` — claim, provision the isolated
+   * `agent_memory_v1` DB, write, and verify, resolving with the settled
+   * import. **Account-scoped**: an `sk_live_`/`sk_mcp_` key or a session;
+   * `anon`/`pk_live` reject with `account_required` (`SK-PIVOT-010`). A
+   * concurrent advance returns `import_busy` (409) with the live draft.
+   * Mutating: auto-keyed (`SK-SDK-006`).
+   */
+  advance(
+    id: string,
+    opts?: { signal?: AbortSignal; idempotencyKey?: string },
+  ): Promise<{ import: PackImport }>;
+  /**
+   * `POST /v1/packs/imports/:id/retry` — clear a stamped failure and resume
+   * from the last checkpoint. Same auth + shape as {@link advance}.
+   */
+  retry(
+    id: string,
+    opts?: { signal?: AbortSignal; idempotencyKey?: string },
+  ): Promise<{ import: PackImport }>;
+  /**
+   * `DELETE /v1/packs/imports/:id` — destroy the derived memory DB and the
+   * draft (`SK-HDC-016`); the source is never touched. **Account-scoped**,
+   * same boundary as {@link advance}. Idempotent: a re-DELETE of an
+   * already-removed draft is `import_not_found` (404). Mutating: auto-keyed.
+   */
+  delete(id: string, opts?: { signal?: AbortSignal; idempotencyKey?: string }): Promise<void>;
+};
+
 /**
  * The typed client returned by {@link createClient} — the only HTTP
  * surface per `GLOBAL-001`. Every method throws {@link NlqdbApiError} on
@@ -1064,6 +1183,13 @@ export type NlqClient = {
     grantId: string,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<RevokeGrantResult>;
+  /**
+   * The shared goal-pack import runner (`SK-SDK-014`, `SK-PIVOT-021`).
+   * Namespaced because `GLOBAL-003` parity names the surface
+   * `client.packImports.create` — the seam the private `experts` marketplace
+   * embeds over the SDK (`SK-EKP-003`), never a rail import.
+   */
+  packImports: PackImports;
 };
 
 const DEFAULT_BASE_URL = "https://app.nlqdb.com";
@@ -1548,6 +1674,49 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
           ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
           : {}),
       });
+    },
+    packImports: {
+      // No `assertSession`: the mutating legs are bearer-drivable on purpose
+      // (`SK-PIVOT-010`) so a headless `experts` embed drives the journey with
+      // its account key — the exact opposite of the grant control plane.
+      create: (req, callOpts) =>
+        call<{ import: PackImport }>("/v1/packs/imports", {
+          method: "POST",
+          body: JSON.stringify(req),
+          signal: callOpts?.signal,
+          ...(callOpts?.idempotencyKey
+            ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+            : {}),
+        }),
+      get: (id, callOpts) =>
+        call<{ import: PackImport }>(`/v1/packs/imports/${encodeURIComponent(id)}`, {
+          signal: callOpts?.signal,
+        }),
+      advance: (id, callOpts) =>
+        call<{ import: PackImport }>(`/v1/packs/imports/${encodeURIComponent(id)}/advance`, {
+          method: "POST",
+          signal: callOpts?.signal,
+          ...(callOpts?.idempotencyKey
+            ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+            : {}),
+        }),
+      retry: (id, callOpts) =>
+        call<{ import: PackImport }>(`/v1/packs/imports/${encodeURIComponent(id)}/retry`, {
+          method: "POST",
+          signal: callOpts?.signal,
+          ...(callOpts?.idempotencyKey
+            ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+            : {}),
+        }),
+      delete: async (id, callOpts) => {
+        await call<void>(`/v1/packs/imports/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+          signal: callOpts?.signal,
+          ...(callOpts?.idempotencyKey
+            ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+            : {}),
+        });
+      },
     },
   };
 }

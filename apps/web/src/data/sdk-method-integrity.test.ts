@@ -90,6 +90,7 @@ describe("SDK-method integrity (SK-SDK-013)", () => {
       "listKeys",
       "mintGrant",
       "mintKey",
+      "packImports",
       "postChat",
       "redeemOAuthBridgeCode",
       "registerPremiumInterest",

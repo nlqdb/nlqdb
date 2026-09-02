@@ -150,6 +150,142 @@ describe("Idempotency-Key uniqueness across distinct mutations (SK-SDK-006)", ()
   });
 });
 
+describe("packImports — the shared pack-import runner (SK-SDK-014)", () => {
+  const okImport = {
+    import: {
+      id: "imp_1",
+      packId: "language-tutor",
+      source: { kind: "interview-session", ref: "sess_1", pin: null },
+      dbId: null,
+      claimed: false,
+      progress: {
+        phase: "saving",
+        items: { total: 3, eligible: 2, skipped: 1, skipReasons: { binary: 1 } },
+        records: { mistake: 2 },
+        written: {},
+        plannedWrites: { fact: 2 },
+        verification: null,
+      },
+      skippedSample: [{ id: "x", reason: "binary" }],
+      error: null,
+      createdAt: 1,
+      updatedAt: 2,
+    },
+  };
+
+  it("create POSTs /v1/packs/imports with the typed body + auto Idempotency-Key", async () => {
+    let url = "";
+    let init: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (u, i) => {
+      url = String(u);
+      init = i;
+      return new Response(JSON.stringify(okImport), {
+        status: 201,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const client = createClient({ apiKey: "sk_live_test", fetch: fakeFetch });
+    const out = await client.packImports.create({
+      packId: "language-tutor",
+      source: "sess_1",
+    });
+
+    expect(url).toBe("https://app.nlqdb.com/v1/packs/imports");
+    expect(init?.method).toBe("POST");
+    expect(headerBag(init)["idempotency-key"]).toMatch(/^[0-9a-f]{32}$/);
+    expect(JSON.parse(String(init?.body))).toEqual({ packId: "language-tutor", source: "sess_1" });
+    expect(out.import.id).toBe("imp_1");
+    expect(out.import.progress.phase).toBe("saving");
+  });
+
+  it("advance is bearer-drivable — an sk_live_ key drives it without a session (SK-PIVOT-010)", async () => {
+    let url = "";
+    let init: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (u, i) => {
+      url = String(u);
+      init = i;
+      return new Response(JSON.stringify(okImport), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    // A bearer client, NOT withCredentials — the opposite of the grant verbs.
+    const client = createClient({ apiKey: "sk_live_test", fetch: fakeFetch });
+    const out = await client.packImports.advance("imp/1");
+
+    // The id is URL-encoded into the /advance path.
+    expect(url).toBe("https://app.nlqdb.com/v1/packs/imports/imp%2F1/advance");
+    expect(init?.method).toBe("POST");
+    expect(headerBag(init)["authorization"]).toBe("Bearer sk_live_test");
+    expect(headerBag(init)["idempotency-key"]).toMatch(/^[0-9a-f]{32}$/);
+    expect(out.import.packId).toBe("language-tutor");
+  });
+
+  it("get GETs the resume read with the id URL-encoded and no idempotency-key", async () => {
+    let url = "";
+    let init: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (u, i) => {
+      url = String(u);
+      init = i;
+      return new Response(JSON.stringify(okImport), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const client = createClient({ fetch: fakeFetch });
+    await client.packImports.get("imp 1");
+
+    expect(url).toBe("https://app.nlqdb.com/v1/packs/imports/imp%201");
+    expect((init?.method ?? "GET").toUpperCase()).toBe("GET");
+    expect(headerBag(init)["idempotency-key"]).toBeUndefined();
+  });
+
+  it("delete DELETEs the draft and resolves void", async () => {
+    let url = "";
+    let init: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (u, i) => {
+      url = String(u);
+      init = i;
+      return new Response(null, { status: 204 });
+    };
+    const client = createClient({ apiKey: "sk_live_test", fetch: fakeFetch });
+    const out = await client.packImports.delete("imp_1");
+
+    expect(url).toBe("https://app.nlqdb.com/v1/packs/imports/imp_1");
+    expect(init?.method).toBe("DELETE");
+    expect(out).toBeUndefined();
+  });
+
+  it("surfaces 403 account_required as NlqdbApiError (anon/pk_live rejected)", async () => {
+    const fakeFetch: FetchLike = async () =>
+      new Response(JSON.stringify({ error: { code: "account_required" } }), {
+        status: 403,
+        headers: { "content-type": "application/json" },
+      });
+    const client = createClient({ fetch: fakeFetch });
+    await expect(client.packImports.advance("imp_1")).rejects.toMatchObject({
+      name: "NlqdbApiError",
+      code: "account_required",
+      httpStatus: 403,
+    });
+  });
+
+  it("honours a caller-supplied idempotencyKey on retry", async () => {
+    let init: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (_u, i) => {
+      init = i;
+      return new Response(JSON.stringify(okImport), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const client = createClient({ apiKey: "sk_live_test", fetch: fakeFetch });
+    await client.packImports.retry("imp_1", { idempotencyKey: "stable-retry-key" });
+    expect(init?.method).toBe("POST");
+    expect(headerBag(init)["idempotency-key"]).toBe("stable-retry-key");
+  });
+});
+
 describe("401 handling on a withCredentials client", () => {
   // TODO(bug): SK-SDK-005 / GLOBAL-009 promise that a 401 on a
   // `withCredentials` client is refreshed via `POST /v1/auth/refresh`

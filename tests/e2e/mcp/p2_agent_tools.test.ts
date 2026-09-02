@@ -33,6 +33,15 @@ function stubClient(overrides: Partial<NlqClient>): NlqClient {
     mintGrant: notStubbed("mintGrant"),
     listGrants: notStubbed("listGrants"),
     revokeGrant: notStubbed("revokeGrant"),
+    // SK-SDK-014 pack-import runner is a hosted product journey, not an MCP
+    // tool (out of scope by design); the stubs only satisfy the interface.
+    packImports: {
+      create: notStubbed("packImports.create"),
+      get: notStubbed("packImports.get"),
+      advance: notStubbed("packImports.advance"),
+      retry: notStubbed("packImports.retry"),
+      delete: notStubbed("packImports.delete"),
+    },
     ...overrides,
   };
 }
