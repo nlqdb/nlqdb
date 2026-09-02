@@ -114,6 +114,7 @@ export default defineConfig(async () => {
               "src/ask/memory-exec-steps.test.ts",
               "src/run/orchestrate.test.ts",
               "src/memory/expire.test.ts",
+              "src/scheduled/jobs.test.ts",
               "src/memory/remember.test.ts",
               "src/pack-runner/**/*.test.ts",
             ],

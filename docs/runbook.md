@@ -798,10 +798,8 @@ needs no-pause"; the policy below uses that gate, not blow through it.
 
 ### 9.3 Daily sweep job
 
-Runs as a Cloudflare Workers Cron Trigger
-(`apps/api/wrangler.toml [triggers] crons = ["0 4 * * *"]` — 04:00
-UTC daily, off-peak). Source: `apps/api/src/db-sweep/sweep.ts`
-(lands with the db.create slice).
+Runs as the `anon_db_sweep` row in `apps/api/src/scheduled/jobs.ts`
+(04:00 UTC daily, off-peak; SK-HDC-023). Source: `apps/api/src/db-sweep/sweep.ts`.
 
 ```
 1. SELECT all anonymous dbs (D1: WHERE adopted_at IS NULL).

@@ -6,6 +6,7 @@ when-to-load:
     - apps/api/src/db-create/**
     - apps/api/src/ask/route-ask.ts
     - apps/api/src/ask/sql-validate-ddl.ts
+    - apps/api/src/scheduled/**
     - packages/llm/src/prompts/schema-inference.ts
   topics: [db.create, typed-plan, schema-inference, schema-plan, provisioner, semantic-layer, ddl, classifier, dbid-resolution]
 ---
@@ -36,6 +37,7 @@ when-to-load:
 - `apps/api/src/ask/orchestrate.ts` (the consumer that delegates `kind=create` to this feature)
 - `packages/llm/src/prompts/schema-inference.ts` (the typed-plan prompt)
 - `packages/db/src/types.ts` (`SchemaPlan` lives near the adapter types)
+- `apps/api/src/scheduled/jobs.ts` + `apps/api/wrangler.toml` `[triggers]` (the single cron trigger + job table — SK-HDC-023)
 
 ## Decisions
 
@@ -58,7 +60,7 @@ block.
 - [**SK-HDC-011**](decisions/SK-HDC-011-drop-schema-and-registry-rollback.md) — `dropSchemaAndRegistry` is the idempotent, best-effort, paired Postgres + D1 rollback primitive.
 - [**SK-HDC-012**](decisions/SK-HDC-012-batched-neon-transaction.md) — Provisioner batches DDL + RLS + sample inserts in a single Neon HTTP transaction.
 - [**SK-HDC-013**](decisions/SK-HDC-013-waituntil-tail-steps.md) — Tail steps (recent-tables MRU, table-card embed) run via `ctx.waitUntil`, off the response path.
-- [**SK-HDC-014**](decisions/SK-HDC-014-neon-keep-warm-cron.md) — Neon Free-tier keep-warm cron `*/4 13-21 * * MON-FRI` UTC (one `SELECT 1`).
+- [**SK-HDC-014**](decisions/SK-HDC-014-neon-keep-warm-cron.md) — Neon Free-tier keep-warm: one `SELECT 1` every 4 min, Mon–Fri 13–21 UTC.
 - [**SK-HDC-015**](decisions/SK-HDC-015-pk-auto-defaults.md) — Compiler auto-generates defaults for single-column integer/uuid primary keys.
 - [**SK-HDC-016**](decisions/SK-HDC-016-delete-database.md) — `DELETE /v1/databases/:id` reuses `dropSchemaAndRegistry`; UI gates with typed-name confirmation.
 - [**SK-HDC-017**](decisions/SK-HDC-017-provision-sqlstate-fidelity.md) — Provisioner maps SQLSTATE classes and pins the raw SQLSTATE on the failure span.
@@ -67,6 +69,7 @@ block.
 - [**SK-HDC-020**](decisions/SK-HDC-020-agent-memory-preset.md) — Opt-in `agent_memory_v1` schema preset on the create path.
 - [**SK-HDC-021**](decisions/SK-HDC-021-preset-create-accepts-account-keys.md) — Preset create accepts any account-scoped principal (`user`/`sk_live`/`sk_mcp`); generic goal create stays session-only (applies the SK-PIVOT-010 2026-08-09 amendment).
 - [**SK-HDC-022**](decisions/SK-HDC-022-nullable-inferred-foreign-keys.md) — An inferred FK column is never `NOT NULL` unless it is part of the child's primary key, so the creator's next write is never structurally impossible.
+- [**SK-HDC-023**](decisions/SK-HDC-023-single-cron-job-table.md) — One `*/4 * * * *` cron trigger; every scheduled job on the api Worker is a row in the `scheduled/jobs.ts` job table (Cloudflare Free: 5 crons/account).
 
 ## GLOBALs governing this feature
 

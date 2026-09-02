@@ -171,7 +171,7 @@ supported; else read manually before editing.)
 | `apps/api/src/run/**`, the `POST /v1/run` raw-SQL escape hatch (`GLOBAL-015`) | `docs/features/sdk/FEATURE.md` (`SK-SDK-009`) + `docs/features/cli/FEATURE.md` + `docs/features/sql-allowlist/FEATURE.md` |
 | write/DDL diff preview, `confidence`, response `trace` block | `docs/features/trust-ux/FEATURE.md` |
 | `packages/errors/**`, `apps/api/src/error-envelope.ts`, any error copy or new error code | `docs/features/error-taxonomy/FEATURE.md` |
-| `apps/api/src/db-create/**`, `apps/api/src/ask/sql-validate-ddl.ts` | `docs/features/hosted-db-create/FEATURE.md` |
+| `apps/api/src/db-create/**`, `apps/api/src/ask/sql-validate-ddl.ts`, `apps/api/src/scheduled/**` (cron job table) | `docs/features/hosted-db-create/FEATURE.md` |
 | `apps/api/src/ask/plan-cache.ts`, plan storage | `docs/features/plan-cache/FEATURE.md` |
 | `packages/llm/**`, model routing, prompts | `docs/features/llm-router/FEATURE.md` |
 | `tools/eval/**`, `.github/workflows/quality-eval-*.yml` (BIRD/Spider NL-accuracy harness) | `docs/features/quality-eval/FEATURE.md` |
@@ -209,8 +209,7 @@ supported; else read manually before editing.)
 | `apps/api/src/icp-*.ts`, `docs/research/automated-icp-validation-plan*.md`, `docs/research/icp-evidence-*.md` | `docs/features/icp-mining/FEATURE.md` |
 | `tools/stranger-test/**`, `scripts/stranger-test.sh`, `scripts/flow-005-walk.sh`, `scripts/flow-005-stdio-walk.sh` | `docs/features/stranger-test/FEATURE.md` |
 
-Per-area `AGENTS.md` files repeat just their slice of this table, so you
-don't need the full root view when working in one directory.
+Per-area `AGENTS.md` files repeat just their slice of this table.
 
 ## 6. Long-form reference docs (load on demand, not by default)
 
@@ -234,10 +233,8 @@ don't need the full root view when working in one directory.
 | [`docs/research/acquisition-channels.md`](docs/research/acquisition-channels.md) + [`-mechanisms.md`](docs/research/acquisition-channels-mechanisms.md) | Canonical acquisition-channel ledger (lean table + tallies) + its per-venue mechanism-notes shard (D4 split). |
 | [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature (e.g. semantic-layer). Promote once decisions are firm. |
 
-These exist for depth; they are not loaded into every session by
-default. The `docs/features/` directory is the front door for any
-feature-specific work — each `FEATURE.md`'s `Status:` line is the
-canonical status.
+Loaded on demand. `docs/features/` is the front door for feature work —
+each `FEATURE.md`'s `Status:` line is the canonical status.
 
 ## 7. Common commands
 

@@ -1,10 +1,5 @@
 import { env } from "cloudflare:workers";
-import {
-  ALLOWED_ENGINES,
-  createPipeManagementClient,
-  createTinybirdAdapter,
-  type Engine,
-} from "@nlqdb/db";
+import { ALLOWED_ENGINES, type Engine } from "@nlqdb/db";
 import { premiumInterestConfirmEmail } from "@nlqdb/email";
 import {
   buildPremiumRouter,
@@ -31,7 +26,7 @@ import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { isAdminEmail } from "./admin/gate.ts";
-import { computeGtmMetrics, writeDailyGtmSnapshot, writeGtmSnapshot } from "./admin/gtm-metrics.ts";
+import { computeGtmMetrics, writeGtmSnapshot } from "./admin/gtm-metrics.ts";
 import { recordAnonAdoption } from "./anon-adopt.ts";
 import { makeAclRetarget } from "./anon-adopt-regrant.ts";
 import {
@@ -91,7 +86,6 @@ import {
   type PremiumTier,
   premiumConfigured,
   readAllowance,
-  reconcilePremiumMeter,
   recordOverflowFallback,
   reportPremiumOverage,
   resolveBillingUsage,
@@ -112,7 +106,6 @@ import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/lis
 import { BYO_SECRET_REF_SENTINEL } from "./db-connect/constants.ts";
 import { AGENT_MEMORY_V1_VERSION, type MemoryPreset } from "./db-create/presets/agent-memory-v1.ts";
 import { memoResolveDb, resolveDb } from "./db-registry.ts";
-import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
 import { notify } from "./email-notify.ts";
 import {
   errorEnvelope,
@@ -142,9 +135,6 @@ import {
   sanitizeAskSource,
 } from "./http.ts";
 import { httpsRedirectTarget, withHsts } from "./https-enforce.ts";
-import { runIcpCluster } from "./icp-cluster.ts";
-import { runIcpScore } from "./icp-score.ts";
-import { runIcpScrape } from "./icp-scrape.ts";
 import { idempotencyLookup, idempotencyStore } from "./idempotency.ts";
 import { alertRnd } from "./internal-alert.ts";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
@@ -178,6 +168,7 @@ import {
   surfaceFromPrincipal,
 } from "./principal.ts";
 import { orchestrateRun } from "./run/orchestrate.ts";
+import { JOBS, runDueJobs } from "./scheduled/jobs.ts";
 import {
   blocksNewCheckout,
   type CustomerRow,
@@ -190,7 +181,6 @@ import { createPortalSession } from "./stripe/portal.ts";
 import { processWebhook } from "./stripe/webhook.ts";
 import { isSyntheticRequest, isSyntheticUserAgent } from "./synthetic-ua.ts";
 import { verifyTurnstile } from "./turnstile.ts";
-import { runWorkloadAnalyser } from "./workload-analyser/index.ts";
 
 const SERVICE_VERSION = "0.1.0";
 
@@ -4851,32 +4841,8 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
   });
 });
 
-// Cron expressions, mirrored from `apps/api/wrangler.toml`'s
-// `[triggers].crons`. The scheduled() handler dispatches on
-// `controller.cron` against these constants; an unmatched value
-// emits `scheduled_unknown_cron` and returns rather than falling
-// through to one of the branches — a string drift between this file
-// and wrangler.toml shouldn't accidentally route the keep-warm
-// schedule through the heavy daily workload-analyser path (which
-// would burn D1 quotas + LLM credits firing 210x/day).
-//
-// Weekdays are spelled with Cloudflare's 3-letter day names, not
-// numbers: its day-of-week field is 1-7 = SUN-SAT (Unix cron is
-// 0-6 = SUN-SAT), so a numeric weekday fires one day early.
-const NEON_KEEP_WARM_CRON = "*/4 13-21 * * MON-FRI";
-const WORKLOAD_ANALYSER_CRON = "0 4 * * *";
-const ICP_SCRAPE_CRON = "0 6 * * MON";
-
-// W5 daily workload-analyser cron handler (`SK-MIGRATE-001`). Schedule
-// is `0 4 * * *` UTC, configured in `wrangler.toml`'s `[triggers]`.
-// When `TINYBIRD_TOKEN` is unset the handler ack-and-skips (matches the
-// unconfigured-sink posture — `SK-EVENTS-005`). All Tinybird HTTP flows
-// through `@nlqdb/db`'s typed surface per `GLOBAL-021`.
-//
-// SK-HDC-014 — `controller.cron` dispatches between branches. The
-// Neon keep-warm branch (`*/4 13-21 * * MON-FRI`) fires far more often and
-// does a tiny `SELECT 1` to defer compute auto-suspend; the workload
-// analyser branch (`0 4 * * *`) does the heavy daily roll-up.
+// Scheduled jobs (SK-HDC-023): one `*/4 * * * *` trigger in `wrangler.toml`;
+// `scheduled/jobs.ts` picks the due rows off `controller.scheduledTime`.
 async function scheduled(
   controller: ScheduledController,
   envBindings: Cloudflare.Env,
@@ -4892,223 +4858,8 @@ async function scheduled(
           authorization: GRAFANA_OTLP_AUTHORIZATION,
         })
       : undefined;
-
   try {
-    // SK-HDC-014 — Neon keep-warm. Fires every 4 minutes during
-    // weekdays 13-21 UTC. Strictly under Neon's 5-min auto-suspend so
-    // the compute stays resident; at 0.25 CU minimum × 8h × 22
-    // weekdays ≈ 44 CU-h/month, well under the 100 CU-h Free-tier
-    // monthly budget (research-receipts: Neon plans page). One subrequest
-    // per fire — under the Workers Free-tier 50/invocation cap. Errors
-    // are logged but never re-thrown: a Neon outage shouldn't trip the
-    // analyser branch's run path or surface as a cron failure.
-    if (controller.cron === NEON_KEEP_WARM_CRON) {
-      const databaseUrl = (envBindings as unknown as Record<string, string | undefined>)[
-        "DATABASE_URL"
-      ];
-      if (!databaseUrl) {
-        console.warn(
-          JSON.stringify({
-            msg: "neon_keepwarm_skipped",
-            reason: "DATABASE_URL unset",
-          }),
-        );
-        return;
-      }
-      // pg-client.ts is WASM-free, so this import cannot hit the
-      // module-scope libpg-query crash (SK-ASK-024) that build-deps.ts
-      // risks on the shim-less cron isolate.
-      const { keepNeonWarm } = await import("./db-create/pg-client.ts");
-      try {
-        // Span carries the elapsed_ms via `nlqdb.db.duration_ms` —
-        // no console.info needed (would otherwise be ~210 lines/day
-        // of pure noise, fails the "non-spammy" bar). Failures still
-        // log so operators on `wrangler tail` see the trip.
-        await keepNeonWarm(databaseUrl);
-      } catch (err) {
-        console.error(
-          JSON.stringify({
-            msg: "neon_keepwarm_failed",
-            message: err instanceof Error ? err.message : String(err),
-          }),
-        );
-      }
-      return;
-    }
-
-    // ICP pain-signal scraper + scorer + evidence-file generator — Monday 06:00 UTC.
-    if (controller.cron === ICP_SCRAPE_CRON) {
-      const scrapeResult = await runIcpScrape({
-        kv: envBindings.KV,
-        logsnagToken: envBindings.LOGSNAG_TOKEN,
-        logsnagProject: envBindings.LOGSNAG_PROJECT,
-        ghToken: envBindings.GH_TOKEN,
-        redditClientId: envBindings.REDDIT_CLIENT_ID,
-        redditClientSecret: envBindings.REDDIT_CLIENT_SECRET,
-      });
-      console.info(
-        JSON.stringify({
-          msg: "icp_scrape_completed",
-          newItems: scrapeResult.newItems,
-          skipped: scrapeResult.skipped,
-          sources: scrapeResult.sources,
-        }),
-      );
-      if (scrapeResult.items.length > 0) {
-        const scoreResult = await runIcpScore(scrapeResult.items, {
-          kv: envBindings.KV,
-          groqApiKey: envBindings.GROQ_API_KEY,
-          geminiApiKey: envBindings.GEMINI_API_KEY,
-        }).catch((err) => {
-          console.error(
-            JSON.stringify({
-              msg: "icp_score_failed",
-              message: err instanceof Error ? err.message : String(err),
-            }),
-          );
-          return null;
-        });
-        if (scoreResult) {
-          console.info(JSON.stringify({ msg: "icp_score_completed", ...scoreResult }));
-        }
-      }
-      if (envBindings.GH_TOKEN) {
-        const clusterResult = await runIcpCluster({
-          kv: envBindings.KV,
-          groqApiKey: envBindings.GROQ_API_KEY,
-          geminiApiKey: envBindings.GEMINI_API_KEY,
-          ghToken: envBindings.GH_TOKEN,
-          logsnagToken: envBindings.LOGSNAG_TOKEN,
-          logsnagProject: envBindings.LOGSNAG_PROJECT,
-        }).catch((err) => {
-          console.error(
-            JSON.stringify({
-              msg: "icp_cluster_failed",
-              message: err instanceof Error ? err.message : String(err),
-            }),
-          );
-          return null;
-        });
-        if (clusterResult) {
-          console.info(JSON.stringify({ msg: "icp_cluster_completed", ...clusterResult }));
-        }
-      }
-      return;
-    }
-
-    // Unknown cron — log+return rather than fall through. Drift
-    // between this file and `wrangler.toml`'s `[triggers].crons`
-    // shouldn't accidentally pipe the wrong schedule into the heavy
-    // workload-analyser branch.
-    if (controller.cron !== WORKLOAD_ANALYSER_CRON) {
-      console.error(
-        JSON.stringify({
-          msg: "scheduled_unknown_cron",
-          cron: controller.cron,
-        }),
-      );
-      return;
-    }
-
-    // SK-ANON-002 / SK-ANON-012 — anon-DB sweep. Runs first so even
-    // if the workload-analyser later trips, abandoned anon DBs still
-    // get evicted on schedule. D1-only — Postgres schema cleanup is
-    // operator territory per `docs/runbook.md §9`. Errors are
-    // logged (and re-raised by the outer catch) so a sweep miss
-    // surfaces in `wrangler tail`.
-    try {
-      const sweep = await sweepAnonDatabases(envBindings.DB);
-      console.info(
-        JSON.stringify({
-          msg: "anon_db_sweep",
-          evicted_by_age: sweep.evictedByAge.length,
-          evicted_by_cap: sweep.evictedByCap.length,
-          total_anon_after: sweep.totalAnonAfter,
-        }),
-      );
-    } catch (sweepErr) {
-      console.error(
-        JSON.stringify({
-          msg: "anon_db_sweep_failed",
-          message: sweepErr instanceof Error ? sweepErr.message : String(sweepErr),
-        }),
-      );
-    }
-
-    // SK-GTM-003 — daily GTM/PMF snapshot (GLOBAL-038). Best-effort:
-    // a snapshot miss must never break the sweep above or the analyser
-    // below, and the on-read writer in `GET /v1/admin/metrics` covers
-    // the gap. Runs BEFORE the Tinybird early-return — the snapshot is
-    // D1-only and must not depend on a Tinybird token being set.
-    try {
-      await writeDailyGtmSnapshot(envBindings.DB);
-      console.info(JSON.stringify({ msg: "gtm_snapshot_written" }));
-    } catch (snapErr) {
-      console.error(
-        JSON.stringify({
-          msg: "gtm_snapshot_failed",
-          message: snapErr instanceof Error ? snapErr.message : String(snapErr),
-        }),
-      );
-    }
-
-    // SK-PREMIUM-017 — daily hosted-premium meter reconciliation. Best-effort
-    // and D1-only on the read side; ack-and-skips when the meter is dark
-    // (PREMIUM_METER_LIVE unset) so it's inert today. Runs before the Tinybird
-    // early-return — it doesn't depend on a Tinybird token.
-    try {
-      const nowSec = Math.floor(Date.now() / 1000);
-      const result = await reconcilePremiumMeter(
-        envBindings,
-        envBindings.DB,
-        nowSec - 25 * 3600,
-        nowSec,
-      );
-      console.info(JSON.stringify({ msg: "premium_meter_reconcile", ...result }));
-    } catch (reconErr) {
-      console.error(
-        JSON.stringify({
-          msg: "premium_meter_reconcile_failed",
-          message: reconErr instanceof Error ? reconErr.message : String(reconErr),
-        }),
-      );
-    }
-
-    if (!envBindings.TINYBIRD_TOKEN) return;
-    const tinybird = createTinybirdAdapter({
-      token: envBindings.TINYBIRD_TOKEN,
-      ...(envBindings.TINYBIRD_API_BASE !== undefined
-        ? { apiBase: envBindings.TINYBIRD_API_BASE }
-        : {}),
-      workspace: "nlqdb",
-      // Allowlist scoped to `query_log` only — the analyser does not
-      // need any user-data Pipes; cross-prefix references in the read
-      // SQL would reject at validator time per `SK-MULTIENG-004`.
-      allowlist: { tables: ["query_log"], pipes: [] },
-    });
-    const pipes = createPipeManagementClient({
-      token: envBindings.TINYBIRD_TOKEN,
-      ...(envBindings.TINYBIRD_API_BASE !== undefined
-        ? { apiBase: envBindings.TINYBIRD_API_BASE }
-        : {}),
-    });
-    await runWorkloadAnalyser({
-      d1: envBindings.DB,
-      tinybird,
-      pipes,
-      now: () => Date.now(),
-      newId: () => crypto.randomUUID(),
-    });
-  } catch (err) {
-    // Cron-level failures (Tinybird wedged, D1 down) are recorded on the
-    // `nlqdb.workload_analyser.run` span. Log so operators on `wrangler
-    // tail` see the trip without OTel attached.
-    console.error(
-      JSON.stringify({
-        msg: "workload_analyser_failed",
-        message: err instanceof Error ? err.message : String(err),
-      }),
-    );
+    await runDueJobs(JOBS, controller.scheduledTime, envBindings);
   } finally {
     if (telemetry) ctx.waitUntil(telemetry.forceFlush());
   }
