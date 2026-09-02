@@ -14,7 +14,12 @@
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import { blogByAnchorPath } from "../../data/blog";
-import { COMPETITORS, type ComparisonClaim, competitorBySlug } from "../../data/competitors";
+import {
+  COMPETITORS,
+  type ComparisonClaim,
+  competitorBySlug,
+  relatedCompetitors,
+} from "../../data/competitors";
 import Base from "../../layouts/Base.astro";
 import { appHref } from "../../lib/app-href";
 import { breadcrumbJsonLd } from "../../lib/breadcrumb";
@@ -37,6 +42,9 @@ const canonical = `/vs/${c.slug}`;
 // Reciprocal of the blog post's forward `anchor` link — the "Further reading"
 // backlink that makes the /blog ↔ /vs internal linking bidirectional.
 const relatedPost = blogByAnchorPath(canonical);
+// Sibling comparisons in the same persona cluster — the contextual inbound
+// links that keep this page from having `/vs/` as its only referrer.
+const siblings = relatedCompetitors(c);
 
 // The agent-memory cluster (P2) ships on-brand wedge cards (WS-08); other
 // comparisons fall back to the site-wide default until they get their own.
@@ -235,6 +243,17 @@ const theirApproach = c.whenChooseThem[0] ?? c.tagline;
             ))
           }
         </dl>
+      </section>
+
+      <section class="vs__related" aria-labelledby="vs-related-title">
+        <h2 class="vs__related-title" id="vs-related-title">More comparisons</h2>
+        <ul class="vs__related-list">
+          {siblings.map((r) => (
+            <li>
+              <a href={`/vs/${r.slug}/`}>nlqdb vs {r.name}</a> — {r.tagline}
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section class="vs__cta">
@@ -685,6 +704,31 @@ const theirApproach = c.whenChooseThem[0] ?? c.tagline;
   }
   .vs__cta-btn {
     padding: 16px 28px;
+  }
+  .vs__related {
+    margin: 0 0 var(--gap-beat);
+    max-width: var(--col);
+  }
+  .vs__related-title {
+    font-family: var(--display);
+    font-size: var(--t-large);
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 12px;
+  }
+  .vs__related-list {
+    margin: 0;
+    padding-left: 20px;
+    font-family: var(--sans);
+    font-size: var(--t-body);
+    color: var(--body);
+    line-height: 1.55;
+  }
+  .vs__related-list li + li {
+    margin-top: 8px;
+  }
+  .vs__related-list a {
+    color: var(--ink);
   }
   .vs__cta-meta {
     margin: 20px 0 0;

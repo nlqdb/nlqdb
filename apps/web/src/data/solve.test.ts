@@ -162,6 +162,20 @@ describe("SOLVE_ENTRIES data integrity", () => {
   // index + sitemap. The documented fix is contextual links from indexed,
   // topically-relevant siblings — so each must receive ≥1 inbound `related`
   // link, or the crawl-priority lever silently regresses.
+  // Entries without a curated `related` list fall back to a persona ring, so
+  // no solve page is left with the `/solve/` index as its only inbound link
+  // (18 were, per the 2026-09 Ahrefs audit).
+  test("every solve page links ≥ 2 siblings and receives ≥ 1 inbound sibling link", () => {
+    const inbound = new Map<string, number>();
+    for (const s of SOLVE_ENTRIES) {
+      const related = relatedSolveEntries(s);
+      expect(related.length).toBeGreaterThanOrEqual(2);
+      expect(related).not.toContain(s);
+      for (const r of related) inbound.set(r.slug, (inbound.get(r.slug) ?? 0) + 1);
+    }
+    for (const s of SOLVE_ENTRIES) expect(inbound.get(s.slug) ?? 0).toBeGreaterThanOrEqual(1);
+  });
+
   test("stage-0 wedge pages receive contextual inbound `related` links", () => {
     const needsInbound = ["build-vs-buy-agent-memory", "expire-old-agent-memory"];
     for (const target of needsInbound) {

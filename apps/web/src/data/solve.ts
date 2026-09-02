@@ -15,6 +15,7 @@
 // outperforms a quote that would have to be invented.
 
 import type { Persona } from "./personas";
+import { ringNeighbours } from "./related";
 
 export type SolveSource = {
   // Enduring URL (a search-result page, a subreddit, a pricing page, a
@@ -2637,10 +2638,21 @@ export function solveBySlug(slug: string): SolveEntry | undefined {
   return SOLVE_ENTRIES.find((s) => s.slug === slug);
 }
 
-// Resolve an entry's `related` slugs to their entries, dropping any that don't
-// resolve (solve.test.ts fails the build if one doesn't, so this is defensive).
+// Resolve an entry's hand-curated `related` slugs to their entries, dropping
+// any that don't resolve (solve.test.ts fails the build if one doesn't, so this
+// is defensive). Entries with no curated list fall back to a ring over their
+// persona cluster, so no solve page is left with the `/solve/` index as its
+// only inbound link.
 export function relatedSolveEntries(entry: SolveEntry): SolveEntry[] {
-  return (entry.related ?? [])
+  if (!entry.related) {
+    // Ring over the entries that also rely on the fallback, so each of them
+    // receives exactly three inbound links (curated entries emit none here).
+    const uncurated = SOLVE_ENTRIES.filter((s) => !s.related);
+    const { persona } = entry;
+    const cluster = uncurated.filter((s) => s.persona === persona);
+    return ringNeighbours(cluster, uncurated, entry, 3);
+  }
+  return entry.related
     .map((slug) => solveBySlug(slug))
     .filter((s): s is SolveEntry => s !== undefined);
 }

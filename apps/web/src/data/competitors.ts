@@ -10,6 +10,7 @@
 // claims only — no parity rows we can't ship today.
 
 import type { Persona } from "./personas";
+import { ringNeighbours } from "./related";
 
 export type ComparisonClaim = "shipped" | "partial" | "no";
 
@@ -420,7 +421,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "outerbase",
     name: "Outerbase",
-    url: "https://www.outerbase.com",
+    url: "https://outerbase.com/",
     // Acquired by Cloudflare 2025-04-07 per https://www.cloudflare.com/press/press-releases/2025/cloudflare-acquires-outerbase-to-expand-developer-experience/ (full landscape entry in docs/competitors.md §3).
     tagline:
       "AI-assisted database interface (EZQL, spreadsheet editor, dashboards) for your existing Postgres / MySQL / SQLite / MongoDB / ClickHouse / Snowflake / BigQuery / Redshift / MSSQL.",
@@ -530,7 +531,7 @@ export const COMPETITORS: Competitor[] = [
     slug: "wrenai",
     name: "Wren AI",
     // Commercial homepage; OSS at github.com/Canner/WrenAI (see docs/competitors.md §2).
-    url: "https://getwren.ai",
+    url: "https://www.getwren.ai/",
     tagline:
       "Open-source context layer for AI agents — Modeling Definition Language (MDL) semantic model plus row- and column-level access controls over your existing warehouse.",
     persona: "P3 analyst",
@@ -641,7 +642,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "askyourdatabase",
     name: "AskYourDatabase",
-    url: "https://askyourdatabase.com",
+    url: "https://www.askyourdatabase.com/",
     tagline:
       "Chat-style AI Data Analyst over an existing database — Desktop App for internal-tool use and an embeddable Website Chatbot for customer-facing BI, across BigQuery, MSSQL, MySQL, PostgreSQL, and Snowflake.",
     persona: "P3 analyst",
@@ -2922,7 +2923,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "mindsdb",
     name: "MindsDB",
-    url: "https://mindsdb.com",
+    url: "https://github.com/mindsdb/mindsdb",
     // P4 backend-engineer slot — the federated-query-engine member of the §4
     // "MCP DB servers" cluster (docs/competitors.md §4), distinct from the
     // recall-shaped memory tools. Persona is P4, not P2: the P2 path hardwires
@@ -3301,7 +3302,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "dataherald",
     name: "Dataherald",
-    url: "https://www.dataherald.com",
+    url: "https://github.com/Dataherald/dataherald",
     // P3-analyst slot, the OSS NL→SQL-engine twin of Vanna (also P3): a data
     // team serving self-serve analytics over a warehouse they already run is
     // the honest buyer, NOT the raw-framework P4 buyer (that is the LangChain
@@ -3536,4 +3537,14 @@ export const COMPETITORS: Competitor[] = [
 
 export function competitorBySlug(slug: string): Competitor | undefined {
   return COMPETITORS.find((c) => c.slug === slug);
+}
+
+// Sibling comparisons for the "More comparisons" block on `/vs/[slug]` —
+// a ring over the same-persona cluster (falling back to every comparison
+// when the cluster is too small to fill it), so each page links three
+// siblings and receives three contextual inbound links in return.
+export function relatedCompetitors(c: Competitor, n = 3): Competitor[] {
+  const { persona } = c;
+  const cluster = COMPETITORS.filter((x) => x.persona === persona);
+  return ringNeighbours(cluster, COMPETITORS, c, n);
 }
