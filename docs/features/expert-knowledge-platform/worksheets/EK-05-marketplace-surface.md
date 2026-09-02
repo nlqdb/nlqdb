@@ -12,8 +12,13 @@ never imports it (option A is barred by the box-4 boundary guard). That record
 surfaced two public-rail gaps; **gap 2 (auth) closed** — the runner's mutating
 legs (`/v1/packs/imports/:id` advance/retry/delete) now accept account-scoped
 `sk_live_`/`sk_mcp_` keys (`SK-PIVOT-010`), so a headless pilot/agent drives the
-hosted journey; **gap 1 (SDK wrapper) open** — the next public-half slice is an
-`sk_live`-drivable `@nlqdb/sdk` wrapper for that journey, then box 1 embeds it.
+hosted journey; **gap 1 (SDK wrapper) closed 2026-09-02** — the
+`sk_live`-drivable `@nlqdb/sdk` wrapper for that journey shipped as
+`client.packImports.{create,get,advance,retry,delete}` (`SK-SDK-014`,
+bearer-drivable by construction, guarded in `packages/sdk/test/verbs.test.ts`),
+so `experts` embeds the hosted runner over the SDK per option B without
+importing a rail; box 1 now embeds it (still gated on the `experts` interview
+product + EK-04's box-2 live import).
 · **Repo:** `experts` (private, all-rights-reserved) ·
 **Risk:** high · **Runs:** multi · **Prereqs:** EK-01, EK-02, EK-04 + repo
 access

@@ -150,6 +150,24 @@ immediate — the `GLOBAL-015` escape hatch is untouched. CLI surface is
 **Detail:** `apps/web/src/data/sdk-method-integrity.test.ts` (self-documenting header).
 Third sibling of the CLI-verb (`SK-WEB-008`) and MCP-tool (`SK-MCP-002`) guards — the SDK method surface was the last un-guarded advertised capability. Fails CI on any `client.<method>(` / `NlqClient.<method>` reference in web+docs naming a member absent from the shipped `NlqClient` type (derived + pinned), so a phantom can't throw on a stranger's first SDK call (`GLOBAL-003`).
 
+### SK-SDK-014 — `packImports` verbs: the shared pack-import runner, bearer-drivable on purpose
+
+**Detail:** `packages/sdk/src/index.ts` exposes the namespaced
+`client.packImports.{create,get,advance,retry,delete}` over
+`/v1/packs/imports/*` (the `SK-PIVOT-021` runner). The **load-bearing,
+non-obvious** point — the reason this is a decision and not just a verb: these
+mutating legs are **bearer-drivable**, the deliberate opposite of the grant
+verbs (`SK-SDK-*` grants are session-only). `advance`/`retry`/`delete` accept an
+account-scoped `sk_live_`/`sk_mcp_` key (`SK-PIVOT-010`, amended 2026-08-09), so
+the private `experts` marketplace surface embeds the hosted runner **headlessly
+over the SDK** (`SK-EKP-003` option B, the EK-05 runner-reuse gap-1) rather than
+importing a rail; `create`/`get` are the public preflight (`GLOBAL-007`). A
+reviewer rejects any change that gates these behind `withCredentials` — that
+would break the headless embed the marketplace is built on. MCP/elements/CLI are
+**out of scope by design, not a gap** (`GLOBAL-003`): the runner is a hosted
+product journey the private surface drives, not an operator terminal command, a
+bearer-safe MCP tool, or a display element.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
