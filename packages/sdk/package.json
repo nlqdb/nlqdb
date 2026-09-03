@@ -1,6 +1,6 @@
 {
   "name": "@nlqdb/sdk",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Typed HTTP client for the nlqdb /v1 API — works in browsers, Node, Bun, Workers.",
   "type": "module",
   "sideEffects": false,
