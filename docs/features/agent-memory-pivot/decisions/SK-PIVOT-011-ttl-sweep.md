@@ -6,8 +6,8 @@
   isolated** so the rest still sweep. It targets `facts` only — `episodes` and
   `entities` have no `expires_at` (append-only / long-lived by E-01 DDL). The pure core
   (`apps/api/src/memory/expire.ts`: `buildExpirySweep` + `orchestrateSweep`)
-  ships ahead of the cron wiring (a `wrangler.toml` `[triggers]` entry +
-  `scheduled()` branch — plain code) and the read-side TTL-invisibility
+  ships ahead of the cron wiring (one row in the `apps/api/src/scheduled/jobs.ts`
+  job table, SK-HDC-023 — plus the owner-role exec adapter E-04 step 3(c) still needs) and the read-side TTL-invisibility
   clause on E-03's `facts` RLS `USING` policy (E-03-gated).
 - **Lazy on-write variant (interim, `apps/api/src/ask/memory-exec-steps.ts`):**
   until the cron lands, every memory INSERT splices the same
@@ -23,9 +23,9 @@
   thing consulted is `facts.expires_at` and the cutoff is a bound param, so the
   LLM never composes the SQL. Per-DB isolation keeps one unreachable tenant DB
   from aborting the whole nightly sweep. Proving the primitive offline (the
-  E-02 pattern) lets the cron wiring — the `scheduled()` handler already
-  dispatches three schedules and reaches Neon (keep-warm, SK-HDC-014) —
-  land separately without blocking the testable spine.
+  E-02 pattern) lets the cron wiring — a job row; the table already reaches
+  Neon from the cron isolate (keep-warm, SK-HDC-014) — land separately
+  without blocking the testable spine.
 - **Consequence in code:** `expire.ts` is import-free of any prod path this run
   (no route, no schedule), so engine/chain/scorer/BIRD+Spider baselines are
   untouched; the cron Worker will call `orchestrateSweep` and emit

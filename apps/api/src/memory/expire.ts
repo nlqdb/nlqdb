@@ -5,9 +5,8 @@
 // (the `facts` `agent_isolation` policy carries the
 // `expires_at IS NULL OR expires_at > now()` arm, SK-PIVOT-009), so expired
 // rows are already invisible to reads before this sweep runs. Still
-// remaining: the cron wiring that drives it (a `wrangler.toml` `[triggers]`
-// entry + a `scheduled()` branch — plain code, deploys with the Worker; no
-// human step).
+// remaining: the cron wiring that drives it (one row in
+// `scheduled/jobs.ts`, SK-HDC-023, plus the owner-role exec adapter below).
 //
 // **The sweep must run as the schema OWNER, not through
 // `buildHostedExecSteps`' `SET LOCAL ROLE`.** That TTL arm sits in a

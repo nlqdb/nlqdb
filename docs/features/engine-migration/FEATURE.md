@@ -20,18 +20,17 @@ when-to-load:
 
 - `apps/api/src/workload-analyser/**` (cron, analyser, policy, wiring)
 - `packages/db/src/clickhouse-tinybird/pipe-management.ts` (Tinybird Pipes management API owner per `GLOBAL-021`)
-- `apps/api/wrangler.toml` `[triggers] crons` block
-- `apps/api/src/index.ts` `scheduled()` handler
+- `apps/api/src/scheduled/jobs.ts` — the `workload_analyser` row (SK-HDC-023 owns the trigger)
 - `apps/api/migrations/0008_workload_analyser_audit.sql`
 
 ## Decisions
 
 ### SK-MIGRATE-001 — Daily 04:00 UTC cron; all tiers in scope (no per-tier gating in v1)
 
-- **Decision:** The workload analyser runs once per day at 04:00 UTC via a Cloudflare Workers Cron trigger on `apps/api`. Every ClickHouse-backed and Postgres-backed user DB is in scope regardless of tier (Free, Hobby, Pro).
+- **Decision:** The workload analyser runs once per day at 04:00 UTC as a scheduled job on `apps/api`. Every ClickHouse-backed and Postgres-backed user DB is in scope regardless of tier (Free, Hobby, Pro).
 - **Core value:** Simple, Bullet-proof, Honest latency
-- **Why:** One schedule means one set of dashboards, one set of OTel spans, one operator runbook. 04:00 UTC sits in the cross-region quiet window between US and EU traffic peaks. Tier-gating the analyser would force two code paths (with/without analyser) and two performance stories — premature optimisation given Tinybird Free's write budget already absorbs the reshape volume Phase 1 will produce.
-- **Consequence in code:** `apps/api/wrangler.toml` declares exactly one `[triggers] crons = ["0 4 * * *"]`. The `scheduled()` handler in `apps/api/src/index.ts` dispatches to `runWorkloadAnalyser(env)` and `ctx.waitUntil`s the result. Tier checks (`databases.tier`, `users.tier`) do not appear in `apps/api/src/workload-analyser/**`. Reviewers reject any tier gate added inside the analyser hot path — adding one is a new SK-MIGRATE supersession block.
+- **Why:** One schedule means one set of dashboards, spans, and runbook. 04:00 UTC sits in the cross-region quiet window between US and EU traffic peaks. Tier-gating the analyser would force two code paths and two performance stories — premature given Tinybird Free's write budget already absorbs Phase 1's reshape volume.
+- **Consequence in code:** The `workload_analyser` row in `apps/api/src/scheduled/jobs.ts` (`when: at(4)`) calls `runWorkloadAnalyser`; it ack-and-skips without `TINYBIRD_TOKEN`. Tier checks (`databases.tier`, `users.tier`) do not appear in `apps/api/src/workload-analyser/**`. Reviewers reject any tier gate added inside the analyser hot path — adding one is a new SK-MIGRATE supersession block.
 - **Alternatives rejected:**
   - Hourly cadence — burns Tinybird Free's 1k reads/day budget chasing high-frequency churn that the sustained-window in `SK-MIGRATE-002` already filters out.
   - Free-tier opt-out — Free is where the architecture-is-hidden thesis pays off; gating analysis there leaves the headline feature half-implemented.

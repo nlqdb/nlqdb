@@ -16,7 +16,7 @@ when-to-load:
 
 **One-liner:** A Monday 06:00 UTC cron scrapes HN Algolia, Reddit (16 subreddits), GitHub Issues, GitHub Discussions, Stack Overflow, Indie Hackers, Dev.to, Bluesky, and Mastodon; deduplicates via KV; scores 0–10 per persona via Groq → Gemini; clusters into 5–7 themes per persona; writes `docs/research/icp-evidence-<yyyy-mm>.md` to GitHub.
 **Status:** implemented (SK-ICP-001 collection; SK-ICP-002 scoring; SK-ICP-003 clustering + evidence file; SK-ICP-004 GitHub Issues; SK-ICP-005 Stack Overflow; SK-ICP-006 Indie Hackers; SK-ICP-007 source-health probe; SK-ICP-008 Dev.to source; SK-ICP-009 GitHub Discussions source; SK-ICP-010 prefilter dropped — LLM relevance floor is the only scoring gate; SK-ICP-011 Reddit app-only OAuth; SK-ICP-012 Bluesky source; SK-ICP-013 Mastodon source; SK-ICP-014 starved runs write a starvation-marked evidence file + `starved` signal; SK-ICP-015 KV writes batched to a fixed count per run).
-**Owners (code):** `apps/api/src/icp-scrape.ts`, `apps/api/src/icp-score.ts`, `apps/api/src/icp-cluster.ts`, `apps/api/test/icp-scrape.test.ts`, `apps/api/test/icp-score.test.ts`, `apps/api/test/icp-cluster.test.ts`, `apps/api/wrangler.toml` (cron `0 6 * * MON`).
+**Owners (code):** `apps/api/src/icp-scrape.ts`, `apps/api/src/icp-score.ts`, `apps/api/src/icp-cluster.ts`, `apps/api/test/icp-scrape.test.ts`, `apps/api/test/icp-score.test.ts`, `apps/api/test/icp-cluster.test.ts`, the `icp_pipeline` row in `apps/api/src/scheduled/jobs.ts` (Monday 06:00 UTC).
 **Cross-refs:** [`docs/research/automated-icp-validation-plan.md §2`](../../research/automated-icp-validation-plan.md) · [`docs/research/personas.md`](../../research/personas.md) · [`GLOBAL-028`](../../decisions/GLOBAL-028-acquisition-progress-tracker.md) · [`GLOBAL-030`](../../decisions/GLOBAL-030-evidence-grade-acquisition-tracker-edits.md).
 
 ## Touchpoints — read this feature doc before editing
@@ -25,7 +25,7 @@ when-to-load:
 - `apps/api/src/icp-score.ts` — `runIcpScore(items, deps)`; Groq → Gemini scoring
 - `apps/api/src/icp-cluster.ts` — `runIcpCluster(deps)`; KV list → LLM cluster → GitHub write. Empty scored set → SK-ICP-014 starvation file (reads `icp:last_scrape_stats`) instead of a silent early-return
 - `apps/api/src/icp-scrape.ts` — persists `icp:last_scrape_stats` (`IcpScrapeStats`, 90d TTL) each run for the SK-ICP-014 starvation section; owns the SK-ICP-015 `icp:seen` index + `icp:items:<YYYYMMDD>` array
-- `apps/api/wrangler.toml` `[triggers].crons` — must stay in sync with `ICP_SCRAPE_CRON` in `index.ts`
+- `apps/api/src/scheduled/jobs.ts` — the `icp_pipeline` row (`weeklyAt(1, 6)`; SK-HDC-023 owns the trigger)
 - `apps/api/src/env.d.ts` — `LOGSNAG_TOKEN`, `LOGSNAG_PROJECT`, `GH_TOKEN`, `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` bindings
 
 ## Decisions

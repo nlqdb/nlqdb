@@ -32,10 +32,9 @@ explicit-forget story closed).
 
 ## Read first
 
-- `apps/api/src/index.ts` `scheduled()` + `apps/api/wrangler.toml`
-  `[triggers]` — the cron dispatch this slice extends (three schedules
-  already run there; the keep-warm branch already opens Neon from the
-  cron isolate, SK-HDC-014)
+- `apps/api/src/scheduled/jobs.ts` — the job table this slice adds a row to
+  (SK-HDC-023; the keep-warm row already opens Neon from the cron isolate,
+  SK-HDC-014)
 - `docs/features/observability/FEATURE.md` — span/metric for the sweep
 - `docs/performance.md` — free-tier budget; the sweep must stay inside it
 
@@ -73,9 +72,8 @@ explicit-forget story closed).
 3. **Sweep core ✅ (run 39)** — `buildExpirySweep` + `orchestrateSweep` (pure,
    per-DB failure isolation, count aggregation). **Remaining (plain code — no
    human step; crons ship with the normal CI `wrangler deploy`):**
-   (a) a fourth `[triggers]` cron in `apps/api/wrangler.toml` (daily 03:00
-   UTC) + the matching constant and dispatch branch in `scheduled()`
-   (`apps/api/src/index.ts` — pattern and unknown-cron guard already exist);
+   (a) one row in `apps/api/src/scheduled/jobs.ts` (`when: at(3)`, daily
+   03:00 UTC) — no new trigger (SK-HDC-023);
    (b) enumerate memory DBs from D1 (`SELECT … FROM databases WHERE id LIKE
    'db_agent_memory_v1_%'` — the same prefix `isAgentMemoryV1Db` checks);
    (c) an exec adapter: generalise `buildMemoryExec` (`ask/build-deps.ts`) to
@@ -88,9 +86,9 @@ explicit-forget story closed).
    so under the non-owner tenant role the expired rows are filtered out of
    the DELETE and the sweep silently deletes nothing. The owner bypasses RLS,
    which is also what lets one cron sweep every tenant.
-   Mind SK-ASK-024: the keep-warm branch lazy-imports
-   its pg client to dodge the module-scope libpg-query crash on the cron
-   isolate — import the exec adapter inside the branch the same way;
+   Mind SK-ASK-024: the keep-warm row lazy-imports its pg client to dodge
+   the module-scope libpg-query crash on the cron isolate — import the exec
+   adapter inside the row's `run` the same way;
    (d) emit the `nlqdb.memory.expire` span + `nlqdb.memory.expired_rows_total`
    counter from the returned `SweepSummary.expiredRows`.
 4. CLI parity (SK-CLI): `nlq remember --ttl 7d` shorthand for `ttlSeconds`
