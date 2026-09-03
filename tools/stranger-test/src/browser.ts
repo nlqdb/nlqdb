@@ -65,7 +65,14 @@ function resolveExecutablePath(): string | undefined {
 export async function launchBrowser(): Promise<Browser> {
   const env = { ...process.env };
   for (const key of PROXY_ENV_KEYS) delete env[key];
-  return chromium.launch({ headless: true, env, executablePath: resolveExecutablePath() });
+  const executablePath = resolveExecutablePath();
+  // One line to stderr (stdout carries the result JSON), once per run — a walk
+  // that ran on a non-pinned Chromium must not be a silent mystery when its
+  // outcome is later diffed (SK-STRG-003: exit-0 is only safe if the log says
+  // what happened).
+  if (executablePath)
+    console.error(`launchBrowser: using non-pinned Chromium at ${executablePath}`);
+  return chromium.launch({ headless: true, env, executablePath });
 }
 
 export async function openSession(deps: SessionDeps): Promise<Session> {

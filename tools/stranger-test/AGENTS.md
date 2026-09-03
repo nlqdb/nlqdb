@@ -70,7 +70,8 @@ install chromium`, which fetches the revision the pinned `@playwright/test`
 wants (CI does this). When a host provisions a *different* prebuilt Chromium at
 the `/opt/pw-browsers/chromium` symlink (agent sandboxes ship one whose revision
 lags the pin, so the pinned dir is absent), `launchBrowser()` falls back to it
-automatically — the walker launches without an install. Set
+automatically — the walker launches without an install and prints one
+`launchBrowser: using non-pinned Chromium at …` line to stderr. Set
 `NLQDB_STRANGER_CHROMIUM=/path/to/chrome` to force a specific binary.
 
 > **Container caveat.** Launching is now revision-drift-tolerant, but a walk
