@@ -65,7 +65,21 @@ bun run --filter @nlqdb/stranger-test test
 bun run --filter @nlqdb/stranger-test typecheck
 ```
 
-First run on a machine without the Playwright Chromium cached: `bunx playwright install chromium`. The walker uses the same Chromium revision Playwright 1.49.x pins. On Cloudflare-hosted environments where `PLAYWRIGHT_BROWSERS_PATH` is already provisioned with a 1.49.x chromium (e.g. `/opt/pw-browsers/chromium-1148`), the install is a no-op.
+First run on a machine without the Playwright Chromium cached: `bunx playwright
+install chromium`, which fetches the revision the pinned `@playwright/test`
+wants (CI does this). When a host provisions a *different* prebuilt Chromium at
+the `/opt/pw-browsers/chromium` symlink (agent sandboxes ship one whose revision
+lags the pin, so the pinned dir is absent), `launchBrowser()` falls back to it
+automatically — the walker launches without an install. Set
+`NLQDB_STRANGER_CHROMIUM=/path/to/chrome` to force a specific binary.
+
+> **Container caveat.** Launching is now revision-drift-tolerant, but a walk
+> from an agent sandbox still depends on the sandbox's egress. `browser.ts`
+> strips the proxy env so the browser reaches prod directly (a measured
+> `SK-STRG-001` decision); where that direct path blackholes UDP/443, cross-host
+> (`app.nlqdb.com`) navigation intermittently fails with
+> `ERR_QUIC_PROTOCOL_ERROR`. The canonical instrument for the full walk is CI
+> (`acquisition-health.yml`), which has a clean egress.
 
 The script exits non-zero only if a walked run *failed*; a `blocked` run is
 the instrument being refused at the bot floor, not a product break, and exits
