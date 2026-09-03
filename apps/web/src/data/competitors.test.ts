@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { COMPETITORS, competitorBySlug } from "./competitors.ts";
+import { COMPETITORS, competitorBySlug, relatedCompetitors } from "./competitors.ts";
 
 const ogDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "og");
 
@@ -128,5 +128,22 @@ describe("COMPETITORS data integrity", () => {
     for (const c of COMPETITORS.filter((c) => c.persona === "P2 agent builder")) {
       expect(existsSync(join(ogDir, `vs-${c.slug}.png`))).toBe(true);
     }
+  });
+});
+
+// Every comparison page must receive contextual inbound links beyond the
+// `/vs/` index — the 2026-09 Ahrefs audit found 26 of them with exactly one.
+// The ring in `relatedCompetitors` guarantees it by construction; pin it.
+describe("relatedCompetitors", () => {
+  test("every comparison links 3 siblings and receives ≥ 1 inbound sibling link", () => {
+    const inbound = new Map<string, number>();
+    for (const c of COMPETITORS) {
+      const siblings = relatedCompetitors(c);
+      expect(siblings.length).toBe(3);
+      expect(siblings).not.toContain(c);
+      expect(new Set(siblings).size).toBe(3);
+      for (const s of siblings) inbound.set(s.slug, (inbound.get(s.slug) ?? 0) + 1);
+    }
+    for (const c of COMPETITORS) expect(inbound.get(c.slug) ?? 0).toBeGreaterThanOrEqual(1);
   });
 });

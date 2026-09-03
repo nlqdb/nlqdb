@@ -13,20 +13,79 @@ const OUT_DIR = join(DOCS_ROOT, "src/content/docs/tutorials");
 
 const GITHUB_BASE = "https://github.com/nlqdb/nlqdb/tree/main";
 const GITHUB_BLOB = "https://github.com/nlqdb/nlqdb/blob/main";
+const GITHUB_EDIT = "https://github.com/nlqdb/nlqdb/edit/main";
 
-// Slug-to-sidebar-label override; falls back to the README's H1 when absent.
-const TITLE_OVERRIDES: Record<string, string> = {
-  html: "Plain HTML",
-  cli: "CLI",
-  curl: "curl",
-  react: "React",
-  nextjs: "Next.js",
-  vue: "Vue",
-  nuxt: "Nuxt",
-  svelte: "Svelte",
-  sveltekit: "SvelteKit",
-  astro: "Astro",
-  solid: "SolidJS",
+// Per-tutorial SERP meta. `label` is the sidebar entry; `title` is the
+// `<title>`/H1 (Starlight appends " | nlqdb docs", so keep it ≤ 47 chars);
+// `description` is the 110–155-char snippet. The README's own first paragraph
+// is written for GitHub readers and runs 75–230 chars, so it is not reused here.
+const META: Record<string, { label: string; title: string; description: string }> = {
+  html: {
+    label: "Plain HTML",
+    title: "Plain HTML: a data app in one file",
+    description:
+      "Drop <nlq-data> into a single HTML file and get a working data app — no build step, no framework, no package manager. Get a key, paste the tag, open it.",
+  },
+  react: {
+    label: "React",
+    title: "React: query a database in English",
+    description:
+      "A Vite + React 19 single-page app on the typed @nlqdb/react wrapper — no SSR, no router. Get a key, install one package, render the component, ship.",
+  },
+  nextjs: {
+    label: "Next.js",
+    title: "Next.js: <nlq-data> in a server component",
+    description:
+      "Drop <nlq-data> into a Next.js server component — no 'use client' directive; the element hydrates itself once the loader script arrives. Get a key first.",
+  },
+  vue: {
+    label: "Vue",
+    title: "Vue: a static data app with @nlqdb/vue",
+    description:
+      "A Vite + Vue 3.5 single-page app on the typed @nlqdb/vue wrapper — the static-deploy alternative to the Nuxt example. Get a key, install, ask in English.",
+  },
+  nuxt: {
+    label: "Nuxt",
+    title: "Nuxt: <nlq-data> with zero config",
+    description:
+      "Use <nlq-data> in a Nuxt app with no isCustomElement configuration — Vue renders the unknown tag as a native custom element. Get a key, drop the tag in.",
+  },
+  svelte: {
+    label: "Svelte",
+    title: "Svelte: real rows in under a minute",
+    description:
+      "A Vite + Svelte 5 single-page app on the typed @nlqdb/svelte wrapper — the first-timer's entry point. Get a key, type what you want, see real rows.",
+  },
+  sveltekit: {
+    label: "SvelteKit",
+    title: "SvelteKit: <nlq-data> as a one-liner",
+    description:
+      "Use <nlq-data> in a SvelteKit route — Svelte passes unknown tags to the DOM unchanged, so there is no plugin config or runtime detection. Get a key first.",
+  },
+  astro: {
+    label: "Astro",
+    title: "Astro: static pages with a live answer",
+    description:
+      "Embed <nlq-data> in an Astro page — static-first markup with the dynamic part inside one element instead of a client framework. Get a key, add the tag.",
+  },
+  solid: {
+    label: "SolidJS",
+    title: "SolidJS: a live dashboard with @nlqdb/solid",
+    description:
+      "A Vite + SolidJS single-page app on the typed @nlqdb/solid wrapper, picked for dashboards where fine-grained reactivity keeps refresh cycles cheap.",
+  },
+  cli: {
+    label: "CLI",
+    title: "CLI: a data tool in three commands",
+    description:
+      "No frontend at all: three terminal commands create a database from a goal, ask it questions, and run raw SQL — anonymous mode by default, no sign-in needed.",
+  },
+  curl: {
+    label: "curl",
+    title: "curl: the HTTP API in three calls",
+    description:
+      "No SDK, no CLI, no client library — three curl calls against the nlqdb HTTP API cover a read, a write with diff preview, and anonymous mode.",
+  },
 };
 
 // Emitted as the `sidebar.order` frontmatter field so Starlight doesn't sort alphabetically (html first, react second, …).
@@ -75,41 +134,24 @@ function main(): void {
 
 function renderTutorial(slug: string, source: string): string {
   const lines = source.split("\n");
-  let h1 = TITLE_OVERRIDES[slug] ?? slug;
-  let h1Index = -1;
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (line === undefined) continue;
-    if (line.startsWith("# ")) {
-      h1 = TITLE_OVERRIDES[slug] ?? line.slice(2).trim();
-      h1Index = i;
-      break;
-    }
-  }
-
-  let description = "";
-  if (h1Index >= 0) {
-    for (let i = h1Index + 1; i < lines.length; i++) {
-      const line = lines[i];
-      if (line === undefined) continue;
-      const t = line.trim();
-      if (!t) continue;
-      if (t.startsWith("#")) break;
-      description = collapse(stripMarkdown(t));
-      break;
-    }
-  }
+  const h1Index = lines.findIndex((line) => line.startsWith("# "));
+  const readmeTitle = h1Index >= 0 ? (lines[h1Index] as string).slice(2).trim() : slug;
+  const meta = META[slug] ?? { label: readmeTitle, title: readmeTitle, description: "" };
 
   const bodyLines = h1Index >= 0 ? lines.slice(h1Index + 1) : lines;
   const rewritten = rewriteRelativeLinks(bodyLines.join("\n"), slug).replace(/^\n+/, "");
 
   const order = SIDEBAR_ORDER[slug];
-  const frontmatter: string[] = ["---", `title: ${yamlQuoted(h1)}`];
-  if (description) frontmatter.push(`description: ${yamlQuoted(description)}`);
-  if (order !== undefined) {
-    frontmatter.push("sidebar:");
-    frontmatter.push(`  order: ${order}`);
-  }
+  const frontmatter: string[] = [
+    "---",
+    `title: ${yamlQuoted(meta.title)}`,
+    // "Edit page" must target the source README — the generated .mdx is
+    // gitignored, so Starlight's default edit link 404s on GitHub.
+    `editUrl: ${GITHUB_EDIT}/examples/${slug}/README.md`,
+  ];
+  if (meta.description) frontmatter.push(`description: ${yamlQuoted(meta.description)}`);
+  frontmatter.push("sidebar:", `  label: ${yamlQuoted(meta.label)}`);
+  if (order !== undefined) frontmatter.push(`  order: ${order}`);
   frontmatter.push("---", "");
 
   const footer = [
@@ -145,17 +187,6 @@ function resolveRelativeFromExample(slug: string, href: string): string {
   const isFile = last !== undefined && /\.[a-z0-9]+$/i.test(last);
   const prefix = isFile ? GITHUB_BLOB : GITHUB_BASE;
   return `${prefix}/${segments.join("/")}`;
-}
-
-function stripMarkdown(s: string): string {
-  return s
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/[*_]+/g, "");
-}
-
-function collapse(s: string): string {
-  return s.replace(/\s+/g, " ").trim();
 }
 
 // YAML double-quoted string escapes both `\` and `"`; covers anything we lift out of a README.

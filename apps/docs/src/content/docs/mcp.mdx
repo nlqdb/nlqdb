@@ -1,6 +1,8 @@
 ---
-title: MCP setup
-description: Connect Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, or Cline to nlqdb.
+title: MCP setup for Claude, Cursor, and other hosts
+description: Connect Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, or Cline to nlqdb over MCP — remote endpoint, headless stdio route, and the agent tools.
+sidebar:
+  label: MCP setup
 ---
 
 nlqdb is the **memory MCP server**: a real database your agent can
@@ -49,7 +51,7 @@ per-host block to copy):
 ```
 
 Headless (no browser) — create an `sk_mcp_…` MCP key at
-[app.nlqdb.com/app/keys](https://app.nlqdb.com/app/keys) (scoped to MCP, bound to
+[app.nlqdb.com/app/keys](https://app.nlqdb.com/app/keys/) (scoped to MCP, bound to
 one host + device, revocable on its own), then:
 
 ```json

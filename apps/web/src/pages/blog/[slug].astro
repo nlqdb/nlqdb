@@ -59,6 +59,12 @@ const breadcrumbLd = breadcrumbJsonLd(
   Astro.site,
 );
 
+// Neighbouring posts (BLOG_POSTS is newest-first) — a prev/next rail so every
+// post has inbound links beyond the `/blog/` index.
+const postIndex = BLOG_POSTS.indexOf(post);
+const newerPost = BLOG_POSTS[postIndex - 1];
+const olderPost = BLOG_POSTS[postIndex + 1];
+
 const displayDate = new Date(`${post.date}T00:00:00Z`).toLocaleDateString("en-US", {
   year: "numeric",
   month: "long",
@@ -120,6 +126,21 @@ const displayDate = new Date(`${post.date}T00:00:00Z`).toLocaleDateString("en-US
           }
         </div>
       </article>
+
+      <nav class="blg__adjacent" aria-label="More posts">
+        {olderPost && (
+          <a href={`/blog/${olderPost.slug}/`} rel="prev">
+            <span class="blg__adjacent-label">&larr; Older</span>
+            {olderPost.title}
+          </a>
+        )}
+        {newerPost && (
+          <a href={`/blog/${newerPost.slug}/`} rel="next" class="blg__adjacent--next">
+            <span class="blg__adjacent-label">Newer &rarr;</span>
+            {newerPost.title}
+          </a>
+        )}
+      </nav>
 
       <section class="blg__cta">
         <h2 class="blg__cta-title">Try nlqdb in 30 seconds</h2>
@@ -307,6 +328,31 @@ const displayDate = new Date(`${post.date}T00:00:00Z`).toLocaleDateString("en-US
   }
   .blg__cta-meta {
     margin: 20px 0 0;
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    color: var(--muted);
+  }
+  .blg__adjacent {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    max-width: var(--col);
+    margin: 0 0 var(--gap-beat);
+    font-family: var(--sans);
+    font-size: var(--t-body);
+  }
+  .blg__adjacent a {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 48%;
+    color: var(--ink);
+  }
+  .blg__adjacent--next {
+    margin-left: auto;
+    text-align: right;
+  }
+  .blg__adjacent-label {
     font-family: var(--mono);
     font-size: var(--t-small);
     color: var(--muted);
