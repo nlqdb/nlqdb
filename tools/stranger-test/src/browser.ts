@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+
 import { type Browser, type BrowserContext, chromium, type Page } from "@playwright/test";
 
 import { isTurnstileApiRequest } from "./outcome.ts";
@@ -38,10 +40,39 @@ const PROXY_ENV_KEYS = [
   "all_proxy",
 ] as const;
 
+// CI provisions the Chromium revision Playwright pins (`playwright install`),
+// and the default resolution finds it. The agent sandbox ships a *different*
+// prebuilt revision at a stable symlink instead (PLAYWRIGHT_BROWSERS_PATH's
+// pinned dir is absent), so the default launch would try to download and fail.
+// Fall back to that prebuilt browser only when the pinned one is missing, so
+// the walker is container-runnable without changing CI. An explicit
+// NLQDB_STRANGER_CHROMIUM override wins over both.
+function resolveExecutablePath(): string | undefined {
+  const override = process.env["NLQDB_STRANGER_CHROMIUM"];
+  if (override) return override;
+  // executablePath() computes the pinned path (and can throw if nothing is
+  // registered); either "pinned present" or a throw with no prebuilt means
+  // let Playwright resolve as usual.
+  try {
+    if (existsSync(chromium.executablePath())) return undefined; // CI: use the pin
+  } catch {
+    /* fall through to the prebuilt probe */
+  }
+  const prebuilt = "/opt/pw-browsers/chromium";
+  return existsSync(prebuilt) ? prebuilt : undefined;
+}
+
 export async function launchBrowser(): Promise<Browser> {
   const env = { ...process.env };
   for (const key of PROXY_ENV_KEYS) delete env[key];
-  return chromium.launch({ headless: true, env });
+  const executablePath = resolveExecutablePath();
+  // One line to stderr (stdout carries the result JSON), once per run — a walk
+  // that ran on a non-pinned Chromium must not be a silent mystery when its
+  // outcome is later diffed (SK-STRG-003: exit-0 is only safe if the log says
+  // what happened).
+  if (executablePath)
+    console.error(`launchBrowser: using non-pinned Chromium at ${executablePath}`);
+  return chromium.launch({ headless: true, env, executablePath });
 }
 
 export async function openSession(deps: SessionDeps): Promise<Session> {

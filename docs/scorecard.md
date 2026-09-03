@@ -31,19 +31,14 @@ production pack-schema layer — a real feature, agent-movable, GLOBAL-037-compl
 widening). The gate sat **frozen at 2/5 all week** while the proxy climbed 43 → 79 %; this re-point
 makes the daily loop move the number the proxy exists to serve.
 
-**Worst number today (run 193, 2026-09-02) — LANE-2 UX-FLOW LEVER: E2E manual-suite freshness (row #15) 0.14 → 0.64 — re-validated the stranger-facing SDK + examples surfaces against 11 days of main drift.**
+**Worst number today (run 194, 2026-09-03) — LANE-2 UX-FLOW INSTRUMENT: row #21 Playwright walker made container-runnable — the pin-mismatch launch block is fixed; residual block re-diagnosed as sandbox UDP egress, not the pin.**
 The `/weekly` (08-29) focus is **dogfood gate `SK-PIVOT-016` 2/5 → ≥ 3/5, by landing the schema-structure lever so criterion 4 (temporal) flips.**
-Step 0 clear: **open PRs = 0** (runs 191/192 + #1080/#1081 all merged). **Weekly-focus lever not cleanly pullable this run:** criterion 4's two
-remaining golden misses — q19 (ops, over-joins `episodes` for a self-contained `blocked` fact) + q4 (synthetic) — are **query-shape, not vocabulary**,
-and runs 188/192 established both sit **within the offline eval's ±5 pp noise floor**, so a single-query fix can't be validated under rule 3; the eval
-lane has also been worked 6 of the last ~8 daily runs (185-192) ⇒ rules 7/8 anti-rut. **CTR lane (row #7) also exhausted:** the fresh 09-02 GSC pull's
-top page-1 zero-click pages (`count-rows-per-day…` pos 7.2 / 53 impr; `countif-sumif` pos 21.6) **already carry hand-written SERP meta** from runs
-183/190 — the snippet is no longer the bottleneck (position/authority is). So per step-2 order, the pullable lever is **lane-2 (real UX-flow quality)**.
-**Lever (this run):** row #15 had decayed — sdk + examples last succeeded **08-22** (11 d ⇒ freshness 0); the hermetic suites now PR-trigger on their
-own path changes, but nothing touched those surfaces since, so 11 days of unrelated main merges went un-revalidated. Re-dispatched **e2e-sdk** (run
-33578892318) + **e2e-examples** (run 33578894339) on `main@1fbd3e4`: **both green**. **Number moved:** row #15 E2E freshness **0.14 → 0.64**
-(mean of pass×freshness over 4 suites: sdk 1.0 + examples 1.0 + mcp 0.57 @ 08-30 + opencheck 0 dark). The stranger's copy-from-here SDK/examples
-surfaces are proven working against current main.
+Step 0: **open PRs = 1** (#1087 changeset-release, `changeset-release/main` — no file overlap; avoided). **Weekly-focus lever still not cleanly pullable:** criterion 4's two golden
+misses (q19 ops, q4 synthetic) remain query-shape within the offline eval's ±5 pp noise floor (runs 188/192/193) and the eval lane is anti-rut (rules 7/8, 6 of runs 185–192). **CTR lane
+(row #7) exhausted:** the fresh 09-03 GSC pull's page-1 zero-click pages (`count-rows-per-day…` pos 7.1 / 54 impr; `countif-sumif` pos 5.7 for "postgres countif") already carry hand-written
+SERP meta (runs 183/190) — position/authority is the gate now, not the snippet. So per step-2 order the pullable lane is **lane-2 (real UX-flow quality)**.
+**Lever (this run):** fixed the row-#21 Playwright walker's launch — `browser.ts` now falls back to the prebuilt Chromium when the pinned revision is absent (details + verification in "Last change"
+below). Null-shaped on funnel metrics; the fix is the finding's remediation, and the full walk stays CI-canonical (sandbox UDP-egress limit).
 **P2 UX-flow green** (FLOW-005 6/6, carried run 184). BIRD/Spider dark; memory-quality proxy MET at 79.49 % (off-lever).
 **Top `blocked-by-human` bullet:** Show HN launch sequence (⏱ ~30 min, **idle 81 days since 06-13**),
 condition-gated on the `SK-PIVOT-016` gate (**2/5**; criterion 4 at 5/7 golden). #2 Anthropic
@@ -52,22 +47,22 @@ connector directory (money-gated, 07-21). Queue **depth 2+**, head age 81 d.
 lever within ±5 pp noise); engine **#8 BIRD 0.5382** (38 d) / **#9 Spider 0.2222** (**45 d** stale, async multi-window resume); rows **#2/#4/#5/#16**
 stranger-dependent (N = 0 until launch); row **#15** opencheck lane (free-lane saturation, remedy costs money ⇒ rule 4).
 
-**Rule 6 — GREEN.** Branch based on `main@1fbd3e4` (latest; runs 191/192 merged). Health
-re-measured live: **`typecheck` 0** (workspace, post-`bun install`), **`bun run check` exit 0** (biome; 53 pre-existing warnings, 0 errors).
-`deploy-web` + `deploy-api` latest `main` runs both **success**. Diff is docs only (measurement refresh: scorecard + the dev.to
-queue-line drain). The row-#15 delta is the two re-dispatched GitHub workflow runs (both green); no code changed. **Open PRs: 0** at step 0.
+**Rule 6 — GREEN.** Branch based on `main@57ba62b` (latest; #1085/#1086/#1088 merged since run 193). Health
+re-measured live: **`typecheck` 0** (workspace, post-`bun install`), **`bun run check` exit 0** (biome; 53 pre-existing warnings, 0 errors), **`bun run test` exit 0**.
+`deploy-web` + `deploy-api` latest `main` runs both **success**. Diff: the `browser.ts` launch fallback + `stranger-test/AGENTS.md` doc fix (row-#21 lever), scorecard, and the dev.to
+queue-line drain. Stranger-test typecheck + 51 unit tests green. **Open PRs: 1** (#1087 changeset-release, no overlap) at step 0.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
 | | **Funnel, bot-filtered** (RUM + GSC **live-pulled 09-02** this run; Users/DBs carried from 07-27 remote-D1) | | exclude synthetic stranger-test walker traffic |
-| 1 | Visits, 7d (CF RUM) | **live 09-02** (08-26→09-02): raw 391 pl / 261 vis; real-browser floor **70 pl / 64 vis** (genuine ≈40 after the `rateme12.com` spam cut of 30 — GLOBAL-039 residual http noise); real nlqdb landings led by `nlqdb.com/` (4), `app.nlqdb.com/auth/sign-in/` (4), `/vs/vanna/` + `docs.nlqdb.com/` (2 each), spread of `/solve` + `/blog` singles. Referral: google 3 (→ `/vs/vanna/` ×2) | cut rule: `bot=1` / `userAgentBrowser ∈ {Unknown, ChromeHeadless}` / CF-bot ⇒ real-browser is a floor. 7d SAMPLED — sub-interval buckets are noise |
+| 1 | Visits, 7d (CF RUM) | **live 09-03** (08-27→09-03, unsampled): raw 399 pl / 247 vis; real-browser floor **56 pl / 54 vis** (genuine ≈30 after the `rateme12.com` spam cut of ~24 — GLOBAL-039 residual http noise); real nlqdb landings led by `docs.nlqdb.com/` (3), `/vs/vanna/` + `/solve/find-rows-with-no-match…` (2 each), spread of `/solve` + `/blog` singles. Referral: google 7 (→ `/vs/vanna/` ×2, `/solve/`, `/vs/`, `/agents/`, `/manifesto/`) | cut rule: `bot=1` / `userAgentBrowser ∈ {Unknown, ChromeHeadless}` / CF-bot ⇒ real-browser is a floor. Unsampled (sampleInterval 1) — counts exact |
 | 2 | Registered users, real strangers | 0 | 9 total = 4 founder/company + 5 test/dev — live remote-D1 07-27; no channel newly live to produce a signal. **Dark** (rule 8) — moves only on launch |
 | 3 | DBs total | **254** (07-27 live remote-D1) + **1 dogfood** (`db_agent_memory_v1_3a8a72`, internal) | stranger subset ~0 (row #2) |
 | 4 | First-10-queries success rate (GLOBAL-025 onboarding KPI) | **stranger-only N = 0 → not measurable** (`SK-ONBOARD-007`). The **dogfood workload** (run 176): **100 % (10/10)** through the public MCP surface (= gate criterion 2) | target ≥ 95 %. Instruments live: TTFV + chips + drop-off funnel |
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12; founder-owned) | share with ≥ 2 asks |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **112** content pages (`/solve` **41** + `/vs` 31 + `/blog` 40; unchanged this run — CTR lever, not a new page). Unpublished blog drafts **0** (queue drained) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **40** + **dev.to variant drained this run** (`emit-metrics-where-the-distinction-is-certain` → [dev.to](https://dev.to/omer_hochman/your-metric-is-only-as-honest-as-the-layer-you-emit-it-from-54ma); **11 variants remain**). **GSC live 09-02** (28d 08-03→08-31): **9 clicks / 858 impr / pos 26.6** (flat vs 9/824/24.2 @ 08-30). **CTR lane exhausted this run:** the top page-1 zero-click pages already carry hand-written SERP meta — `count-rows-per-day…` (pos 7.2 / 53 impr, metaed run 183) + `countif-sumif` (pos 21.6, metaed run 190) — so the snippet is no longer the lever; both still 0-click ⇒ position/authority-gated. GSC "Strengthen next" leaders (`running-total…` pos 41.8 / 69 impr, `find-rows-with-no-match…` pos 19.4) are page-2/3+. Referral (live 09-02): google 3 | `gsc-pull.ts` + `rum-pull.ts`. Page-1 zero-click CTR pool metaed-out; page-2+ authority/launch-gated |
+| 7 | Surface yield | posts **40** + **dev.to variant drained this run** (`decided-questions-rot-in-your-decision-log` → [dev.to](https://dev.to/omer_hochman/an-open-question-thats-already-decided-is-worse-than-one-thats-still-open-3619); **10 variants remain**). **GSC live 09-03** (28d 08-04→08-31): **9 clicks / 866 impr / pos 26.7** (flat vs 9/858/26.6 @ 09-02). **CTR lane exhausted:** the page-1 zero-click pages already carry hand-written SERP meta — `count-rows-per-day…` (pos 7.1 / 54 impr, metaed run 183) + `countif-sumif` (pos 5.7 for "postgres countif", metaed run 190) — snippet is no longer the lever; both still 0-click ⇒ position/authority-gated. GSC "Strengthen next" leaders (`/solve/` index pos 35.1 / 91 impr, `running-total…` pos 42.6 / 64 impr) are page-2/3+. Referral (live 09-03): google 7 | `gsc-pull.ts` + `rum-pull.ts`. Page-1 zero-click CTR pool metaed-out; page-2+ authority/launch-gated |
 | | **Engine** — BIRD 07-26 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **33 d old, staleness trigger fired**, but **dark (rule 8)**: resume is async multi-window and `main` moved since the 07-27 checkpoint. #1041 (planner re-head) now merged ⇒ a fresh BIRD/Spider re-measure is a valid next-run engine lever | target 0.65 / **Phase 2 floor 0.60** — gap 6.2 pp. Offline levers exhausted |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on `04fa3d0`, **40 d old**). 07-27 re-dispatch exited **partial** (`SK-QUAL-013` budget-stop) | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is source of truth |
@@ -86,10 +81,10 @@ queue-line drain). The row-#15 delta is the two re-dispatched GitHub workflow ru
 | | **Product-readiness** — client-blocking gaps | | |
 | 19 | Live-surface claim integrity | **0 ✓** (resolved 07-29): `#826` published `@nlqdb/sdk@0.2.2` + `@nlqdb/mcp@0.1.1`; a clean-dir install resolves `dist/` entrypoints | target 0 ✓ |
 | 20 | Hosted-premium readiness (§6 build-before-signal) | **LIVE 08-14** — `premium.live=true` in prod (`premiumConfigured(env)`). schema ✅ · BYOLLM lanes ✅ · picker web ✅ + parity ✅ · CTA ✅ · **premium chain ✅ live** (#987 meter, #992 bring-back, #996 live-lane billing, #1001 free-chain fallback) · spend-cap UI ⬜ (Lago-parked) | paid plan **shipped**; §6 signal effectively tripped. Meter fires; $0 while no paying customer |
-| 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **FLOW-005 re-walked live run 184: 6/6 PASS** (curl-based MCP discovery + auth-wall, agent-runnable) — RFC 9728/8414 discovery green, unauth `initialize`/`tools/list` both 401 with matching `resource_metadata` challenge. Playwright walks still **not container-runnable** (Chromium pin mismatch, CI-only via `acquisition-health.yml`); those carried **0 failed / 9 blocked** from 07-26. #999 (08-16) fixed the `/app/new/` 428 dead-end | target **0 `failed`** ✅; anon walks stop at the 428 `challenge_required` (Turnstile, `SK-ANON-012`) |
+| 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **FLOW-005 re-walked live run 184: 6/6 PASS** (curl-based MCP discovery + auth-wall, agent-runnable). **Playwright walker launch fixed run 194** — `browser.ts` now falls back to the prebuilt Chromium when the pinned revision is absent, so it launches in-container (was: download-attempt fail on the `chromium-1234` pin). Full walk still **CI-canonical** (`acquisition-health.yml`): the sandbox's proxy-stripped direct egress blackholes UDP/443 ⇒ cross-host nav intermittently `ERR_QUIC_PROTOCOL_ERROR` (~2/3 runs fail step 1), so no reliable container pass-count; carried **0 failed / 9 blocked** from 07-26. #999 (08-16) fixed the `/app/new/` 428 dead-end | target **0 `failed`** ✅; anon walks stop at the 428 `challenge_required` (Turnstile, `SK-ANON-012`) |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub. MCP official registry published 07-22; Glama crawl-listed; Smithery/PulseMCP 0. First-touch attribution live since 07-19; `source_json` non-null **0**, for want of strangers, not instrument | **weekly focus (superseded): → ≥ 5 live.** Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
-| | **Human queue** — the one non-automatable actor | **depth 2+**; head is the Show HN launch, oldest bullet **81 days** (`SK-PIVOT-016` gate **2/5**; criterion 4 at 5/7 golden); #2 Anthropic connector directory (money-gated, 07-21); registry-submit payloads (PulseMCP/mcp.directory) parked last by `/reach` run 1081 | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: **0** at step 0 |
+| | **Human queue** — the one non-automatable actor | **depth 2+**; head is the Show HN launch, oldest bullet **81 days** (`SK-PIVOT-016` gate **2/5**; criterion 4 at 5/7 golden); #2 Anthropic connector directory (money-gated, 07-21); registry-submit payloads (PulseMCP/mcp.directory) parked last by `/reach` run 1081 | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: **1** (#1087 changeset-release) at step 0 |
 | | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
 | | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated |
 | | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
@@ -101,33 +96,30 @@ queue-line drain). The row-#15 delta is the two re-dispatched GitHub workflow ru
 **41 canonical `/solve` pages** + **40 `/blog` posts** + **31 `/vs` pages** live under `nlqdb.com/`
 (`SK-SOLVE-001` / `SK-BLOG-001` / `SK-CMP-001`). The registries are `apps/web/src/data/{solve,blog,competitors}.ts`.
 
-- **This run (193):** drained one dev.to variant — `emit-metrics-where-the-distinction-is-certain` →
+- **This run (194):** drained one dev.to variant — `decided-questions-rot-in-your-decision-log` →
+  [dev.to](https://dev.to/omer_hochman/an-open-question-thats-already-decided-is-worse-than-one-thats-still-open-3619)
+  (**10 variants remain**). No new `/blog` page (blog-draft queue empty). Lane-2 UX-flow instrument lever (row #21 walker launch fix).
+- **Run 193:** drained `emit-metrics-where-the-distinction-is-certain` →
   [dev.to](https://dev.to/omer_hochman/your-metric-is-only-as-honest-as-the-layer-you-emit-it-from-54ma)
-  (**11 variants remain**). No new `/blog` page (blog-draft queue empty). Lane-2 UX-flow (E2E freshness) lever run.
+  (11 remained). Lane-2 UX-flow (E2E freshness) lever run.
 - **Run 192:** drained one dev.to variant — `rotate-encryption-key-without-a-version-column` →
   [dev.to](https://dev.to/omer_hochman/you-need-to-rotate-an-encryption-key-you-dont-need-a-key-version-column-1h50)
   (12 variants remained). Weekly-focus measurement-reconciliation run.
 - **Run 191:** drained one dev.to variant — `text-to-sql-planner-told-wrong-dialect` →
   [dev.to](https://dev.to/omer_hochman/you-added-a-second-sql-engine-your-text-to-sql-model-is-still-being-told-its-the-first-one-2d92)
   (13 variants remained). Weekly-focus engine/schema lever run.
-- **Run 190:** drained one dev.to variant — `postgres-validator-rejects-valid-clickhouse-sql` →
-  [dev.to](https://dev.to/omer_hochman/you-added-clickhouse-your-postgres-sql-validator-now-rejects-valid-queries-quietly-2okd)
-  (14 variants remained). CTR-lever run.
 
 ## Last change
 
-**2026-09-02 (run 193)** — **LANE-2 UX-FLOW LEVER: E2E manual-suite freshness (row #15) 0.14 → 0.64.** The weekly-focus criterion-4
-lever was **not cleanly pullable** — its two remaining golden misses (q19 ops, q4 synthetic) are query-shape within the offline eval's
-±5 pp noise floor (runs 188/192), unvalidatable under rule 3, and the eval lane has been worked 6 of the last ~8 daily runs (rules 7/8);
-the row-#7 CTR lane is also exhausted (the top page-1 zero-click pages already carry hand-written SERP meta). Per step-2 order the pullable
-lever was lane-2 (real UX-flow quality): the sdk + examples E2E suites had **decayed to freshness 0** (last success 08-22, 11 days), leaving
-the stranger-facing SDK + examples surfaces un-revalidated across 11 days of unrelated `main` merges. **Change:** re-dispatched **e2e-sdk**
-([run 33578892318](https://github.com/nlqdb/nlqdb/actions/runs/33578892318)) + **e2e-examples**
-([run 33578894339](https://github.com/nlqdb/nlqdb/actions/runs/33578894339)) on `main@1fbd3e4` — **both green**. **Number moved:** row #15
-E2E freshness **0.14 → 0.64** (mean pass×freshness over 4 suites: sdk 1.0 + examples 1.0 + mcp 0.57 @ 08-30 + opencheck 0 dark). Also
-refreshed step-1 measurement live: RUM 09-02 (70 pl real-browser floor), GSC 09-02 (9c / 858i / pos 26.6). Drained one dev.to variant (11 remain).
-**KPI (GLOBAL-025 — UX + onboarding pillars):** the stranger's copy-from-here integration surfaces are re-proven working end-to-end against
-current `main`; measurement integrity on the E2E-coverage signal restored. No KPI degrades (docs-only diff; no runtime code changed).
+**2026-09-03 (run 194)** — **LANE-2 UX-FLOW INSTRUMENT: row #21 Playwright walker made container-runnable — pin-mismatch launch block fixed; residual block re-diagnosed as sandbox UDP egress.**
+No stranger-facing funnel/engine/distribution *metric* was cleanly pullable (weekly-focus criterion 4 query-shape within ±5 pp noise + anti-rut; CTR row #7 exhausted; engine dark; strangers N=0), so
+per step-2 order the lane was lane-2 (UX-flow instrument). **Root cause:** `@playwright/test` 1.60 pins `chromium-1234`, absent in the sandbox (prebuilt `chromium-1194` at the `/opt/pw-browsers/chromium`
+symlink), so `launchBrowser()` attempted a download and failed — that is what "not container-runnable (Chromium pin mismatch)" was. **Change:** `browser.ts` falls back to the prebuilt Chromium when the pin
+is absent (no-op in CI, which `playwright install`s the pin; overridable via `NLQDB_STRANGER_CHROMIUM`) + stale `AGENTS.md` note (claimed 1.49.x/`chromium-1148`) corrected (D5). **Verified both ways:**
+before = launch fails on the absent pin; after = `launchBrowser()` launches and walks flow-002 steps 1–7 live. **Honest limit:** full walk stays CI-canonical — the proxy-stripped direct egress (`SK-STRG-001`,
+untouched) blackholes UDP/443 so cross-host `app.nlqdb.com` nav intermittently `ERR_QUIC_PROTOCOL_ERROR`s (~2/3 of runs fail step 1); no reliable container pass-count, so row #21's Playwright cell stays
+0-failed/9-blocked (CI-instrumented). What moved: the **launch capability (broken→fixed)** + the **corrected root-cause** (pin→egress). **KPI (GLOBAL-025 — UX pillar):** instrument reach widened, blocker
+record made honest. No KPI degrades — `typecheck`/`check`/`test` + 51 stranger-test unit tests green; fallback inert in CI. **Null-shaped on funnel metrics.**
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
