@@ -230,43 +230,42 @@ due 2026-08-22).
 ### R-09 — Host plugin/skill venues (one venue per run)
 
 **Goal:** Be installable, not just readable, wherever a coding-agent host has an
-extension venue. R-05 covers MCP-server registries; this covers the newer
-**plugin and skill** venues, where the unit is "one command wires the server
-*and* the instructions" rather than a server URL.
-**Cadence:** R-05's — one venue per run, same listing copy plus the two `/plugin`
-lines; re-verify every listed venue at the R-08 monthly check.
+extension venue. R-05 covers MCP-server registries; this covers **plugin/skill**
+venues, where the unit is "one command wires the server *and* the instructions."
+**Cadence:** R-05's — one venue per run; re-verify every listed venue at the R-08
+monthly check.
 **Mechanism (P2 2026-07-29, cite on every edit):** the ecosystem splits three
 ways, only the first is agent-work — **publish** (a git marketplace is a JSON file
 in our repo), **crawl** (aggregators index it; nothing to submit), **submit**
-(signed-in forms → founder queue). Per-venue payloads live in
-[`acquisition-channels.md`](../../../../research/acquisition-channels.md) row #22 +
-[`blocked-by-human.md`](../../../../blocked-by-human.md) — status only here.
+(signed-in forms / cross-repo PRs → founder queue). Per-venue payloads live in
+[`acquisition-channels.md`](../../../../research/acquisition-channels.md) #22/#27 — status only here.
 **Done when:** per venue: listed (URL) or payload parked — tick per venue.
 - ✅ #1 **nlqdb's own marketplace** — shipped: repo-root `.claude-plugin/marketplace.json`
-  + a manifest that makes [`agent-artifacts/`](../../../../../apps/web/public/agent-artifacts/)
-  itself the plugin, so its skills **cannot** be forked copies. `/plugin marketplace add
-  nlqdb/nlqdb` → `/plugin install nlqdb-memory@nlqdb`, on all three agent-fetched surfaces
-  (README index, R-04 guide, `llms.txt`) and pinned by
-  [`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts)
+  makes [`agent-artifacts/`](../../../../../apps/web/public/agent-artifacts/) itself the plugin
+  (skills **cannot** be forked copies). `/plugin marketplace add nlqdb/nlqdb` → `/plugin install
+  nlqdb-memory@nlqdb`, on all three agent-fetched surfaces (README index, R-04 guide, `llms.txt`),
+  pinned by [`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts)
   (schema, endpoint == `mcp-install.ts`, FSL-1.1-ALv2, `utm_source=claude-plugin`).
-- ✅ #2 **claudemarketplaces.com** (~300 k monthly visitors) — crawl-fed, daily, keyed
-  on the very file #1 adds; **no submission mechanism exists**, so nothing is owed but
-  a dated re-check.
-- ✅ #3 **SkillsMP** — crawls every public repo for `SKILL.md`; both skills have been
-  public since 2026-07-22, so this venue was already served before the slice existed.
+- ✅ #2 **claudemarketplaces.com** (~300 k monthly visitors) — crawl-fed daily, keyed
+  on the file #1 adds; **no submission exists**, only a dated re-check owed.
+- ✅ #3 **SkillsMP** — crawls every public repo for `SKILL.md`; both skills public since
+  2026-07-22, so served before the slice existed.
 - ✅ #4 **Anthropic `claude-community`** (in-product `/plugin` Discover tab) —
-  **submitted by the founder 2026-08-05** ("received, review team will evaluate";
-  platforms = Claude Code only, Cowork untested). Distinct from the connector directory (R-05 #7 / ledger #9);
-  `claude-plugins-official` is curated with **no application process** — nothing to submit.
-- ❌ #5 **skillsclaude.org** — **dropped 2026-08-05 (founder + security read), never
-  re-queue:** the founder's VPN security filter flagged the site during the submit attempt,
-  a reputation search found zero independent footprint, and the venue was already assessed
-  lowest-yield (repo-linked, no separate attribution). Listing a trust-first product in a
-  flagged, unvetted skill directory is net-negative. (History: P2 2026-07-30 no-account
-  form, not a crawler; first paste attempt errored on the site's side.)
-- ⬜ **Install-yield gate:** not done on listings — closes when `/app/admin` shows one
-  real `claude-plugin` visit (the same bar R-07 carries; why `plugin.json`'s `homepage`
-  keeps its own key, not `agent-artifacts`).
+  **submitted by the founder 2026-08-05** (pending review; Claude Code only). Distinct from
+  the connector directory (R-05 #7 / ledger #9); `claude-plugins-official` is curated with
+  **no application process** — nothing to submit.
+- ❌ #5 **skillsclaude.org** — **dropped 2026-08-05, never re-queue:** founder VPN
+  security filter flagged it, zero independent reputation footprint, already lowest-yield
+  (repo-linked). Listing a trust-first product in a flagged, unvetted directory is net-negative.
+- ✅ #6 **cc-marketplace / `claudecodecommands.directory`** — payload parked 2026-09-03
+  (P2 sweep). 688★ Claude Code plugin+command directory
+  ([`ananddtyagi/cc-marketplace`](https://github.com/ananddtyagi/cc-marketplace)); passes the
+  trust bar #5 failed. Cross-repo PR / form submit is out of scope → `nlqdb-memory` payload in
+  [ledger](../../../../research/acquisition-channels.md) #27 +
+  [notes](../../../../research/acquisition-channels-mechanisms.md#row-27); repo-linked →
+  `github`-ref like #24.
+- ⬜ **Install-yield gate:** closes when `/app/admin` shows one real `claude-plugin`
+  visit (same bar R-07 carries; why `plugin.json`'s `homepage` keeps its own key).
 
 ### R-10 — Authority / referring domains
 
@@ -322,5 +321,5 @@ Tick on merge; full state per slice is in § Slices above, only what is still
 - [x] R-06 — coding-agent walker + baseline
 - [ ] R-07 — droppable in-repo artifacts — **owed:** external distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`)
 - [x] R-08 — answer-engine citation baseline
-- [ ] R-09 — host plugin/skill venues — **owed:** one real `claude-plugin` visit in `/app/admin` (5/5 venues resolved)
+- [ ] R-09 — host plugin/skill venues — **owed:** one real `claude-plugin` visit in `/app/admin` (6/6 venues resolved — cc-marketplace #6 payload parked 2026-09-03)
 - [x] R-10 — authority / referring domains — sweep ✅ (08-05), asset ✅ (08-06, `/agent-memory-benchmarks`), crawl lever ✅ (08-07: `/agents` links 4 wedge `/solve` pages), first nonzero DR ✅ (08-31: nlqdb.com + docs.nlqdb.com 0.0 → 0.1)

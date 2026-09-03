@@ -156,3 +156,52 @@ description per SK-PIVOT-003, install command pattern
 by `mcp-install.ts`), and the website/link field to
 `https://nlqdb.com/agents/?utm_source=explainx`; on submit → in-flight, note the
 listing URL, then watch `/app/admin` for `explainx` yield → live.
+
+## Row #27
+
+**cc-marketplace** ([`ananddtyagi/cc-marketplace`](https://github.com/ananddtyagi/cc-marketplace) → [`claudecodecommands.directory`](https://claudecodecommands.directory)) · key `github` ref (repo-linked; `ccdir` reserved for a homepage field if one surfaces)
+
+**untried — cross-repo PR / account-walled, founder-gated** (P2 2026-09-03). A
+688★, actively maintained (68 commits, ~28 open PRs) community directory of
+Claude Code plugins + commands, built by @ananddtyagi and fronted by
+`claudecodecommands.directory` (one-click `/plugin marketplace add
+ananddtyagi/cc-marketplace`, then install). **Trust check (skillsclaude.org
+lesson):** passes — real independent footprint (688 GitHub stars, named
+maintainer with a public presence, cited across multiple 2026 MCP/plugin
+directory round-ups), unlike the zero-footprint, security-flagged
+skillsclaude.org that was dropped 2026-08-05. **Mechanism (P2):** submission is a
+**cross-repo GitHub PR** to `ananddtyagi/cc-marketplace` per
+[`PLUGIN_SCHEMA.md`](https://github.com/ananddtyagi/cc-marketplace/blob/main/PLUGIN_SCHEMA.md)
+— add a plugin entry, validation runs automatically via GitHub Actions and a
+failed validation blocks merge — plus a web form at
+`claudecodecommands.directory/submit`. This session is scoped to `nlqdb/nlqdb`
+only, so the cross-repo PR is **out of scope** (like the awesome-mcp-servers #10
+and Cline #24 PRs, both founder-submitted). Not a registry crawler: it takes
+explicit submissions and does not auto-ingest arbitrary public repos (contrast
+SkillsMP, which crawls every repo for `SKILL.md`), so nlqdb will not appear on
+its own. The directory renders **internal command pages** and links the repo,
+not a homepage we control, so realistic yield is `github`-ref (repo-linked, no
+utm key), same class as #24 Cline; reserve `?utm_source=ccdir` only if the
+plugin.json `homepage` field surfaces as an outbound link in the listing.
+Sources: <https://github.com/ananddtyagi/cc-marketplace>,
+<https://github.com/ananddtyagi/cc-marketplace/blob/main/PLUGIN_SCHEMA.md>,
+<https://claudecodecommands.directory>.
+
+**Parked payload** — the `nlqdb-memory` plugin, strings owned by
+`.claude-plugin/plugin.json` + `mcp-install.ts` (never hand-typed):
+- **name:** `nlqdb-memory` · **version:** `0.1.0` (match the shipped
+  `.claude-plugin/plugin.json`) · **license:** `FSL-1.1-ALv2` (GLOBAL-019)
+- **description (lead with memory, SK-PIVOT-003):** `Persistent, queryable
+  memory for your agent: a real Postgres it asks in plain English over MCP, so it
+  can GROUP BY / JOIN / aggregate over what it remembered instead of recalling
+  the nearest few rows. Bundles the hosted MCP server plus two skills.`
+- **repository:** `https://github.com/nlqdb/nlqdb` · **author:** `nlqdb`
+- **homepage (only if the submission accepts one):**
+  `https://docs.nlqdb.com/agent-memory/?utm_source=ccdir`
+- **install line (if a command field is asked for):**
+  `/plugin marketplace add nlqdb/nlqdb` → `/plugin install nlqdb-memory@nlqdb`
+
+**Next step (founder or a repo-unscoped agent):** open the cross-repo PR to
+`ananddtyagi/cc-marketplace` (or the `claudecodecommands.directory/submit` form)
+with the parked payload above; on submit → in-flight, note the listing URL, then
+watch `/app/admin` for `github`-ref yield.
