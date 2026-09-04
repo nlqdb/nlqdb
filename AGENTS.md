@@ -5,11 +5,12 @@ edit. Per-area `AGENTS.md` files narrow this guide to their directory.
 
 ## 1. What nlqdb is
 
-> *A database you talk to, with a backend that doesn't exist.*
+> *nlqdb — your autonomous DBA.*
 
-You write HTML. Each component asks for what it wants in plain English.
-nlqdb answers. The full pitch and architecture are in
-[`docs/architecture.md`](docs/architecture.md).
+Build a real app from day one with **no data modeling** — the DBA infers the
+schema from inserts and reads, evolves it, optimizes it, and shows it in a
+dashboard with 1-click apply/undo. NL→SQL is the interface, not the product.
+Bet: [`GLOBAL-041`](docs/decisions/GLOBAL-041-autonomous-dba.md).
 
 **Active focus → [`docs/scorecard.md`](docs/scorecard.md)** — current priorities
 (worst number + weekly focus), regenerated daily by [`/daily`](.claude/commands/daily.md); read first.
@@ -18,8 +19,9 @@ nlqdb answers. The full pitch and architecture are in
 
 Four pillars per
 [`GLOBAL-025`](docs/decisions/GLOBAL-025-north-star.md): **engine
-quality** (NL→SQL + multi-engine), **onboarding**, **UX**,
-**performance**. Every PR advances ≥ 1 AND degrades 0 — name the
+quality** (schema inference + evolution + optimizer per
+[`GLOBAL-041`](docs/decisions/GLOBAL-041-autonomous-dba.md); NL→SQL is the
+interface), **onboarding**, **UX**, **performance**. Every PR advances ≥ 1 AND degrades 0 — name the
 KPI in the PR body. The bet: **great on free LLMs ⇒ invincible on
 frontier LLMs** — scaffolding compounds with the model; LLM strategy per
 [`GLOBAL-026`](docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
@@ -113,16 +115,9 @@ identity or permission handoffs → visible progress → persistent proof of val
 
 ## 3. Tech stack (high-level)
 
-- **Runtime:** Cloudflare Workers (free tier — see `GLOBAL-013`)
-- **DB (Phase 0):** Neon Postgres (free tier)
-- **Auth:** Better Auth (`packages/auth-internal`)
-- **LLM:** Multi-provider router (`packages/llm`)
-- **Observability:** OpenTelemetry (`packages/otel`)
-- **Frontend:** React + Web Components (`apps/web`, `packages/elements`)
-- **Languages:** TypeScript everywhere; Workers-compatible bundles only
-- **Monorepo:** Bun workspaces
-
-For the full stack rationale see [`docs/architecture.md`](docs/architecture.md) §1–§2.
+Cloudflare Workers (`GLOBAL-013`) + Neon Postgres + D1; Better Auth; LLM
+router; OTel; Astro/React; TypeScript, Bun workspaces. Rationale:
+[`docs/architecture.md`](docs/architecture.md) §2, §6.
 
 ## 4. Project map
 
@@ -219,6 +214,7 @@ Per-area `AGENTS.md` files repeat just their slice of this table.
 | [`docs/feature-conventions.md`](docs/feature-conventions.md) | How `docs/features/` is structured. Read before adding/editing a feature. |
 | [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, tech-stack rationale, risks. Phase plan extracted to `phase-plan.md`. |
 | [`docs/phase-plan.md`](docs/phase-plan.md) | **Canonical phase plan** — per-phase items, exit gates, the §6 monetization + scaling trigger. |
+| [`docs/pivot-autonomous-dba.md`](docs/pivot-autonomous-dba.md) | **Autonomous-DBA execution plan** (`GLOBAL-041`): build order, archive/delete batches awaiting approval, compass rewrites. |
 | [`docs/runbook.md`](docs/runbook.md) | Operations: env, secrets, deploy, recovery; design-partner ref (§10). |
 | [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview script, inbound triage SLA. |
 | [`docs/performance.md`](docs/performance.md) | Span/metric/label catalog + perf goals. |
@@ -251,10 +247,8 @@ bun run --filter apps/api build && wrangler deploy --dry-run --outdir=/tmp/out
 
 Per-package commands are in each area's `AGENTS.md`.
 
-Inside an agent worktree (`.claude/worktrees/<id>`), `bun run lint` and
-`bun run format` match `biome.json`'s `!**/.claude` on the ancestor path and
-check **zero** files — `Checked 0 files`, exit 1. Pass explicit paths, or run
-biome from a copy outside `.claude/`, for real signal. CI is unaffected.
+Inside `.claude/worktrees/<id>`, biome's `!**/.claude` ignore makes `bun run
+lint` / `format` check 0 files (exit 1) — pass explicit paths. CI is unaffected.
 
 ## 8. Quality gates before opening a PR
 

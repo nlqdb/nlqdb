@@ -52,9 +52,9 @@ No persona's goal is "create a database." The DB is a side effect of what they'r
 
 ## 1. Vision
 
-A developer writes plain HTML. They drop in a `<nlq-data>` element with a one-line English prompt: *"the 5 most-loved coffee shops in Berlin, with photos."* The element hits the nlqdb API, which (a) figures out which DB to query, (b) plans the query, (c) executes it, (d) returns rows + a rendered HTML fragment + a typed JSON payload. The developer wrote zero backend code. There is no schema, no ORM, no migrations, no SQL, no `DATABASE_URL`. nlqdb is **both the database and the backend**, addressed in natural language.
+**nlqdb — your autonomous DBA.** A developer builds a real app from day one **without doing data modeling**. The first insert creates the shape; later inserts and reads evolve it. The DBA evolves the logical schema in both directions (add / drop / rename / retype) as usage changes — every change versioned and previewed — and optimizes continuously: it inspects the database (statistics, plans, hot query fingerprints), builds indexes, restructures physical layout, and places data on the right engine. Everything it does is visible in a transparent dashboard (where data lives, which engines, bottom-line usage and cost, recommendations) with one-click apply and undo. It **acts**; it does not merely recommend. NL→SQL is the interface the app addresses its data through — not the product. Canonical: [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md); execution plan in [`pivot-autonomous-dba.md`](./pivot-autonomous-dba.md).
 
-The four surfaces (Web, API, CLI, MCP) are four projections of the same engine. The marketing site is the fifth surface — built the same way users will build their own apps.
+The developer still writes zero backend code — no ORM, no migration files, no `DATABASE_URL`. The four surfaces (Web, API, CLI, MCP) and the `<nlq-data>` element are projections of the same engine.
 
 ---
 
@@ -109,8 +109,6 @@ Canonical: **`nlqdb.com`** (`.ai` is held defensively and 301s to `.com`).
 | `app.nlqdb.com` | HTTP API + auth. Versioned `/v1/…`. |
 | `elements.nlqdb.com` | `<nlq-data>` JS CDN (§3.5). R2 + Cloudflare. |
 | `docs.nlqdb.com` | Documentation. |
-
-`.com` is canonical. `.ai` held to block squatters. `@nlqdb` secured on GitHub, npm, X, LinkedIn, Discord, Bluesky. Total fixed cost: ~$85/yr (the only unavoidable recurring cost).
 
 ---
 
@@ -320,8 +318,6 @@ Canonical: `GLOBAL-013` (strict-$0 free tier) + [`GLOBAL-026`](./decisions/GLOBA
 
 **Honest billing rules:** no card for free tier, ever. Hitting a limit rate-limits — never silently upgrades. Soft cap email at 80%; hard cap default at 100%. Your data is always readable out with plain SQL, free — no export endpoint or backups exist yet (`blindspot-analysis.md` tracks both), so no tier advertises them. Cancellation is one click, no call, no exit survey.
 
-**Unit economics:** free user at 100 queries/mo costs ~$0.15–$0.40. Hobby margin target: 60–80% at target plan-cache hit rate. Pro margin target: 75%+ once self-hosted classifier is online.
-
 ---
 
 ## 6. $0/month launch stack
@@ -469,7 +465,7 @@ Sharded out to keep this doc under 20 KB per `CLAUDE.md` §2 D4 — content unch
 | LLM hallucinates column names → confident wrong answers | High | Static schema validation after plan gen; confidence gate; structured output. |
 | Free-tier abuse | Medium | Per-IP + per-account rate limits day 1; PoW on signup if needed; anomaly detection Phase 2. |
 | Vendor lock (Neon, Anthropic) | Medium | Adapter layer for each; quarterly "can we swap this in a week" drill. |
-| Someone ships a better text-to-SQL inside Postgres in 18 months | Real | The moat is **engine quality** per [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md), which has two layers under one pillar: (a) NL→SQL accuracy scaffolding — planner, validator, plan-cache, schema retrieval, hedged race, trust UX — measured by `quality-eval`'s free-vs-frontier delta; compounds with every model release. (b) Multi-engine adapter + workload analyzer + auto-migration with dual-read verification — the router-based architecture a single-engine product cannot graft on. Postgres-with-text-to-SQL is still one engine on one workload shape. |
+| Someone ships a better text-to-SQL inside Postgres in 18 months | Real | The moat is **engine quality** per [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md) / [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md): NL→SQL scaffolding compounds with every model release, and a schema-inferring, self-optimizing, multi-engine DBA is not something a single-engine text-to-SQL feature can graft on. |
 | Competitors with deeper pockets (Supabase, Vercel, MongoDB) | High | We out-focus them. They sell platforms; we sell one experience. |
 
 ---
