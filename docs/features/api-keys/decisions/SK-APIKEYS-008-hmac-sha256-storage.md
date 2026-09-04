@@ -10,4 +10,4 @@
   - Plaintext storage — D1 at rest is Cloudflare-encrypted but operator-readable.
   - SHA-256 without HMAC — no keyed component means a DB dump alone is enough; HMAC binds to the server secret.
 
-Supersedes the Argon2id hash in [`SK-APIKEYS-002`](SK-APIKEYS-002-argon2id-no-plaintext.md). The "no plaintext retrieval" + `last_4`-only display posture of that decision is unchanged.
+Replaces the Argon2id hash in [`SK-APIKEYS-002`](SK-APIKEYS-002-argon2id-no-plaintext.md). The "no plaintext retrieval" + `last_4`-only display posture of that decision is unchanged.

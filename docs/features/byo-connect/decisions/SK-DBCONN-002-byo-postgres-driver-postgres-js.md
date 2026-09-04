@@ -9,7 +9,7 @@
   from the BYO path. TLS is `ssl: "require"` (the Workers runtime performs the
   handshake + cert verification); `prepare: false` for Supavisor transaction-pooler
   compatibility; the socket connects lazily and is closed in a `finally` at both
-  sites. This supersedes the implicit Neon-HTTP-for-BYO implementation that shipped
+  sites. This replaces the implicit Neon-HTTP-for-BYO implementation that shipped
   inside `SK-DBCONN-001`.
 - **Core value:** Bullet-proof, Open source, Effortless UX
 - **Why:** `neon(url)` only speaks Neon's SQL-over-HTTP protocol — it POSTs to a

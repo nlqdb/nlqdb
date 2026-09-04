@@ -60,7 +60,7 @@ forgets between sessions; a real DB needs schema it can't design.
 **Default alternative:** a hand-rolled blob store or raw pgvector. **"Works":**
 install the MCP server; the agent creates and queries its own DB in NL, cheap
 under test load. **Use case:** Jordan's research agent forgot its `notes.json`;
-now it calls `nlqdb_remember`/`nlqdb_recall` over `agent_memory_v1` — ~40 lines
+now it calls `nlqdb_remember`/`nlqdb_read` over a schema the DBA inferred — ~40 lines
 of glue, not a bespoke vector + metadata service. **Phase 1 success:** MCP in
 3+ agent products; #1 logged use case is "agent giving itself memory."
 

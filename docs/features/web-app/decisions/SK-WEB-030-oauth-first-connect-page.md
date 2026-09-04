@@ -1,6 +1,6 @@
 # SK-WEB-030 — OAuth-first `/app/connect`: engine-scoped, one CTA at a time
 
-- **Status:** Supersedes **SK-WEB-019** *in part*. The connect surface is
+- **Status:** Replaces **SK-WEB-019** *in part*. The connect surface is
   **engine-scoped with exactly one CTA visible at a time**, gated by the engine
   select and a Supabase-OAuth checkbox. This replaces the earlier
   "provider-Connect-button-row above an always-visible paste form" layout (two
@@ -48,5 +48,5 @@
     primary path + fallback is the `GLOBAL-017` shape.
   - **Keep paste primary, OAuth as a small link.** Under-delivers the "one click,
     approve on your side" promise that is the whole point.
-- **Source:** canonical here · supersedes-in-part `SK-WEB-019` · backend
+- **Source:** canonical here · replaces-in-part `SK-WEB-019` · backend
   `SK-DBCONN-003`.

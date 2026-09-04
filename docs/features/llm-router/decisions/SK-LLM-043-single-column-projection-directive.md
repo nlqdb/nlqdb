@@ -43,7 +43,7 @@ one more bullet in the same block.
   explicitly asks for a single combined string"** clause is the load-bearing
   regression bound: it keeps a genuine "full name" request producing one column.
   The combined effect is re-measured on the next eval run, not on a PR
-  ([`SK-QUAL-002`](../../quality-eval/decisions/SK-QUAL-002-pr-ci-never-fires-real-keys.md)).
+  ([`SK-QUAL-002`](../../quality-eval/decisions/SK-QUAL-002-weekly-cron.md)).
 - **Consequence in code:** `packages/llm/src/prompts.ts` adds one string to the
   `PLAN_DIRECTIVES` array (≈45 input tokens per `plan` call). `PLAN_SYSTEM` and
   the per-provider wiring are unchanged — every provider keeps importing the one

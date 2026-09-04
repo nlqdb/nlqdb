@@ -41,7 +41,7 @@ when-to-load:
 
 - **Decision:** Premium-model routing is enabled at the granularity of *(DB, API key)* pairs, never as an account-wide flag. A user with five DBs can opt one DB into the paid chain while the other four stay on the strict-$0 chain. An API key inherits the DB's setting unless the key carries an explicit override (e.g. a CI key locked to the free chain even though the DB has premium enabled).
 - **Core value:** Effortless UX, Bullet-proof, Honest latency
-- **Why:** Account-level toggles produce two failure modes we refuse: (1) a CI key racks up frontier-model token spend on a low-stakes scrape job; (2) a single experimental DB silently turns every other DB into a paid call. The pricing table in `docs/architecture.md §6` already commits to "Opt-in only, per-DB or per-API-key (never silently routed)" — this decision pins that commitment to the LLM router's chain-selector input shape so it can't be relaxed without superseding this SK-ID.
+- **Why:** Account-level toggles produce two failure modes we refuse: (1) a CI key racks up frontier-model token spend on a low-stakes scrape job; (2) a single experimental DB silently turns every other DB into a paid call. The pricing table in `docs/architecture.md §6` already commits to "Opt-in only, per-DB or per-API-key (never silently routed)" — this decision pins that commitment to the LLM router's chain-selector input shape so it can't be relaxed without replacing this SK-ID.
 - **Consequence in code:** The chain-selector function `chooseChain(req)` in `packages/llm/src/router.ts` (added per `SK-LLM-007`) takes a `premium: boolean` derived from `(db_id, api_key_id) → premium_enabled`. The lookup lives in `apps/api/src/billing/premium/lookup.ts` and is cached in KV with a 60s TTL. PRs that propose a `user.premium = true` short-circuit are rejected. Toggle endpoints are `POST /v1/db/:id/premium` and `PATCH /v1/keys/:id { premium }` — both require `Idempotency-Key` per `GLOBAL-005`.
 - **Alternatives rejected:**
   - Account-wide toggle — single switch turns every CI key into a paid call site. Rejected for the failure modes above.
@@ -57,7 +57,7 @@ Premium usage bills at provider list + 0% markup; per-call cost comes from `pack
 ### SK-PREMIUM-017 — Overage metering rides Stripe Billing Meters directly (no Lago); idempotent events + daily reconciliation
 
 **Body:** [`decisions/SK-PREMIUM-017-stripe-billing-meters.md`](./decisions/SK-PREMIUM-017-stripe-billing-meters.md).
-Meter events report async after the response (`ctx.waitUntil`), keyed `premium:<customer>:<dispatch-id>` — a fresh id per executed dispatch, never the client `Idempotency-Key` (ledger PK + Stripe `identifier`, reported once on first insert; cost sub-cent-quantized once so both sides match), with a daily cron reconciling the ledger against Stripe meter summaries. Supersedes SK-PREMIUM-002's Lago mention and `phase-plan.md §6`.
+Meter events report async after the response (`ctx.waitUntil`), keyed `premium:<customer>:<dispatch-id>` — a fresh id per executed dispatch, never the client `Idempotency-Key` (ledger PK + Stripe `identifier`, reported once on first insert; cost sub-cent-quantized once so both sides match), with a daily cron reconciling the ledger against Stripe meter summaries. Replaces SK-PREMIUM-002's Lago mention and `phase-plan.md §6`.
 
 ### SK-PREMIUM-003 — The user-facing knob is goal-first presets, plus an advanced catalog-served named picker
 
@@ -97,9 +97,6 @@ rejects (the premium router stays fail-loud). Same posture as `SK-PREMIUM-011`
 - **Core value:** Simple, Bullet-proof, Effortless UX
 - **Why:** `GLOBAL-003` is explicit: "New capabilities ship to all surfaces in one PR." Premium-models is the highest-risk place to violate it — a paid feature that only works on the web product makes the SDK/CLI/MCP customers second-class billers. Shipping the surface-set together also forces the model-string-to-preset translation in `SK-PREMIUM-003` to be real (you can't ship `--model best` on the CLI and `model: "claude-sonnet-4-6"` on the SDK). The in-context CTA is web-only by exception, not by default — programmatic surfaces surface the verdict in the trace and let the embedder render its own UI.
 - **Consequence in code:** Every premium-tier slice's PR touches at minimum: `apps/api/src/ask/`, `packages/sdk/`, `cli/`, `packages/mcp/`, `packages/elements/`, `apps/web/`. The `Open questions` block in any one of those features must explicitly cite premium-tier when the surface gap is intentional (e.g. `<nlq-action>` in Phase 2 ships without a model picker because the write path doesn't use plan-tier LLM). PRs that skip a surface without a written gap-note in the affected feature are rejected.
-- **Alternatives rejected:**
-  - Web-first, then SDK / CLI / MCP — already the failure mode `GLOBAL-003` was written to prevent. Rejected for the reasons documented in [`GLOBAL-003`](../../decisions/GLOBAL-003-all-surfaces-one-pr.md).
-  - Surface gap tolerated for "complex" capabilities — slippery; once tolerated for premium-tier, every future big feature claims the same exception.
 - **Source:** [GLOBAL-003](../../decisions/GLOBAL-003-all-surfaces-one-pr.md) · [GLOBAL-002](../../decisions/GLOBAL-002-behavior-parity.md) (parity)
 
 ### SK-PREMIUM-006 — Per-key spend cap is mandatory; default 100% hard at sign-up; one-click extension
@@ -183,7 +180,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* Free tier never routes to the paid chain. Premium-tier code in the Worker bundle must respect the 3 MiB ceiling — pricing tables are loaded from KV, not bundled, if they grow.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
   - *In this feature:* aggregate-only premium instruments — `nlqdb.premium.{cap_hit,overflow_fallback_events}.total` counters, `nlqdb.premium.{cost_per_query_usd,tokens_per_query}` histograms (labels `provider`/`model`/`sized`), and the `nlqdb.premium.meter_reconcile_drift_usd_cents` gauge — all in the performance.md §3.2 catalog. Per-(customer, period) allowance/overage accounting is **D1-sourced** (`premium_allowance_period`) + the response `premium` trace, never an OTel label (performance.md §3.3 forbids user-grain labels on per-request metrics). The meter/reconcile Stripe calls carry `nlqdb.billing.premium.{meter_event,overage_item,reconcile}` spans.
-- **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
+- **GLOBAL-017** — One way to do each thing — `/v1/ask` is the single NL entry; one REST resource per control-plane object; no aliases.
   - *In this feature:* The `model` preset is the single way to express "I want better accuracy on this DB" — no parallel `--accuracy=high` flag, no `priority=premium` overload of the existing priority hint.
 - **GLOBAL-019** — Free + Open Source core (FSL-1.1-ALv2 → Apache-2.0); Cloud is convenience, not a moat.
   - *In this feature:* The 0% markup in `SK-PREMIUM-002` is the consequence — we explicitly compete with self-hosting. Markup is a future decision that must be re-justified, not a default that drifts upward.

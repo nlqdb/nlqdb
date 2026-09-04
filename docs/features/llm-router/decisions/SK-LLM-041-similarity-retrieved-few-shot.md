@@ -209,7 +209,7 @@ identifiers identically.
   `retrieveExemplars` is never set off the eval, so `PLAN_SYSTEM` + greedy decode
   + the BIRD/Spider baselines are untouched; the EX delta (greedy-static vs
   greedy-retrieved) is measured by the next canonical dispatch
-  ([`SK-QUAL-002`](../../quality-eval/decisions/SK-QUAL-002-pr-ci-never-fires-real-keys.md)
+  ([`SK-QUAL-002`](../../quality-eval/decisions/SK-QUAL-002-weekly-cron.md)
   — PR CI never fires real keys, and forbids a back-to-back dispatch while a
   baseline is < 7 days old).
 - **Alternatives rejected:**

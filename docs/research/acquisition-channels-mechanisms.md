@@ -120,8 +120,8 @@ regardless. Sources: <https://lobehub.com/docs/usage/community/mcp-market>,
 **Next step (founder):** `npx @lobehub/market-cli` →
 `lhm plugin submit https://github.com/nlqdb/nlqdb`, login + verify ownership,
 follow the CLI's `lhm.plugin.json` scaffold (read the exact current schema off
-the publish doc at submit time), set the listing name to lead with memory
-(`nlqdb — analytical memory for AI agents`), description per SK-PIVOT-003, and
+the publish doc at submit time), set the listing name to the brand line
+(`nlqdb — your autonomous DBA`), description per `GLOBAL-041`, and
 the homepage/link field to `https://nlqdb.com/agents/?utm_source=lobehub`; on
 submit → in-flight, note the listing URL, then watch `/app/admin` for `lobehub`
 yield → live.
@@ -150,8 +150,8 @@ account wall makes it **founder work**, not agent-shippable. Contact
 <https://www.explainx.ai/blog/top-10-mcp-server-directories-2026>.
 
 **Next step (founder):** sign in at `explainx.ai`, run the `/submit` flow, set
-the name to lead with memory (`nlqdb — analytical memory for AI agents`),
-description per SK-PIVOT-003, install command pattern
+the name to the brand line (`nlqdb — your autonomous DBA`),
+description per `GLOBAL-041`, install command pattern
 `claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp` (strings owned
 by `mcp-install.ts`), and the website/link field to
 `https://nlqdb.com/agents/?utm_source=explainx`; on submit → in-flight, note the

@@ -1,6 +1,6 @@
 # SK-WEB-018 — Two-door home: agent-memory door + question-your-ClickHouse door, responsive chooser
 
-Supersedes the three-beat-on-`/` IA of
+Replaces the three-beat-on-`/` IA of
 [`SK-WEB-015`](./SK-WEB-015-three-beat-quiet-brutalism.md) (its token system
 is **retained**) and the connect-first hero of
 [`SK-WEB-017`](./SK-WEB-017-connect-first-hero.md) (its `<McpInstall>`-primacy

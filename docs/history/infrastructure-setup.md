@@ -113,7 +113,7 @@ Both zones use **Cloudflare Email Routing** (Free plan feature; included with th
 | :------- | :-- | :--------- |
 | Google AI Studio | `GEMINI_API_KEY` | 500 RPD Flash / 100 RPD Pro |
 | Groq Cloud | `GROQ_API_KEY` | 14,400 RPD 8B / 1,000 RPD 70B |
-| OpenRouter | `OPENROUTER_API_KEY` | 50 RPD anon / 1,000 RPD after one-time $10 deposit; `nvidia/nemotron-3-ultra-550b-a55b:free` for plan/schema_infer/summarize, `google/gemma-4-26b-a4b-it:free` elsewhere (SK-LLM-045; supersedes the now-paid-only Qwen3 Coder / Llama `:free` ids) |
+| OpenRouter | `OPENROUTER_API_KEY` | 50 RPD anon / 1,000 RPD after one-time $10 deposit; `nvidia/nemotron-3-ultra-550b-a55b:free` for plan/schema_infer/summarize, `google/gemma-4-26b-a4b-it:free` elsewhere (SK-LLM-045; replaces the now-paid-only Qwen3 Coder / Llama `:free` ids) |
 | Cloudflare Workers AI | covered by `CF_AI_TOKEN` | 10k Neurons/day |
 | Ollama on dev laptops | — | local; Llama 3.2 3B, Qwen 2.5 7B |
 

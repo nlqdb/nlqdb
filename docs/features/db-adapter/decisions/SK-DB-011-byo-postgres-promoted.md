@@ -72,6 +72,6 @@
   [`architecture.md §3.6.7`](../../../architecture.md#367-byo-postgres-phase-4-decided-shape)
   (the shape) ·
   [`phase-plan.md §7`](../../../phase-plan.md) (the timing this SK
-  supersedes) · `SK-HDC-007` (provisioner split already done) · prior
+  replaces) · `SK-HDC-007` (provisioner split already done) · prior
   Open question "Phase 4 BYO Postgres" (now resolved by this SK;
   KEK-rotation sub-question retained in the parent FEATURE.md)

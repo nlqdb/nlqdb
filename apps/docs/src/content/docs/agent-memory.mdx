@@ -5,10 +5,10 @@ description: Connect Claude Code, Cursor, Codex, or Claude Desktop to nlqdb over
 
 import { Steps, Aside } from "@astrojs/starlight/components";
 
-nlqdb is analytical memory for AI agents: a real Postgres your agent
-connects to over MCP and queries in plain English — `GROUP BY`, `JOIN`,
-aggregate over what it remembered, not just the top-k a vector store
-recalls. One command connects it.
+nlqdb is an autonomous DBA: a real Postgres your agent connects to over MCP
+and queries in plain English, with the schema inferred from what the agent
+writes. Used as memory, that means `GROUP BY`, `JOIN`, aggregate over what it
+remembered — not just the top-k a vector store recalls. One command connects it.
 
 <Aside type="tip" title="For coding agents">
 If you are a coding agent (Claude Code, Cursor, Codex) setting this up for the

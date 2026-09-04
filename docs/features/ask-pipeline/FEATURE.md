@@ -24,7 +24,7 @@ when-to-load:
 
 - **Decision:** A single endpoint `POST /v1/ask` accepts a natural-language `goal` and a cheap classifier-tier LLM call decides `kind ∈ {"create", "query", "write"}`. `create` routes to the typed-plan pipeline (`docs/architecture.md §3.6.2`); `query` and `write` route to the read/write orchestrator. There is no `/v1/db/new`, no separate "create" verb.
 - **Core value:** Goal-first, Simple, Effortless UX
-- **Why:** Every persona walks in with a goal, not a database. Two endpoints (`/v1/ask` for chat, `/v1/run` for raw queries) is the canonical surface (`GLOBAL-017`). Splitting create from query would force the user to know which one to call, contradicting `GLOBAL-017` and the on-ramp inversion principle in `docs/architecture.md §0.1`.
+- **Why:** Every persona walks in with a goal, not a database. `/v1/ask` is the single NL entry (`GLOBAL-017`; `/v1/run` is the raw-SQL escape hatch, `GLOBAL-015`). Splitting create from query would force the user to know which one to call, contradicting `GLOBAL-017` and the on-ramp inversion principle in `docs/architecture.md §0.1`.
 - **Consequence in code:** `apps/api/src/routes/v1/ask.ts` is the only handler; create/query/write are internal branches behind the classifier. PRs that add `/v1/db/new`, `/v1/queries`, or `/v1/plans` are rejected.
 - **Alternatives rejected:** REST resource explosion (`/v1/queries`, `/v1/runs`, `/v1/plans`) — bigger surface, more docs, more inconsistency. `/v1/ask` + `/v1/db/new` — splits a single user goal across two endpoints; the user has to know which.
 
@@ -72,7 +72,6 @@ signal and a retry can't double-emit.
 - **Core value:** Honest latency, Effortless UX, Bullet-proof
 - **Why:** Spinners hide progress and erode trust on latency spikes. A live trace turns slow steps into legible, debuggable information. This is GLOBAL-011 on the ask path.
 - **Consequence in code:** each canonical step (SK-ASK-002) emits a trace event the SDK exposes via `onTrace` — exactly one per step on cache-miss.
-- **Alternatives rejected:** Generic spinner — no info, eroded trust. Hide latency below threshold — users notice anyway.
 
 ### SK-ASK-009 — Cheap-tier classifier sees the principal's recent tables; classify + disambiguate merge into `routeAsk`
 
@@ -128,7 +127,7 @@ Pre-flight `extractTables` check + a `42P01` exec backstop converge on one
 
 ### SK-ASK-017 — Speculative create removed; cold-start parallelism comes from `kickoffAskPrelude` alone
 
-- **Decision:** `apps/api/src/ask/{route-hint,reconcile-speculative}.ts` and `apps/api/src/db-create/speculative.ts` are deleted. The `/v1/ask` handler no longer races a `startSpeculativeCreate` against `listDatabasesForTenant`. Cold-start parallelism is preserved by `kickoffAskPrelude` (listPromise + recentTablesPromise kick off before `routeAsk`, and routeAsk runs in parallel with listPromise). Supersedes SK-ASK-011.
+- **Decision:** `apps/api/src/ask/{route-hint,reconcile-speculative}.ts` and `apps/api/src/db-create/speculative.ts` are deleted. The `/v1/ask` handler no longer races a `startSpeculativeCreate` against `listDatabasesForTenant`. Cold-start parallelism is preserved by `kickoffAskPrelude` (listPromise + recentTablesPromise kick off before `routeAsk`, and routeAsk runs in parallel with listPromise). Replaces SK-ASK-011.
 - **Core value:** Simple, Bullet-proof, Honest latency
 - **Why:** SK-ASK-011's rollback path was post-COMMIT — a Workers Postgres tx can't be cancelled mid-flight, so a doomed speculation must finish before its schema can be dropped. Prod trace: a 21.6 s `/v1/ask`, 18 s of it the speculative create finishing under a foregone rollback. The ~600 ms cold-start saving is dwarfed by the tail risk, and the mechanism multiplied three secondary failures (MRU pollution, plan-cache poisoning, classifier mis-route on the zombie DB).
 - **Consequence in code:** the three speculative modules are deleted and the handler drops the kickoff + consume blocks; only canonical creates now reach `recent_tables.touch`, and `dropSchemaAndRegistry` survives for the registry-insert-failed path.
@@ -283,7 +282,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-011** — Honest latency — show the live trace; never spinner-lie.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-015** — Power users always have an escape hatch.
-- **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
+- **GLOBAL-017** — One way to do each thing — `/v1/ask` is the single NL entry; one REST resource per control-plane object; no aliases.
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
   - *In this feature:* `SK-ASK-013` (per-stage `withStageRetry` with error feedback) is the canonical implementation; `SK-ASK-022` extends the executor with one execution-guided re-plan.
 - **GLOBAL-023** — Trust UX baseline.

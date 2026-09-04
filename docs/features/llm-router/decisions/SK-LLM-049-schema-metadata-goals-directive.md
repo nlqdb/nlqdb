@@ -41,7 +41,7 @@ replaced; one more bullet in the same block.
   ≈ 0 — the gain lands on the stranger-facing first-queries path
   (`GLOBAL-025` onboarding KPI) where "show all tables" currently dead-ends.
   Combined effect is re-measured on the next eval run, not on a PR
-  ([`SK-QUAL-002`](../../quality-eval/decisions/SK-QUAL-002-pr-ci-never-fires-real-keys.md));
+  ([`SK-QUAL-002`](../../quality-eval/decisions/SK-QUAL-002-weekly-cron.md));
   the [`SK-LLM-044`](./SK-LLM-044-entity-identification-projection-directive.md)
   posture applies — one-line revert if the paired BIRD+Spider run regresses.
 - **Consequence in code:** `packages/llm/src/prompts.ts` adds one string to

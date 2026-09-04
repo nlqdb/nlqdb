@@ -13,13 +13,13 @@
   carries an address (`session.user.email` may be null); dedup rides the
   existing `premium_interest` first-insert gate (one confirmation per
   account, `SK-IDEMP-005`/`006`), with a Resend `idempotencyKey` of
-  `premium-interest-confirm:${userId}` ([`GLOBAL-005`](../../../decisions/GLOBAL-005-idempotency.md)).
+  `premium-interest-confirm:${userId}` ([`GLOBAL-005`](../../../decisions/GLOBAL-005-idempotency-key.md)).
 - **Core value:** Effortless UX, Bullet-proof
 - **Why:** The model-picker success state already tells the user
   *"You're counted — we'll email you when the paid plan ships"*
-  ([`ModelPicker.tsx`](../../../apps/web/src/components/chat/ModelPicker.tsx)),
+  ([`ModelPicker.tsx`](../../../../apps/web/src/components/chat/ModelPicker.tsx)),
   but no email was ever sent — a broken promise sitting in production
-  ([`P6`](../../../CLAUDE.md) — durable, honest proof of the action). The
+  ([`P6`](../../../../CLAUDE.md) — durable, honest proof of the action). The
   interest signal was already persisted and the founder was already
   notified; the account's email was already stored in the
   `premium_interest` row. Closing the loop is one template + one

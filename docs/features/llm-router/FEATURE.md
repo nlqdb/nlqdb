@@ -189,9 +189,9 @@ when-to-load:
 
 **Body:** [`decisions/SK-LLM-044-entity-identification-projection-directive.md`](./decisions/SK-LLM-044-entity-identification-projection-directive.md). Reverted 2026-07-18; don't re-add without a paired BIRD+Spider net-gain A/B.
 
-### SK-LLM-045 — OpenRouter free-model roster refresh (supersedes SK-LLM-015)
+### SK-LLM-045 — OpenRouter free-model roster refresh (replaces SK-LLM-015)
 
-**Body:** [`decisions/SK-LLM-045-openrouter-free-roster-refresh.md`](./decisions/SK-LLM-045-openrouter-free-roster-refresh.md). OpenRouter converted the SK-LLM-015 ids to paid-only (404ing the tail); the current replacement free ids are in the body.
+**Body:** [`decisions/SK-LLM-045-openrouter-free-roster-refresh.md`](./decisions/SK-LLM-045-openrouter-free-roster-refresh.md). Current free ids in the body.
 
 ### SK-LLM-046 — AI Gateway auth token (`cf-aig-authorization`) on every gateway-routed lane
 
@@ -227,7 +227,7 @@ when-to-load:
 
 ### SK-LLM-054 — Qwen3.8-27B (`qwen/qwen3.8-27b`, Groq) leads the strict-$0 planner tier
 
-**Body:** [`decisions/SK-LLM-054-qwen3.8-27b-planner-head.md`](./decisions/SK-LLM-054-qwen3.8-27b-planner-head.md). Supersedes [`SK-LLM-053`](#sk-llm-053): Qwen3.8-27B replaces 3.6 as the `groq-qwen` planner head, same card-free Groq key; gpt-oss-120b fallback ([`SK-LLM-023`](#sk-llm-023)).
+**Body:** [`decisions/SK-LLM-054-qwen3.8-27b-planner-head.md`](./decisions/SK-LLM-054-qwen3.8-27b-planner-head.md). Replaces [`SK-LLM-053`](#sk-llm-053): Qwen3.8-27B replaces 3.6 as the `groq-qwen` planner head, same card-free Groq key; gpt-oss-120b fallback ([`SK-LLM-023`](#sk-llm-023)).
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 

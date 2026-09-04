@@ -1,6 +1,6 @@
 # nlqdb — Architecture
 
-> A database you talk to. You write HTML; each component asks for what it wants in plain English. nlqdb answers.
+> nlqdb — your autonomous DBA. No data modeling: the schema is inferred from inserts and reads, evolved and optimized by the DBA; plain English is how your app talks to it.
 
 **Navigation:** [decisions.md](./decisions.md) (index of GLOBAL-NNN; bodies under [decisions/](./decisions/)) · [features/](./features/) for per-feature `FEATURE.md` decisions · [runbook.md](./runbook.md) for operations · [progress.md](./progress.md) for integration tiers
 
@@ -120,7 +120,7 @@ Canonical: **`nlqdb.com`** (`.ai` is held defensively and 301s to `.com`).
 
 Canonical: `web-app/FEATURE.md` (`SK-WEB-001..007`). Cloudflare Pages, Lighthouse 100/100/100/100.
 
-Above the fold: the `SK-WEB-018` two-door hero (agent-memory door with one-click MCP install; question-your-ClickHouse door) plus the real-`/v1/ask` demo (`SK-WEB-008`) — layout and the `SK-WEB-020` calm token system are canonical in `web-app/FEATURE.md`. No stock photos, no cookie banner.
+Above the fold: the `GLOBAL-041` headline over the `SK-WEB-018` two-door hero (MCP-connect door; question-your-ClickHouse door) plus the real-`/v1/ask` demo (`SK-WEB-008`) — layout and the `SK-WEB-020` calm token system are canonical in `web-app/FEATURE.md`. No stock photos, no cookie banner.
 
 Surfaces promised on the home page live in [`progress.md §0`](./progress.md#0-surface-status-matrix--single-source-of-truth) — the canonical status table, mirrored into [`apps/web/src/components/CodePanel.astro`](../apps/web/src/components/CodePanel.astro). When a status flips, edit progress.md §0 first; this prose intentionally does not duplicate the table (per `AGENTS.md` P3).
 
@@ -215,7 +215,7 @@ goal → classifier (cheap tier)
 
 `dbId` is optional in `/v1/ask`. Resolution — and the merge of classify +
 disambiguate into one `routeAsk` call — is canonical in
-[`ask-pipeline`](../features/ask-pipeline/FEATURE.md) `SK-ASK-009`, which
+[`ask-pipeline`](./features/ask-pipeline/FEATURE.md) `SK-ASK-009`, which
 replaced the per-surface deterministic-then-LLM two-step (`SK-ASK-003` /
 `SK-ASK-009`). The architectural invariant: a wrong auto-target can never be
 *silent* or *destructive*. A confidence floor, a visible `selected_db` echo on
@@ -231,8 +231,8 @@ Two non-overlapping validators: the **read/write** path
 multi-statement rejected — the LLM never gets DDL rights here) and the **DDL**
 path (only the §3.6.2 compiler's `CREATE TABLE/INDEX/FK`, re-parsed with
 libpg_query). Canonical:
-[`hosted-db-create`](../features/hosted-db-create/FEATURE.md) `SK-HDC-006` +
-[`sql-allowlist`](../features/sql-allowlist/FEATURE.md). Both follow the
+[`hosted-db-create`](./features/hosted-db-create/FEATURE.md) `SK-HDC-006` +
+[`sql-allowlist`](./features/sql-allowlist/FEATURE.md). Both follow the
 **layered guardrails** principle ([`research-receipts.md §1`](./research-receipts.md)):
 AST reject-list, role isolation, RLS, statement timeout, transactional wrapper.
 
@@ -437,19 +437,13 @@ jobs:
 
 ## 10. Phase plan
 
-Moved to its own file to keep this doc under the 20 KB D4 shard cap.
-The phase plan is the canonical roadmap: items per phase, exit gates,
-the §6 monetization + scaling trigger.
-
-→ [**`./phase-plan.md`**](./phase-plan.md)
+Canonical roadmap (items per phase, exit gates, the §6 monetization + scaling trigger): [**`./phase-plan.md`**](./phase-plan.md).
 
 ---
 
 ## 11. Alternative technologies (evaluated, not just listed)
 
-**Body:** [`docs/architecture-build-vs-buy.md`](./architecture-build-vs-buy.md).
-
-Sharded out to keep this doc under 20 KB per `CLAUDE.md` §2 D4 — content unchanged. Tables cover data engines, hosting/compute, auth, payments, and LLM providers, with verdict + notes per candidate.
+**Body:** [`docs/architecture-build-vs-buy.md`](./architecture-build-vs-buy.md) — data engines, hosting, auth, payments, LLM providers; verdict per candidate.
 
 ---
 

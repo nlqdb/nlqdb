@@ -2,21 +2,21 @@
 
 Execution track for
 [`docs/features/expert-knowledge-platform/FEATURE.md`](../FEATURE.md).
-Runs **in parallel** with the dogfood gate per `SK-EKP-005` — neither blocks
-the other; a slice here never waits on gate progress and never adds to it.
+Build gated on Phase A widen-on-write (`GLOBAL-041`) per `SK-EKP-005`; EK
+adds no criterion to Phase A's exit gate. Until Phase A ships, `/ek` runs are null runs.
 Driven by its own recurring loop,
 [`/ek`](../../../../.claude/commands/ek.md) (founder-approved 2026-08-06),
 mirroring `/reach` — because `/daily`'s worst-number lever selection has no
 EK number to pick and would otherwise starve the track (measured: 3 daily
 runs post-lock, 0 EK slices).
-Sized and sequenced like the engine/dogfood tracks: one slice per run where
+Sized and sequenced like the engine track: one slice per run where
 possible, concrete `Done when` boxes, prereqs stated.
 
 Governing decisions (bodies in [`../FEATURE.md`](../FEATURE.md) and
 [`SK-PIVOT-023`](../../agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md)
 — never restated here): `SK-EKP-001` (trust claim + sovereign-hosting
 roadmap) · `SK-EKP-002` (fee shape) · `SK-EKP-003` (hybrid repo split) ·
-`SK-EKP-004` (pilot = language tutor) · `SK-EKP-005` (parallel tracks) ·
+`SK-EKP-004` (pilot = language tutor) · `SK-EKP-005` (gated on Phase A) ·
 `SK-PIVOT-023` (two-axis business model).
 
 ## The repo boundary (SK-EKP-003, applied to slices)
@@ -80,10 +80,10 @@ condition-gated (the repo's idiom — never date-gated).
 - **No regulated professions** (doctor/lawyer/accountant) in any public
   pack until the liability research pass exists (FEATURE.md open question).
 - **No new schema, endpoint, or tool per pack** (`SK-EKP-005` / `SK-PIVOT-018`) —
-  the expert pack is content + recipe on `agent_memory_v1`; the grant
+  the expert pack is content + recipe on the inferred schema; the grant
   primitive (EK-06) is generic engine surface added once, not per-pack.
-- **The dogfood gate is untouchable from here** (`SK-EKP-005`): no EK slice
-  adds a gate criterion, waits on one, or edits `SK-PIVOT-016`.
+- **Phase A's exit gate is untouchable from here** (`SK-EKP-005`): no EK slice
+  adds a criterion to it.
 - **`GLOBAL-037` (as amended 2026-08-07) stands**: LLM egress is three
   enumerated lanes — planning is schema-only; narration is disclosed with
   an opt-out and **skips by default on knowledge/granted paths once EK-09
@@ -149,7 +149,7 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
 - [ ] EK-08 — launch motion + acceptance criteria
   (box 1 shipped 2026-08-26 — the six-criterion first-paying-expert launch
   gate, each criterion owned by its proving slice, agent-tightenable /
-  founder-loosenable, kept off `SK-PIVOT-016`; box 2 `P2` research shipped
+  founder-loosenable, kept off the Phase A gate; box 2 `P2` research shipped
   2026-08-29 — three candidate motions + 2026 receipts + conservative default
   Motion 1 (supply-first single-vertical hand-recruited wedge) applied, founder
   pick deferred/not-queued since the launch is condition-gated on the criteria;

@@ -1,6 +1,6 @@
 # Design partners without a founder — the autonomous motion
 
-**Status:** decided 2026-07-01 (founder directive #5). Supersedes
+**Status:** decided 2026-07-01 (founder directive #5). Replaces
 [`founder-playbook.md`](../founder-playbook.md) §1 (recruitment),
 §2 (Sean Ellis interviews) and §5 (conversion ask) as the operating
 path. Every mechanic below is **decided** per

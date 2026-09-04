@@ -2,7 +2,7 @@
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Extends the
 `SCHEMA_INFER_SYSTEM` prompt (`packages/llm/src/prompts/schema-inference.ts`,
-owned per [`SK-HDC-002`](../../hosted-db-create/decisions/SK-HDC-002-typed-schema-plan.md));
+owned per [`SK-HDC-002`](../../hosted-db-create/decisions/SK-HDC-002-typed-schemaplan-deterministic-compiler.md));
 the deterministic floor under it is
 [`SK-HDC-018`](../../hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md).
 

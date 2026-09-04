@@ -48,9 +48,6 @@ when-to-load:
 - **Core value:** Honest latency, Creative, Goal-first
 - **Why:** "The contrast IS the message" — every snippet is the entire backend. Marketing copy that we can't back up with a working snippet is a smell. Working snippets above the fold also do double duty for AEO/GEO (LLM crawlers cite working examples preferentially) and for our own conversion data (which surface visitors copy first is leading signal for framework-wrapper investment).
 - **Consequence in code:** Under the `SK-WEB-018` two-door home the proof is Door A's `<McpInstall>` row plus the real-`/v1/ask` demo (`SK-WEB-008`) — live, never canned. The tabbed snippet panel (`CodePanel.astro`, one snippet per surface from [`snippets.ts`](../../../apps/web/src/data/snippets.ts), copy → `home.snippet_copied`) is currently **unmounted** from `/`; its status matrix stays synced to [`progress.md §0`](../../progress.md) against a remount, and unshipped surfaces always carry an honest phase badge — no fake working claims.
-- **Alternatives rejected:**
-  - Hero video / animated explainer — opaque to crawlers, slow to first paint, ages badly.
-  - Logo wall — irrelevant in pre-PMF, dilutes the "code is the proof" message.
 
 ### SK-WEB-004 — Demo endpoint `POST /v1/demo/ask`: no auth, canned fixtures, server-owned
 
@@ -59,7 +56,7 @@ when-to-load:
 ### SK-WEB-008 — Demo === real `/v1/ask` with anon bearer; canned fixtures live only in the static carousel
 
 **Body:** [`decisions/SK-WEB-008-demo-is-real-ask.md`](./decisions/SK-WEB-008-demo-is-real-ask.md).
-Supersedes `SK-WEB-004`: the marketing hero, `/app/new`, and every first-party `<nlq-data>` surface hit real `POST /v1/ask` with an anon bearer (`SK-ANON-008`); `/v1/demo/ask` is deleted; canned fixtures live only in `Carousel.astro`. Abuse is bounded by the global anon cap (`SK-ANON-010`) over the per-IP buckets (`SK-ANON-004` / `SK-RL-007`).
+Replaces `SK-WEB-004`: the marketing hero, `/app/new`, and every first-party `<nlq-data>` surface hit real `POST /v1/ask` with an anon bearer (`SK-ANON-008`); `/v1/demo/ask` is deleted; canned fixtures live only in `Carousel.astro`. Abuse is bounded by the global anon cap (`SK-ANON-010`) over the per-IP buckets (`SK-ANON-004` / `SK-RL-007`).
 
 ### SK-WEB-005 — Three-part chat response: answer + data + trace
 
@@ -137,7 +134,7 @@ The home (`/`) becomes a responsive two-door chooser (side-by-side wide, stacked
 **Body:** [`decisions/SK-WEB-019-connect-page.md`](./decisions/SK-WEB-019-connect-page.md).
 `/app/connect` is auth-guarded (anon → `/auth/sign-in?return_to=/app/connect`) and mounts `ConnectForm.tsx`: an engine select, a `type="password"` connection URL **never persisted** client-side, `POST /v1/db/connect` → schema preview → "Question it now →". Door B's product landing (`SK-WEB-018`); backend [`SK-DBCONN-001`](../byo-connect/FEATURE.md). Also reached from the `/app` `LeftRail` engine chips that deep-link `?engine=` — one connect page, no second flow (`GLOBAL-017`).
 
-### SK-WEB-020 — Calm token system (supersedes SK-WEB-015's quiet-brutalism tokens)
+### SK-WEB-020 — Calm token system (replaces SK-WEB-015's quiet-brutalism tokens)
 
 **Body:** [`decisions/SK-WEB-020-calm-token-system.md`](./decisions/SK-WEB-020-calm-token-system.md).
 `global.css` re-based to a **calm** system site-wide (details in the Body); retains SK-WEB-015's one-accent/one-motion budget + SK-WEB-018 IA / GLOBAL-007 / SK-WEB-003 invariants.

@@ -4,8 +4,8 @@
   MCP-aware client — gets to a working answer before being asked to sign
   in. Anonymous mode is the default first-touch experience.
 - **Core value:** Free, Effortless UX, Goal-first
-- **Why:** Login walls kill the activation funnel. Our pitch is "a
-  database you talk to" — not "create an account, verify email, choose
+- **Why:** Login walls kill the activation funnel. Our pitch is "your
+  autonomous DBA — no data modeling" — not "create an account, verify email, choose
   a region, then talk." We can ask for the email after the user has
   already had a `wow`.
 - **Consequence in code:** `apps/web` boots into a usable demo without

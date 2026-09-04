@@ -77,7 +77,6 @@ Three lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-ho
 - **Decision:** Every engine-quality KPI in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) table must have a recorded baseline by **2026-06-15** (met — canonical snapshot `tools/eval/baseline-2026-06-15.json`, diffed by every manual run). The Phase 2 floor (BIRD-dev EM ≥ 72% free / ≥ 88% frontier; delta ≤ 22 pts) is enforced from that point; a below-floor first measurement ships engine work until cleared, never regresses it. PRs touching `packages/llm/**` name the KPI they move.
 - **Core value:** Bullet-proof
 - **Why:** A floor is meaningless without a baseline date; missing it blocks the Phase 2 rollover per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) by design.
-- **Alternatives rejected:** No date ("soon" never happens); floor = first measurement (ratchets bad numbers into the norm).
 
 ### SK-QUAL-002 — Eval cadence: manual on-demand only; never a PR gate
 
@@ -271,7 +270,7 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 - **GLOBAL-013** — $0/month free tier. *The harness uses the same strict-$0 chain users hit; exceeding it on eval hides cost users will hit too.*
 - **GLOBAL-014** — OTel span on every external call. *Per-question spans so failures debug like production.*
 - **GLOBAL-024** — Demand-signal telemetry. *Eval results emit `feature.eval.*` events.*
-- **GLOBAL-025** — North-star KPIs. *This feature owns the engine-quality KPIs: the NL→SQL canon (BIRD/Spider EX, free-vs-frontier delta) + persona-bench (`SK-QUAL-018`) + the agent-memory-quality eval (`SK-QUAL-023`); baseline per `SK-QUAL-005`.*
+- **GLOBAL-025** — North-star KPIs. *This feature owns the engine pillar's interface KPI: the NL→SQL canon (BIRD/Spider EX, free-vs-frontier delta) + persona-bench (`SK-QUAL-018`) + the agent-memory-quality eval (`SK-QUAL-023`, prior-bet rail); the headline engine KPIs (inference / evolution / optimizer yield) are `GLOBAL-041`'s. Baseline per `SK-QUAL-005`.*
 - **GLOBAL-026** — LLM strategy. *Eval runs the free + hosted-premium chains (`SK-QUAL-004`); BYOLLM lane instrumented but never gates a floor.*
 - **GLOBAL-037** — Schema-only egress to third-party LLMs; never send user cell-values. *Settles the value-retrieval question: the cell-sampling lever is not built (`SK-QUAL-014` run 18 → ~0 BIRD rows standalone); the harness measures schema-only prompts.*
 

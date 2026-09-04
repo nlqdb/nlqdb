@@ -32,7 +32,7 @@ when-to-load:
 - **Decision:** Each DB has exactly one `schema_hash` at any moment, stored as a string on D1's `databases` row (column `schema_hash`, surfaced as `DbRecord.schemaHash` in TS). When the schema widens, the row is updated in place; there is no branching, no `schema_hash_v2`, no parallel pointers.
 - **Core value:** Bullet-proof, Simple
 - **Why:** A single stable identifier is what makes plan-cache reads exact-match safe (`GLOBAL-006`). Versioning/branching schema hashes would either invalidate the entire cache on every widen (slow) or force the cache to track multiple hashes per DB (combinatorial explosion of keys). The single-hash design is the precondition for "no cache invalidation" being a real promise.
-- **Consequence in code:** `DbRecord.schemaHash` is `string | null` — `null` only on a brand-new DB before any field has been observed. After the first widen, it is non-null and stays non-null. `CachedPlan.schemaHash` is `string` (no nullable) because no plan can be cached without a schema. Anyone tempted to add `schema_hash_v2` should add an `SK-SCHEMA-NNN` superseding decision instead.
+- **Consequence in code:** `DbRecord.schemaHash` is `string | null` — `null` only on a brand-new DB before any field has been observed. After the first widen, it is non-null and stays non-null. `CachedPlan.schemaHash` is `string` (no nullable) because no plan can be cached without a schema. Anyone tempted to add `schema_hash_v2` should replace this decision with a new `SK-SCHEMA-NNN` instead.
 - **Alternatives rejected:**
   - Versioned hashes (`v1.<hash>`) — buys nothing, loses content-addressed simplicity.
   - Per-table hash list — fragments the cache key, multiplies entries.

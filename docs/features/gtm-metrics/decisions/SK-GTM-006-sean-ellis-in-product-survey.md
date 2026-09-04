@@ -19,7 +19,7 @@
   account); the metric read lives in `computeGtmMetrics` per `SK-GTM-001`
   (`veryDisappointedShare` na-excluded), with additive snapshot keys
   (`SK-GTM-003`). Per
-  [`GLOBAL-003`](../../decisions/GLOBAL-003-all-surfaces-one-pr.md)
+  [`GLOBAL-003`](../../../decisions/GLOBAL-003-all-surfaces-one-pr.md)
   **deliberately web-only**: a feedback widget on the chat surface, not a
   user capability — no SDK/CLI/MCP/elements verb.
 - **Core value:** Goal-first, Free, Honest latency

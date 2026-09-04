@@ -115,9 +115,8 @@ when-to-load:
 - **Alternatives rejected:**
   - Server-side prompt store keyed by anon hash — mirroring works cross-device but creates a write-before-identity flow (the device is anonymous; we'd have to invent an "anon prompts" table that's the next adoption target). Same end-state, larger surface; deferred to Phase 2+.
   - Query-string-encode the prompt in the sign-in redirect — leaks goals into server logs; the prompt never travels in any URL part the server sees (the `SK-ANON-015` fragment handoff satisfies this).
-  - Drafts-only (no pending replay) — the auth-redirect arc terminates with the user seeing a fresh empty form; defeats the point of "seamless".
 
-### SK-ANON-012 — Per-device 1-call cap on `/v1/ask`; second anon call → `auth_required` envelope; supersedes SK-ANON-007 burst gate
+### SK-ANON-012 — Per-device 1-call cap on `/v1/ask`; second anon call → `auth_required` envelope; replaces the SK-ANON-007 burst gate
 
 - **Decision:** **1 anon `/v1/ask` call per device, then `auth_required`** — gating ALL anon traffic past the first successful call (not just creates), so `routeAsk`'s 1-DB auto-target can't sneak a 2nd query past the wall. Keyed on `sha256(anon_token)[:16]` (`SK-ANON-008`'s principal id), not IP; checked at the TOP of `/v1/ask`. The 2nd call returns `401` with the `SK-ANON-010` envelope (`code: "anon_device_cap"`) — same shape, same client handling as the global cap. **Turnstile invisible verification remains** on every anon create as the bot shield (unconditional; `SK-ANON-007`'s 3-in-5-min burst gate is **replaced**). The 1st-call **result** (the anon DB) is preserved server-side and adopted via `/v1/anon/adopt` (`SK-ANON-003`) on sign-in. The 2nd-call **prompt** replays from `nlqdb_pending` (`SK-ANON-011`).
 - **Core value:** Free, Bullet-proof, Effortless UX, Seamless auth

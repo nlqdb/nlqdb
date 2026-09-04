@@ -59,8 +59,7 @@ framing — instead of a surprise in the comments.
 
 ## 2. Angles (candidate hooks — founder picks; all verified true)
 
-Lead positioning is **analytical agent memory** per
-the prior bet;
+Lead positioning is **nlqdb — your autonomous DBA** (`GLOBAL-041`);
 an angle that leads elsewhere needs a deliberate exception, not drift.
 **That exception exists (founder, 2026-08-08):** the Show HN may **lead
 with the C story** — the agent-operated, $0-stack company — carrying angle
@@ -68,19 +67,17 @@ A as the product payload inside it (*"we run our company on free tiers with
 Claude agents; nlqdb is what it built"*). Rationale: the founder's genuine
 excitement lives in C, and an unexcited author can't write the post or
 defend the thread (the r/SQL lesson generalizes: authentic voice is the
-channel). the prior bet itself is unchanged — product surfaces keep the
-memory-first positioning; this is one post's framing.
+channel). The product positioning itself is unchanged — surfaces keep the
+autonomous-DBA story; this is one post's framing.
 
-- **A. Agent memory that can answer "how many"** (the prior bet lead): memory
-  as four Postgres tables + NL analytics over it; Mem0/Zep/Letta matrix on
-  `/agents`; one-command MCP install. Honesty gates: FSL-1.1, never
-  "Apache-2.0 today" (GLOBAL-019). (Stale gate removed 2026-08-08:
-  `MEMORY_PRESET=1` shipped 2026-07-29 (#835), and the dogfood gate this
-  launch waits on guarantees `nlqdb_remember` is demoable with real
-  traffic by launch day.)
-- **B. "A database you talk to, with a backend that doesn't exist"** — the
-  original wedge: HTML components asking for data in plain English; anon
-  first answer in <60 s, no signup.
+- **A. Your autonomous DBA** (the product lead): build a real app with no
+  data modeling — the first insert creates the schema, the DBA evolves and
+  optimizes it, every change previewed with 1-click undo; plain English is
+  the interface. Honesty gates: FSL-1.1, never "Apache-2.0 today"
+  (GLOBAL-019); demoable only once Phase A is live (KPI 1 measured).
+- **B. The interface angle — a backend that doesn't exist** — HTML
+  components asking for data in plain English; anon first answer in <60 s,
+  no signup.
 - **C. "Built and run ~almost entirely by Claude-code agents, on a $0
   stack"** — the company-process story (daily/weekly/reach/ek loops,
   scorecard, stranger-test walkers, decision records, free-tier
@@ -103,11 +100,12 @@ memory-first positioning; this is one post's framing.
   tone, zero marketing language; reply to everything for 24 h.
 - **Title shape** (≤ 80 chars, "Show HN: " prefix, no superlatives). Raw
   material: the 2026-06-13 archived draft title; angle-A variant naming
-  agent memory + Postgres + plain English.
-- **First-comment fact sheet:** why built (agents forget; DIY `memories`
-  table pain per [personas P2b](./personas.md)); what's different (real
-  Postgres schema per memory type + RLS isolation + NL analytics vs
-  blob/vector stores); numbers we publish (BIRD 0.542 free-chain, target
+  the autonomous DBA + Postgres + plain English.
+- **First-comment fact sheet:** why built (every developer still models,
+  migrates, indexes and watches the database by hand — `GLOBAL-041`); what's
+  different (schema inferred from inserts and reads, evolved and optimized by
+  the DBA, every change previewed and undoable; the LLM emits a typed plan,
+  never SQL); numbers we publish (BIRD 0.542 free-chain, target
   0.65 — the public progress bar; persona-bench 0.96); stack ($0 Cloudflare
   Workers + Neon); license FSL-1.1; the one command
   (`claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`).

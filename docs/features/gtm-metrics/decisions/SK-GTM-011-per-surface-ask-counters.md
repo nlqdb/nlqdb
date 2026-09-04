@@ -1,4 +1,4 @@
-# SK-GTM-011 — Non-saturating per-DB ask counters split by surface (the SK-PIVOT-016 criterion-1 instrument)
+# SK-GTM-011 — Non-saturating per-DB ask counters split by surface (the per-surface counter shape `GLOBAL-041` KPI 1 reuses)
 
 - **Decision:** Every `databases` row carries two new counters
   (migration `0034`): `asks_total` — every routed `/v1/ask` completion
