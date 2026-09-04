@@ -38,6 +38,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
 | 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 | 3 | ~10 min | Submit nlqdb to PulseMCP + mcp.directory — two manual directory submits (registry cascade never reached them); lowest-yield, payloads ready | 2026-09-01 |
+| 4 | ~10 min | Submit `nlqdb-memory` to cc-marketplace (`claudecodecommands.directory`) — cross-repo PR or web form; lowest-yield (`github`-ref), payload ready | 2026-09-04 |
 
 Only #1 can move real strangers (scorecard row #2); the hosted-premium meter
 went **live 2026-08-14** (`premium.live=true` in prod — the full activation,
@@ -144,6 +145,22 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
      `https://nlqdb.com/agents/?utm_source=mcpdir`; description as above; then
      email to claim the listing (so yield carries `mcpdir`, not the inherited
      `mcp-registry` key). On submit, flip ledger row #23 to **in-flight**.
+
+4. **⏱ ~10 min · since 2026-09-04 — Submit `nlqdb-memory` to cc-marketplace**
+   (reach R-09 venue #6; ledger row #27). A 688★ community Claude Code
+   plugin/command directory fronted by `claudecodecommands.directory` — passes
+   the trust bar `skillsclaude.org` failed (real footprint, named maintainer).
+   Lowest yield in this queue (repo-linked → `github`-ref, no utm key); do it
+   only when #1–#3 are parked. Two paths, either works: the
+   **cross-repo GitHub PR** to [`ananddtyagi/cc-marketplace`](https://github.com/ananddtyagi/cc-marketplace)
+   per its `PLUGIN_SCHEMA.md` (also openable by a repo-unscoped agent — this
+   session is `nlqdb/nlqdb`-only), or the account-walled
+   `claudecodecommands.directory/submit` form. The **exact payload** (name,
+   version, license, description, repo, utm homepage — all pinned to the shipped
+   `.claude-plugin/plugin.json`) is parked in
+   [`acquisition-channels-mechanisms.md` §Row #27](./research/acquisition-channels-mechanisms.md#row-27);
+   copy it verbatim. On submit, flip ledger row #27 to **in-flight** and note
+   the listing URL, then watch `/app/admin` for `github`-ref yield.
 
 (P6 was approved and merged by the founder 2026-08-04, #885 — it is binding
 in CLAUDE.md/AGENTS.md.)

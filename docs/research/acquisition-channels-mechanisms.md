@@ -161,7 +161,9 @@ listing URL, then watch `/app/admin` for `explainx` yield → live.
 
 **cc-marketplace** ([`ananddtyagi/cc-marketplace`](https://github.com/ananddtyagi/cc-marketplace) → [`claudecodecommands.directory`](https://claudecodecommands.directory)) · key `github` ref (repo-linked; `ccdir` reserved for a homepage field if one surfaces)
 
-**untried — cross-repo PR / account-walled, founder-gated** (P2 2026-09-03). A
+**blocked-by-human** — cross-repo PR / account-walled, founder-gated (P2
+2026-09-03); founder-queued 2026-09-04 as
+[blocked-by-human #4](../blocked-by-human.md). A
 688★, actively maintained (68 commits, ~28 open PRs) community directory of
 Claude Code plugins + commands, built by @ananddtyagi and fronted by
 `claudecodecommands.directory` (one-click `/plugin marketplace add
