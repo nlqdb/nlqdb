@@ -50,6 +50,11 @@ async function seedDb(
   opts: {
     asks?: number;
     ok?: number;
+    /** SK-GTM-011 — non-saturating ask counters; default to `asks` for
+        `asksTotal` so the common case (all asks, no surface split) needs
+        one field. */
+    asksMcp?: number;
+    asksTotal?: number;
     lastQueriedAt?: number | null;
     synthetic?: boolean;
     sourceJson?: string | null;
@@ -61,13 +66,15 @@ async function seedDb(
   } = {},
 ) {
   await env.DB.prepare(
-    "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, first10_asks, first10_ok, last_queried_at, synthetic, source_json, source_surface, created_at) VALUES (?, ?, 'postgres', 'ref', ?, ?, ?, ?, ?, ?, COALESCE(?, unixepoch()))",
+    "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, first10_asks, first10_ok, asks_mcp, asks_total, last_queried_at, synthetic, source_json, source_surface, created_at) VALUES (?, ?, 'postgres', 'ref', ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, unixepoch()))",
   )
     .bind(
       id,
       tenantId,
       opts.asks ?? 0,
       opts.ok ?? 0,
+      opts.asksMcp ?? 0,
+      opts.asksTotal ?? opts.asks ?? 0,
       opts.lastQueriedAt ?? null,
       opts.synthetic ? 1 : 0,
       opts.sourceJson ?? null,
@@ -297,6 +304,8 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
       memoryDbsInternal: 0,
       memoryFirst10Asks: 0,
       memoryFirst10Ok: 0,
+      memoryAsksMcp: 0,
+      memoryAsksTotal: 0,
       memoryFirst10SuccessRate: null,
       memoryLastQueriedAt: null,
     });
@@ -309,22 +318,33 @@ describe("computeGtmMetrics — SK-GTM-008 launch-gate inputs", () => {
     await seedUser("u_founder", "omer@nlqdb.com", "2026-06-01T00:00:00.000Z");
     await seedUser("u_s1", "maya@builders.io", "2026-07-01T00:00:00.000Z");
 
-    // The ops workload: two memory DBs on the founder account.
+    // The ops workload: two memory DBs on the founder account. Each ran
+    // far past the first-10 ordinal (SK-GTM-011) — `asksMcp`/`asksTotal`
+    // are non-saturating and carry the public-MCP surface split.
     await seedDb("db_agent_memory_v1_aaa111", "u_founder", {
       asks: 10,
       ok: 10,
+      asksMcp: 40,
+      asksTotal: 55,
       lastQueriedAt: 100,
     });
     await seedDb("db_agent_memory_v1_bbb222", "u_founder", {
       asks: 10,
       ok: 9,
+      asksMcp: 25,
+      asksTotal: 30,
       lastQueriedAt: lastQueried,
     });
     // A stranger's memory DB counts in `memoryDbs`, not in the internal split.
-    await seedDb("db_agent_memory_v1_ccc333", "u_s1", { asks: 2, ok: 2 });
+    await seedDb("db_agent_memory_v1_ccc333", "u_s1", {
+      asks: 2,
+      ok: 2,
+      asksMcp: 5,
+      asksTotal: 5,
+    });
     // Neither a non-memory DB nor a near-miss id may leak into the workload.
-    await seedDb("db_orders_xyz789", "u_founder", { asks: 10, ok: 1 });
-    await seedDb("db_agent_memory_v2_ddd444", "u_founder", { asks: 10, ok: 1 });
+    await seedDb("db_orders_xyz789", "u_founder", { asks: 10, ok: 1, asksMcp: 99 });
+    await seedDb("db_agent_memory_v2_ddd444", "u_founder", { asks: 10, ok: 1, asksMcp: 99 });
 
     const m = await computeGtmMetrics(env.DB, new Date("2026-07-28T12:00:00Z"), true);
     expect(m.launchGate.memoryPresetEnabled).toBe(true);
@@ -333,6 +353,11 @@ describe("computeGtmMetrics — SK-GTM-008 launch-gate inputs", () => {
     expect(m.launchGate.memoryFirst10Asks).toBe(22);
     expect(m.launchGate.memoryFirst10Ok).toBe(21);
     expect(m.launchGate.memoryFirst10SuccessRate).toBeCloseTo(21 / 22, 6);
+    // Criterion 1's real instrument: the public-MCP subset (40+25+5) and
+    // all-surface total (55+30+5), non-saturating, memory DBs only — the
+    // non-memory and near-miss ids' 99s must not leak in.
+    expect(m.launchGate.memoryAsksMcp).toBe(70);
+    expect(m.launchGate.memoryAsksTotal).toBe(90);
     expect(m.launchGate.memoryLastQueriedAt).toBe("2026-07-28T08:00:00.000Z");
   });
 });

@@ -74,6 +74,11 @@ export type GtmMetrics = {
     /** Lower bound only — `first10_asks` saturates at 10 per DB. */
     memoryFirst10Asks: number;
     memoryFirst10Ok: number;
+    /** SK-GTM-011 — criterion 1's real instrument: non-saturating asks
+        through the public MCP surface (`asks_mcp`) and all surfaces
+        (`asks_total`), summed over the memory DBs. */
+    memoryAsksMcp: number;
+    memoryAsksTotal: number;
     memoryFirst10SuccessRate: number | null;
     memoryLastQueriedAt: string | null;
   };

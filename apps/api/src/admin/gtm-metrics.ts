@@ -171,12 +171,21 @@ export type GtmMetrics = {
     /**
      * Asks/oks summed over memory DBs from the `SK-ONBOARD-006`
      * counters. `first10_asks` saturates at 10 per DB, so `asks` is a
-     * LOWER BOUND on the workload's ask volume, never the total — and
-     * D1 carries no per-ask surface attribution, so neither number can
-     * isolate the public-MCP subset (criterion 1's gap, D-04 owns it).
+     * LOWER BOUND on the workload's ask volume — use it only for
+     * criterion 2's first-10 success rate, never as a total.
      */
     memoryFirst10Asks: number;
     memoryFirst10Ok: number;
+    /**
+     * SK-GTM-011 — the real, non-saturating instrument for criterion 1:
+     * `asks_mcp` counts asks through the public MCP surface (an `sk_mcp_`
+     * principal), `asks_total` every routed ask, both summed over the
+     * memory DBs. Unlike `memoryFirst10Asks` these do not saturate and
+     * carry per-surface attribution, so `memoryAsksMcp` is the number the
+     * gate is actually defined over.
+     */
+    memoryAsksMcp: number;
+    memoryAsksTotal: number;
     /** Criterion 2's instrument: ok/asks over memory DBs; null at N = 0. */
     memoryFirst10SuccessRate: number | null;
     /** Newest activity across memory DBs (ISO), null if never queried. */
@@ -348,6 +357,7 @@ export async function computeGtmMetrics(
       .prepare(`SELECT COUNT(*) AS dbs,
         SUM(CASE WHEN ${INTERNAL_EMAIL_SQL} THEN 1 ELSE 0 END) AS internalDbs,
         SUM(d.first10_asks) AS asks, SUM(d.first10_ok) AS ok,
+        SUM(d.asks_mcp) AS asksMcp, SUM(d.asks_total) AS asksTotal,
         MAX(d.last_queried_at) AS lastQueriedAt
       FROM databases d LEFT JOIN user u ON u.id = d.tenant_id
       WHERE substr(d.id, 1, length(?1)) = ?1`)
@@ -541,6 +551,8 @@ export async function computeGtmMetrics(
       memoryDbsInternal: num(mem, "internalDbs"),
       memoryFirst10Asks: num(mem, "asks"),
       memoryFirst10Ok: num(mem, "ok"),
+      memoryAsksMcp: num(mem, "asksMcp"),
+      memoryAsksTotal: num(mem, "asksTotal"),
       memoryFirst10SuccessRate: ratio(num(mem, "ok"), num(mem, "asks")),
       memoryLastQueriedAt: memLastSec > 0 ? new Date(memLastSec * 1000).toISOString() : null,
     },
