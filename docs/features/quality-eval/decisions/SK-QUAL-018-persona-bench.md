@@ -2,7 +2,7 @@
 
 Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md). The third,
 user-relevant quality number tracked alongside BIRD/Spider, per
-[`fable-recommendation.md §2`](../../../research/fable-recommendation.md):
+the 2026-06 advisor recommendation (archived), §2:
 "~50–100 NL questions from `personas.md` over nlqdb-created 5–20-table
 schemas (the actual ICP shape)." Sibling of the offline
 instruments [`SK-QUAL-014`](./SK-QUAL-014-mismatch-error-class-classifier.md)

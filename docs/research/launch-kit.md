@@ -5,7 +5,7 @@
 > yet"). nlqdb has **never launched anywhere**: a Show HN draft has sat in
 > `distribution-queue-archive.md` (archived)
 > (2026-06-13) for five weeks;
-> [`fable-recommendation.md §4.2`](./fable-recommendation.md) recommended
+> the 2026-06 advisor recommendation (archived) called for
 > launch posts on 2026-06-12. Meanwhile 105 passive surfaces yield ~1
 > GSC click/28d and stranger signups = 0 (scorecard rows #2/#7). Launches are
 > the one channel that produces first users in days, not quarters — and the
@@ -143,7 +143,7 @@ subreddit self-promo rules re-checked at post time. Same fact sheet as 3.1.
 3. Show HN (3.1). Success bar, honest: front page = hundreds–thousands of
    visits and the first double-digit stranger-signup day (rows #1/#2 move
    for the first time); no front page = a dated data point + free user
-   interviews in the comments (fable-recommendation §7) — re-fire with a
+   interviews in the comments (advisor recommendation, archived) — re-fire with a
    different angle ≥ 1 month later.
 4. Product Hunt (3.3) ≥ 1 week later.
 5. **T+2–7 days:** Sean-Ellis Q1 responses start arriving (survey fires on

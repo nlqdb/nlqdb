@@ -5,10 +5,16 @@ improvement** — or an explicit null run (step 2) when no lever clears the
 bar. An artifact ships per step 3 when the queue is ready, but an artifact
 is never the run's justification (founder-resolved 2026-07-11). Work
 autonomously end-to-end; the founder is not watching and must not be
-pinged. The loop you execute is `docs/research/fable-recommendation.md`
-§9; this file is its runnable form — where a founder-resolved amendment
-marked inline diverges from §9, this file wins. [`/weekly`](weekly.md)
-audits this loop once a week and sets the weekly focus number.
+pinged. **The loop:** measure first (regenerate the scorecard, name the
+worst number) → one lever, measured (quote the number before, re-measure
+after; Δ ≥ 0 merges, Δ < 0 reverts with a one-line note; an agent that can't
+name its number does D5 cleanup instead of building) → one artifact out
+(publishing is a daily output, never a launch event) → review gate (a PR
+whose body names no measured delta does not merge). *No change without a
+number, no number without a next change.* The weekly focus number is read
+from the top of `docs/scorecard.md`; [`/weekly`](weekly.md) audits this loop
+once a week and sets it — the founder may override it and a founder-written
+number is never overwritten.
 
 ## Operating rules (non-negotiable)
 
@@ -104,17 +110,20 @@ table + one "Last change" entry, no changelog; create it if missing):
   page from there rather than re-eyeballing the list. The **referral** half is
   first-party: `bun scripts/rum-pull.ts` prints which external referrer opened
   which surface — that is row #7's referral yield, not an estimate of it.
-- **Engine:** BIRD / Spider vs `tools/eval/baseline-2026-06-15.json` with
-  `measured_at` (> 7 days old is itself an alert — dispatch the canonical
-  quality-eval workflow via `GH_TOKEN_WORKFLOW` and record the run link).
-  **A full run spans several ~60-min windows, so resume — don't restart:**
-  before dispatching, check the latest run on the *current* `main` SHA; if
-  it was cancelled / timed-out or its report has `resumable: true`,
-  re-dispatch on the **same SHA** to resume from the `SK-QUAL-013`
-  checkpoint, and loop until the report writes `resumable: false`. Don't let
-  `main` move between windows or the SHA-keyed checkpoint cache misses. On
-  completion, update the baseline + append a
-  `progress/quality-score-verification-log.md` row. persona-bench %;
+- **Engine — the `GLOBAL-041` KPIs first:** (1) **first-insert inference
+  rate** — writes that reference an unseen table/field and land with no user
+  action, over all such writes (two non-saturating `/v1/ask` counters,
+  `SK-GTM-011` shape); (2) **evolution-without-user-action rate** — detected
+  shape changes absorbed vs ended in an error / fresh DB; (3) **optimizer
+  yield** — proposals applied per active DB / 30 d + p95 delta 7 d after vs
+  before. Where the instrument doesn't exist yet, write `unmeasured — build
+  the instrument`; that gap is lever candidate #1. Then the *interface* KPI:
+  BIRD / Spider vs `tools/eval/baseline-2026-06-15.json` (`measured_at` > 7 d
+  is an alert — dispatch the canonical quality-eval workflow via
+  `GH_TOKEN_WORKFLOW`; a run spans several ~60-min windows, so re-dispatch on
+  the **same `main` SHA** while the report says `resumable: true`; on
+  completion update the baseline + append a
+  `progress/quality-score-verification-log.md` row); persona-bench %;
   free-vs-frontier delta.
 - **Ops:** p50/p95 ask latency, error rate, $ spend (expect ~0).
 - **E2E (manual suites, not in CI):** the four `workflow_dispatch`-only
@@ -147,10 +156,8 @@ table + one "Last change" entry, no changelog; create it if missing):
   overwrite it mid-week), then "worst number today" + which lane owns it,
   then the top `blocked-by-human.md` bullet + its days-blocked — restated
   every run until done (measurement, not nagging). When any queue bullet
-  carries a condition gate (e.g. `SK-PIVOT-016`) — top or not, since an
-  unreported gate decays into an undated veto — also restate its gate
-  progress (n/N criteria green) — agent-movable criteria are lever
-  candidates like any row (founder-directed 2026-07-26).
+  carries a condition gate, also restate its progress (n/N criteria green) —
+  an unreported gate decays into an undated veto (founder-directed 2026-07-26).
 
 ### 2 — One lever, measured
 
@@ -158,36 +165,34 @@ Pick the smallest change that moves the weekly focus number (or, if none is
 set, the worst **agent-movable** number). Skip dark or founder-blocked
 metrics when *choosing the lever* — still report them, but never pick a
 target no single run can move. A lagging metric (real strangers ≈ 0) is
-moved through its agent-controllable inputs, **in this order**
-(founder-resolved 2026-07-19, amending the 2026-07-11 order per
-[`GLOBAL-038`](../../docs/decisions/GLOBAL-038-gtm-pmf-instrumentation.md) —
-the operating focus is user acquisition):
+moved through its agent-controllable inputs, **in this order** (founder-set
+2026-09-04 with [`GLOBAL-041`](../../docs/decisions/GLOBAL-041-autonomous-dba.md);
+replaces the 2026-07-19 acquisition-first order):
 
-1. **Acquisition & distribution yield.** The channel ledger
-   (`docs/research/acquisition-channels.md`) and the GTM instrument are
-   the frame: levers that make a channel live, make its yield
-   attributable (utm-tagging per `SK-GTM-007`, attribution coverage),
-   strengthen the pages GSC shows losing winnable clicks, or lift a
-   funnel-conversion number on `/app/admin`. `/reach` owns the R-slices —
-   never duplicate its open PRs (step 0); this lane is the daily-sized
-   acquisition work around them.
+1. **`GLOBAL-041` engine KPIs.** The instruments for KPI 1–3 and the Phase
+   A → B slices in [`pivot-autonomous-dba.md` §4](../../docs/pivot-autonomous-dba.md)
+   (widen-on-write, then inspection → proposals → dashboard → apply/undo).
+   A missing instrument is a lever; so is a slice that moves a KPI floor.
+   Interface work (BIRD/Spider) sits in this lane below the three KPIs.
 2. **Real UX-flow quality.** A stranger's actual path — land → create /
    adopt → ask → first answer — exercised end-to-end (measured by the
    canonical stranger walkers, row #21, and the E2E suites' pass
    component, row #15). A flow that fails, errors intermittently, or
    confuses is always a pullable lever, even when the walker that exposed
-   it is synthetic — a broken funnel wastes every visitor a channel
-   delivers.
+   it is synthetic.
 3. **Meta levers last, and only with a written waiver:** docs-ambiguity
    (row #17) and doc reconciliation are valid only after this run states,
-   in the scorecard's "Last change" entry, why no acquisition/
-   distribution, UX-flow, or engine lever is pullable right now. Queue drafting is not a
-   lever — it is step-3 side work and never a run's justification.
+   in the scorecard's "Last change" entry, why no engine or UX-flow lever is
+   pullable right now. Queue drafting is not a lever — it is step-3 side
+   work and never a run's justification.
+
+**Acquisition is delegated to [`/reach`](reach.md)** (marketing lane,
+`GLOBAL-041`): this loop pulls no channel levers and never duplicates
+`/reach`'s open PRs (step 0).
 
 **If no lever clears that bar, don't manufacture one:** record the finding
 in the scorecard and end the run with only the step-1 scorecard update — a
-null run is a valid outcome; busywork is not. (Runs fire several times a
-day; most days do not contain that many real levers.)
+null run is a valid outcome; busywork is not.
 
 **Four nulls in a row earn one proposal** (founder-approved 2026-07-28): read
 back through `git log` — when the previous **4** runs were nulls, this run may,
@@ -249,13 +254,7 @@ and names the recorded finding in place of a delta. Ending without a delta
 for any other reason means the measurement is broken — ship the measurement
 fix instead. Open the PR without asking for permissions.
 
-No auto-merge tier: daily PRs always wait for review (founder-rejected
-2026-07-22 — a separate merger agent owns review latency; don't re-propose).
-The same decision covers GitHub branch protection: the founder declined
-required status checks on `main` (2026-07-26) — the reviewer-fixer merger
-agent's daily criteria are the merge gate, including CI state — so don't
-re-queue a branch-protection bullet in `blocked-by-human.md`.
-
-The step-2 surface-creating escape hatch was **approved by the founder
-2026-07-28** (proposed 2026-07-26, advisor session) — it lives in step 2; don't
-re-litigate it here.
+No auto-merge tier and no branch protection (founder-rejected 2026-07-22 /
+2026-07-26): the reviewer-fixer merger agent's daily criteria are the merge
+gate, including CI state — don't re-propose either. The step-2 surface-creating
+escape hatch was founder-approved 2026-07-28; don't re-litigate it here.

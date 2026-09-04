@@ -1,15 +1,15 @@
-# nlqdb — analytical memory for AI agents
+# nlqdb — your autonomous DBA.
 
-> *Memory your agent can query, not just recall — a real database it reaches over MCP.*
+> Build a real app from day one with no data modeling. nlqdb infers your schema from how you use it, evolves it, and keeps it optimized — and shows you every change before it lands.
 
-Connect nlqdb to Claude, Cursor, Codex, or any MCP host. Your agent writes
-typed rows as it learns, then asks questions in plain English — `GROUP BY`,
-`JOIN`, aggregate over what it remembered. A vector store returns the top-k
-similar chunks; nlqdb runs the query that a similarity index structurally can't.
-The LLM never emits SQL: it returns a typed plan, our compiler emits the
-parameterised statement, and you see the exact SQL every time.
+Your app talks to its database in plain English — over HTTP, the SDK, the
+`nlq` CLI, or MCP from Claude, Cursor and Codex. The first insert creates the
+shape; later inserts and reads evolve it; the DBA builds the indexes and
+places data on the right engine, and every change is previewed, versioned and
+one click to undo. The LLM never emits SQL: it returns a typed plan, our
+compiler emits the parameterised statement, and you see the exact SQL every time.
 
-**It's also a natural-language database for any app.** You write HTML; each
+**No backend to build.** You write HTML; each
 component asks for what it wants in plain English; nlqdb infers the schema,
 writes the SQL, runs it, and renders the result. There is no backend for you
 to build.
