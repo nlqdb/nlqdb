@@ -74,6 +74,6 @@
   Supabase "Run a query" (`POST /v1/projects/{ref}/database/query`, `read_only`) ·
   Supabase "Build an OAuth integration" (authorize/token, HTTP Basic, PKCE) ·
   [RFC 9700](https://datatracker.ietf.org/doc/rfc9700/) · [RFC 7636](https://datatracker.ietf.org/doc/rfc7636/) ·
-  extends `SK-DBCONN-001` · supersedes `SK-DBCONN-002` **for the Supabase path**
+  extends `SK-DBCONN-001` · replaces `SK-DBCONN-002` **for the Supabase path**
   (the socket transport remains the code for a pasted non-Neon Postgres DSN, whose
   reachability on Workers is now a known risk — see Open question (g)).

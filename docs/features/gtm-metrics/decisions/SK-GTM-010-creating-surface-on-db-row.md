@@ -22,7 +22,7 @@
   instrument (it fell into the `source_json` = `untracked` bucket) but not
   *why* — a CLI create, an MCP-host create, and a pre-instrument web create
   were indistinguishable, so "how much adoption runs through cli/mcp vs the
-  web" — the exact question the [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)
+  web" — the exact question the [`GLOBAL-026`](../../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)
   developer-surface bet needs answered — had no D1 read. The principal kind
   is already resolved on every authenticated request and already mapped to a
   canonical surface for events; stamping that same value onto the created

@@ -92,8 +92,7 @@ Venue variant = venue list + anchor; the gist lives in the linked post.
 
 - **Launch fact sheets + readiness audit live in
   [`launch-kit.md`](./launch-kit.md)** (2026-07-19) — Show HN / lobste.rs /
-  r/SideProject / Product Hunt, founder-fired; supersedes the 2026-06-13
-  archived Show HN draft as the current launch source.
+  r/SideProject / Product Hunt, founder-fired — the current launch source.
 
 - runs 43–44 — "We moved agent memory above the fold and demoted three of our four personas. On purpose." (additive/reversible home reweight; agent-memory wedge + Mem0·Zep·Letta·nlqdb matrix above the fold, other personas folded under a quiet divider; WS-12).
 - *(runs 41–42 moved to `distribution-queue-archive.md` (archived) under D4.)*

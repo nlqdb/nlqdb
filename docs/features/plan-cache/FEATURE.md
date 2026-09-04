@@ -109,7 +109,7 @@ when-to-load:
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`.
-- **GLOBAL-004** — Schemas only widen.
+- **GLOBAL-004** — The logical schema is inferred and evolves in both directions; physical layout reshapes freely.
 
 ## Open questions / known unknowns
 

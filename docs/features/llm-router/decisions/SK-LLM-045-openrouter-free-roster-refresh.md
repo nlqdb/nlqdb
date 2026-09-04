@@ -1,6 +1,6 @@
 # SK-LLM-045 — OpenRouter free-model roster refresh: Nemotron 3 Ultra + Gemma 4 26B replace the dead Qwen3 Coder / Llama `:free` ids
 
-Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Supersedes
+Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Replaces
 [`SK-LLM-015`](./SK-LLM-015-openrouter-codegen-default.md) — same two-slot
 shape (code-gen tier + cheap tier), new model ids because the old ones no
 longer exist on OpenRouter's free catalog.

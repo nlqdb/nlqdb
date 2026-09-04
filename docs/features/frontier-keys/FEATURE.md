@@ -144,7 +144,7 @@ implemented"* mirrors this and stays at a very low score until **every** row is 
 (including the frontier lane enabled **and** live in production).
 
 **Approachability — the on-ramp (this PR, mostly shipped):**
-- ✅ Two-door home (`SK-WEB-018`) — agent-memory | question-your-ClickHouse, responsive
+- ✅ Two-door home (`SK-WEB-018`) — MCP-connect | question-your-ClickHouse, responsive
 - ✅ `/app/connect` page + `ConnectForm` (`SK-WEB-019`)
 - ✅ 7-host MCP install + click-to-reveal-fallback (`SK-WEB-016`: Cursor/VS Code deep-link, Claude Code/Codex command, Claude/Windsurf/Zed config)
 - ✅ BYO-ClickHouse HTTP exec + ClickHouse schema render (`packages/db`)

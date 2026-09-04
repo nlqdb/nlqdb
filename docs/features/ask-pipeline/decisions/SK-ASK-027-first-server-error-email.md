@@ -16,7 +16,7 @@
   ([`SK-IDEMP-005`](../../idempotency/FEATURE.md)/`006`) — so a user is
   emailed **at most once ever**, however many errors they later hit. A
   Resend `idempotencyKey` of `first-error:${userId}` collapses any
-  double-fire ([`GLOBAL-005`](../../../decisions/GLOBAL-005-idempotency.md)).
+  double-fire ([`GLOBAL-005`](../../../decisions/GLOBAL-005-idempotency-key.md)).
   Fired fire-and-forget via `waitUntil`, so it never delays the ask
   response, and swallowed on failure (the ask response already carries
   its own error to the user).
@@ -29,7 +29,7 @@
   - **5xx only.** Server errors are our fault; an apology + retry nudge is
     honest. Client errors (4xx — rate-limits, bad input, `clarify`) are
     the user's own action and already surface actionable in-app copy
-    ([`error-message.ts`](../../../apps/web/src/components/chat/error-message.ts)),
+    ([`error-message.ts`](../../../../apps/web/src/components/chat/error-message.ts)),
     so emailing on them would read as spammy surveillance.
   - **Signed-in only.** Only a `user` principal carries a stable account
     id + an email on file. The chat `/v1/ask`, anon-create, and

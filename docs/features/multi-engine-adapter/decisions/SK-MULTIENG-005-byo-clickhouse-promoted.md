@@ -82,7 +82,7 @@
   [`architecture.md §3.6.7`](../../../architecture.md#367-byo-postgres-phase-4-decided-shape)
   (BYO shape — sibling note for ClickHouse) ·
   [`phase-plan.md §7`](../../../phase-plan.md) (the timing this SK
-  supersedes) ·
+  replaces) ·
   [`SK-DB-011`](../../db-adapter/decisions/SK-DB-011-byo-postgres-promoted.md)
   (parallel decision for Postgres) · `docs/research/personas.md` P6
   (the persona this slice addresses head-on)

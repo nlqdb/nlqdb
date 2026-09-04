@@ -7,7 +7,7 @@
   sparklines/bars only). It fetches `GET /v1/admin/metrics` with
   `credentials: "include"` via a small `lib` helper (`lib/billing.ts`
   precedent). Per
-  [`GLOBAL-003`](../../decisions/GLOBAL-003-all-surfaces-one-pr.md) this
+  [`GLOBAL-003`](../../../decisions/GLOBAL-003-all-surfaces-one-pr.md) this
   is **deliberately web-only**: internal founder tooling, not a user
   capability — the SDK/CLI/MCP/elements gap is a decision, not an
   omission.
@@ -18,7 +18,7 @@
   chart dependency keeps the island small and the build clean.
 - **Consequence in code:** No admin methods in `packages/sdk`, `cli`,
   `packages/mcp`, or `packages/elements`; reviewers reject adding them
-  without superseding this. No nav link from shared chrome (`Topnav` is
+  without replacing this decision. No nav link from shared chrome (`Topnav` is
   static/public); reached by URL — a session-gated link may later land
   inside `/app` chrome only.
 - **Alternatives rejected:**

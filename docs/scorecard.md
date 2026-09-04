@@ -12,16 +12,13 @@ Phase A exit). Build order: [`pivot-autonomous-dba.md` §4](pivot-autonomous-dba
 The prior focus (agent-memory dogfood gate) is retired with the archived
 prior bet; funnel / ops / E2E rows below stand.
 
-widening). The gate sat **frozen at 2/5 all week** while the proxy climbed 43 → 79 %; this re-point
-makes the daily loop move the number the proxy exists to serve.
-
 **Worst number today (run 195, 2026-09-04) — WEEKLY-FOCUS INSTRUMENT: dogfood gate criterion 1 was UNMEASURABLE, not merely unmet — shipped the `SK-GTM-011` per-surface ask counter that makes it a live dashboard read.**
-The `/weekly` (08-29) focus is **dogfood gate `SK-PIVOT-016` 2/5 → ≥ 3/5.** Step 0: **open PRs = 0** — clean slate; my branch even with `main`.
+The `/weekly` (08-29) focus was **dogfood gate `SK-PIVOT-016` 2/5 → ≥ 3/5** — retired 09-04 by `GLOBAL-041` (see weekly focus above). Step 0: **open PRs = 0** — clean slate; my branch even with `main`.
 **Why this lever:** the fast measurable levers are exhausted — CTR/snippet lane dead (fresh 09-04 GSC; strengthen-next leader `/solve/` index pos 34.8 = page 4, authority-gated), attribution/UTM already covered, engine BIRD/Spider + criterion 4 dark. Investigating the weekly-focus gate surfaced criterion 1's real blocker: **not grind but a measurement gap** (`SK-GTM-008`) — `first10_asks` saturates at 10, so "≥ 100 asks through the public MCP surface" was un-countable.
 **Lever (this run):** shipped the documented smallest shape — `databases.asks_total` + `asks_mcp` (migration 0034), bumped in the `/v1/ask` completion UPDATE alongside `first10_*`, non-saturating; the launch gate reads `SUM(asks_mcp)` and criterion 1 is now a real live count that can go green (`SK-GTM-011`). **Numbers moved:** row #17 docs-ambiguity **~12 → ~11**; criterion-1 measurability **impossible → live**. Details in "Last change".
 **P2 UX-flow green** (FLOW-005 6/6, carried run 184). BIRD/Spider dark; memory-quality proxy MET at 79.49 % (off-lever).
 **Top `blocked-by-human` bullet:** Show HN launch sequence (⏱ ~30 min, **idle 82 days since 06-13**),
-condition-gated on the `SK-PIVOT-016` gate (**2/5**; criterion 4 at 5/7 golden). #2 Anthropic
+condition-gated on `GLOBAL-041` Phase A (the `SK-PIVOT-016` gate it sat on is retired). #2 Anthropic
 connector directory (money-gated, 07-21). Queue **depth 2+**, head age 82 d.
 **Dark (rule 8, reported not pulled):** dogfood criterion 3 (silent-wrong-answer, E-09/GLOBAL-037); criterion 4 (query-shape
 lever within ±5 pp noise); engine **#8 BIRD 0.5382** (39 d) / **#9 Spider 0.2222** (**46 d** stale, async multi-window resume); rows **#2/#4/#5/#16**
@@ -63,7 +60,7 @@ re-measured live: **`typecheck` 0** (workspace, post-`bun install`), **`bun run 
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **FLOW-005 re-walked live run 184: 6/6 PASS** (curl-based MCP discovery + auth-wall, agent-runnable). **Playwright walker launch fixed run 194** — `browser.ts` now falls back to the prebuilt Chromium when the pinned revision is absent, so it launches in-container (was: download-attempt fail on the `chromium-1234` pin). Full walk still **CI-canonical** (`acquisition-health.yml`): the sandbox's proxy-stripped direct egress blackholes UDP/443 ⇒ cross-host nav intermittently `ERR_QUIC_PROTOCOL_ERROR` (~2/3 runs fail step 1), so no reliable container pass-count; carried **0 failed / 9 blocked** from 07-26. #999 (08-16) fixed the `/app/new/` 428 dead-end | target **0 `failed`** ✅; anon walks stop at the 428 `challenge_required` (Turnstile, `SK-ANON-012`) |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
 | 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub. MCP official registry published 07-22; Glama crawl-listed; Smithery/PulseMCP 0. First-touch attribution live since 07-19; `source_json` non-null **0**, for want of strangers, not instrument | → ≥ 5 live. Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
-| | **Human queue** — the one non-automatable actor | **depth 2+**; head is the Show HN launch, oldest bullet **82 days** (`SK-PIVOT-016` gate **2/5**; criterion 4 at 5/7 golden); #2 Anthropic connector directory (money-gated, 07-21); registry-submit payloads parked by `/reach` | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: **0** at step 0 |
+| | **Human queue** — the one non-automatable actor | **depth 2+**; head is the Show HN launch, oldest bullet **82 days** (now gated on `GLOBAL-041` Phase A); #2 Anthropic connector directory (money-gated, 07-21); registry-submit payloads parked by `/reach` | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: **0** at step 0 |
 
 ## Shipped distribution
 

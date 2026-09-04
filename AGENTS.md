@@ -214,7 +214,7 @@ Per-area `AGENTS.md` files repeat just their slice of this table.
 | [`docs/feature-conventions.md`](docs/feature-conventions.md) | How `docs/features/` is structured. Read before adding/editing a feature. |
 | [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, tech-stack rationale, risks. Phase plan extracted to `phase-plan.md`. |
 | [`docs/phase-plan.md`](docs/phase-plan.md) | **Canonical phase plan** — per-phase items, exit gates, the §6 monetization + scaling trigger. |
-| [`docs/pivot-autonomous-dba.md`](docs/pivot-autonomous-dba.md) | **Autonomous-DBA execution plan** (`GLOBAL-041`): build order, archive/delete batches awaiting approval, compass rewrites. |
+| [`docs/pivot-autonomous-dba.md`](docs/pivot-autonomous-dba.md) | **Autonomous-DBA execution plan** (`GLOBAL-041`): Phase A/B/C build order; docs pivot executed in PR #1097. |
 | [`docs/runbook.md`](docs/runbook.md) | Operations: env, secrets, deploy, recovery; design-partner ref (§10). |
 | [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview script, inbound triage SLA. |
 | [`docs/performance.md`](docs/performance.md) | Span/metric/label catalog + perf goals. |

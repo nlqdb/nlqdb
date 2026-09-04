@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** One registry from internal cause to user-facing copy — every wire error is `{code, message, action, retryable, params}` rendered server-side.
 **Status:** implemented — registry + envelope live on every `/v1/ask`, `/v1/run`, `/v1/memory`, `/v1/db/connect`, `/v1/databases` and parse-error path; all five surfaces render wire copy. Remaining gap: the billing / keys / grants routes still emit the legacy string form `{error:"slug"}` (the SDK normalises it to `{code}` so no surface breaks, but those codes carry no copy) — tracked in Open questions.
 **Owners (code):** `packages/errors/**`, `apps/api/src/error-envelope.ts`
-**Cross-refs:** [`GLOBAL-012`](../../decisions/GLOBAL-012-one-sentence-errors.md) (canonical — this feature is its implementation) · [`GLOBAL-011`](../../decisions/GLOBAL-011-honest-latency.md) (never claim what we don't know) · [`GLOBAL-003`](../../decisions/GLOBAL-003-surface-parity.md) (surface parity, now automatic) · `ask-pipeline/FEATURE.md` (`SK-ASK-029`/`SK-ASK-030` exec classifiers) · `llm-router/FEATURE.md` (`SK-LLM-051`/`SK-LLM-052` cause propagation) · `trust-ux/FEATURE.md` (`SK-TRUST-006` write outcomes)
+**Cross-refs:** [`GLOBAL-012`](../../decisions/GLOBAL-012-one-sentence-errors.md) (canonical — this feature is its implementation) · [`GLOBAL-011`](../../decisions/GLOBAL-011-honest-latency.md) (never claim what we don't know) · [`GLOBAL-003`](../../decisions/GLOBAL-003-all-surfaces-one-pr.md) (surface parity, now automatic) · `ask-pipeline/FEATURE.md` (`SK-ASK-029`/`SK-ASK-030` exec classifiers) · `llm-router/FEATURE.md` (`SK-LLM-051`/`SK-LLM-052` cause propagation) · `trust-ux/FEATURE.md` (`SK-TRUST-006` write outcomes)
 
 ## Touchpoints — read this feature before editing
 

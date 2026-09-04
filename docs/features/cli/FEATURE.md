@@ -85,7 +85,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-010** — Credentials live in the OS keychain; `NLQDB_API_KEY` is the CI escape hatch.
 - **GLOBAL-011** — Honest latency — show the live trace; never spinner-lie.
 - **GLOBAL-012** — Errors are one sentence with the next action.
-- **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
+- **GLOBAL-017** — One way to do each thing — `/v1/ask` is the single NL entry; one REST resource per control-plane object; no aliases.
   - *In this feature:* `nlq remember` ([`SK-CLI-018`](decisions/SK-CLI-018-remember-verb.md)) is a **third** data verb, admitted under GLOBAL-017's "explicit justification" clause: it mirrors the already-justified third *endpoint* `/v1/memory/remember` (SK-PIVOT-008 — memory writes can't ride `nlq run`'s raw-SQL hatch without breaking the typed-plan trust boundary), so it's parity for an existing operation, not a new one.
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.
 - **GLOBAL-023** — Trust UX baseline.

@@ -56,7 +56,7 @@ hosted server *and* both memory skills in a single step:
 /plugin install nlqdb-memory@nlqdb
 ```
 
-On any other MCP host, [**give your agent memory**](https://docs.nlqdb.com/agent-memory/)
+On any other MCP host, [**connect your agent**](https://docs.nlqdb.com/agent-memory/)
 with one browser-OAuth approval; headless hosts skip the browser with
 `npx -y @nlqdb/mcp` (`0.1.1`) and an `sk_mcp_*` MCP key
 ([MCP setup](https://docs.nlqdb.com/mcp/)). `@nlqdb/sdk` (`0.4.0`) and
@@ -124,7 +124,7 @@ The hosted-premium model lane went live 2026-08-14. The full model strategy is i
 | Chat app `nlqdb.com/app` | ✓ shipped | `apps/web/**` |
 | Hosted MCP server `mcp.nlqdb.com/mcp` | ✓ shipped (host auto-detect pending) | `apps/mcp/**`, `packages/mcp/**` |
 | Local stdio MCP server `@nlqdb/mcp` | ✓ shipped (`0.1.1`) — `npx -y @nlqdb/mcp` with an `sk_mcp_*` key | `packages/mcp/**` |
-| Droppable agent-memory artifacts (AGENTS.md · Claude Code skill **+ plugin** · Cursor rules · Codex config) | ✓ shipped — `/plugin marketplace add nlqdb/nlqdb` installs the server + skills in one step | `apps/web/public/agent-artifacts/**` |
+| Droppable agent artifacts (AGENTS.md · Claude Code skill **+ plugin** · Cursor rules · Codex config) | ✓ shipped — `/plugin marketplace add nlqdb/nlqdb` installs the server + skills in one step | `apps/web/public/agent-artifacts/**` |
 | `nlq` CLI (Go) | ✓ shipped (core verbs; device-login pending) | `cli/**` |
 
 Full integration matrix in [`docs/progress.md`](./docs/progress.md).
@@ -169,36 +169,28 @@ them are the engine roadmap. Canonical plan + exit gates:
 >
 > Setup, branch naming, and the CLA are in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-### Now — analytical agent memory (the wedge)
+### Now — Phase A: the schema infers itself (`GLOBAL-041`)
 
-Memory your agent can `GROUP BY`: real Postgres tables per memory type,
-plain-English analytics over what it remembered — not top-k recall.
+The first insert creates the shape; later inserts and reads evolve it. KPI:
+first-insert inference rate ≥ 95 % at Phase A exit. Build order in
+[`docs/pivot-autonomous-dba.md` §4](./docs/pivot-autonomous-dba.md).
 
-- ✓ `agent_memory_v1` preset — entities / facts / episodes, one command,
-  live for every account
-- ✓ `nlqdb_remember` — deterministic write path (MCP tool + API + SDK + CLI)
-- ✓ `nlqdb_read` — read-only MCP tool a host can mark "always allow", so an
-  agent queries memory with no prompt per call (writes stay on `nlqdb_query`)
-- ✓ Per-agent / per-end-user / per-thread isolation — hard RLS gates,
-  fail-closed
-- ~ TTL retention — sweep built; cron wiring pending
-- ✓ `/agents` landing + honest competitor capability matrix
-- ✓ Claude Code plugin — `/plugin marketplace add nlqdb/nlqdb` installs the
-  server + both memory skills in one step
-- ~ **Dogfood gate** — nlqdb's own ops running on nlqdb memory through the
-  public MCP surface; the public launch fires when its five criteria are
-  green
-- ✓ Public memory dashboard on `/agents` — live, aggregates-only block with an
-  as-of date
-- ◯ One-click repo→memory import (paste a GitHub URL)
-- ◯ Goal packs — per-niche memory recipes (support-bot resolution ledger,
-  research-agent source ledger, …)
+- ◯ `kind=extend` typed plan — a write naming an unseen table or field widens
+  the schema in the same transaction as the insert, never a `schema_mismatch`
+- ◯ Extend diff + trace on every surface (SDK · CLI · MCP · `<nlq-data>`)
+- ◯ KPI counters `asks_extend_ok` / `asks_extend_failed` on the `/v1/ask` write path
+- ◯ Phase B — `pg_stat_*` + `EXPLAIN` collection → typed proposals (index /
+  retype / drop / rename / move-to-engine) → `/app/dba` dashboard with
+  1-click apply + undo
+- ✓ Rails kept from the prior bet for the expert-knowledge app:
+  `agent_memory_v1` preset, `nlqdb_remember` / `nlqdb_read` MCP tools,
+  per-agent RLS isolation, the Claude Code plugin, `/agents`
 
 ### Next — the expert-knowledge marketplace ("Become AI")
 
 Non-technical professionals turn their expertise into structured,
-queryable knowledge that AI agents pay to use. Decisions locked, built in
-parallel with the wedge
+queryable knowledge that AI agents pay to use. Decisions locked; build
+gated on Phase A (`SK-EKP-005`)
 ([`docs/features/expert-knowledge-platform/`](./docs/features/expert-knowledge-platform/FEATURE.md)).
 
 - ◯ Interview authoring — answer questions about your craft, get queryable

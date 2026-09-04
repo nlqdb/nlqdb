@@ -1,6 +1,6 @@
 # Competitor Landscape
 
-A scan of the products nlqdb competes with, directly or adjacently, by category (the summary table ranks threat vectors). Pricing/features are each vendor's public positioning and change often — treat as order-of-magnitude. nlqdb sits intentionally between four adjacent categories — managed Postgres, text-to-SQL, AI BI, and agent memory.
+A scan of the products nlqdb competes with, directly or adjacently, by category (the summary table ranks threat vectors). Pricing/features are each vendor's public positioning and change often — treat as order-of-magnitude. nlqdb sits between four adjacent categories — managed Postgres, text-to-SQL, AI BI, and agent memory — and no entrant occupies its own: the autonomous DBA that infers, evolves and optimizes the schema from usage (`GLOBAL-041`).
 
 ---
 
@@ -9,7 +9,7 @@ A scan of the products nlqdb competes with, directly or adjacently, by category 
 These are what a solo builder (P1) reaches for today. They solve provisioning and ops but leave the NL / admin-UI / agent layer as an exercise for the user.
 
 ### Neon — https://neon.com
-Serverless Postgres with copy-on-write branching and scale-to-zero; generous free plan, pay-as-you-go launch tier. Ships an **official MCP server** (remote `mcp.neon.tech`, OAuth) that manages Postgres from a coding agent in English. Canonical: `/vs/neon` ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)).
+Serverless Postgres with copy-on-write branching and scale-to-zero; generous free plan, pay-as-you-go launch tier. Ships an **official MCP server** (remote `mcp.neon.tech`, OAuth) that manages Postgres from a coding agent in English. Canonical: `/vs/neon` ([SK-CMP-002](./features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)).
 - **Overlaps with:** P1 (the DB URL), P2 (per-agent branches as ephemeral DBs).
 - **Gap nlqdb exploits:** Neon's NL/MCP is *dev-time database administration* (a coding agent creates projects, branches, migrations); no *runtime* answer element for end users — no `<nlq-data>` embed, no SQL shown to the asker, no fail-closed allow-list, no anonymous try. **Threat vector:** **High** — scariest direct P1 competitor alongside Supabase; brand + economics + a strong dev-time MCP make swapping friction for a dev already on Neon.
 
@@ -17,11 +17,6 @@ Serverless Postgres with copy-on-write branching and scale-to-zero; generous fre
 Postgres + auth + storage + edge functions + Studio UI. The default "batteries-included" pick for solo builders.
 - **Overlaps with:** P1 (DB + admin UI in one), somewhat P3 (Studio as a query UI).
 - **Gap nlqdb exploits:** Studio is a SQL IDE, not a chat interface; no NL auto-migration; MCP server is query-only against a pre-provisioned DB. **Threat vector:** The scariest direct P1 competitor — momentum + a full BaaS story nlqdb doesn't match.
-
-### Railway, Xata, Turso, PlanetScale, Render, Fly, Aiven (low-threat hosts)
-Commodity managed Postgres/DB hosts — P1 hosting ergonomics only, no NL / agent / MCP layer. **Threat vector:** Low-to-medium; collectively the "cheap, boring Postgres" price baseline.
-
----
 
 ## 2. Text-to-SQL / NL-over-DB tools
 
@@ -41,7 +36,7 @@ OSS + cloud text-to-SQL trained on your schema and prior queries.
 Fine-tuned open-weights SQL model + commercial layer. **Gap nlqdb exploits:** translator layer only (as Vanna). **Threat vector:** Medium — credible OSS baseline for self-hosters.
 
 ### AskYourDatabase — https://askyourdatabase.com
-Chat-style AI Data Analyst over your existing DB — Desktop App + embeddable cloud Chatbot with Dashboard Builder; paid + Enterprise on-prem. (Plans/SOC 2 in [`comparison-pages/FEATURE.md`](../features/comparison-pages/FEATURE.md).)
+Chat-style AI Data Analyst over your existing DB — Desktop App + embeddable cloud Chatbot with Dashboard Builder; paid + Enterprise on-prem. (Plans/SOC 2 in [`comparison-pages/FEATURE.md`](./features/comparison-pages/FEATURE.md).)
 - **Gap:** connects to an existing warehouse — no provisioning verb, no English-driven DDL, no `<nlq-data>` embed. **Threat:** Medium for P3. Canonical `/vs/askyourdatabase`.
 
 ### Julius AI — https://julius.ai
@@ -203,7 +198,7 @@ Nobody occupies nlqdb's intersection:
 1. **"Agent provisions its own DB"** — MCP Postgres / Vanna / Retool assume a human already stood the DB up.
 2. **DB + NL chat + auto-migration in one product** — Supabase / Outerbase / Defog each own a slice, not the stitch.
 3. **Conversational destructive-op preview** — rare; Retool gates UI clicks, not NL. Trust differentiator for P1/P4.
-4. **Analytical memory for agents** (§4) — Mem0 / Zep / Letta / LangMem / Hindsight / Supermemory *retrieve* (or reflect); Memori writes memory *to* SQL but exposes only recall; only nlqdb `GROUP BY` / `JOIN` / `HAVING` over memory. DIY / Agentic DB / GBrain are SQL-or-markdown-capable but not hosted NL-queryable memory with fail-closed isolation out of the box.
+4. **Analytical memory for agents** (§4; the prior bet, kept as the `/agents` marketing lane) — Mem0 / Zep / Letta / LangMem / Hindsight / Supermemory *retrieve* (or reflect); Memori writes memory *to* SQL but exposes only recall; only nlqdb `GROUP BY` / `JOIN` / `HAVING` over memory. DIY / Agentic DB / GBrain are SQL-or-markdown-capable but not hosted NL-queryable memory with fail-closed isolation out of the box.
 5. **Cross-persona with one product** — most rivals aim at one persona; one chat+DB primitive for a dev, an agent, and a PM is unoccupied.
 
 Scariest threats within ~12 months: (a) Supabase NL + agent story; (b) MCP Postgres adding provisioning; (c) Agentic DB / Hindsight matching coding-agent onboarding or recall mindshare (§4). Cross-persona + NL-migration are harder to copy.

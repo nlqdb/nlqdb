@@ -109,7 +109,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* a below-floor plan is *not* auto-retried — it's a user-clarification need, not a transient failure; per `GLOBAL-040` it surfaces as a guided clarify turn, and the one-click options are the recovery.
 - **GLOBAL-023** — Trust UX baseline. *(This feature is the implementation of `GLOBAL-023`.)*
 - **GLOBAL-040** — Ambiguity and low confidence resolve as a guided one-click `clarify_required` turn, never a dead-end error.
-  - *In this feature:* supersedes `GLOBAL-023` rule (3); `SK-TRUST-003`'s low-confidence outcome is a clarify turn, and `low_confidence` is a `clarification` value on the shared rail, not a standalone error code.
+  - *In this feature:* replaces `GLOBAL-023` rule (3); `SK-TRUST-003`'s low-confidence outcome is a clarify turn, and `low_confidence` is a `clarification` value on the shared rail, not a standalone error code.
 - **GLOBAL-025** — North-star: engine quality, onboarding, UX — each with explicit KPIs.
   - *In this feature:* the UX north-star pillar lives here. KPI floors (destructive-op retry rate, Sean-Ellis "very disappointed" share, session retention, recoverable-failure recovery rate) are the Phase 2 / Phase 3 exit gates; `SK-TRUST-004` ships the instrumentation.
 

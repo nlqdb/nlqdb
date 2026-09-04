@@ -35,7 +35,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on the SK-PIVOT-016 dogfood gate; when its 5 criteria are green, only your sitting remains | 2026-06-13 |
+| 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on `GLOBAL-041` Phase A (KPI 1 live and ≥ 95 %); then only your sitting remains | 2026-06-13 |
 | 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 | 3 | ~10 min | Submit nlqdb to PulseMCP + mcp.directory — two manual directory submits (registry cascade never reached them); lowest-yield, payloads ready | 2026-09-01 |
 | 4 | ~10 min | Submit `nlqdb-memory` to cc-marketplace (`claudecodecommands.directory`) — cross-repo PR or web form; lowest-yield (`github`-ref), payload ready | 2026-09-04 |
@@ -43,11 +43,8 @@ values and criteria live. Read those only when you sit down to do the thing.
 Only #1 can move real strangers (scorecard row #2); the hosted-premium meter
 went **live 2026-08-14** (`premium.live=true` in prod — the full activation,
 AI Gateway included, is done and off this queue); #2 costs money and waits per
-`docs/cost-ladder.md` unless a Team org already exists. No founder action remains on the SK-PIVOT-016 gate path itself: with
-`NLQDB_API_KEY` set (2026-08-04), D-04 — provisioning the memory DB through
-the product's own authed create surface — is **agent work** (the 08-08 weekly
-review briefly queued it here; corrected same day, founder-flagged: rule 4 /
-GLOBAL-033 — never park an agent-performable action on the founder).
+`docs/cost-ladder.md` unless a Team org already exists. No founder action remains on the Phase A path itself — it is agent work
+(rule 4 / GLOBAL-033: never park an agent-performable action on the founder).
 (Resolved 2026-08-05, same sitting — Era 6: the "Become AI" five locks →
 `SK-EKP-001..005`/`SK-PIVOT-023`, the goal-pack build order locked
 (niche-quality lens → `pack-candidates.md` header), the Anthropic
@@ -66,33 +63,21 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
 1. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
-   ready since 07-19 — Fire the launch sequence** — **now condition-gated on
-   the dogfood gate** ([`SK-PIVOT-016`](./features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md),
-   founder-directed 2026-07-26: criteria, never calendar dates — agents
-   drive all five). When the gate is green, only this founder-only half
-   remains, and the launch demo is the gate's own artifact (the live
-   `/agents` memory dashboard + "we ran our company's ops on our own memory
-   through the public MCP endpoint — here's what broke"): per
+   ready since 07-19 — Fire the launch sequence** — **condition-gated on
+   `GLOBAL-041` Phase A** (widen-on-write live, KPI 1 first-insert inference
+   rate measured and ≥ 95 %; criteria, never calendar dates — agents drive
+   it). When the gate is green, only this founder-only half remains, and the
+   launch demo is the product itself: a fresh app whose first insert creates
+   the schema and whose later writes evolve it, every change previewed. Per
    [`docs/research/launch-kit.md`](./research/launch-kit.md), pick the angle
-   (§2), write the Show
-   HN post + first comment in your own voice from the §3.1 fact sheet
-   (never agent copy — the r/SQL lesson), soft-launch lobste.rs/r/SideProject
-   first, then Show HN Tue–Thu morning, Product Hunt ≥ 1 week later
-   (account-walled). Attribution (#745) + the prod D1 migrations
-   (`0022`–`0025`) are live (verified 2026-07-22): every visit is
-   attributable end-to-end. nlqdb has never launched anywhere.
-   **Reaffirmed 07-28 (advisor session): no launch before real proof of
-   value — gate unchanged, criteria not loosened.** The gate's `MEMORY_PRESET=1` prerequisite **shipped 2026-07-29**
-   (#835), so all five criteria are now agent-drivable — D-04's prod prereq is
-   clear. Execution track:
-   `dogfood/INDEX.md` (archived)
-   (`D-01..D-07`, one slice per criterion), the founder-set weekly focus
-   number as of 07-28. Gate progress: **2/5** (criterion 2 green from D-04
-   run 1, 2026-08-11 — provisioned + seeded the prod memory DB and ran the
-   first ops workload through the public MCP surface, first-10 success 100 %;
-   criterion 5 green on #978's deploy — the public `/agents` dashboard is live;
-   criterion 1 = 12 real MCP asks, criterion 3 surfaced one silent wrong-answer
-   incident. This founder-only launch half stays gated until all five are green).
+   (§2), write the Show HN post + first comment in your own voice from the
+   §3.1 fact sheet (never agent copy — the r/SQL lesson), soft-launch
+   lobste.rs/r/SideProject first, then Show HN Tue–Thu morning, Product Hunt
+   ≥ 1 week later (account-walled). Attribution (#745) + the prod D1
+   migrations (`0022`–`0025`) are live (verified 2026-07-22): every visit is
+   attributable end-to-end. nlqdb has never launched anywhere. **No launch
+   before real proof of value** (reaffirmed 07-28): the prior dogfood gate is
+   retired with the archived bet; Phase A is the gate now.
 
 2. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
@@ -110,9 +95,9 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    `nlqdb_remember`, `nlqdb_connect_database` — carries a `title` + `readOnlyHint`/`destructiveHint`).
    Open the portal (remote-MCP path) and enter:
    - **Server URL / transport:** `https://mcp.nlqdb.com/mcp`, streamable HTTP, same URL for every user
-   - **Name (≤100):** `nlqdb — analytical memory for AI agents`
-   - **Tagline (≤55):** `Analytical memory for AI agents. One command.`
-   - **Description (≤2000):** `Analytical memory for AI agents: a real Postgres your agent connects to over MCP and queries in plain English — GROUP BY, JOIN, aggregate over what it remembered, not just the top-k a vector store recalls. One command to connect.`
+   - **Name (≤100):** `nlqdb — your autonomous DBA`
+   - **Tagline (≤55):** `Your autonomous DBA — no data modeling. One command.`
+   - **Description (≤2000):** `nlqdb — your autonomous DBA: a real Postgres your agent connects to over MCP and queries in plain English. The schema is inferred from what the agent writes and evolves with use; every change is previewed and one click to undo. GROUP BY, JOIN, aggregate — not just top-k recall. One command to connect.`
    - **Categories (1–5):** Developer Tools + Data & Analytics
    - **Documentation URL:** `https://nlqdb.com/agents/?utm_source=claude-dir` (carries the ledger key)
    - **Privacy policy URL:** `https://nlqdb.com/privacy`
@@ -135,9 +120,9 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    - **PulseMCP** — `pulsemcp.com/submit` (account-walled; 403 to anon).
      Server URL `https://mcp.nlqdb.com/mcp` (streamable HTTP); name `nlqdb`;
      homepage `https://nlqdb.com/agents/?utm_source=pulsemcp` (carries the
-     ledger key); description `Analytical memory for AI agents: a real Postgres
-     your agent connects to over MCP and queries in plain English — GROUP BY,
-     JOIN, aggregate over what it remembered. One command.` On submit, flip
+     ledger key); description `nlqdb — your autonomous DBA: a real Postgres
+     your agent connects to over MCP and queries in plain English; the schema
+     is inferred from what it writes. One command.` On submit, flip
      ledger row #5 to **in-flight**.
    - **mcp.directory** — the no-account submit form at `mcp.directory/submit`
      (a Next.js SPA, so not agent-POST-able). Required: GitHub repo URL

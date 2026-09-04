@@ -41,12 +41,12 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-ICP-NNN
 - [**SK-ICP-007**](decisions/SK-ICP-007-source-health-probe.md) — Agent-runnable source-health probe (FLOW-008 in `scripts/verify-flows.sh`).
 - [**SK-ICP-008**](decisions/SK-ICP-008-devto.md) — Dev.to source via the public Forem API (`top=7` server-side recency).
 - [**SK-ICP-009**](decisions/SK-ICP-009-github-discussions.md) — GitHub Discussions source via GraphQL — the P2 (agent-builder) long-form signal Issues miss.
-- [**SK-ICP-010**](decisions/SK-ICP-010-drop-prefilter.md) — Drop the pain-word regex prefilter; the LLM relevance floor is the only scoring gate. Supersedes the prefilter clause of SK-ICP-002.
+- [**SK-ICP-010**](decisions/SK-ICP-010-drop-prefilter.md) — Drop the pain-word regex prefilter; the LLM relevance floor is the only scoring gate. Replaces the prefilter clause of SK-ICP-002.
 - [**SK-ICP-011**](decisions/SK-ICP-011-reddit-oauth.md) — Reddit via app-only OAuth (`client_credentials`, KV-cached token); the anonymous endpoint 403s datacenter bots.
 - [**SK-ICP-012**](decisions/SK-ICP-012-bluesky.md) — Bluesky source via the AT Protocol AppView (`api.bsky.app` `searchPosts`, server-side `since`, no auth) — reaches the researcher+practitioner demographic the prior 7 sources under-sample.
 - [**SK-ICP-013**](decisions/SK-ICP-013-mastodon.md) — Mastodon source via the public hashtag timeline (`mastodon.social/api/v1/timelines/tag/<tag>`, no auth, federated reach) — the ActivityPub half of the post-2024 X exodus that SK-ICP-012 only covers on the AT Protocol side.
 - [**SK-ICP-014**](decisions/SK-ICP-014-starvation-evidence.md) — Empty runs write a starvation-marked evidence file + `starved` signal (silent-drift class, founder-resolved 2026-07-16). `runIcpScrape` persists `icp:last_scrape_stats`; `runIcpCluster` writes the monthly file with a per-source starvation section instead of the old silent early-return, and sets `result.starved` so the `icp_cluster_completed` log + LogSnag distinguish starved from healthy-quiet. Scoring/floor/sources unchanged.
-- [**SK-ICP-015**](decisions/SK-ICP-015-batched-kv-writes.md) — One KV put per run, not per item: a single `icp:seen` dedup index (90d, pruned on write), one `icp:items:<YYYYMMDD>` array, one `icp:scored:<YYYYMMDD>` array. Supersedes the per-item key schemas of SK-ICP-001 + SK-ICP-002; dedup cold-starts once on deploy.
+- [**SK-ICP-015**](decisions/SK-ICP-015-batched-kv-writes.md) — One KV put per run, not per item: a single `icp:seen` dedup index (90d, pruned on write), one `icp:items:<YYYYMMDD>` array, one `icp:scored:<YYYYMMDD>` array. Replaces the per-item key schemas of SK-ICP-001 + SK-ICP-002; dedup cold-starts once on deploy.
 
 ## GLOBALs governing this feature
 

@@ -50,8 +50,8 @@ introspection, `SK-DB-015` schema render) · [`multi-engine-adapter/FEATURE.md`]
 Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-DBCONN-NNN`. The list below is the index; open the linked file for the full five-field block.
 
 - [**SK-DBCONN-001**](decisions/SK-DBCONN-001-connect-verb-end-to-end.md) — `POST /v1/db/connect` end-to-end: route + standalone orchestrator + `clickhouse-byo` exec + query-time engine dispatch + sealed-blob storage.
-- [**SK-DBCONN-002**](decisions/SK-DBCONN-002-byo-postgres-driver-postgres-js.md) — BYO Postgres runs on postgres.js over Workers `connect()` sockets, not the Neon HTTP driver (fixes `introspection_failed` for any non-Neon Postgres; supersedes the implicit Neon-HTTP-for-BYO in SK-DBCONN-001). **Field-failed for Supabase** — the pooler hangs ~18s on Workers (see SK-DBCONN-003 + Open question (g)); still the code path for a pasted non-Neon DSN.
-- [**SK-DBCONN-003**](decisions/SK-DBCONN-003-oauth-supabase-mgmt-api-connect.md) — Supabase connects via OAuth + the Management-API HTTPS transport (`read_only:true`), not a socket DSN; `connectSupabaseMgmt` orchestrator, sealed OAuth token in `db_oauth_grants`, mgmt sentinel + query-time dispatch. Supersedes SK-DBCONN-002 for the Supabase path.
+- [**SK-DBCONN-002**](decisions/SK-DBCONN-002-byo-postgres-driver-postgres-js.md) — BYO Postgres runs on postgres.js over Workers `connect()` sockets, not the Neon HTTP driver (fixes `introspection_failed` for any non-Neon Postgres; replaces the implicit Neon-HTTP-for-BYO in SK-DBCONN-001). **Field-failed for Supabase** — the pooler hangs ~18s on Workers (see SK-DBCONN-003 + Open question (g)); still the code path for a pasted non-Neon DSN.
+- [**SK-DBCONN-003**](decisions/SK-DBCONN-003-oauth-supabase-mgmt-api-connect.md) — Supabase connects via OAuth + the Management-API HTTPS transport (`read_only:true`), not a socket DSN; `connectSupabaseMgmt` orchestrator, sealed OAuth token in `db_oauth_grants`, mgmt sentinel + query-time dispatch. Replaces SK-DBCONN-002 for the Supabase path.
 
 ## GLOBALs governing this feature
 

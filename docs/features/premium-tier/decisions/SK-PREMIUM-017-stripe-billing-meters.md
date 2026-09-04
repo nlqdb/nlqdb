@@ -1,7 +1,7 @@
 # SK-PREMIUM-017 — Overage metering rides Stripe Billing Meters directly (no Lago), idempotent events + daily reconciliation
 
 Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md). Refines
-[`SK-PREMIUM-002`](./SK-PREMIUM-002-provider-list-zero-markup.md) and supersedes
+[`SK-PREMIUM-002`](./SK-PREMIUM-002-provider-list-zero-markup.md) and replaces
 its Lago mention.
 
 - **Decision:** Hosted-premium overage is metered to **Stripe Billing Meters**

@@ -59,7 +59,7 @@
   preset path; `buildHostedExecSteps` / `buildMemoryExec` set
   `app.agent_id` (+ the opt-in GUCs); handlers resolve `agent_id` from the
   principal (+ optional field). `sql-validate.ts` stays a generic
-  destructive-verb guardrail — **not** the scope gate. **Supersedes** the
+  destructive-verb guardrail — **not** the scope gate. **Replaces** the
   "compile-layer scope predicate, dual-gated by `sql-validate`" mechanism
   in SK-PIVOT-006 / the original E-03 worksheet. Ships with two-principal
   invariant tests + second review (Neon-gated).

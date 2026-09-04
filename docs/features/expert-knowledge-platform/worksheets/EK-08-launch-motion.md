@@ -5,7 +5,7 @@
 real; founder input on the motion itself · **Box 1 shipped 2026-08-26:** the
 acceptance criteria (the marketplace's own launch gate, `SK-EKP-005`'s "own
 launch" made concrete) are written below with an owner per criterion —
-agent-tightenable, founder-loosenable, never added to `SK-PIVOT-016`.
+agent-tightenable, founder-loosenable, never added to the Phase A gate.
 **Box 2 `P2` research shipped 2026-08-29:** the three candidate motions are
 drafted below (§ *Motion — options*) with 2026 receipts and the conservative
 default applied (Motion 1 — supply-first single-vertical wedge). Remaining:
@@ -18,17 +18,16 @@ bullet, only once the criteria are green).
 ## Goal
 
 `SK-EKP-005` gives the marketplace **its own launch**, distinct from the
-Show HN launch the dogfood gate protects. This slice writes that launch
+product's Show HN launch. This slice writes that launch
 down — condition-gated, never date-gated (the repo's idiom, founder-directed
 2026-07-26):
 
-1. **Acceptance criteria** — the marketplace equivalent of the dogfood
-   gate's five, defined here instead of inherited (the founder explicitly
-   declined coupling): e.g. a real expert (starting with the founder as
+1. **Acceptance criteria** — the marketplace's own gate, defined here, not
+   inherited from the engine's Phase A gate: e.g. a real expert (starting with the founder as
    language tutor, user #1) completes interview → listing → a real buyer
    queries → fee splits correctly → revocation works → zero silent
    data-loss incidents on expert knowledge. Exact set is this slice's
-   deliverable, agent-tightenable / founder-loosenable like SK-PIVOT-016.
+   deliverable, agent-tightenable / founder-loosenable.
 2. **Motion** — where and how it launches (the "another type of launch"
    the founder named): candidates researched with `P2` (creator-economy
    channels, profession communities, the existing /agents audience), then
@@ -40,12 +39,11 @@ down — condition-gated, never date-gated (the repo's idiom, founder-directed
 
 ## Acceptance criteria — the marketplace's own launch gate
 
-`SK-EKP-005` gives the marketplace its own launch, and the founder declined
-coupling it to the dogfood gate, so these are defined here — the
-marketplace's `SK-PIVOT-016` equivalent, condition-gated (never date-gated),
+`SK-EKP-005` gives the marketplace its own launch, uncoupled from the
+engine's Phase A gate, so these are defined here — condition-gated (never date-gated),
 each criterion owned by the slice that proves it. **Agents may tighten a
 criterion; only the founder loosens or removes one** — and no criterion here
-is ever added to `SK-PIVOT-016` (`SK-EKP-005`: parallel tracks, not coupled).
+is ever added to Phase A's gate (`SK-EKP-005`).
 The gate is green when a single **first paying expert** completes the whole
 money loop with a real buyer:
 
@@ -83,8 +81,8 @@ money loop with a real buyer:
    + guard) + the EK-04/EK-06 data-safety tests.*
 
 When all six are green, the launch bullet (box 3) becomes "everything is
-green — only the founder's ~30-minute sitting remains" — mirroring
-`SK-PIVOT-016`'s idiom without inheriting its criteria.
+green — only the founder's ~30-minute sitting remains" — condition-gated,
+never date-gated.
 
 ## Motion — options (`P2` research, 2026)
 
@@ -147,7 +145,7 @@ venues above rather than duplicating it.
 - [x] Acceptance criteria written into this track (or a minted decision)
       with owners per criterion. (2026-08-26 — the six-criterion first-paying-
       expert gate above, each owned by its proving slice, agent-tightenable /
-      founder-loosenable, kept off `SK-PIVOT-016`.)
+      founder-loosenable, kept off the Phase A gate.)
 - [~] Motion options researched with receipts (2026-08-29 `P2` pass, §
       *Motion — options*: three candidates + receipts + conservative default
       Motion 1 applied); **founder pick deferred** — not queued, since the

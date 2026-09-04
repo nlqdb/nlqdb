@@ -22,7 +22,7 @@
   else `direct`; rows with no capture (pre-instrument, CLI/SDK/MCP) are
   `untracked` so instrument coverage is itself a visible number.
   **`utm_source` values are canonical in
-  [`docs/research/acquisition-channels.md`](../../research/acquisition-channels.md)** —
+  [`docs/research/acquisition-channels.md`](../../../research/acquisition-channels.md)** —
   every externally published nlqdb URL carries its ledger key.
 - **Core value:** Free, Bullet-proof, Simple
 - **Why:** The first stranger cohort can never be attributed

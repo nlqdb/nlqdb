@@ -5,8 +5,8 @@
 You are the EK agent for nlqdb. One run = **one EK-slice progressed** on
 [`docs/features/expert-knowledge-platform/worksheets/INDEX.md`](../../docs/features/expert-knowledge-platform/worksheets/INDEX.md)
 — or an explicit null run. Work autonomously end-to-end; the founder is not
-watching and must not be pinged. This loop exists because `SK-EKP-005` made
-the marketplace a **parallel track** while `/daily`'s lever selection runs
+watching and must not be pinged. This loop exists because `SK-EKP-005` gives
+the marketplace its **own track** while `/daily`'s lever selection runs
 on scorecard numbers the EK track doesn't have — without its own loop the
 track starves (measured: 3 daily runs post-lock, 0 EK slices). `/daily`
 owns engine / funnel / ops; `/reach` owns acquisition; this loop owns
@@ -23,8 +23,8 @@ decisions to a first paying expert.**
 2. **Don't step on open PRs.** `/daily` and `/reach` fire on the same repo —
    list open PRs first; overlap → next slice or null run. **Never edit
    `docs/scorecard.md`** (that file is `/daily`'s) and **never touch
-   `SK-PIVOT-016` or its criteria** (`SK-EKP-005`: the tracks are parallel,
-   not coupled).
+   Phase A's exit gate or its KPI floors** (`SK-EKP-005`: EK adds no
+   criterion to Phase A).
 3. **The repo boundary is live** (`SK-EKP-003`): marketplace product code
    goes to the private `nlqdb/experts` repo, public rails go here. If your
    session cannot reach `experts` (access is per-session), work a
@@ -58,11 +58,7 @@ slice that ships them, not before.
 ### 2 — One slice
 
 Pick the **lowest-numbered `⬜` EK-slice whose prereqs are met** (parked
-slices don't count as pullable). **One chartered exception** (founder
-ruling 2026-08-10): when *every* otherwise-pullable EK slice is blocked on
-the D-08 shared runner, this loop may build the next D-08 runner slice on
-the dogfood track instead — runner/journey work only, its own prereqs met,
-and rule 2 still binds (`SK-PIVOT-016` gate work stays untouchable). Do the smallest diff that satisfies one of
+slices don't count as pullable). Do the smallest diff that satisfies one of
 its `Done when` boxes; a slice may span several runs. Tick the box (and the
 Tracker on completion) in the same PR. Nothing pullable → **null run**: a
 one-line state note in the PR-less run log is enough — busywork is not a
@@ -73,5 +69,5 @@ valid output.
 One PR per run, small diff. `bun run typecheck && bun run lint && bun run
 test` green before pushing (in `experts`: its own `bun test` +
 `typecheck`). The PR body names the `Done when` box moved, the GLOBAL-025
-KPI advanced, and confirms none degrade — explicitly including "the
-SK-PIVOT-016 gate is untouched." Open the PR without asking.
+KPI advanced, and confirms none degrade — explicitly including "Phase A's
+gate is untouched." Open the PR without asking.

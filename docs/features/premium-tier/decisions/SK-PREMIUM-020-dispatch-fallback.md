@@ -1,7 +1,7 @@
 # SK-PREMIUM-020 — A premium-lane dispatch failure falls back to the free chain (surfaced, unmetered), never `llm_failed` for a paid user
 
 Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md). Amends the "no
-failover" posture of [`SK-LLM-016`](../../llm-router/decisions/SK-LLM-016-byollm-dispatch-lane.md)
+failover" posture of [`SK-LLM-016`](../../llm-router/decisions/SK-LLM-016-byollm-dispatch.md)
 and [`SK-LLM-046`](../../llm-router/decisions/SK-LLM-046-ai-gateway-auth-token.md)
 ("the premium lane remains gateway-only") for the case where the gateway-only
 premium lane faults.

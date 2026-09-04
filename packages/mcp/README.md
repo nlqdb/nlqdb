@@ -1,8 +1,8 @@
 # @nlqdb/mcp
 
-Analytical memory for AI agents, over MCP — a real Postgres your agent can
-`GROUP BY` / `JOIN` / aggregate over in natural language, not just a recall
-store. This package is the **local stdio** transport: it reads an API key from
+nlqdb — your autonomous DBA, over MCP: a real Postgres your agent connects to
+and queries in plain English; the schema is inferred from what it writes, so
+the agent can `GROUP BY` / `JOIN` / aggregate, not just recall. This package is the **local stdio** transport: it reads an API key from
 the environment, so it works headless (CI, Docker, air-gapped, coding agents
 that can't open a browser).
 
@@ -72,5 +72,5 @@ Destructive plans (INSERT/UPDATE/DELETE/DDL) come back as
 
 Per-host config blocks and one-click installs:
 [docs.nlqdb.com/mcp](https://docs.nlqdb.com/mcp/?utm_source=npm) ·
-[what agent memory buys you](https://nlqdb.com/agents/?utm_source=npm) ·
+[using it as agent memory](https://nlqdb.com/agents/?utm_source=npm) ·
 [design + contributing](https://github.com/nlqdb/nlqdb/blob/main/docs/features/mcp-server/FEATURE.md)

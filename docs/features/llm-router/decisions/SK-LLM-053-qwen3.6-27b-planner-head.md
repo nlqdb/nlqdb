@@ -1,6 +1,6 @@
 # SK-LLM-053 — Qwen3.6-27B (`qwen/qwen3.6-27b`, Groq) leads the strict-$0 planner tier
 
-Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). **Supersedes the
+Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). **Replaces the
 GLM-4.7 planner head from [`SK-LLM-048`](./SK-LLM-048-glm-4.7-planner-head.md)**
 (forced: the model was pulled from Cerebras) and keeps the gpt-oss-120b fallback
 from [`SK-LLM-023`](./SK-LLM-023-cerebras-planner-tier.md).

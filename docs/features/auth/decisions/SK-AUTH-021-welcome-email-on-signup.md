@@ -20,7 +20,7 @@
   ([`SK-AUTH-018`](SK-AUTH-018-mock-idp-mock-stripe-preview-flags.md)):
   previews sink the mail to KV instead of hitting Resend. A Resend
   `idempotencyKey` of `welcome:${user.id}` collapses any double-fire
-  ([`GLOBAL-005`](../../../decisions/GLOBAL-005-idempotency.md)).
+  ([`GLOBAL-005`](../../../decisions/GLOBAL-005-idempotency-key.md)).
 - **Core value:** Effortless UX, Seamless auth, Bullet-proof
 - **Why:** Until now the product sent exactly two emails ever — the
   magic-link and the billing dunning reminder — so a stranger who
