@@ -85,7 +85,7 @@ when-to-load:
 
 ### SK-EVENTS-007 — PostHog as a future second sink, gated on a real cohort question
 
-- **Status:** Superseded by `SK-EVENTS-013` — the named trigger landed and the sink is wired where this decision reserved it.
+- **Status:** Replaced by `SK-EVENTS-013` — the named trigger landed and the sink is wired where this decision reserved it.
 
 ### SK-EVENTS-008 — Retry exhaustion drops silently; DLQ deferred until OTel signal warrants it
 

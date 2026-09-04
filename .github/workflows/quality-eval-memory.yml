@@ -1,5 +1,5 @@
 # quality-eval — memory-quality (nlqdb's OWN agent-memory-quality benchmark).
-# SK-QUAL-023: the wedge-relevant quality number. GLOBAL-036 leads with
+# SK-QUAL-023: the wedge-relevant quality number. the prior bet leads with
 # "analytical memory for AI agents"; this scores whether the memory itself is
 # good across four EX-scorable axes (retrieval / temporal / forgetting /
 # consolidation) plus the analytical-over-memory showcase. The dataset +
@@ -28,7 +28,7 @@ on:
   workflow_dispatch:
     inputs:
       include_frontier:
-        description: "Run the frontier lane too (paid OpenRouter) → free-vs-frontier delta on the agent-memory shape (the GLOBAL-025 headline KPI applied to the GLOBAL-036 wedge)"
+        description: "Run the frontier lane too (paid OpenRouter) → free-vs-frontier delta on the agent-memory shape (the GLOBAL-025 headline KPI applied to the prior bet wedge)"
         type: boolean
         default: false
       include_agentic_frontier:

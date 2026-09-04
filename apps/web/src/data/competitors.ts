@@ -1517,7 +1517,7 @@ export const COMPETITORS: Competitor[] = [
     name: "Cognee",
     url: "https://www.cognee.ai/",
     // Agent-memory cluster (knowledge-graph wing — the "not a vector store"
-    // headline of the GLOBAL-036 pivot, distinct from the vector cluster
+    // headline of the prior bet pivot, distinct from the vector cluster
     // Pinecone/Chroma/Weaviate/Qdrant). Anchored in docs/competitors.md §Cognee.
     // Facts web-verified 2026-06-24 via github.com/topoteretes/cognee + cognee.ai
     // + docs.cognee.ai/cognee-mcp: open-source Apache-2.0 Python framework
@@ -2258,7 +2258,7 @@ export const COMPETITORS: Competitor[] = [
     name: "Milvus",
     url: "https://milvus.io",
     // Agent-memory cluster (open-source vector wing — the large-scale ANN
-    // sibling of Pinecone/Chroma/Weaviate/Qdrant in the GLOBAL-036 "database,
+    // sibling of Pinecone/Chroma/Weaviate/Qdrant in the prior bet "database,
     // not a vector store" pivot). Anchored in docs/competitors.md §Milvus.
     // Facts web-verified 2026-06-24 via github.com/milvus-io/milvus + milvus.io
     // + zilliz.com/pricing + github.com/zilliztech/mcp-server-milvus:

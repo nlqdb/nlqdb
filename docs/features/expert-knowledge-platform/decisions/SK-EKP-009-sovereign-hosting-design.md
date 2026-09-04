@@ -8,7 +8,7 @@ hosting") from a marketing claim into a scoped, buildable journey. It mints
 no fee, changes no trust copy (that upgrade is EK-07 box 3, gated on a real
 expert walk per `P6`), and does not touch the `SK-PIVOT-016` gate
 (`SK-EKP-005`). The build (EK-07 boxes 2–3) stays deferred behind its hard
-prereq: the [`WS-11`](../../agent-memory-pivot/worksheets/WS-11-selfhost-container.md)
+prereq: the `WS-11` (archived)
 self-host image (`ghcr.io/nlqdb/api`) must ship and run first.
 
 ## Research pass (P2, 2026-08-09)

@@ -10,7 +10,7 @@ recruitment, interviews, and the conversion ask run with zero founder
 involvement.** The operating path is
 [`docs/research/design-partners-autonomous.md`](./research/design-partners-autonomous.md).
 This doc keeps only what is genuinely founder-only. Section numbers
-§1/§2/§5 are retained as superseded stubs because other docs cite
+§1/§2/§5 are retained as replaced stubs because other docs cite
 them. If a sentence here disagrees with a feature or with
 `phase-plan.md`, **the feature / phase plan wins**.
 
@@ -19,11 +19,11 @@ them. If a sentence here disagrees with a feature or with
 [`docs/research/email-and-marketing.md`](./research/email-and-marketing.md)
 (channels, the "refuse" list: cold outbound, paid ads, lifetime deals,
 design-partner discounts — not duplicated here) ·
-[`docs/research/phase-1-exit-criteria.md`](./research/phase-1-exit-criteria.md).
+`docs/research/phase-1-exit-criteria.md` (archived).
 
 ---
 
-## 1. Design-partner recruitment — superseded
+## 1. Design-partner recruitment — replaced
 
 Founder-led outreach (DMs, Calendly calls) is no longer the operating
 path — it violated the zero-founder directive and cold-DM outreach is
@@ -35,7 +35,7 @@ and MCP distribution; a design partner is defined behaviourally
 Targets unchanged: 5–7 partners across P1/P2
 ([`personas.md §10.4`](./research/personas.md)).
 
-## 2. The Sean Ellis interview — superseded
+## 2. The Sean Ellis interview — replaced
 
 The 1:1 interview is replaced by the in-product Sean Ellis survey
 (Q1 verbatim + free-text) and the agent-triaged check-in email —
@@ -83,7 +83,7 @@ plan (no impersonation) rule out an agent posting or replying there.
   demand-signal events firing — lose none of the free intent signal.
 - [ ] Capacity check (`docs/architecture.md §7.1`): the strict-$0
   inference path can absorb the spike
-  ([`phase-1-exit-criteria.md` item 4](./research/phase-1-exit-criteria.md)).
+  (`phase-1-exit-criteria.md` item 4 (archived)).
 - [ ] Founder clears 48 hours post-submission for inbound.
 
 **Timing.** Tuesday 06:00 PT. Avoid Mondays (noisy) and Fridays.
@@ -99,7 +99,7 @@ a screenshot.
 
 ---
 
-## 5. Conversion: design partner → paying customer — superseded
+## 5. Conversion: design partner → paying customer — replaced
 
 The founder ask is automated: the paid-tier intent question and the
 "one thing to fix" ask run via the survey + check-in email

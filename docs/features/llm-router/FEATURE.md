@@ -93,9 +93,9 @@ when-to-load:
 
 **Body:** [`decisions/SK-LLM-017-hosted-premium-chain.md`](./decisions/SK-LLM-017-hosted-premium-chain.md). Now ships as `buildPremiumRouter` (`packages/llm/src/premium-dispatch.ts`): a single-provider **Anthropic** lane (v1 `claude-sonnet-4-6`) with a usage sink feeding the meter. Fires only on paid tiers, on a `best`/hard plan, behind `PREMIUM_METER_LIVE` (live 2026-08-14). Commercial form in [`SK-PREMIUM-009`](../premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
 
-### SK-LLM-015 — OpenRouter code-gen default — SUPERSEDED by SK-LLM-045
+### SK-LLM-015 — OpenRouter code-gen default — REPLACED by SK-LLM-045
 
-**Body:** [`decisions/SK-LLM-015-openrouter-codegen-default.md`](./decisions/SK-LLM-015-openrouter-codegen-default.md). Superseded — [`SK-LLM-045`](#sk-llm-045) has the current ids.
+**Body:** [`decisions/SK-LLM-015-openrouter-codegen-default.md`](./decisions/SK-LLM-015-openrouter-codegen-default.md). Replaced — [`SK-LLM-045`](#sk-llm-045) has the current ids.
 
 ### SK-LLM-018 — Schema-fidelity planner prompt + diagnostic retry framing
 
@@ -201,9 +201,9 @@ when-to-load:
 
 **Body:** [`decisions/SK-LLM-047-direct-tail-cheap-tier.md`](./decisions/SK-LLM-047-direct-tail-cheap-tier.md). `route`/`summarize`/`engine_classify` append Cerebras + Mistral direct behind the gateway-routed heads (2026-08-14 outage); they fire only when every gateway leg is down.
 
-### SK-LLM-048 — GLM-4.7 planner head — SUPERSEDED by SK-LLM-053
+### SK-LLM-048 — GLM-4.7 planner head — REPLACED by SK-LLM-053
 
-**Body:** [`decisions/SK-LLM-048-glm-4.7-planner-head.md`](./decisions/SK-LLM-048-glm-4.7-planner-head.md). Superseded 2026-08-22 by [`SK-LLM-053`](#sk-llm-053) (Cerebras 404'd `zai-glm-4.7`).
+**Body:** [`decisions/SK-LLM-048-glm-4.7-planner-head.md`](./decisions/SK-LLM-048-glm-4.7-planner-head.md). Replaced 2026-08-22 by [`SK-LLM-053`](#sk-llm-053) (Cerebras 404'd `zai-glm-4.7`).
 
 ### SK-LLM-049 — Schema-metadata goals directive in the planner prompt
 
@@ -221,9 +221,9 @@ when-to-load:
 
 **Body:** [`decisions/SK-LLM-052-auth-denied-never-falls-back.md`](./decisions/SK-LLM-052-auth-denied-never-falls-back.md). Narrows `SK-PREMIUM-020`: the lane fallback covers a gateway *fault*, not rejected credentials — those hide a dead paid lane behind a working-looking free answer, on every request after it too.
 
-### SK-LLM-053 — Qwen3.6-27B planner head — SUPERSEDED by SK-LLM-054
+### SK-LLM-053 — Qwen3.6-27B planner head — REPLACED by SK-LLM-054
 
-**Body:** [`decisions/SK-LLM-053-qwen3.6-27b-planner-head.md`](./decisions/SK-LLM-053-qwen3.6-27b-planner-head.md). Superseded 2026-08-29 by [`SK-LLM-054`](#sk-llm-054).
+**Body:** [`decisions/SK-LLM-053-qwen3.6-27b-planner-head.md`](./decisions/SK-LLM-053-qwen3.6-27b-planner-head.md). Replaced 2026-08-29 by [`SK-LLM-054`](#sk-llm-054).
 
 ### SK-LLM-054 — Qwen3.8-27B (`qwen/qwen3.8-27b`, Groq) leads the strict-$0 planner tier
 

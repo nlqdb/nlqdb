@@ -18,7 +18,7 @@
 // `remember` wrote. Option (b) — a new keyed `facts`-read verb — is rejected:
 // it adds an endpoint for a read `/v1/run` already serves (P5, GLOBAL-015).
 //
-// Docs: docs/features/agent-memory-pivot/worksheets/dogfood/D-02-resync-hook.md
+// Docs: docs/archive/prior-bet/agent-memory-pivot-worksheets/dogfood/D-02-resync-hook.md
 
 import type { Extraction, MemoryEntity, MemoryFact } from "./extract.ts";
 

@@ -1,7 +1,7 @@
 // Contract tests for the `agent_memory_v1` schema preset (E-01 run 1).
 //
 // Two things matter here:
-//   1. The table + column set is the public contract (SK-PIVOT-007) —
+//   1. The table + column set is the public contract (seed contract) —
 //      pin it so a silent rename/drop is rejected at PR time.
 //   2. The preset's plain DDL must pass the *same* libpg_query DDL
 //      validator the LLM-compiled path uses (SK-HDC-006), so wiring it
@@ -35,7 +35,7 @@ describe("agent_memory_v1 preset", () => {
     }
   });
 
-  it("declares every contracted column on its table (SK-PIVOT-007)", () => {
+  it("declares every contracted column on its table (seed contract)", () => {
     const ddl = agentMemoryV1Ddl(SCHEMA);
     for (const [table, columns] of Object.entries(AGENT_MEMORY_V1_COLUMNS)) {
       const create = ddl.find((s) => s.includes(`CREATE TABLE "${SCHEMA}"."${table}"`));
@@ -184,7 +184,7 @@ describe("agentMemoryV1ScopePolicies", () => {
         // present ⇒ exact equality, enforced at the row level.
         expect(sql).toContain(`current_setting('${guc}', true) = "${column}"`);
       }
-      // Only facts / episodes carry the columns (SK-PIVOT-007 contract).
+      // Only facts / episodes carry the columns (seed contract).
       expect(policyOn(name, "entities")).toBeUndefined();
       expect(policyOn(name, "entity_facts")).toBeUndefined();
     }

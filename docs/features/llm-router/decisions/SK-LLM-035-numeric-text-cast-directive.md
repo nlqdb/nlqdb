@@ -6,7 +6,7 @@ block) alongside [`SK-LLM-027`](./SK-LLM-027-result-shape-directives.md)
 (projection / REAL-cast), [`SK-LLM-029`](./SK-LLM-029-null-safe-extremum.md)
 (NULL-safe extremum), [`SK-LLM-032`](./SK-LLM-032-count-grain-directive.md)
 (count grain), and [`SK-LLM-034`](./SK-LLM-034-group-by-grain-directive.md)
-(group-by grain) — it is not superseded; this is one more bullet in the same
+(group-by grain) — it still stands; this is one more bullet in the same
 block, orthogonal to each of them.
 
 - **Decision:** `PLAN_DIRECTIVES` (`packages/llm/src/prompts.ts`) gains one

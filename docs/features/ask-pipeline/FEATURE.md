@@ -36,7 +36,7 @@ when-to-load:
 - **Consequence in code:** `orchestrateAsk()` walks the steps in order, one OTel span per step (the prelude emits one `llm.route` span per cache-miss / dbId-absent send). Latency budgets in `performance.md §2.1, §2.2` are CI-asserted at 1.5× p50, and the span-tree vitest catches a reorder regression.
 - **Alternatives rejected:** Per-handler order — would let the order drift between create / query / write without notice. Skip cache when LLM is fast — defeats `GLOBAL-006` and breaks the cache-warming intent. Keep classify + disambiguate as separate steps — see SK-ASK-009.
 
-### SK-ASK-003 — superseded by SK-ASK-009 (merged `routeAsk` decision).
+### SK-ASK-003 — replaced by SK-ASK-009 (merged `routeAsk` decision).
 
 ### SK-ASK-004 — Two distinct validator paths: read/write (LLM-generated) vs DDL (typed-plan compiler) — never mixed
 
@@ -86,7 +86,7 @@ signal and a retry can't double-emit.
 - **Consequence in code:** `MAX_GOAL_LENGTH = 2000` is checked in every goal-parsing path before any LLM call; the error body carries `maxLength` (GLOBAL-012).
 - **Alternatives rejected:** Silent truncation — produces a wrong result with no diagnostic. Per-tier limits — complexity for no UX gain; 2 000 chars covers every tier.
 
-### SK-ASK-011 — superseded by SK-ASK-017 (speculative create removed; rollback path was post-COMMIT, producing a 21.6 s tail).
+### SK-ASK-011 — replaced by SK-ASK-017 (speculative create removed; rollback path was post-COMMIT, producing a 21.6 s tail).
 
 ### SK-ASK-012 — Per-principal recent-tables LRU (100 entries) in KV
 

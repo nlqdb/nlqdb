@@ -20,7 +20,7 @@ Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md). Parent GLOBAL:
   1. **Providers** — Anthropic + OpenAI + Gemini + **xAI (Grok)** ride the AI
      Gateway `/compat/chat/completions` endpoint as `anthropic` / `openai` /
      `google-ai-studio` / `grok` (`SK-LLM-021`). **OpenRouter is back in**
-     (superseded 2026-07 on the founder's request): the compat endpoint still
+     (replaced 2026-07 on the founder's request): the compat endpoint still
      doesn't serve it, but the AI Gateway's dedicated
      `/openrouter/chat/completions` path does (verified 2026-07), so
      `createByollmProvider` special-cases it (raw model id, dedicated URL —

@@ -78,18 +78,17 @@ const OPTIONAL_LINKS = [
 export const GET: APIRoute = () => {
   const body =
     `# nlqdb\n\n` +
-    `> Analytical memory for AI agents. A real database your agent connects to over\n` +
-    `> MCP and queries in English — GROUP BY, JOIN, aggregate over what it remembered,\n` +
-    `> not just the top-k a vector store recalls. Also a natural-language database for\n` +
-    `> any app.\n\n` +
-    `nlqdb gives an AI agent a real Postgres database it uses as memory: it writes typed\n` +
-    `rows as it learns and asks questions in plain English, so it can analyse its memory\n` +
-    `(counts, top-N, per-group rollups) instead of only recalling similar chunks. The LLM\n` +
-    `never emits SQL — it returns a typed plan, the compiler emits parameterised SQL,\n` +
-    `\`libpg_query\` re-validates it, and every answer carries the exact SQL it ran.\n` +
-    `The same engine is also a generalist natural-language database: state a goal in\n` +
-    `English and the system materialises the database that fits the workload, migrating\n` +
-    `engines underneath as it evolves. Five surfaces share one engine: an HTML element\n` +
+    `> nlqdb — your autonomous DBA. Build a real app from day one with no data\n` +
+    `> modeling. nlqdb infers your schema from how you use it, evolves it, and keeps it\n` +
+    `> optimized — and shows you every change before it lands.\n\n` +
+    `Your app talks to its database in plain English (\`/v1/ask\`) over HTTP, SDK, CLI or\n` +
+    `MCP. The first insert creates the shape; later inserts and reads evolve it; the DBA\n` +
+    `builds indexes and places data on the right engine — every change previewed,\n` +
+    `versioned and one click to undo. The LLM never emits SQL — it returns a typed plan,\n` +
+    `the compiler emits parameterised SQL, \`libpg_query\` re-validates it, and every\n` +
+    `answer carries the exact SQL it ran. AI agents use the same database as analytical\n` +
+    `memory (GROUP BY, JOIN, aggregate — not top-k recall). Five surfaces share one\n` +
+    `engine: an HTML element\n` +
     `(\`<nlq-data>\`), a typed SDK, a CLI (\`nlq\`), an MCP server (\`mcp.nlqdb.com\`), and a\n` +
     `chat web app at app.nlqdb.com.\n\n` +
     `## For coding agents\n\n` +

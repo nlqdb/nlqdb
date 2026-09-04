@@ -37,18 +37,18 @@ is **absorbed into Door A**).
 - **Why:** SK-WEB-017 left the home as a single vertical story that led with
   agent-memory and demoted the generalist flow to one `.alsoworks` line. But
   the product now has **two genuinely first-class entry actions** — connect your
-  agent (Door A, the [`GLOBAL-036`](../../../decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md)
+  agent (Door A, the prior bet
   wedge) and connect your own analytics DB (Door B, the BYO-ClickHouse path
   shipped end-to-end in [`SK-DBCONN-001`](../../byo-connect/FEATURE.md)). A
   vertical hero forces a single primary action and buries the second; a
   side-by-side chooser presents both honestly and lets the visitor self-select
-  in one glance. This is the literal expression of GLOBAL-036's *dual front
+  in one glance. This is the literal expression of the prior bet's *dual front
   door* — Door A is the agent-memory wedge, Door B is the generalist/analytics
   door — rather than a wedge-led hero with a demoted generalist seam. The
   describe→table→embed flow is still one click away (the *"or just describe your
   data →"* link under Door A) so GLOBAL-007's no-wall first value survives. The
   three-beat narrative (`Demo.astro`, `Replaces.astro`) does not vanish — its
-  proof relocates to `/agents`, the deep single-story door GLOBAL-036 already
+  proof relocates to `/agents`, the deep single-story door the prior bet already
   defines; the home's job is now to *route*, not to *pitch*.
 
 - **Consequence in code:** `apps/web/src/pages/index.astro` renders a single
@@ -69,7 +69,7 @@ is **absorbed into Door A**).
     analytics door below the fold; a visitor whose intent is "question my
     ClickHouse" must scroll past an agent-memory pitch to find their action.
     The two-door chooser presents both at parity, which is what the dual front
-    door (GLOBAL-036) actually commits to.
+    door (the prior bet) actually commits to.
   - **One door only, infer intent from a single CTA.** There is no honest single
     CTA that serves both an agent builder (wants MCP install) and an analyst
     (wants to paste a ClickHouse URL); a blended action serves neither.

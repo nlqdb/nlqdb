@@ -47,6 +47,6 @@ its Lago mention.
   restated as "Stripe Billing Meters".
 
 - **Alternatives rejected:**
-  - **Lago-on-Fly** — the prior plan; extra infra + sync surface for no v1 gain (superseded).
+  - **Lago-on-Fly** — the prior plan; extra infra + sync surface for no v1 gain (replaced).
   - **Synchronous meter report** — a Stripe round-trip on the `/v1/ask` hot path; violates honest-latency and couples the answer to Stripe uptime.
   - **Report at the `/v1/ask` request boundary** — would bill cached plans; the meter stays at the LLM call site per `SK-PREMIUM-007`.

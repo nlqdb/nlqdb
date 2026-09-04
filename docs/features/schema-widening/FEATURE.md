@@ -1,21 +1,21 @@
 ---
 name: schema-widening
-description: Schemas only widen — `schema_hash` is monotonically extended, never branched.
+description: Schema evolution — the logical schema is inferred from inserts and reads and evolves in both directions as typed, previewed, versioned operations; `schema_hash` is the version.
 when-to-load:
   globs:
     - apps/api/src/db-registry.ts
     - apps/api/src/ask/orchestrate.ts
     - apps/api/src/ask/types.ts
     - packages/db/**
-  topics: [schema, schema_hash, widening, fingerprint, plan-cache]
+  topics: [schema, schema_hash, evolution, widening, inference, fingerprint, plan-cache]
 ---
 
-# Feature: Schema Widening
+# Feature: Schema Evolution
 
-**One-liner:** Schemas only widen — `schema_hash` is monotonically extended, never branched.
-**Status:** partial — `schema_hash` is plumbed end-to-end (D1 → registry → orchestrator → plan-cache key), but the observed-fields collector and widening trigger ship post-Phase-0 (see Open Questions).
+**One-liner:** The logical schema is inferred from inserts and reads and evolves in both directions (add / drop / rename / retype / index) as typed, previewed, versioned operations the engine generates — never a user-authored migration. `schema_hash` is the version.
+**Status:** partial — `schema_hash` is plumbed end-to-end (D1 → registry → orchestrator → plan-cache key); widen-on-write (`SK-SCHEMA-008`) is Phase A of `GLOBAL-041`, drop / rename / retype / index proposals (`SK-SCHEMA-009`) are Phase B.
 **Owners (code):** `apps/api/src/db-registry.ts`, `apps/api/src/ask/orchestrate.ts`, `apps/api/src/ask/types.ts`, `apps/api/src/ask/plan-cache.ts`, `packages/db/**`
-**Cross-refs:** docs/architecture.md §0.1 (on-ramp inversion bullets), §9 row "Schema mismatch" (line 936), §12 line 978 (no migrations tool) · docs/phase-plan.md §1 (plan cache key — Phase 0 deliverable) · docs/performance.md §2.1 stage 4 / §2.2 stage 4 (hash compute budget — 1 ms p50 / 5 ms p99; folded into the parent span, no dedicated `nlqdb.ask.hash`) · [GLOBAL-004](../../decisions/GLOBAL-004-schemas-only-widen.md) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
+**Cross-refs:** docs/architecture.md §0.1 (on-ramp inversion bullets), §9 row "Schema mismatch" (line 936) · docs/phase-plan.md §1 (plan cache key — Phase 0 deliverable) · docs/performance.md §2.1 stage 4 / §2.2 stage 4 (hash compute budget — 1 ms p50 / 5 ms p99; folded into the parent span, no dedicated `nlqdb.ask.hash`) · [GLOBAL-004](../../decisions/GLOBAL-004-logical-schema-evolves.md) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
 ## Touchpoints — read this feature before editing
 
@@ -47,26 +47,6 @@ when-to-load:
   - KV cache in front of D1 — eventual consistency creates a window where the `schema_hash` in cache disagrees with the columns that actually exist in Postgres.
   - Postgres-side storage (a `_nlqdb_schema_meta` table per tenant schema) — scatters the truth across N tenant schemas; D1 is already the cross-tenant control plane.
 
-### SK-SCHEMA-003 — Widen via `ALTER TABLE ADD COLUMN ... NULL` only
-
-- **Decision:** The widening primitive is `ALTER TABLE <table> ADD COLUMN <name> <type> NULL`. New columns are nullable so existing rows remain valid; we never `DROP COLUMN`, never `ALTER COLUMN TYPE`, never `RENAME`. This is the only DDL emitted on the widen path.
-- **Core value:** Bullet-proof, Free
-- **Why:** ADD COLUMN NULL on Postgres is metadata-only (no table rewrite) since PG 11 — it's safe and fast even on large tables on Neon Free. Any other DDL invalidates the "old plans still work" property: dropping a column means an old plan referring to it now fails; renaming forces every cached plan to be replanned. Both break `GLOBAL-006`.
-- **Consequence in code:** The widening writer (when implemented) emits ADD COLUMN only. `sql-validate.ts` already rejects `ALTER` from the read/write path (`SK-SQLAL-002`); the widen path is a separate caller that uses the typed-plan compiler (DESIGN §3.6.2), not `validateSql`. PRs introducing DROP / RENAME on this path will be rejected — schema breaks go through `nlq new` (`SK-SCHEMA-007`).
-- **Alternatives rejected:**
-  - Allow column type widening (e.g. `int` → `bigint`) — breaks the "old plans still work" property when any cached plan binds the old type to a parameter.
-  - Allow column rename — every cached plan referencing the old name fails; would force cache invalidation on rename.
-
-### SK-SCHEMA-004 — Vanished field is a hard-stop, not a normal branch
-
-- **Decision:** If an observed field disappears (column dropped out-of-band, schema corrupted, BYO-Postgres user altered their DB), the request fails hard with an actionable error per `GLOBAL-012`. We do NOT branch the plan-cache to a "minus-this-field" hash and re-plan; we do NOT silently fall back.
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** `GLOBAL-004` is "schemas only widen" — a vanished field violates the invariant the cache depends on, so the safe response is to surface it instead of papering over. Replanning silently would hide the schema drift from the operator and produce inconsistent results across cached/uncached paths.
-- **Consequence in code:** When the observation pipeline detects a vanished field (post-Phase-0), it MUST refuse to compute a new `schema_hash`. The request returns an error code naming the vanished field (one sentence + next action per `GLOBAL-012`). Operators investigate; users get pointed at `nlq new` for a clean DB.
-- **Alternatives rejected:**
-  - Auto-replan on vanish — silently produces different results than the cached plan would; correctness regression.
-  - Mark the column "removed" in our schema record but keep the hash — invents a state that Postgres doesn't have.
-
 ### SK-SCHEMA-005 — Plan-cache reads survive widening unchanged
 
 - **Decision:** When `schema_hash` widens (a new column is added), entries already in the plan cache for the previous `schema_hash` are NOT migrated, NOT invalidated, NOT touched. They remain valid for any request that still resolves to the previous hash; new requests use the new hash and get a fresh `(schema_hash, query_hash)` cache slot.
@@ -87,16 +67,6 @@ when-to-load:
   - Inline schema inference in Phase 0 — duplicates Phase 1's typed-plan work; throws away when the real path lands.
   - Treat null `schema_hash` as a sentinel "match-anything" hash — silently caches plans against the wrong assumption.
 
-### SK-SCHEMA-007 — No migrations tool; schema break = fresh DB
-
-- **Decision:** nlqdb does not ship a migrations tool (`docs/architecture.md` §12 line 978). For a true schema break (incompatible field type, dropped column required), the user runs `nlq new` to materialise a fresh DB; the old DB stays untouched and queryable until the user retires it.
-- **Core value:** Simple, Goal-first
-- **Why:** Migrations are the source of half the production bugs in conventional ORMs — they couple "current schema" to "history of schema changes" and force every running plan to be aware of which version it's against. Forcing a fresh DB instead is monotonically simpler: the old plans keep working against the old DB, the new DB starts widening from empty. The trade is operational ("two DBs") for engineering ("zero migration code path") and the engineering side wins decisively.
-- **Consequence in code:** No `apps/api/src/migrations/` directory exists or should exist. Operators encountering a "we need to drop this column" requirement should be pointed at `nlq new`. CLI / web flows that "rename a field" must do so by widening (add new name, keep old) — never by replacing.
-- **Alternatives rejected:**
-  - Schema-mate-style migration files in the repo — invites the version-coupling problem we are explicitly avoiding.
-  - In-place ALTER COLUMN — see `SK-SCHEMA-003`; breaks `GLOBAL-006`.
-
 ### SK-SCHEMA-008 — First insert creates columns; types widen, never narrow
 
 - **Decision:** When `/v1/ask` orchestrates a write (`kind=write`) and the typed plan references a field the current `schema_hash` does not yet observe, the path is: (1) the typed-plan compiler emits an `ADD COLUMN <name> <type> NULL` ahead of the `INSERT`; (2) the row containing the new field is inserted; (3) the observation pipeline (when it lands, see `SK-SCHEMA-006` open question) recomputes `schema_hash` and writes the new value to D1's `databases.schema_hash`. The widen and the insert are in the same transaction; either both land or both roll back. Types are widened only — never narrowed without an explicit `nlq new` (`SK-SCHEMA-007`).
@@ -106,20 +76,34 @@ when-to-load:
 - **Alternatives rejected:**
   - Reject writes that reference unknown fields → "schema mismatch" error — defeats the goal-first promise (`docs/architecture.md §0.1`); makes every first-write a two-step ceremony for the user.
   - Add the column outside the transaction, then insert separately — leaves a window where the column exists with no rows referencing it, and a failure mid-way leaves the schema inconsistent with the data the user thought they were writing.
-  - Type narrowing on widen (e.g. user inserts `{ total: 5 }` then `{ total: "free" }`, narrow to `text`) — silently invalidates every cached plan that bound `total` as `numeric`. Per `SK-SCHEMA-003`, types only widen.
+  - Type narrowing on widen (e.g. user inserts `{ total: 5 }` then `{ total: "free" }`, narrow to `text`) — silently invalidates every cached plan that bound `total` as `numeric`. A retype is a previewed proposal (`SK-SCHEMA-009`), never a silent narrowing.
+
+---
+
+### SK-SCHEMA-009 — Schema evolution is a first-class typed, previewed, versioned operation generated by the engine
+
+- **Decision:** Every logical schema change — `add_column`, `drop_column`, `rename_column`, `retype_column`, `create_table`, plus the physical `create_index` / `drop_index` — is a **typed operation the engine generates** from inserts, reads and workload statistics, never a user-authored migration. Add-on-write applies inline (`SK-SCHEMA-008`); every other operation lands as a proposal with a before/after diff (`GLOBAL-023`) and applies in **one click**, with the inverse recorded before apply so undo is one click too. Each logical apply rewrites `schema_hash` (the version); index operations never do. A field that vanished from every write and read is a **versioned narrowing event**: dependent cached plans evict by miss and re-plan; it is a hard-stop only while an active read still references the field.
+- **Core value:** Goal-first, Bullet-proof, Simple
+- **Why:** The product promise is no data modeling by the developer (`GLOBAL-041`). Widen-only forced `nlq new` on every real schema break and a "vanished field" error on every out-of-band change — both are the modeling chore the bet removes. Making the operation typed keeps the LLM out of DDL (`GLOBAL-037`: JSON plan in, deterministic compiler out) and makes preview + undo mechanical.
+- **Consequence in code:** One typed union `SchemaOp` compiled by one deterministic DDL compiler (`compile-write-ddl.ts`, mirroring `compile-ddl.ts`) is the only emitter of evolution DDL; `sql-validate-ddl.ts` accepts exactly what it emits. Proposals live in the optimizer's proposal table with reasoning, impact and inverse (`SK-MIGRATE-003`); apply runs under `SK-HDC-010` timeouts with an `Idempotency-Key` (`GLOBAL-005`) and an OTel span (`GLOBAL-014`), then rewrites `schema_text` / `schema_hash` in D1. No `apps/api/src/migrations/` for user DBs, ever. KPI 2 (`GLOBAL-041`) counts every absorbed change vs every error / fresh DB.
+- **Alternatives rejected:**
+  - Widen-only + `nlq new` for breaks (the prior `SK-SCHEMA-003/004/007`) — the exact chore the bet removes.
+  - User-authored migration files — couples "current schema" to "history of changes" and puts modeling back on the developer.
+  - Silent in-place evolution without preview — a rename or drop nobody saw is a data-loss incident; the diff + undo is what makes acting safe.
 
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
-- **GLOBAL-004** — Schemas only widen.
+- **GLOBAL-041** — Autonomous DBA; this feature is Phase A (widen-on-write) and the logical half of Phase B.
+- **GLOBAL-004** — The logical schema is inferred and evolves in both directions; physical layout reshapes freely.
 - **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`.
 
 ## Open questions / known unknowns
 
 - **Hash construction algorithm (plan-level, Phase 0/1)** — Decided: FNV-1a 32-bit over `JSON.stringify(plan)` (see `apps/api/src/db-create/build-deps.ts::defaultSchemaHash`). Non-cryptographic; stable across calls; 8 hex chars. When the *observation pipeline* lands and the hash must reflect observed-fields separately from the full plan, that hash function gets its own `SK-SCHEMA-NNN` decision (the trade-off: field-sorted-name vs type-aware widening still applies there).
 - **Observation pipeline — push-based, parked until the typed-plan validator slice** (resolved per `GLOBAL-033`, Simple → one way / reuse what's built). The orchestrator currently rejects null-hash DBs (`SK-SCHEMA-006`). Widening rides the typed-plan compiler that already produces the plan (`docs/phase-plan.md §2` — the Phase 1 vehicle): the compiler emits the widen on the same path, rather than standing up a separate `information_schema` poller to pull-introspect. **Parked until** that slice lands — the only code path that can write observed fields into D1.
-- **Field-type evolution — decided: hard-stop, same as a vanished column** (resolved per `GLOBAL-033`, security trade-off → destructive/ambiguous path fails closed; matches the `SK-SCHEMA-004` precedent). An out-of-band `ALTER COLUMN TYPE` is a breaking change, not a widen: the planner hard-stops and the user re-bootstraps via `nlq new` rather than the executor silently coercing rows. **Parked until** the observation pipeline lands (the only code path that can observe a type drift); shape is locked so the slice is wiring, not a fresh fork.
+- **Field-type evolution — decided:** a retype is a versioned proposal (`SK-SCHEMA-009`); an out-of-band type change seen by introspection is absorbed as a narrowing event, hard-stop only while an active read still binds the old type.
 - **BYO Postgres edge cases — accept as-is, widen forward** (resolved per `GLOBAL-033`, goal-first → never refuse the user's DB). A user-managed DB doesn't go through the typed-plan compiler, so widening is observation-only: we take whatever schema they have as the baseline and only add fields, never rejecting a DB for not fitting our model. **Parked until** the Phase 4 BYO-connect slice; shape is locked.
 - **Multi-Worker write race** — Resolved shape per `GLOBAL-033` (bullet-proof → make the bad state unreachable, not caught): D1's single-writer semantics plus a transactional widen-only `UPDATE … WHERE schema_hash = <observed>` (compare-and-swap on the hash) makes overlapping widens converge — the loser re-reads and re-observes the union. Widening is monotonic (fields only added), so a lost update costs at most one extra observation cycle, never data loss. **Parked until** the observation-pipeline writer lands (the only code path that races); shape is locked, so the slice is wiring.
 - **Cleanup of orphaned plan-cache entries** — Resolved per `GLOBAL-033` (P5 keep-simple + pin-a-number): accept KV's 30-day TTL (`SK-SCHEMA-005`); no per-DB entry cap. A cap adds a counter + eviction branch for a cost the TTL already bounds. Revisit only if KV-usage metrics show a high-churn DB's orphans approaching the free-tier ceiling.

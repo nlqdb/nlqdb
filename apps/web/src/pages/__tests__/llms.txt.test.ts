@@ -3,7 +3,7 @@ import { GET } from "../llms.txt.ts";
 
 // `llms.txt` is the markdown index LLM-IDE crawlers (Claude Desktop,
 // Perplexity, Cursor, …) fetch. These checks pin the primary routes we
-// must advertise — notably `/agents` (the GLOBAL-036 analytical-memory
+// must advertise — notably `/agents` (the prior bet analytical-memory
 // wedge) and `/pricing`, which the index silently omitted before — so a
 // future edit can't drop the pivot's headline page from the machine-
 // readable map (SK-CMP-004).

@@ -4,25 +4,19 @@
   **every shipped feature must measurably advance at least one of them
   AND must not degrade any of the others**:
 
-  1. **Engine quality** — **two layers, one pillar.**
-     - **NL→SQL accuracy engine** — measured by
-       [`quality-eval`](../features/quality-eval/FEATURE.md) on BIRD-dev
-       and Spider 2.0-lite plus an internal eval over `db.create`
-       schemas. Reported per
-       [`llm-router`](../features/llm-router/FEATURE.md) tier and
-       **separately on the free-tier chain vs frontier models** (the
-       "free-vs-frontier delta") so we can see scaffolding compounding.
-     - **Data engine** — multi-engine adapter + workload analyzer +
-       migration orchestrator
-       ([`db-adapter`](../features/db-adapter/FEATURE.md),
-       [`multi-engine-adapter`](../features/multi-engine-adapter/FEATURE.md),
-       [`engine-migration`](../features/engine-migration/FEATURE.md)).
-       Measured by automatic-migration success rate (Phase 3 exit gate),
-       cross-engine read-result equivalence (dual-read verification),
-       and engine-classify accuracy.
-     **Both layers fail in the same way to the user** — "the answer
-     came back wrong" — so they share the pillar even though the
-     subsystems are different. KPIs for both live in the table below.
+  1. **Engine quality** — **the autonomous DBA**
+     ([`GLOBAL-041`](./GLOBAL-041-autonomous-dba.md)): schema inference +
+     evolution + optimizer. Measured by the three `GLOBAL-041` KPIs —
+     **first-insert inference rate**, **evolution-without-user-action
+     rate**, **optimizer yield** — whose definitions and floors live only in
+     that file (owners: [`schema-widening`](../features/schema-widening/FEATURE.md),
+     [`engine-migration`](../features/engine-migration/FEATURE.md)).
+     NL→SQL is the *interface* layer, measured by
+     [`quality-eval`](../features/quality-eval/FEATURE.md) on BIRD-dev and
+     Spider 2.0-lite per [`llm-router`](../features/llm-router/FEATURE.md)
+     tier and on the free chain vs frontier (the "free-vs-frontier delta"
+     — the interface KPI, no longer the headline). Both fail the same way
+     to the user — "the answer came back wrong" — so they share the pillar.
   2. **Seamless onboarding** — a stranger reaches first answer in
      ≤ 60 s with no config. Measured by TTFV p50/p95, first-10-queries
      success rate, and the unguided user-test pass-rate already in
@@ -145,7 +139,7 @@ grows", measured by the free-vs-agentic-frontier delta.
 | Validator false-positive rate (correct plan blocked) | tbd-by-2026-07-01 | ≤ 2% | ≤ 1% | +1 pp wk/wk | `ask-pipeline` |
 | Refuse-on-low-confidence rate (vs hallucinated answer rate) | tbd | refuse > hallucinate | refuse > hallucinate × 3 | inversion pages | `trust-ux` |
 
-The **free-vs-agentic-frontier delta is the headline NL→SQL number.** It
+The **free-vs-agentic-frontier delta is the headline *interface* number.** It
 is what proves "great on free LLMs ⇒ invincible on frontier LLMs": as
 our scaffolding improves, the delta narrows; when it narrows past the
 Phase 3 floor, the moat is real. Phase 2 floor widened from ≤ 22 pp to
@@ -161,19 +155,13 @@ test at N≈500 where the binomial SE on raw EA is ~2.2 pp; a 5-pp drop can
 fire on noise, but a McNemar p<0.05 says the worsening is on a
 non-trivial set of questions that used to pass.
 
-### Engine quality — data-engine layer
+### Engine quality — autonomous-DBA layer
 
-| KPI | Baseline (2026-05) | Phase 2 floor | Phase 3 floor | Alert | Owner |
-|---|---|---|---|---|---|
-| Engine-classify accuracy (right engine picked per query, vs gold label) | tbd-by-2026-07-01 | ≥ 90% | ≥ 97% | −2 pts wk/wk | `multi-engine-adapter` |
-| Dual-read result equivalence (cross-engine same row-set on identical query) | n/a until 2nd engine | n/a | 100% (any divergence pages) | any divergence | `engine-migration` |
-| Auto-migration success rate (Phase 3 exit gate) | n/a | n/a | ≥ 100 successful, 0 user-visible downtime | any failed cutover | `engine-migration` |
-| Workload-analyzer "right-engine" recommendation latency | tbd | n/a | ≤ 7 days from steady-state pattern detection to migration plan | regression alerts | `engine-migration` |
-
-These KPIs come online as the data engine ships (workload analyzer +
-multi-engine adapter are Phase 3; dual-read + auto-migration are
-Phase 3 exit-gate items). They are listed here so the pillar is
-complete and the docs commit to measuring them when the slices land.
+KPIs 1–3 (first-insert inference rate, evolution-without-user-action rate,
+optimizer yield) and their Phase A / Phase B floors are defined **only** in
+[`GLOBAL-041`](./GLOBAL-041-autonomous-dba.md) (P3). Cross-engine dual-read
+equivalence (100 %, any divergence pages) stays the Phase C gate in
+[`engine-migration`](../features/engine-migration/FEATURE.md).
 
 ### Onboarding
 
@@ -250,4 +238,6 @@ following decisions already implied:
 - [`GLOBAL-024`](./GLOBAL-024-demand-signal-telemetry.md) — demand
   signal is the instrument that makes these KPIs measurable.
 - [`GLOBAL-026`](./GLOBAL-026-llm-strategy-byollm-hosted-premium.md)
-  — LLM strategy is the lever for the engine north-star.
+  — LLM strategy is the lever for the interface layer.
+- [`GLOBAL-041`](./GLOBAL-041-autonomous-dba.md) — defines the engine
+  pillar's three KPIs.

@@ -14,7 +14,7 @@ Acceptance criteria for every PR. Violations don't ship.
 
 - **Free.** Sign up, build, ship to production without a credit card. Forever.
 - **Open source.** Core engine, CLI, MCP, SDKs — FSL-1.1-ALv2 (source-available, auto-converts to Apache-2.0). Cloud is a convenience, not a moat.
-- **Simple.** One way to do each thing. Two endpoints, two CLI verbs, one chat box. No config in the first 60 seconds. Every error is one sentence with the next action. If a feature needs a tutorial, it failed.
+- **Simple.** One way to do each thing: one NL entry point, one REST resource per control-plane object, one chat box. No config in the first 60 seconds. Every error is one sentence with the next action. If a feature needs a tutorial, it failed.
 - **Effortless UX.** Zero modals. Zero "are you sure" except for destructive actions. Keyboard-first. The chat is the product; everything else is a disclosure.
 - **Seamless auth — one identity, four surfaces, zero friction.**
   - No login wall before first value. Anonymous-mode is the default (§4).
@@ -26,7 +26,7 @@ Acceptance criteria for every PR. Violations don't ship.
 - **Fast.** p50 query < 400ms (cache hit), p95 < 1.5s (cache miss), cold start < 800ms. CLI binary < 10MB raw / < 4MB gzipped, starts < 30ms (measured 5ms on the bootstrap PR — see `SK-CLI-001`).
 - **Goal-first, not DB-first.** No persona woke up wanting to "create a database." The DB is plumbing. See §0.1.
 - **Bullet-proof by design, not by handling.** Make bad states unreachable:
-  - Schemas only widen — no "schema mismatch" branch.
+  - The logical schema is inferred from inserts and reads and evolves in both directions — every change versioned, previewed, undoable; never a "schema mismatch" error (`GLOBAL-004`).
   - Every mutating call takes an `Idempotency-Key` — retries safe by construction.
   - Plans content-addressed by `(schema_hash, query_hash)` — no cache invalidation.
   - Destructive ops require diff preview + second confirm.
@@ -52,9 +52,9 @@ No persona's goal is "create a database." The DB is a side effect of what they'r
 
 ## 1. Vision
 
-A developer writes plain HTML. They drop in a `<nlq-data>` element with a one-line English prompt: *"the 5 most-loved coffee shops in Berlin, with photos."* The element hits the nlqdb API, which (a) figures out which DB to query, (b) plans the query, (c) executes it, (d) returns rows + a rendered HTML fragment + a typed JSON payload. The developer wrote zero backend code. There is no schema, no ORM, no migrations, no SQL, no `DATABASE_URL`. nlqdb is **both the database and the backend**, addressed in natural language.
+**nlqdb — your autonomous DBA.** A developer builds a real app from day one **without doing data modeling**. The first insert creates the shape; later inserts and reads evolve it. The DBA evolves the logical schema in both directions (add / drop / rename / retype) as usage changes — every change versioned and previewed — and optimizes continuously: it inspects the database (statistics, plans, hot query fingerprints), builds indexes, restructures physical layout, and places data on the right engine. Everything it does is visible in a transparent dashboard (where data lives, which engines, bottom-line usage and cost, recommendations) with one-click apply and undo. It **acts**; it does not merely recommend. NL→SQL is the interface the app addresses its data through — not the product. Canonical: [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md); execution plan in [`pivot-autonomous-dba.md`](./pivot-autonomous-dba.md).
 
-The four surfaces (Web, API, CLI, MCP) are four projections of the same engine. The marketing site is the fifth surface — built the same way users will build their own apps.
+The developer still writes zero backend code — no ORM, no migration files, no `DATABASE_URL`. The four surfaces (Web, API, CLI, MCP) and the `<nlq-data>` element are projections of the same engine.
 
 ---
 
@@ -109,8 +109,6 @@ Canonical: **`nlqdb.com`** (`.ai` is held defensively and 301s to `.com`).
 | `app.nlqdb.com` | HTTP API + auth. Versioned `/v1/…`. |
 | `elements.nlqdb.com` | `<nlq-data>` JS CDN (§3.5). R2 + Cloudflare. |
 | `docs.nlqdb.com` | Documentation. |
-
-`.com` is canonical. `.ai` held to block squatters. `@nlqdb` secured on GitHub, npm, X, LinkedIn, Discord, Bluesky. Total fixed cost: ~$85/yr (the only unavoidable recurring cost).
 
 ---
 
@@ -218,8 +216,8 @@ goal → classifier (cheap tier)
 `dbId` is optional in `/v1/ask`. Resolution — and the merge of classify +
 disambiguate into one `routeAsk` call — is canonical in
 [`ask-pipeline`](../features/ask-pipeline/FEATURE.md) `SK-ASK-009`, which
-superseded the per-surface deterministic-then-LLM two-step (`SK-ASK-003` /
-`SK-HDC-005`). The architectural invariant: a wrong auto-target can never be
+replaced the per-surface deterministic-then-LLM two-step (`SK-ASK-003` /
+`SK-ASK-009`). The architectural invariant: a wrong auto-target can never be
 *silent* or *destructive*. A confidence floor, a visible `selected_db` echo on
 every response (`docs/research-receipts.md §7`), and one-click rail recovery
 contain a wrong pick; a wrong-tenant *destructive* call additionally requires
@@ -318,9 +316,7 @@ Canonical: `GLOBAL-013` (strict-$0 free tier) + [`GLOBAL-026`](./decisions/GLOBA
 | **BYOLLM** (any tier including Free) | $0 from us | Paste an Anthropic / OpenAI / Gemini / Grok / OpenRouter key in `/app/keys`; the router dispatches through your key at 0% markup. Per [`SK-PREMIUM-008`](./features/premium-tier/decisions/SK-PREMIUM-008-byollm.md). | No |
 | **Enterprise** | Custom | VPC peering, SAML SSO, audit-log export, on-prem | Annual |
 
-**Honest billing rules:** no card for free tier, ever. Hitting a limit rate-limits — never silently upgrades. Soft cap email at 80%; hard cap default at 100%. Your data is always readable out with plain SQL, free — no export endpoint or backups exist yet (`blindspot-analysis.md` tracks both), so no tier advertises them. Cancellation is one click, no call, no exit survey.
-
-**Unit economics:** free user at 100 queries/mo costs ~$0.15–$0.40. Hobby margin target: 60–80% at target plan-cache hit rate. Pro margin target: 75%+ once self-hosted classifier is online.
+**Honest billing rules:** no card for free tier, ever. Hitting a limit rate-limits — never silently upgrades. Soft cap email at 80%; hard cap default at 100%. Your data is always readable out with plain SQL, free — no export endpoint or backups exist yet, so no tier advertises them. Cancellation is one click, no call, no exit survey.
 
 ---
 
@@ -401,12 +397,10 @@ Features reference these by number (e.g. "cost-control rule 3"). Canonical detai
 
 To avoid scope creep — these are deliberate decisions, not oversights. Re-evaluate after Phase 3 exit gate, not before.
 
-- A visual schema editor (the schema is invisible)
 - A query builder (you type English)
-- A migrations tool (schemas only widen; `nlq new` makes a fresh DB for schema breaks)
 - A mobile app (web app is responsive; that's enough)
 - A "low-code" workflow builder (`<nlq-data>` is the workflow builder)
-- A dashboard / BI product (showcase examples exist; the platform is not a BI tool)
+- A BI product. The optimizer dashboard shows the *database's own* state — where data lives, indexes, proposals, cost — with 1-click apply/undo; charts over the user's business data stay in showcase examples
 - On-prem before Phase 4
 - Real-time subscriptions / changefeeds (Phase 2 as `<nlq-stream>`)
 - A GraphQL API (REST + embed + MCP are enough)
@@ -465,12 +459,10 @@ Sharded out to keep this doc under 20 KB per `CLAUDE.md` §2 D4 — content unch
 |---|---|---|
 | LLM costs kill margins | High | Free tier on the strict-$0 chain forever per [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md); plan cache (60–80% hit rate); small-model-first chain; local classifier once traffic justifies; BYOLLM lets heavy users pay their own provider passthrough; hosted-premium uses Shape B (flat sub + included request allowance + soft-meter overage at provider list + 0% markup) so overage tracks real cost. |
 | Cross-engine migration corrupts data | Medium | Dual-read verification, staged rollout, chaos tests, reversible cutover. |
-| "Simple" is too simple for serious workloads | Medium | Always-available escape hatches: raw connection string, raw SQL, raw Mongo. |
 | LLM hallucinates column names → confident wrong answers | High | Static schema validation after plan gen; confidence gate; structured output. |
 | Free-tier abuse | Medium | Per-IP + per-account rate limits day 1; PoW on signup if needed; anomaly detection Phase 2. |
 | Vendor lock (Neon, Anthropic) | Medium | Adapter layer for each; quarterly "can we swap this in a week" drill. |
-| Someone ships a better text-to-SQL inside Postgres in 18 months | Real | The moat is **engine quality** per [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md), which has two layers under one pillar: (a) NL→SQL accuracy scaffolding — planner, validator, plan-cache, schema retrieval, hedged race, trust UX — measured by `quality-eval`'s free-vs-frontier delta; compounds with every model release. (b) Multi-engine adapter + workload analyzer + auto-migration with dual-read verification — the router-based architecture a single-engine product cannot graft on. Postgres-with-text-to-SQL is still one engine on one workload shape. |
-| Competitors with deeper pockets (Supabase, Vercel, MongoDB) | High | We out-focus them. They sell platforms; we sell one experience. |
+| Someone ships a better text-to-SQL inside Postgres in 18 months | Real | The moat is **engine quality** per [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md) / [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md): NL→SQL scaffolding compounds with every model release, and a schema-inferring, self-optimizing, multi-engine DBA is not something a single-engine text-to-SQL feature can graft on. |
 
 ---
 

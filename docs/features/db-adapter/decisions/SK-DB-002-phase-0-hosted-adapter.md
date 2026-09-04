@@ -22,7 +22,7 @@
   `@neondatabase/serverless` + `@opentelemetry/*`. `packages/db` additionally
   carries `postgres` (postgres.js) for the BYO path (`SK-DBCONN-002`), so the
   old "`@nlqdb/db` depends only on `@neondatabase/serverless`" invariant is
-  superseded: the guard is now "no new Postgres driver on the **hosted** adapter,
+  replaced: the guard is now "no new Postgres driver on the **hosted** adapter,
   and no `pg` / query-builder / `redis` in `packages/db/` without a decision."
 - **Alternatives rejected:**
   - `pg` with an external pooler (PgBouncer / Neon Pooler) — works but doubles

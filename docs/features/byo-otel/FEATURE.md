@@ -33,7 +33,7 @@ once direction is pinned.
 **Cross-refs:** [`observability/FEATURE.md`](../observability/FEATURE.md)
 (the canonical OTel emit catalog this feature configures the
 destination of) ·
-[`docs/research/otel-grafana-pivot.md`](../../research/otel-grafana-pivot.md)
+`docs/research/otel-grafana-pivot.md` (archived)
 (the *other* OTel direction — nlqdb as Grafana competitor — explicitly
 out of scope here until §1 resolves) ·
 [`GLOBAL-014`](../../decisions/GLOBAL-014-otel-on-external-calls.md) ·
@@ -61,7 +61,7 @@ out of scope here until §1 resolves) ·
   (traces / metrics / logs), nlqdb's exporter ships there; when
   unset, telemetry continues to the nlqdb-owned default backend.
   **Ingress (nlqdb receives the user's telemetry — the
-  [`otel-grafana-pivot.md`](../../research/otel-grafana-pivot.md)
+  `otel-grafana-pivot.md` (archived)
   scope) is explicitly NOT this feature**; it remains a strategic
   pivot under that doc's promotion path.
 - **Core value:** Open source, Effortless UX, Bullet-proof
@@ -86,7 +86,7 @@ out of scope here until §1 resolves) ·
 - **Alternatives rejected:**
   - **Ingress (nlqdb receives user telemetry).** Different product
     (storage + receiver + retention). Routed to the
-    [`otel-grafana-pivot.md`](../../research/otel-grafana-pivot.md)
+    `otel-grafana-pivot.md` (archived)
     §5 promotion path.
   - **Both (egress + ingress in one feature).** Doubles surface and
     confuses positioning. If ingress ever ships, it's a separate

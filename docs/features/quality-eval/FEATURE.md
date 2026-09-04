@@ -112,10 +112,10 @@ test (α = 0.05) on per-question outcomes. Both trigger independently;
 each emits its own `feature.eval.regression`. McNemar catches small-but-real
 regressions the threshold misses at N ≈ 500.
 
-### SK-QUAL-007 — Spider 2.0-lite SQLite-subset loader (slice 3a) — superseded by `SK-QUAL-008` for the scoring contract
+### SK-QUAL-007 — Spider 2.0-lite SQLite-subset loader (slice 3a) — replaced by `SK-QUAL-008` for the scoring contract
 
 **Body:** [`decisions/SK-QUAL-007-spider2-lite-loader.md`](./decisions/SK-QUAL-007-spider2-lite-loader.md).
-**Status:** scoring contract superseded by [`SK-QUAL-008`](#sk-qual-008); the
+**Status:** scoring contract replaced by [`SK-QUAL-008`](#sk-qual-008); the
 file-layout / `local###` filter / path-traversal contracts still apply.
 
 ### SK-QUAL-008 — Spider 2.0-lite multi-CSV scorer (slice 3b) ports the canonical pandas comparator to TypeScript
@@ -261,7 +261,7 @@ schema ([`SK-QUAL-018`](#sk-qual-018)): four axes (retrieval / temporal /
 forgetting+contradiction / consolidation) **plus** the task no benchmark runs
 — analytical queries over episodic memory head-to-head against a vector-recall
 baseline on identical data, reported honestly including where a pure-SQL store
-loses. Measures the [`GLOBAL-036`](../../decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md)
+loses. Measures the prior bet
 wedge; a memory-quality row joins the scorecard Engine lane.
 
 ## GLOBALs governing this feature

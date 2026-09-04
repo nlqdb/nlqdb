@@ -5,8 +5,7 @@
   research pass; value-decidable per [`GLOBAL-033`](../../../decisions/GLOBAL-033-resolution-defaults.md),
   so none escalates):** This is the **rail-level** design of how a
   non-technical expert's tacit knowledge becomes `agent_memory_v1`
-  ([`SK-PIVOT-007`](../../agent-memory-pivot/decisions/SK-PIVOT-007-memory-schema-versioning.md),
-  no new DDL) rows through an interview. Product-surface detail (the
+  (the optional seed per `GLOBAL-041`; no pack-authored DDL) rows through an interview. Product-surface detail (the
   question-engine UI, the marketplace-facing session shell) lands in
   `experts` per [`SK-EKP-003`](../FEATURE.md); this record fixes the seam
   EK-04 (public rails) and EK-05 (private product) both build to.
@@ -84,7 +83,7 @@ bet (see Q5).
    not a leak (the buyer can ask *what changed*). This is the bullet-proof-by-design default (make bad
    states unreachable: a destroyed fact is an unrecoverable bad state) and
    the honest-latency value (the buyer can always see *why* a fact holds and
-   what it superseded). "Newest silently wins" and "confidence-weighted
+   what it replaced). "Newest silently wins" and "confidence-weighted
    blend" are both rejected: the first loses history a paid buyer may need to
    audit, the second invents a number we cannot yet calibrate. Source:
    guidelines §7 (layered, fail-safe) + bullet-proof.
@@ -179,7 +178,7 @@ now (bullet-proof: make the bad state unreachable, not caught later).
 - The query path over a knowledge DB **must not** introduce a new egress
   path; it reuses the `GLOBAL-037` schema-only builder, guarded by the
   INV-EKP-037 test.
-- No new schema, endpoint, or tool per pack (`SK-PIVOT-007`/`018`).
+- No new schema, endpoint, or tool per pack (`SK-EKP-005` / `SK-PIVOT-018`).
 
 ## Alternatives rejected
 

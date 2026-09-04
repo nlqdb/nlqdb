@@ -2,7 +2,7 @@
 //
 // BIRD/Spider measure messy public schemas; neither looks like what an
 // nlqdb user actually creates. persona-bench is the third, user-relevant
-// quality number the GLOBAL-027 §Lifecycle resolution kept as agent work:
+// quality number the removed pre-alpha gate (GLOBAL-007) kept as agent work:
 // ~NL questions over the 4–8-table schemas the `docs/research/personas.md`
 // P1 (Solo Builder) + P2 (Agent Builder) actually build, with executable
 // gold SQL drawn from each persona's "Representative queries".
@@ -82,7 +82,7 @@ const SAAS_APP: PersonaSchema = {
   ],
 };
 
-// ── P2 — Agent Builder: the analytical-memory wedge (GLOBAL-036). Agents
+// ── P2 — Agent Builder: the analytical-memory wedge (the prior bet). Agents
 //    write facts/episodes; the queries are the GROUP BY / top-N / TTL
 //    *analytics over memory* a vector store structurally can't answer.
 const AGENT_MEMORY: PersonaSchema = {

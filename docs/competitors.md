@@ -123,7 +123,7 @@ OSS Python SDK adding long-term memory (semantic/episodic/procedural) to LangGra
 Markdown-in-git personal brain + Postgres/pgvector hybrid search + MCP/CLI (OpenClaw/Hermes). **Gap:** single-operator knowledge brain, not hosted multi-tenant NL→SQL memory with fail-closed isolation. **Threat:** Medium–high mindshare / DIY; low on the analytical wedge. *(Added 2026-08-01.)*
 
 ### Pinecone Nexus — https://www.pinecone.io (public preview 2026-07)
-"Manifests" distill enterprise documents into queryable knowledge artifacts **curated at setup time**, not retrieved at query time; vendor-claimed ~90% vs ~65% RAG baseline. **Gap:** distills docs a team already has — no NL→SQL, no aggregation over what an agent *remembered*, no hosted memory write path. **Threat:** **High and rising for P2** — narrows the "structure beats prose" messaging gap. *(Added 2026-08-05; receipts in [`research/expert-knowledge-platform.md`](research/expert-knowledge-platform.md) §5.)*
+"Manifests" distill enterprise documents into queryable knowledge artifacts **curated at setup time**, not retrieved at query time; vendor-claimed ~90% vs ~65% RAG baseline. **Gap:** distills docs a team already has — no NL→SQL, no aggregation over what an agent *remembered*, no hosted memory write path. **Threat:** **High and rising for P2** — narrows the "structure beats prose" messaging gap. *(Receipts: [`expert-knowledge-platform`](features/expert-knowledge-platform/FEATURE.md) §5.)*
 
 **Vector / graph recall (P2).** Same gap: rank nearest matches, no relational analytics. Pinecone, Weaviate, Chroma, Qdrant, Milvus — `/vs/*`. **Cognee** (`/vs/cognee`) — OSS knowledge-graph memory (Extract→Cognify→Load); high P2 threat as "not just a vector store," still no SQL.
 
@@ -203,7 +203,7 @@ Nobody occupies nlqdb's intersection:
 1. **"Agent provisions its own DB"** — MCP Postgres / Vanna / Retool assume a human already stood the DB up.
 2. **DB + NL chat + auto-migration in one product** — Supabase / Outerbase / Defog each own a slice, not the stitch.
 3. **Conversational destructive-op preview** — rare; Retool gates UI clicks, not NL. Trust differentiator for P1/P4.
-4. **Analytical memory for agents** (§4 / GLOBAL-036) — Mem0 / Zep / Letta / LangMem / Hindsight / Supermemory *retrieve* (or reflect); Memori writes memory *to* SQL but exposes only recall; only nlqdb `GROUP BY` / `JOIN` / `HAVING` over memory. DIY / Agentic DB / GBrain are SQL-or-markdown-capable but not hosted NL-queryable memory with fail-closed isolation out of the box.
+4. **Analytical memory for agents** (§4) — Mem0 / Zep / Letta / LangMem / Hindsight / Supermemory *retrieve* (or reflect); Memori writes memory *to* SQL but exposes only recall; only nlqdb `GROUP BY` / `JOIN` / `HAVING` over memory. DIY / Agentic DB / GBrain are SQL-or-markdown-capable but not hosted NL-queryable memory with fail-closed isolation out of the box.
 5. **Cross-persona with one product** — most rivals aim at one persona; one chat+DB primitive for a dev, an agent, and a PM is unoccupied.
 
 Scariest threats within ~12 months: (a) Supabase NL + agent story; (b) MCP Postgres adding provisioning; (c) Agentic DB / Hindsight matching coding-agent onboarding or recall mindshare (§4). Cross-persona + NL-migration are harder to copy.

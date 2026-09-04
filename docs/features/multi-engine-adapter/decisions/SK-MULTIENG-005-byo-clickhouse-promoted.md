@@ -3,7 +3,7 @@
 - **Decision:** BYO ClickHouse ships in active development alongside
   the Tinybird adapter in `SK-MULTIENG-002`. The "Phase 4+,
   signal-gated on P6-persona inbound" timing in
-  [`phase-plan.md §7`](../../../phase-plan.md) is **superseded** by
+  [`phase-plan.md §7`](../../../phase-plan.md) is **replaced** by
   this SK. The shape parallels
   [`SK-DB-011`](../../db-adapter/decisions/SK-DB-011-byo-postgres-promoted.md):
   `POST /v1/db/connect { connection_url, name? }`, `registerByoDb`

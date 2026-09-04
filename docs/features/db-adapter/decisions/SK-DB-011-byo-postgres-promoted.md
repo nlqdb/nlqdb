@@ -2,7 +2,7 @@
 
 - **Decision:** BYO Postgres ships as an active workstream alongside
   the Phase 2 surfaces; the "Phase 4+, signal-gated" timing in
-  [`phase-plan.md §7`](../../../phase-plan.md) is **superseded** by
+  [`phase-plan.md §7`](../../../phase-plan.md) is **replaced** by
   this SK. The shape from
   [`architecture.md §3.6.7`](../../../architecture.md#367-byo-postgres-phase-4-decided-shape)
   is unchanged and binding: `POST /v1/db/connect { connection_url,

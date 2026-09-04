@@ -5,11 +5,12 @@ edit. Per-area `AGENTS.md` files narrow this guide to their directory.
 
 ## 1. What nlqdb is
 
-> *A database you talk to, with a backend that doesn't exist.*
+> *nlqdb — your autonomous DBA.*
 
-You write HTML. Each component asks for what it wants in plain English.
-nlqdb answers. The full pitch and architecture are in
-[`docs/architecture.md`](docs/architecture.md).
+Build a real app from day one with **no data modeling** — the DBA infers the
+schema from inserts and reads, evolves it, optimizes it, and shows it in a
+dashboard with 1-click apply/undo. NL→SQL is the interface, not the product.
+Bet: [`GLOBAL-041`](docs/decisions/GLOBAL-041-autonomous-dba.md).
 
 **Active focus → [`docs/scorecard.md`](docs/scorecard.md)** — current priorities
 (worst number + weekly focus), regenerated daily by [`/daily`](.claude/commands/daily.md); read first.
@@ -18,8 +19,9 @@ nlqdb answers. The full pitch and architecture are in
 
 Four pillars per
 [`GLOBAL-025`](docs/decisions/GLOBAL-025-north-star.md): **engine
-quality** (NL→SQL + multi-engine), **onboarding**, **UX**,
-**performance**. Every PR advances ≥ 1 AND degrades 0 — name the
+quality** (schema inference + evolution + optimizer per
+[`GLOBAL-041`](docs/decisions/GLOBAL-041-autonomous-dba.md); NL→SQL is the
+interface), **onboarding**, **UX**, **performance**. Every PR advances ≥ 1 AND degrades 0 — name the
 KPI in the PR body. The bet: **great on free LLMs ⇒ invincible on
 frontier LLMs** — scaffolding compounds with the model; LLM strategy per
 [`GLOBAL-026`](docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
@@ -36,7 +38,7 @@ Apply to every edit, whatever the user asked for.
 `docs/features/<feature>/FEATURE.md` (local `SK-<FEATURE>-NNN`) are the
 canonical record of why the system is the way it is. If a request would
 violate one — even subtly — **stop and raise it with the user**, citing the
-specific ID(s). Don't rationalise around it. The user may decide to supersede it; if so, follow `P3`.
+specific ID(s). Don't rationalise around it. The user may decide to delete or archive it and write the new stance clean; follow `P3`.
 
 ### P2. On any ambiguity or unfamiliar error, web-research first
 
@@ -113,16 +115,9 @@ identity or permission handoffs → visible progress → persistent proof of val
 
 ## 3. Tech stack (high-level)
 
-- **Runtime:** Cloudflare Workers (free tier — see `GLOBAL-013`)
-- **DB (Phase 0):** Neon Postgres (free tier)
-- **Auth:** Better Auth (`packages/auth-internal`)
-- **LLM:** Multi-provider router (`packages/llm`)
-- **Observability:** OpenTelemetry (`packages/otel`)
-- **Frontend:** React + Web Components (`apps/web`, `packages/elements`)
-- **Languages:** TypeScript everywhere; Workers-compatible bundles only
-- **Monorepo:** Bun workspaces
-
-For the full stack rationale see [`docs/architecture.md`](docs/architecture.md) §1–§2.
+Cloudflare Workers (`GLOBAL-013`) + Neon Postgres + D1; Better Auth; LLM
+router; OTel; Astro/React; TypeScript, Bun workspaces. Rationale:
+[`docs/architecture.md`](docs/architecture.md) §2, §6.
 
 ## 4. Project map
 
@@ -179,14 +174,14 @@ supported; else read manually before editing.)
 | `packages/db/**` | `docs/features/db-adapter/FEATURE.md` |
 | `apps/api/src/db-connect/**`, `apps/api/src/ask/build-deps.ts`, `packages/db/src/clickhouse-byo.ts` (BYO — egress + sealed-secret; security-sensitive) | `docs/features/byo-connect/FEATURE.md` |
 | `packages/db/src/clickhouse-tinybird/**`, `packages/db/src/introspect-clickhouse.ts` (non-Postgres engines) | `docs/features/multi-engine-adapter/FEATURE.md` |
-| anything touching `schema_hash`, schema fingerprinting | `docs/features/schema-widening/FEATURE.md` |
+| anything touching `schema_hash`, schema inference / evolution (`GLOBAL-041` Phase A) | `docs/features/schema-widening/FEATURE.md` |
 | any `POST`/`PATCH`/`DELETE` handler | `docs/features/idempotency/FEATURE.md` |
 | `packages/otel/**`, new spans / metrics | `docs/features/observability/FEATURE.md` · `docs/features/byo-otel/FEATURE.md` |
 | `apps/api/src/stripe/**`, Stripe webhooks | `docs/features/stripe-billing/FEATURE.md` |
 | `apps/api/src/byollm-account.ts`, `apps/api/src/ask/byollm.ts`, `apps/api/src/llm-router.ts`, `model` preset / BYOLLM / hosted-premium meter | `docs/features/premium-tier/FEATURE.md` |
 | `packages/llm/src/frontier/**` (founder-funded lane) | `docs/features/frontier-keys/FEATURE.md` |
 | `apps/events-worker/**`, `packages/events/**`, `apps/api/src/events-feature.ts`, `apps/api/src/ask/demand-signal.ts` | `docs/features/events-pipeline/FEATURE.md` |
-| `apps/api/src/workload-analyser/**`, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql` | `docs/features/engine-migration/FEATURE.md` |
+| `apps/api/src/workload-analyser/**`, optimizer proposals / dashboard / apply surfaces, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql` | `docs/features/engine-migration/FEATURE.md` + `GLOBAL-041` |
 | rate-limit middleware (`apps/api/src/{ask/rate-limit,anon-rate-limit,anon-global-cap}.ts`, `principal.ts` `rateLimitBucketKey`) | `docs/features/rate-limit/FEATURE.md` |
 | `apps/api/src/{principal,anon-rate-limit,anon-global-cap,turnstile}.ts`, `apps/web/src/lib/{anon,anon-adopt,handoff,prompt-storage,turnstile,api}.ts`, `apps/web/src/components/CreateForm.tsx` | `docs/features/anonymous-mode/FEATURE.md` |
 | `apps/api/src/admin/**`, `apps/api/src/pmf-survey.ts`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`, `apps/web/src/{lib/pmf-survey.ts,components/chat/PmfSurveyCard.tsx}` | `docs/features/gtm-metrics/FEATURE.md` |
@@ -200,7 +195,7 @@ supported; else read manually before editing.)
 | `apps/web/src/data/competitors.ts`, `apps/web/src/pages/vs/**`, `apps/web/src/pages/llms.txt.ts` | `docs/features/comparison-pages/FEATURE.md` |
 | `apps/web/src/data/solve.ts`, `apps/web/src/pages/solve/**` | `docs/features/solve-pages/FEATURE.md` |
 | `apps/web/src/data/blog.ts`, `apps/web/src/pages/blog/**`, `apps/web/src/lib/inline-md.ts` | `docs/features/blog/FEATURE.md` |
-| agent-memory pivot: `apps/web/src/pages/agents/**`, `apps/api/src/db-create/presets/agent-memory-v1.ts`, `apps/api/src/memory/**`, `tools/docs-memory/**` (dogfood docs→memory producer), `agent_memory_v1` schema + `app.agent_id` RLS + `nlqdb_remember`/`nlqdb_recall` MCP tools | `docs/features/agent-memory-pivot/FEATURE.md` (also touches `hosted-db-create`, `mcp-server`, `ask-pipeline`) |
+| prior bet — rails only: `apps/api/src/db-create/presets/agent-memory-v1.ts`, `apps/api/src/memory/**`, `tools/docs-memory/**`, `nlqdb_remember`/`nlqdb_recall` MCP tools | `docs/features/agent-memory-pivot/FEATURE.md` (kept only as far as expert-knowledge-platform needs them) |
 | expert-knowledge platform ("Become AI" marketplace): `docs/features/expert-knowledge-platform/**`, `apps/api/src/grants.ts` + `/v1/grants` routes (EK-06 grant control plane; the product surface lives partly in a private repo per `SK-EKP-003`) | `docs/features/expert-knowledge-platform/FEATURE.md` |
 | `apps/web/src/onboarding/**`, signup flow, first-query path | `docs/features/onboarding/FEATURE.md` |
 | `apps/docs/**`, `docs.nlqdb.com` Starlight site | `docs/features/docs-site/FEATURE.md` |
@@ -219,6 +214,7 @@ Per-area `AGENTS.md` files repeat just their slice of this table.
 | [`docs/feature-conventions.md`](docs/feature-conventions.md) | How `docs/features/` is structured. Read before adding/editing a feature. |
 | [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, tech-stack rationale, risks. Phase plan extracted to `phase-plan.md`. |
 | [`docs/phase-plan.md`](docs/phase-plan.md) | **Canonical phase plan** — per-phase items, exit gates, the §6 monetization + scaling trigger. |
+| [`docs/pivot-autonomous-dba.md`](docs/pivot-autonomous-dba.md) | **Autonomous-DBA execution plan** (`GLOBAL-041`): build order, archive/delete batches awaiting approval, compass rewrites. |
 | [`docs/runbook.md`](docs/runbook.md) | Operations: env, secrets, deploy, recovery; design-partner ref (§10). |
 | [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview script, inbound triage SLA. |
 | [`docs/performance.md`](docs/performance.md) | Span/metric/label catalog + perf goals. |
@@ -228,7 +224,6 @@ Per-area `AGENTS.md` files repeat just their slice of this table.
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
 | [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — threat matrix + gap analysis. |
 | [`docs/history/`](docs/history/) | Lessons learnt + [`founder-actions-log.md`](docs/history/founder-actions-log.md) (every human operator action) — one doc per topic. |
-| [`docs/blindspot-analysis.md`](docs/blindspot-analysis.md) | Adversarial audit findings + deferred-design tracker. |
 | [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits, marketing, Phase 1 exit, open questions. |
 | [`docs/research/acquisition-channels.md`](docs/research/acquisition-channels.md) + [`-mechanisms.md`](docs/research/acquisition-channels-mechanisms.md) | Canonical acquisition-channel ledger (lean table + tallies) + its per-venue mechanism-notes shard (D4 split). |
 | [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature (e.g. semantic-layer). Promote once decisions are firm. |
@@ -251,10 +246,8 @@ bun run --filter apps/api build && wrangler deploy --dry-run --outdir=/tmp/out
 
 Per-package commands are in each area's `AGENTS.md`.
 
-Inside an agent worktree (`.claude/worktrees/<id>`), `bun run lint` and
-`bun run format` match `biome.json`'s `!**/.claude` on the ancestor path and
-check **zero** files — `Checked 0 files`, exit 1. Pass explicit paths, or run
-biome from a copy outside `.claude/`, for real signal. CI is unaffected.
+Inside `.claude/worktrees/<id>`, biome's `!**/.claude` ignore makes `bun run
+lint` / `format` check 0 files (exit 1) — pass explicit paths. CI is unaffected.
 
 ## 8. Quality gates before opening a PR
 
@@ -281,6 +274,6 @@ user. Don't guess across a documented decision.
 
 ## 10. Workflow
 
-Follow §5 → relevant `FEATURE.md` → P1–P6 → §8. Adding or superseding a
+Follow §5 → relevant `FEATURE.md` → P1–P6 → §8. Adding or replacing a
 decision follows [`docs/feature-conventions.md`](docs/feature-conventions.md);
 do not duplicate that canonical procedure here.

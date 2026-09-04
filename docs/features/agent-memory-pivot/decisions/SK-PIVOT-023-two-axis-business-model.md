@@ -3,9 +3,9 @@
 - **Decision (founder, 2026-08-05):** nlqdb monetizes on **two** axes.
   - **Axis 1 — hosted memory operations**: the operational conveniences a
     self-hoster would otherwise build and run themselves — per-agent /
-    per-end-user isolation ops ([`E-03`](../worksheets/engine/E-03-memory-scoping.md),
+    per-end-user isolation ops (`E-03` (archived),
     [`SK-PIVOT-009`](./SK-PIVOT-009-agent-scope-rls.md)), TTL sweeps and
-    retention ([`E-04`](../worksheets/engine/E-04-ttl-decay.md),
+    retention (`E-04` (archived),
     [`SK-PIVOT-011`](./SK-PIVOT-011-ttl-sweep.md)), and the hosted premium
     model lane — sold **through the existing
     [`GLOBAL-026`](../../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)

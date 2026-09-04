@@ -4,30 +4,14 @@ Point-in-time tracker, regenerated each [`/daily`](../.claude/commands/daily.md)
 run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 `progress/quality-score-verification-log.md`.
 
-**Weekly focus number (2026-07-28 →, founder-set, advisor session):**
-**The [`SK-PIVOT-016`](features/agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md)
-dogfood gate — criteria green: 0/5 → 5/5.**
-Founder directive 2026-07-28 (advisor session): the operating focus is the **dogfood
-gate** — nlqdb's own agents running a real memory workload through the public MCP
-surface. Execution track:
-[`agent-memory-pivot/worksheets/dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md)
-(`D-01..D-07`), which carries the per-criterion owner. Every criterion is agent-movable;
-only the founder may loosen one, and the gate is condition-gated — never dated.
-**Prior focus (superseded 2026-07-28):** acquisition — channels live with attributable
-yield → ≥ 5 (row #22, now 4), [`GLOBAL-038`](decisions/GLOBAL-038-gtm-pmf-instrumentation.md).
-Acquisition levers stay pullable when no dogfood lever is — premium-chain work now **live**
-(row #20, meter firing 08-14), so that lane is done, not one-rank-below.
-**Weekly focus (`/weekly` 2026-08-29 — keeps the founder's 07-28 gate frame, converts the proven
-proxy into gate movement):** = **dogfood gate `SK-PIVOT-016` 2/5 → ≥ 3/5, by landing the run-186/187
-declared-categorical-vocabulary lever in the production per-goal-pack schema layer so criterion 4
-(temporal) flips.** Why re-point: the 08-22 pick — memory-quality free-chain EX 59.26 % → ≥ 70 % — is
-**MET at 79.49 %** (runs 185–188), and run 188 proved the offline eval is **noise-dominated at ±5 pp**,
-so climbing it further is volume without gate-yield (`weekly-review.md` check 2). The eval work already
-**found and proved** the GLOBAL-037-legal lever the dogfood
-[`INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md) criterion-4 row still calls "no
-compliant agent-movable lever" (now **stale**): declared categorical vocabulary took the eval temporal
-axis **2/11 → 8/11**. The only thing between that proven lever and a gate flip is landing it in the
-production pack-schema layer — a real feature, agent-movable, GLOBAL-037-compliant (no founder
+**Weekly focus (2026-09-04 →, founder-set with `GLOBAL-041`):** **Phase A
+widen-on-write — first-insert inference rate** (KPI 1: share of writes that
+reference an unseen table/field and land with no user action; instrument =
+two non-saturating counters on the `/v1/ask` write path, floor ≥ 95 % at
+Phase A exit). Build order: [`pivot-autonomous-dba.md` §4](pivot-autonomous-dba.md).
+The prior focus (agent-memory dogfood gate) is retired with the archived
+prior bet; funnel / ops / E2E rows below stand.
+
 widening). The gate sat **frozen at 2/5 all week** while the proxy climbed 43 → 79 %; this re-point
 makes the daily loop move the number the proxy exists to serve.
 
@@ -64,7 +48,7 @@ re-measured live: **`typecheck` 0** (workspace, post-`bun install`), **`bun run 
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004)) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67 % → agentic 69.33 %, 150-q smoke, 07-06, `SK-QUAL-022`) | Δ ≤ 25 pp ✓ but agentic ≈ 0.69 < the 0.80 floor (row #16) |
 | | **Ops** — 7d, CF Workers analytics | | wall-time, all routes |
-| 12 | nlqdb-api requests / errors | **08-14 authed-`/v1/ask` OUTAGE (`SK-LLM-046`):** the premium go-live's AI-Gateway auth toggle 401'd every gateway lane (`llm_failed` on authed `/v1/ask`, ~1.5 h). Fixed by **#992**; **#993** direct-provider fallback + **#1001** free-chain fallback harden the SPOF. No live re-pull (no CF-analytics container access) | row carries the incident; the 07-27 "2,185/0" reading is superseded. Detection gap = a candidate next lever |
+| 12 | nlqdb-api requests / errors | **08-14 authed-`/v1/ask` OUTAGE (`SK-LLM-046`):** the premium go-live's AI-Gateway auth toggle 401'd every gateway lane (`llm_failed` on authed `/v1/ask`, ~1.5 h). Fixed by **#992**; **#993** direct-provider fallback + **#1001** free-chain fallback harden the SPOF. No live re-pull (no CF-analytics container access) | row carries the incident; the 07-27 "2,185/0" reading is stale. Detection gap = a candidate next lever |
 | 13 | nlqdb-api wall-time p50 / p95 | **p50 16.4 ms / p95 1.48 s** (07-27, carried) | mcp-server p50 691.3 ms / p95 1.30 s. `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers. **Premium meter live 08-14** but $0 while no paying customer; premium chain routes free-tier / BYOLLM lanes at $0 |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
@@ -78,13 +62,8 @@ re-measured live: **`typecheck` 0** (workspace, post-`bun install`), **`bun run 
 | 20 | Hosted-premium readiness (§6 build-before-signal) | **LIVE 08-14** — `premium.live=true` in prod (`premiumConfigured(env)`). schema ✅ · BYOLLM lanes ✅ · picker web ✅ + parity ✅ · CTA ✅ · **premium chain ✅ live** (#987 meter, #992 bring-back, #996 live-lane billing, #1001 free-chain fallback) · spend-cap UI ⬜ (Lago-parked) | paid plan **shipped**; §6 signal effectively tripped. Meter fires; $0 while no paying customer |
 | 21 | Stranger-walker pass rate (canonical flows, GLOBAL-032) | **FLOW-005 re-walked live run 184: 6/6 PASS** (curl-based MCP discovery + auth-wall, agent-runnable). **Playwright walker launch fixed run 194** — `browser.ts` now falls back to the prebuilt Chromium when the pinned revision is absent, so it launches in-container (was: download-attempt fail on the `chromium-1234` pin). Full walk still **CI-canonical** (`acquisition-health.yml`): the sandbox's proxy-stripped direct egress blackholes UDP/443 ⇒ cross-host nav intermittently `ERR_QUIC_PROTOCOL_ERROR` (~2/3 runs fail step 1), so no reliable container pass-count; carried **0 failed / 9 blocked** from 07-26. #999 (08-16) fixed the `/app/new/` 428 dead-end | target **0 `failed`** ✅; anon walks stop at the 428 `challenge_required` (Turnstile, `SK-ANON-012`) |
 | | **Acquisition** — channel ledger + attribution ([GLOBAL-038](decisions/GLOBAL-038-gtm-pmf-instrumentation.md), `SK-GTM-007`) | | ledger: [`research/acquisition-channels.md`](research/acquisition-channels.md) |
-| 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub. MCP official registry published 07-22; Glama crawl-listed; Smithery/PulseMCP 0. First-touch attribution live since 07-19; `source_json` non-null **0**, for want of strangers, not instrument | **weekly focus (superseded): → ≥ 5 live.** Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
+| 22 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub. MCP official registry published 07-22; Glama crawl-listed; Smithery/PulseMCP 0. First-touch attribution live since 07-19; `source_json` non-null **0**, for want of strangers, not instrument | → ≥ 5 live. Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
 | | **Human queue** — the one non-automatable actor | **depth 2+**; head is the Show HN launch, oldest bullet **82 days** (`SK-PIVOT-016` gate **2/5**; criterion 4 at 5/7 golden); #2 Anthropic connector directory (money-gated, 07-21); registry-submit payloads parked by `/reach` | [`blocked-by-human.md`](blocked-by-human.md). Open PRs: **0** at step 0 |
-| | **Pivot** — agent-memory wedge (GLOBAL-036) | 14/27 + 12 memory `/vs` pages | mirrors `agent-memory-pivot/worksheets/INDEX.md` |
-| | Messaging track WS-* | 12/13 | WS-11 (self-host container) ⬜ infra-gated |
-| | Engine track E-* | 2/7 | E-01/E-02 ✅; rest Neon/infra-gated |
-| | Dogfood track D-* (`SK-PIVOT-016` gate, **weekly focus**) | **3/7** (D-01 ✅, D-03 ✅, D-04 🟡, **D-06 🟡**) — gate **2/5** (criterion 2 green from D-04's 100 % first-10; criterion 5 green on #978's `/agents` `ag-dog` dashboard). Remaining: criterion 1 (12 → ≥100 real MCP asks — **now a live dashboard read via `SK-GTM-011`'s `asks_mcp` counter, run 195**, so growth is measurable, not just hand-counted); criterion 3 (silent-wrong-answer, E-09-blocked); criterion 4 (temporal) — golden **5/7** (run 192; only q19 ops + q4 synthetic miss, both query-shape within ±5 pp noise ⇒ query-shape/pack-recipe lever, not grinding). D-06 run 2 + D-04 `NLQDB_MEMORY_DB` var still open | mirrors [`dogfood/INDEX.md`](features/agent-memory-pivot/worksheets/dogfood/INDEX.md) |
-| | Memory-quality eval (`SK-QUAL-023`) | **39-q free-chain EX 79.49 % (31/39)** — current-main same-window baseline [33132370698](https://github.com/nlqdb/nlqdb/actions/runs/33132370698) (2026-08-28). Per-axis: consolidation 6/7, forgetting 6/7, temporal 9/11, retrieval 5/7, analytical 5/7. ≥ 70 % weekly target **MET**. The 2 temporal misses (q4 synthetic range scan + q19 ops `blocked` over-joins episodes) are query-shape within the ±5 pp noise floor. Next engine lever candidate: a full BIRD/Spider re-measure on the post-#1041 planner head (rows #8/#9) | 39 gold-verified questions, 5 axes; free-only, no baseline |
 
 ## Shipped distribution
 

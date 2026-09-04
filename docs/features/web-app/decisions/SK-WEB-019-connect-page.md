@@ -1,6 +1,6 @@
 # SK-WEB-019 — `/app/connect`: auth-guarded BYO-connect page + `ConnectForm.tsx`
 
-- **Status:** Superseded in part by [`SK-WEB-030`](./SK-WEB-030-oauth-first-connect-page.md)
+- **Status:** Replaced in part by [`SK-WEB-030`](./SK-WEB-030-oauth-first-connect-page.md)
   (staged) — a provider "Connect Supabase" button now leads; paste collapses to the
   "Advanced / self-hosted" fallback once ≥ 2 providers are OAuth-live. The
   auth-guard, `type="password"`, and never-persist-client-side invariants below are

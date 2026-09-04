@@ -4,7 +4,7 @@ Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md). Parent decision:
 [`SK-QUAL-003`](../FEATURE.md#sk-qual-003) (three-dataset canon — BIRD-dev +
 Spider 2.0-lite SQLite + internal `db.create` eval).
 
-**Status:** scoring contract **superseded by
+**Status:** scoring contract **replaced by
 [`SK-QUAL-008`](./SK-QUAL-008-spider2-lite-multi-csv-scorer.md)**
 (slice 3b, 2026-05-19). The file-layout fields (canonical
 `local###` regex + path-traversal guards + canonical disk layout under

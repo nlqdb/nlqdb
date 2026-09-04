@@ -17,7 +17,7 @@
 # flip once the secret + DB land, not a refactor.
 #
 # Mandatory pre-read for `.github/workflows/**`: docs/features/ci-permissions/FEATURE.md
-# Feature: docs/features/agent-memory-pivot/worksheets/dogfood/D-02-resync-hook.md
+# Feature: docs/archive/prior-bet/agent-memory-pivot-worksheets/dogfood/D-02-resync-hook.md
 
 name: docs→memory re-sync
 

@@ -55,20 +55,19 @@ when-to-load:
   - DuckDB as embedded engine — DuckDB-Wasm is 9.7 MB (blows `GLOBAL-013`'s 3 MB ceiling); DuckDB-as-Container needs Workers Paid; Tinybird already covers analytics on $0.
   - Multiple engines in one PR — combinatorial validator/OTel/pool work; staged is safer.
 
-### SK-MULTIENG-003 — Logical schema widens; physical layout reshapes (per-engine)
+### SK-MULTIENG-003 — Physical state is never an input to `schema_hash`; it is first-class optimizer-dashboard data
 
-- **Decision:** `GLOBAL-004` is the rule: logical schema (fields a query references) widens monotonically; physical layout (tables, indexes, materialised views, engine) reshapes under the planner without bumping `schema_hash`. Per-engine application:
-  - **Postgres** — physical reshape = `ALTER TABLE ADD COLUMN NULL` only (`SK-DB-008`); index changes are physical. Re-clustering / partitioning is out-of-band.
-  - **ClickHouse via Tinybird** — physical reshape = create new Pipes / materialised views per workload signature; old plans hit either the base table or a Pipe transparently. The workload analyser writes a new Pipe; cached plans retain their `schema_hash`.
-  - **D1** (when added) — physical reshape limited to `ADD COLUMN`; SQLite has no materialised views.
-  - **Redis** (when added) — schemaless; "logical schema" = the set of key prefixes the planner has emitted commands against.
-- **Core value:** Bullet-proof, Simple, Effortless UX
-- **Why:** This is the "architecture is hidden" thesis (`docs/architecture.md` §0): the user writes English; physical shape changes nightly without breaking cached plans. Bumping `schema_hash` on physical reshape would cache-invalidate every Pipe creation; that defeats the workload-analyser thesis.
-- **Consequence in code:** `db.describe()` returns logical schema only (field names + types). Physical state (which Pipe, which index, which engine) is on `meta` and is never input to `schema_hash`. The workload analyser (Phase 3, see `engine-migration/FEATURE.md`) is the only writer of physical reshapes.
+- **Decision:** `GLOBAL-004` per engine: the logical schema (`db.describe()` — names + types) is the only input to `schema_hash`. Physical state — Postgres indexes / clustering, Tinybird Pipes and materialised views, engine placement — lives on `meta`, reshapes under the optimizer without bumping the hash, and **is shown** in the optimizer dashboard (where data lives, which engine, which indexes / pipes, cost) with every proposal's before/after.
+  - **Postgres** — indexes, clustering, partitioning are physical (optimizer proposals, `engine-migration`); logical DDL goes through the schema-evolution path (`SK-SCHEMA-009`) and does bump the hash.
+  - **ClickHouse via Tinybird** — Pipes / materialised views per workload signature are physical; cached plans keep their hash.
+  - **D1** (when added) — same split; SQLite has no materialised views.
+  - **Redis** (when added) — key-value with no fixed shape; "logical schema" = the key prefixes the planner has emitted commands against.
+- **Core value:** Bullet-proof, Simple, Honest latency
+- **Why:** Bumping `schema_hash` on physical reshape would cache-invalidate every optimizer tick. Hiding physical state, on the other hand, is the opposite of what the DBA sells (`GLOBAL-041`): the developer never *authors* layout, but always *sees* it and can undo any change.
+- **Consequence in code:** `db.describe()` returns logical schema only. Physical state is on `meta` and in the optimizer's audit / proposal tables; the dashboard reads it from there. The optimizer is the only writer of physical reshapes.
 - **Alternatives rejected:**
   - Per-engine `schema_hash` rules — fragments `GLOBAL-004`; harder to audit.
-  - Bump on Pipe creation — every analyser tick invalidates the cache.
-  - Surface physical state to the user — violates `architecture.md §0` ("architecture is hidden").
+  - Bump on Pipe / index creation — every optimizer tick invalidates the cache.
 
 ### SK-MULTIENG-004 — Per-engine validator path, OTel attributes, and anon-mode posture
 
@@ -89,7 +88,7 @@ abuse until per-prefix isolation lands. New-adapter PR template:
 
 **Body:** [`decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md`](./decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md).
 BYO ClickHouse ships active, not Phase 4+; the `phase-plan.md §7`
-P6-persona-inbound gate is superseded. **Now wired end-to-end** — the
+P6-persona-inbound gate is replaced. **Now wired end-to-end** — the
 `clickhouse-byo.ts` HTTP exec adapter, the `/v1/db/connect` composition, and
 query-time engine dispatch land in `SK-DBCONN-001`
 ([`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md)). Same `registerByoDb` path as
@@ -144,7 +143,7 @@ error (`GLOBAL-012`). Internal primitive shipped ahead of its `clickhouse-byo.ts
 Canonical text in [`docs/decisions.md`](../../decisions.md). Features reference by ID; bodies are not duplicated here.
 
 - **GLOBAL-003** — New capabilities ship to all surfaces in one PR. *In this feature:* SDK/CLI/MCP all carry `engine` per `SK-DB-010`.
-- **GLOBAL-004** — Logical schemas widen; physical layout reshapes freely. *In this feature:* `SK-MULTIENG-003` lists per-engine application.
+- **GLOBAL-004** — The logical schema is inferred and evolves in both directions; physical layout reshapes freely. *In this feature:* `SK-MULTIENG-003` lists the per-engine split and puts physical state on the dashboard.
 - **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`. *In this feature:* `schema_hash` is engine-specific via per-adapter introspection (`SK-MULTIENG-003`); no `engine` dimension on the cache key.
 - **GLOBAL-012** — Errors are one sentence with the next action. *In this feature:* `parseClickhouseUrl` (`SK-MULTIENG-006`) and `guardEgressHost` (`GLOBAL-035`) reject an unusable BYO host at the wire boundary with a one-sentence next action, never echoing the secret.
 - **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle. *In this feature:* gates the engine list (`SK-MULTIENG-002`); the `clickhouse-connection-url.ts` + `egress-guard.ts` primitives are zero-dependency (WHATWG `URL` only), so add no measurable bundle weight.

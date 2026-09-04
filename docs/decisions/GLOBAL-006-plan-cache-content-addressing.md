@@ -8,8 +8,11 @@
 - **Why:** Cache invalidation is the second-hardest problem in
   computer science; we side-step it by making every cache key
   derive entirely from the inputs that determine the output. Combined
-  with `GLOBAL-004`, this guarantees plans are stable under benign
-  schema growth.
+  with `GLOBAL-004`: a physical reshape never changes the key, so plans
+  are stable under optimization; a logical narrowing (drop / rename /
+  retype) rewrites `schema_hash`, so dependent entries evict by miss —
+  still content addressing, not invalidation (no TTL, no flush, no cache
+  walk).
 - **Consequence in code:** `plan-cache` writes are keyed by
   `(schema_hash, query_hash)`; reads are exact-match only. Anything
   that wants to "force a new plan" must change `query_hash` (e.g., a
@@ -18,5 +21,5 @@
 - **Alternatives rejected:**
   - TTL-based caches — wastes the 99% case where the inputs are
     unchanged, plus introduces flakiness around the boundary.
-  - Versioned plans tied to schema versions — would force
-    `GLOBAL-004` to branch.
+  - Versioned plans tied to schema versions — the rewritten
+    `schema_hash` already is the version.

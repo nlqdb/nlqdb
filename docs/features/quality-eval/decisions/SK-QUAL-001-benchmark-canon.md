@@ -9,6 +9,6 @@ Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md).
 - **Alternatives rejected:**
   - Bespoke internal benchmark — non-comparable to research; no external validity.
   - WikiSQL only — too easy; saturated by 2024.
-  - Spider 1.0 only — superseded; 2.0 covers more dialects.
+  - Spider 1.0 only — replaced; 2.0 covers more dialects.
   - Single averaged accuracy number — hides per-tier regression, the actionable signal.
   - **Spider 2.0 full set including BQ/Snowflake via transpilation** — adds a transpilation-bug failure mode the harness can't distinguish from a model-quality regression; SQLite subset is the honest call (corrected 2026-05).

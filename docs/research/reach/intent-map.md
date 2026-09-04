@@ -8,7 +8,7 @@ which nlqdb surface should own it.
 Personas: **P2b** (agent-SaaS builder — multi-tenant product, memory per
 end-user, builds with Claude Code/Cursor/Codex; default alternative is a DIY
 `memories` table) and **P2a** (hobbyist tool-agent builder — today's Jordan).
-Split lives in [`docs/research/personas.md`](../../../../research/personas.md) §P2.
+Split lives in [`docs/research/personas.md`](../personas.md) §P2.
 
 ## How to read this
 
@@ -17,8 +17,8 @@ Split lives in [`docs/research/personas.md`](../../../../research/personas.md) �
 - **Owns today** = what the searcher lands on now (DIY guide, a vendor, a
   registry). This is who we displace.
 - **nlqdb surface** = the surface that should be the first actionable answer.
-  `solve/<slug>` = existing page ([`solve.ts`](../../../../../apps/web/src/data/solve.ts));
-  `vs/<slug>` = existing competitor page ([`competitors.ts`](../../../../../apps/web/src/data/competitors.ts));
+  `solve/<slug>` = existing page ([`solve.ts`](../../../apps/web/src/data/solve.ts));
+  `vs/<slug>` = existing competitor page ([`competitors.ts`](../../../apps/web/src/data/competitors.ts));
   *gap* = no surface owns it yet → a later R-slice must build it.
 - **Agent phrasing** = how a coding agent (Claude Code / Cursor / Codex)
   re-issues the same felt need — imperatives, tool/protocol nouns, stack

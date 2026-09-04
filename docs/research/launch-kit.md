@@ -3,9 +3,9 @@
 > **Status:** ready to fire, founder-gated. Written 2026-07-19 (founder
 > directive: acquisition focus, "go for an obvious direction we didn't pick
 > yet"). nlqdb has **never launched anywhere**: a Show HN draft has sat in
-> [`distribution-queue-archive.md`](./distribution-queue-archive.md)
+> `distribution-queue-archive.md` (archived)
 > (2026-06-13) for five weeks;
-> [`fable-recommendation.md §4.2`](./fable-recommendation.md) recommended
+> the 2026-06 advisor recommendation (archived) called for
 > launch posts on 2026-06-12. Meanwhile 105 passive surfaces yield ~1
 > GSC click/28d and stranger signups = 0 (scorecard rows #2/#7). Launches are
 > the one channel that produces first users in days, not quarters — and the
@@ -45,7 +45,7 @@ structure only. Sources for venue norms (P2, checked 2026-07-19):
    `HOUR_LIMIT`/`DAY_LIMIT` in `apps/api/src/anon-global-cap.ts` for the
    launch window. Raising it multiplies free-LLM burn — see next.
 2. **Free-LLM ceilings
-   ([phase-1-exit-criteria §4](./phase-1-exit-criteria.md)):** ~500
+   (phase-1-exit-criteria §4 (archived)):** ~500
    plan-generations/day (Gemini RPD) + ~14.4k classifications (Groq) ≈
    2–4k queries/day after plan-cache. 200 launch-day signups fit; a
    viral spike degrades to fallback lanes. Watch `/v1/ask` error rate on
@@ -60,7 +60,7 @@ framing — instead of a surprise in the comments.
 ## 2. Angles (candidate hooks — founder picks; all verified true)
 
 Lead positioning is **analytical agent memory** per
-[GLOBAL-036](../decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md);
+the prior bet;
 an angle that leads elsewhere needs a deliberate exception, not drift.
 **That exception exists (founder, 2026-08-08):** the Show HN may **lead
 with the C story** — the agent-operated, $0-stack company — carrying angle
@@ -68,10 +68,10 @@ A as the product payload inside it (*"we run our company on free tiers with
 Claude agents; nlqdb is what it built"*). Rationale: the founder's genuine
 excitement lives in C, and an unexcited author can't write the post or
 defend the thread (the r/SQL lesson generalizes: authentic voice is the
-channel). GLOBAL-036 itself is unchanged — product surfaces keep the
+channel). the prior bet itself is unchanged — product surfaces keep the
 memory-first positioning; this is one post's framing.
 
-- **A. Agent memory that can answer "how many"** (GLOBAL-036 lead): memory
+- **A. Agent memory that can answer "how many"** (the prior bet lead): memory
   as four Postgres tables + NL analytics over it; Mem0/Zep/Letta matrix on
   `/agents`; one-command MCP install. Honesty gates: FSL-1.1, never
   "Apache-2.0 today" (GLOBAL-019). (Stale gate removed 2026-08-08:
@@ -87,7 +87,7 @@ memory-first positioning; this is one post's framing.
   infrastructure per GLOBAL-013). Genuinely unusual; HN-native; the
   riskiest comment thread — and, per the 2026-08-08 founder exception
   above, **the chosen lead**, with A as the payload. Feeds the
-  free-stack-kit direction ([`docs/future/free-stack-kit.md`](../future/free-stack-kit.md)):
+  free-stack-kit direction (`docs/future/free-stack-kit.md` (archived)):
   launch-day traction on this story is the kit's demand evidence.
 
 ## 3. Venue fact sheets (founder writes final copy)
@@ -143,7 +143,7 @@ subreddit self-promo rules re-checked at post time. Same fact sheet as 3.1.
 3. Show HN (3.1). Success bar, honest: front page = hundreds–thousands of
    visits and the first double-digit stranger-signup day (rows #1/#2 move
    for the first time); no front page = a dated data point + free user
-   interviews in the comments (fable-recommendation §7) — re-fire with a
+   interviews in the comments (advisor recommendation, archived) — re-fire with a
    different angle ≥ 1 month later.
 4. Product Hunt (3.3) ≥ 1 week later.
 5. **T+2–7 days:** Sean-Ellis Q1 responses start arriving (survey fires on

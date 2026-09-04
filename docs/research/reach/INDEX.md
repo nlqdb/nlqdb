@@ -1,9 +1,8 @@
 # Reach track — search-moment interception + coding-agent injection
 
-Third pivot track, companion to messaging (`WS-*`) and engine (`E-*`).
-Governed by GLOBAL-036; decision record
-[SK-PIVOT-015](../../decisions/SK-PIVOT-015-reach-track.md). Driven by its
-own recurring loop, [`/reach`](../../../../../.claude/commands/reach.md),
+Marketing lane (`GLOBAL-041`); decision record
+[SK-PIVOT-015](../../features/agent-memory-pivot/decisions/SK-PIVOT-015-reach-track.md). Driven by its
+own recurring loop, [`/reach`](../../../.claude/commands/reach.md),
 fired every few hours offset from `/daily`.
 
 ## The thesis (why this track exists)
@@ -50,7 +49,7 @@ acting on it is one free command** (the per-host strings in
 - **Every new CTA emits a GLOBAL-024 demand signal.**
 - **Every externally published URL carries its channel's `utm_source`
   key** from the canonical ledger
-  [`docs/research/acquisition-channels.md`](../../../../research/acquisition-channels.md)
+  [`docs/research/acquisition-channels.md`](../acquisition-channels.md)
   (`SK-GTM-007`) — yield reads from `/app/admin` sources, never estimates.
 - **Additive.** No renames; reach slices land on existing machinery
   (`solve.ts`, `/blog`, `llms.txt`, docs site, `mcp-install.ts`).
@@ -105,7 +104,7 @@ layer for AI agents", direct entrant). Then a solve page
 (`build-vs-buy-agent-memory` or extend an existing one): honest DIY steps
 first — the reader keeps trust — then where DIY bites (cross-user leakage,
 embedding plumbing, TTL, analytics), then the one-command alternative.
-**Done when:** ✅ two competitor entries ([`competitors.md`](../../../../competitors.md) §4: DIY-on-your-Postgres + Agentic DB/Constructive) · ✅ solve page live + in llms.txt ([`solve/build-vs-buy-agent-memory`](../../../../../apps/web/src/data/solve.ts); llms.txt auto-includes the slug).
+**Done when:** ✅ two competitor entries ([`competitors.md`](../../competitors.md) §4: DIY-on-your-Postgres + Agentic DB/Constructive) · ✅ solve page live + in llms.txt ([`solve/build-vs-buy-agent-memory`](../../../apps/web/src/data/solve.ts); llms.txt auto-includes the slug).
 
 ### R-03 — Stage-0 solve pages (one per run)
 
@@ -118,7 +117,7 @@ never hand-typed), the proven-best-practice schema story
 (`agent_memory_v1`: facts/episodes/entities + per-agent RLS + TTL) as the
 credibility layer, honest DIY section last. Cross-link R-02.
 **Done when:** ✅ one page per top-5 unowned R-01 query (all filled).
-Owned, all in [`solve.ts`](../../../../../apps/web/src/data/solve.ts): #2
+Owned, all in [`solve.ts`](../../../apps/web/src/data/solve.ts): #2
 `best-way-to-store-agent-memory`, #5 `build-vs-buy-agent-memory` (R-02), #10
 `expire-old-agent-memory`, #13 `agent-memory-mcp-server` (also R-05 registries).
 
@@ -133,10 +132,10 @@ for machine execution: numbered steps, one fenced command block per host
 after connect, a verification query, what to do on failure. Add a
 `## For coding agents` section to `llms.txt` with the same content.
 **Verify every step against prod before publishing** (hard rule 1).
-**Done when:** ✅ page live ([`docs/agent-memory`](../../../../../apps/docs/src/content/docs/agent-memory.mdx) → `docs.nlqdb.com/agent-memory/`; sidebar-registered, linked from README + `/agents` connect card + llms.txt) · ✅ llms.txt `## For coding agents` section ([`llms.txt.ts`](../../../../../apps/web/src/pages/llms.txt.ts)) — both now publish the **headless** route
+**Done when:** ✅ page live ([`docs/agent-memory`](../../../apps/docs/src/content/docs/agent-memory.mdx) → `docs.nlqdb.com/agent-memory/`; sidebar-registered, linked from README + `/agents` connect card + llms.txt) · ✅ llms.txt `## For coding agents` section ([`llms.txt.ts`](../../../apps/web/src/pages/llms.txt.ts)) — both now publish the **headless** route
 (`npx -y @nlqdb/mcp` + an `sk_mcp_` MCP key, swept 2026-07-28 per `SK-APIKEYS-015`), strings owned by
-[`mcp-install.ts`](../../../../../apps/web/src/lib/mcp-install.ts) and pinned to `packages/mcp` by
-[`mcp-install-stdio.test.ts`](../../../../../apps/web/src/lib/mcp-install-stdio.test.ts) ·
+[`mcp-install.ts`](../../../apps/web/src/lib/mcp-install.ts) and pinned to `packages/mcp` by
+[`mcp-install-stdio.test.ts`](../../../apps/web/src/lib/mcp-install-stdio.test.ts) ·
 ✅ cold-agent walk green 2026-07-29: given only the published URL, an agent ran the headless
 route verbatim end-to-end (initialize, all-5 `tools/list`, gated prod write + fact read-back).
 
@@ -148,8 +147,8 @@ with memory (SK-PIVOT-003) + the one command.
 **Mechanism (P2, 2026-07-25 #822):** the official-registry publish cascades only to venues that
 *document* ingestion; every other venue needs its own account-walled submit.
 Per-venue mechanism and exact payloads live in
-[`acquisition-channels.md`](../../../../research/acquisition-channels.md) +
-[`blocked-by-human.md`](../../../../blocked-by-human.md) — status only here.
+[`acquisition-channels.md`](../acquisition-channels.md) +
+[`blocked-by-human.md`](../../blocked-by-human.md) — status only here.
 - ✅ #1 official MCP registry — **published 2026-07-22** (`com.nlqdb/nlqdb` v0.1.1, DNS domain-verify;
   `?utm_source=mcp-registry`). Cascade reached only Glama #4 (badge + connector claim done by the founder
   2026-08-04, awaiting external review); PulseMCP #3 absent 07-25 (re-check 08-22); Smithery #2 needs its own `smithery
@@ -159,7 +158,7 @@ Per-venue mechanism and exact payloads live in
 - ✅ #8 `awesome-mcp-servers` — PR #10984 open since 07-26; badge pushed 2026-08-04,
   awaiting maintainer review.
 - ✅ #9 `mcp.directory` — P2 07-30: registry-ingesting crawler + no-account form fallback, absent
-  07-30; payload in [`acquisition-channels.md`](../../../../research/acquisition-channels.md) #23,
+  07-30; payload in [`acquisition-channels.md`](../acquisition-channels.md) #23,
   re-check 08-22.
 - ✅ #10 **Cline MCP Marketplace** — **submitted by the founder 2026-08-05**
   ([issue #2197](https://github.com/cline/mcp-marketplace/issues/2197), awaiting review;
@@ -177,12 +176,12 @@ per-user memory to this agent; use web search to pick the best option",
 recording (a) surfaces nlqdb, (b) completes MCP setup, (c) reaches a first
 memory read/write. Result feeds [`NUMBERS.md`](NUMBERS.md).
 **Done when:** ✅ walker merged
-([`reach-agent-walk.ts`](../../../../../tools/stranger-test/src/reach-agent-walk.ts) +
-[`scripts/reach-agent-walk.sh`](../../../../../scripts/reach-agent-walk.sh); pure
+([`reach-agent-walk.ts`](../../../tools/stranger-test/src/reach-agent-walk.ts) +
+[`scripts/reach-agent-walk.sh`](../../../scripts/reach-agent-walk.sh); pure
 grader `assessTranscript` pinned by
-[`reach-agent-walk.test.ts`](../../../../../tools/stranger-test/test/reach-agent-walk.test.ts);
+[`reach-agent-walk.test.ts`](../../../tools/stranger-test/test/reach-agent-walk.test.ts);
 cold session drops into
-[`fixtures/agent-app/`](../../../../../tools/stranger-test/fixtures/agent-app/)) ·
+[`fixtures/agent-app/`](../../../tools/stranger-test/fixtures/agent-app/)) ·
 ✅ baseline recorded (2026-07-20: **0/1 surfaced** — cold agent web-searched, recommended
 `pgvector`, never named nlqdb; the expected ≈ 0) · ✅ re-run wired into `/reach` step 1
 (`bash scripts/reach-agent-walk.sh`).
@@ -198,7 +197,7 @@ the R-04 guide + npm + registries. Add a drift test (artifact strings ==
 `mcp-install.ts`).
 **Done when:** ✅ artifacts published — 4 of 4 host artifacts live (+ the
 `nlqdb-docs-memory` goal-pack skill, `SK-PIVOT-017`) in
-[`agent-artifacts/`](../../../../../apps/web/public/agent-artifacts/) (host-neutral
+[`agent-artifacts/`](../../../apps/web/public/agent-artifacts/) (host-neutral
 `AGENTS.snippet.md`, Claude Code skill `nlqdb-memory/SKILL.md`, Cursor `nlqdb-memory.mdc`,
 Codex `codex-config.toml`, + a README index), on both agent-fetched surfaces (R-04 guide +
 llms.txt `## For coding agents`) **and one-command installable** —
@@ -207,10 +206,10 @@ llms.txt `## For coding agents`) **and one-command installable** —
 artifact links keyed 2026-07-26 ([`NUMBERS.md`](NUMBERS.md)) · ✅ install path on the R-04
 page, and on `@nlqdb/mcp`'s npm README from 0.1.1 (2026-07-27; `skills.sh` has no submission
 flow — P2 2026-07-23 — so growth is organic install yield) · ✅ drift test green
-([`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts) — every
+([`agent-artifacts.test.ts`](../../../apps/web/src/lib/agent-artifacts.test.ts) — every
 connect string == `mcp-install.ts`, incl. each artifact's headless `npx -y @nlqdb/mcp` +
 MCP-scoped `sk_mcp_` route (added 2026-07-28; `GLOBAL-003`,
-[`SK-APIKEYS-015`](../../../api-keys/FEATURE.md)); all `nlqdb.com` links carry
+[`SK-APIKEYS-015`](../../features/api-keys/FEATURE.md)); all `nlqdb.com` links carry
 `utm_source=agent-artifacts`). **Still owed:** external distribution with attributable yield
 (a real `agent-artifacts` visit in `/app/admin`).
 
@@ -238,13 +237,13 @@ monthly check.
 ways, only the first is agent-work — **publish** (a git marketplace is a JSON file
 in our repo), **crawl** (aggregators index it; nothing to submit), **submit**
 (signed-in forms / cross-repo PRs → founder queue). Per-venue payloads live in
-[`acquisition-channels.md`](../../../../research/acquisition-channels.md) #22/#27 — status only here.
+[`acquisition-channels.md`](../acquisition-channels.md) #22/#27 — status only here.
 **Done when:** per venue: listed (URL) or payload parked — tick per venue.
 - ✅ #1 **nlqdb's own marketplace** — shipped: repo-root `.claude-plugin/marketplace.json`
-  makes [`agent-artifacts/`](../../../../../apps/web/public/agent-artifacts/) itself the plugin
+  makes [`agent-artifacts/`](../../../apps/web/public/agent-artifacts/) itself the plugin
   (skills **cannot** be forked copies). `/plugin marketplace add nlqdb/nlqdb` → `/plugin install
   nlqdb-memory@nlqdb`, on all three agent-fetched surfaces (README index, R-04 guide, `llms.txt`),
-  pinned by [`agent-artifacts.test.ts`](../../../../../apps/web/src/lib/agent-artifacts.test.ts)
+  pinned by [`agent-artifacts.test.ts`](../../../apps/web/src/lib/agent-artifacts.test.ts)
   (schema, endpoint == `mcp-install.ts`, FSL-1.1-ALv2, `utm_source=claude-plugin`).
 - ✅ #2 **claudemarketplaces.com** (~300 k monthly visitors) — crawl-fed daily, keyed
   on the file #1 adds; **no submission exists**, only a dated re-check owed.
@@ -260,8 +259,8 @@ in our repo), **crawl** (aggregators index it; nothing to submit), **submit**
 - ✅ #6 **cc-marketplace / `claudecodecommands.directory`** — 688★ Claude Code plugin+command
   directory ([`ananddtyagi/cc-marketplace`](https://github.com/ananddtyagi/cc-marketplace)); passes
   the trust bar #5 failed. Submit (cross-repo PR / form) is out of scope; `nlqdb-memory` payload in
-  [notes](../../../../research/acquisition-channels-mechanisms.md#row-27) (ledger #27),
-  **founder-queued** 2026-09-04 ([blocked-by-human #4](../../../../blocked-by-human.md));
+  [notes](../acquisition-channels-mechanisms.md#row-27) (ledger #27),
+  **founder-queued** 2026-09-04 ([blocked-by-human #4](../../blocked-by-human.md));
   repo-linked → `github`-ref like #24.
 - ⬜ **Install-yield gate:** closes when `/app/admin` shows one real `claude-plugin`
   visit (same bar R-07 carries; why `plugin.json`'s `homepage` keeps its own key).
@@ -274,7 +273,7 @@ DR 0.0 vs mem0.ai 74.0, first read 2026-08-04); authority is what ranks the
 already-shipped R-02/R-03 surface.
 **Did (all agent-doable levers, now done):** (a) homepage-link sweep — every
 live listing/venue in
-[`acquisition-channels.md`](../../../../research/acquisition-channels.md) with a
+[`acquisition-channels.md`](../acquisition-channels.md) with a
 homepage field points at an `nlqdb.com` utm URL, not DR-97 `github.com` which
 would absorb the equity; (b) linkable asset — promote the benchmark blog (the
 only surface earning agent-memory impressions) into a citable standalone page;
@@ -282,15 +281,15 @@ only surface earning agent-memory impressions) into a citable standalone page;
 (`AHREF_API_KEY`; free public endpoint).
 **Honest constraint:** at $0 the largest referring-domain events are launches
 and community posts, which are founder-shaped (hard rule 3 /
-[`blocked-by-human.md`](../../../../blocked-by-human.md) #1) — this slice
+[`blocked-by-human.md`](../../blocked-by-human.md) #1) — this slice
 maximized what's agent-doable; it does not replace the launch.
 **Done when:** ✅ homepage-link sweep done across all live venues (live-verified
 2026-08-05 — see [`NUMBERS.md`](NUMBERS.md)) · ✅ linkable asset live + in
 llms.txt — the **benchmark-landscape reference page**
-[`/agent-memory-benchmarks`](../../../../../apps/web/src/pages/agent-memory-benchmarks.astro)
+[`/agent-memory-benchmarks`](../../../apps/web/src/pages/agent-memory-benchmarks.astro)
 (data + honesty invariants in
-[`memoryBenchmarks.ts`](../../../../../apps/web/src/data/memoryBenchmarks.ts) /
-[`.test.ts`](../../../../../apps/web/src/data/memoryBenchmarks.test.ts)), a
+[`memoryBenchmarks.ts`](../../../apps/web/src/data/memoryBenchmarks.ts) /
+[`.test.ts`](../../../apps/web/src/data/memoryBenchmarks.test.ts)), a
 citable survey of the field's benchmarks (LoCoMo/LongMemEval/DMR/Mem0/Zep) every
 number sourced + flagged self-reported/disputed, promoting the survey blog post
 (the only agent-memory surface earning impressions) into a standalone asset; in

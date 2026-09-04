@@ -4,8 +4,8 @@
   (a) an extraction recipe — a skill prompt telling a coding agent what
   structured knowledge to pull from the user's own sources, (b) seed
   entities/goals, and (c) a golden-query set — all riding the **one
-  canonical `agent_memory_v1` schema** (`SK-PIVOT-007`: evolve by version,
-  never fork per vertical). Pack #1 is **repo-ops** (the `SK-PIVOT-017`
+  canonical `agent_memory_v1` schema** (one seed shape, never forked
+  per vertical). Pack #1 is **repo-ops** (the `SK-PIVOT-017`
   docs→memory extraction). Pack #2 is **founder-ops** (founder-directed
   2026-07-27): accounts, credential *metadata* (service, key name, scope,
   date — **never secret values**), external listings/submissions, and the
@@ -31,13 +31,13 @@
   must also run through the shared one-click product journey; the shared runner
   owns auth, source access, progress, resumability and cleanup once for all
   packs. A reviewer rejects: a pack that introduces DDL, a bespoke endpoint or
-  a new preset version (that path is `SK-PIVOT-007`'s, with its own decision),
+  a new preset version (seed evolution is the DBA's job, `GLOBAL-041`),
   and any pack that stores secret **values** rather than credential metadata.
   Each pack ships with ≥ 5 golden queries added to the `SK-QUAL-023` eval
   family.
 - **Alternatives rejected:** **Per-vertical schema presets**
-  (`agent_founder_ops_v1`, …) — schema explosion, contradicts
-  `SK-PIVOT-007`, and every one multiplies the validator/eval surface. ·
+  (`agent_founder_ops_v1`, …) — schema explosion, contradicts the
+  one-seed rule, and every one multiplies the validator/eval surface. ·
   **A dedicated "founder ops" SaaS feature** (dashboards, CRUD UI) —
   builds product before the memory wedge has a single external user; a
   pack is content and costs nothing to retire. · **Keep founder actions in

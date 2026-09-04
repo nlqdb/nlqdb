@@ -7,4 +7,4 @@
 - **Alternatives rejected:** Reveal-once flag tied to email re-confirmation — adds an "or you can have it back" path that erodes the discipline. Encrypted-at-rest with a master key — still a key-recovery surface; same risk model as plaintext. Bcrypt — older, no memory-hardness; reach for Argon2id per `GLOBAL-016`.
 - **Source:** docs/architecture.md §4.1
 
-**Superseded on Workers:** the Argon2id hash function was replaced by HMAC-SHA256 in [`SK-APIKEYS-008`](SK-APIKEYS-008-hmac-sha256-storage.md) because Workers' Web Crypto doesn't surface Argon2id. The rest of this decision (no plaintext retrieval, `last_4`-only display, no "reveal" path) still applies.
+**Replaced on Workers:** the Argon2id hash function was replaced by HMAC-SHA256 in [`SK-APIKEYS-008`](SK-APIKEYS-008-hmac-sha256-storage.md) because Workers' Web Crypto doesn't surface Argon2id. The rest of this decision (no plaintext retrieval, `last_4`-only display, no "reveal" path) still applies.

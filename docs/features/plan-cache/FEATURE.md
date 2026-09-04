@@ -90,7 +90,7 @@ when-to-load:
 - **Why:** If schema growth invalidated the cache, every customer would pay the LLM cost on every schema migration. `GLOBAL-004` makes that impossible by widening only — fields don't disappear under normal use. The only event that *would* require a replan (an observed field vanishing) is rare enough that we treat it as a hard-stop, not a branch in the cache code.
 - **Consequence in code:** No "schema-version" branch in the cache read path. The disappearance-event handler is a separate, infrequently-tested code path that re-emits a `query_hash` salt and forces a fresh plan generation. It does not invalidate other entries.
 - **Alternatives rejected:** Replan on any schema change — breaks `GLOBAL-006`'s "no cache invalidation" promise. Replan on a heuristic ("this query looks similar to one that broke") — silent wrong-plan failure mode.
-- **Source:** [GLOBAL-004](../../decisions/GLOBAL-004-schemas-only-widen.md) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
+- **Source:** [GLOBAL-004](../../decisions/GLOBAL-004-logical-schema-evolves.md) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
 ### SK-PLAN-009 — Cached value carries the planner's `model` + `confidence` for SK-TRUST-002 stability
 

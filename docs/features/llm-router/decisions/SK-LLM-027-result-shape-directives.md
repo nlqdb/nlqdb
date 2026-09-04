@@ -2,7 +2,7 @@
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Extends
 [`SK-LLM-018`](./SK-LLM-018-schema-fidelity-prompt.md) (the
-`PLAN_DIRECTIVES` block) — it is not superseded; these are two additional
+`PLAN_DIRECTIVES` block) — it still stands; these are two additional
 bullets in the same block, demonstrated by the
 [`SK-LLM-026`](./SK-LLM-026-static-few-shot-plan-exemplars.md) exemplars.
 

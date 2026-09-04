@@ -54,7 +54,7 @@
 - **Alternatives rejected:**
   - **Resolve OAuth to a pooler DSN + reuse `connectByoDb` over the socket** (the
     original signed-off draft, and the "reuse-the-one-pipeline" ideal). Depends on
-    `SK-DBCONN-002` working; it does not (the ~18s hang above). Superseded by
+    `SK-DBCONN-002` working; it does not (the ~18s hang above). Replaced by
     founder decision 2026-08-12 — the "one socket pipeline" premise is false on
     Workers, so the mgmt-API transport is adopted for Supabase and this draft
     clause is retired.

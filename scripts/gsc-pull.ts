@@ -197,7 +197,7 @@ if (sm.status !== 200) {
 }
 
 // The wedge pages the reach loop exists to make win (R-02/R-03/R-04 in
-// docs/features/agent-memory-pivot/worksheets/reach/INDEX.md). They earn ~0
+// docs/research/reach/INDEX.md). They earn ~0
 // impressions, which is exactly why the sections above cannot see them: a
 // search-analytics row exists only for a URL that got an impression, so a page
 // Google never crawled is indistinguishable there from one that ranks badly.

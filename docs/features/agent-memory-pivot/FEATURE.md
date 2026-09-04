@@ -1,6 +1,6 @@
 ---
 name: agent-memory-pivot
-description: The positioning pivot that makes "analytical memory for AI agents" nlqdb's lead wedge — sequenced, daily-loop-sized worksheets a cold agent picks up one at a time.
+description: Prior bet (agent memory as the lead wedge, 2026-06 → 2026-09) — rails kept only as far as the expert-knowledge platform needs them.
 when-to-load:
   globs:
     - apps/web/src/pages/agents/**
@@ -12,53 +12,27 @@ when-to-load:
   topics: [positioning, agent-memory, mem0, zep, letta, pivot, messaging, wedge]
 ---
 
-# Feature: Agent-Memory Pivot
+# Feature: Agent-Memory Pivot (prior bet)
 
-**One-liner:** Reweight nlqdb's go-to-market so "analytical memory for AI
-agents" is the lead wedge — a real, queryable database an agent uses as
-memory — delivered as a sequence of small, daily-loop-sized
-slices rather than a relaunch. **Four tracks ship in parallel:** messaging
-(WS-* — how users discover the wedge), **engine** (E-* — the memory-shaped
-primitives that make the wedge claims durable), **dogfood** (D-* — nlqdb's own
-ops running on nlqdb memory, the SK-PIVOT-016 launch gate), and **reach** (R-* —
-search-moment + coding-agent acquisition, SK-PIVOT-015, driven by `/reach`).
-**Status:** in progress (Phase 2 distribution) — messaging, engine, dogfood and
-reach state lives in the linked worksheet indexes; the `SK-PIVOT-016` dogfood
-gate is **0/5**.
-**Owners (code):** `apps/web/src/pages/agents/**`, `apps/web/src/data/{competitors,solve,showcase-examples}.ts`, `apps/api/src/db-create/presets/**` (engine track), `packages/mcp/src/server.ts`, `apps/api/src/{db-create/neon-provision,ask/build-deps,memory/remember}.ts` (agent-scope RLS, SK-PIVOT-009), `apps/docs/src/content/docs/mcp.mdx`, `README.md`.
-**Cross-refs:** `docs/research/deepseek-moat-framing.md` (the thesis) · `docs/competitors.md §4` (agent-memory landscape) · `docs/research/personas.md §P2` · GLOBAL-036 (canonical text in `docs/decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md`; index in `docs/decisions.md`).
+**One-liner:** The 2026-06 → 2026-09 bet that "analytical memory for AI
+agents" is nlqdb's lead wedge. Replaced by the autonomous-DBA bet
+(`GLOBAL-041`); its worksheets, research and positioning decisions are
+archived. What survives is the set of rails the expert-knowledge platform
+builds on.
+**Status:** prior bet — rails maintained only as far as EK needs them
+(`agent_memory_v1` seed, `buildRememberInsert`, pack-runner, RLS); no new
+slices. `/reach` continues as the marketing lane on
+[`docs/research/reach/INDEX.md`](../../research/reach/INDEX.md).
+**Owners (code):** `apps/api/src/db-create/presets/agent-memory-v1.ts`,
+`apps/api/src/memory/**`, `apps/api/src/pack-runner/**`,
+`tools/docs-memory/**`, `packages/mcp/src/server.ts` (`nlqdb_remember` /
+`nlqdb_recall`).
 
 ## Touchpoints — read this feature doc before editing
 
-- `apps/web/src/pages/agents/**` — the `/agents` front door
-- `apps/web/src/data/{competitors,solve,showcase-examples}.ts` — memory `/vs`
-  pages, agent-memory solve pages, home carousel slides
-- `packages/mcp/src/server.ts`, `apps/docs/src/content/docs/mcp.mdx` — MCP framing
-- `docs/features/agent-memory-pivot/worksheets/**` — the backlog
-
-> **The backlog lives in [`worksheets/`](worksheets/)** — cold daily-loop
-> agents start at [`worksheets/INDEX.md`](worksheets/INDEX.md) (messaging
-> `WS-*`) and [`worksheets/engine/INDEX.md`](worksheets/engine/INDEX.md)
-> (engine `E-01..E-07`); rule of thumb is `WS-*` when the worst number is
-> funnel/distribution, `E-*` when it is engine quality / agent on-ramp.
-> The **dogfood** track ([`worksheets/dogfood/INDEX.md`](worksheets/dogfood/INDEX.md),
-> `D-01..D-08`) is the execution track for the `SK-PIVOT-016` launch gate and
-> the one-click pack productization follow-on —
-> pick from it when the weekly focus is that gate's `n/5` (founder-set 2026-07-28).
-> The **reach** track ([`worksheets/reach/INDEX.md`](worksheets/reach/INDEX.md),
-> `R-*`) is picked up only by its own `/reach` loop. Copy inventory:
-> [`worksheets/messaging-surface-map.md`](worksheets/messaging-surface-map.md).
-
-## What changes where (answers "how does each area change?")
-
-| Area | Change | Owned by |
-|---|---|---|
-| **Docs decisions** | **GLOBAL-036** (lead positioning, dual front door); **GLOBAL-019** + `architecture.md §0` synced to FSL-1.1→Apache; this feature's `SK-PIVOT-*` carry the tactical calls. | GLOBAL-036 |
-| **Scorecard / daily loop** | The **Pivot — agent-memory wedge** section of `docs/scorecard.md` carries one row per worksheet, ticked ⬜→✅ on merge. | scorecard |
-| **Architecture** | `architecture.md §0` synced to FSL-1.1; `§2.1` carries the `/agents` route (a path on `nlqdb.com`, **no new domain**). | shipped |
-| **Phase plan** | Phase 2 targets "1 agent product publicly uses nlqdb as memory", so the wedge content folds into Phase 2 distribution. Self-host container pulled forward from Phase 3 (SK-PIVOT-005). | WS-11 |
-| **Home page & product/APIs** | Home is a two-door chooser (SK-WEB-018: agent-memory door + question-your-ClickHouse door), superseding the earlier wedge-led reweight; `/agents` is the deep door (matrix, demo, OG); MCP tool + package descriptions carry the framing. Headline/README/llms.txt swap shipped 2026-06-24 (SK-PIVOT-013). | WS-01…WS-13, SK-WEB-018 |
-| **Engine / actual architecture** | Canonical `agent_memory_v1` preset as a `db.create` path; **additive** MCP tools (SK-MCP-002); per-agent RLS scope (SK-PIVOT-009); `facts`-only TTL + sweep (SK-PIVOT-011); pgvector hybrid recall; authed preset on-ramp (SK-PIVOT-010); ClickHouse routing for large memory DBs (Phase 3). Per-slice status: [`worksheets/engine/INDEX.md`](worksheets/engine/INDEX.md). | E-01…E-07 |
+- the rails above — edit only when `expert-knowledge-platform` needs it
+- `apps/web/src/pages/agents/**`, memory `/vs` and solve pages — marketing
+  surfaces; they keep earning search traffic but carry no new investment
 
 ## Decisions
 
@@ -80,11 +54,7 @@ gate is **0/5**.
 
 ### SK-PIVOT-006 — Engine track ships **additive** memory primitives; the existing contract is preserved
 
-**Body:** [`decisions/SK-PIVOT-006-additive-engine-track.md`](./decisions/SK-PIVOT-006-additive-engine-track.md). The architectural commitment behind the wedge ships as a parallel **engine track** (`worksheets/engine/E-01..E-07`) — a canonical `agent_memory_v1` schema preset, additive MCP tools (`nlqdb_remember`, `nlqdb_recall`), per-agent scoping, TTL, pgvector hybrid recall, an `/agents` CreateForm preset, and a workload-analyzer rule.
-
-### SK-PIVOT-007 — Memory schema `agent_memory_v1` is the canonical shape; evolve by version, never in place
-
-**Body:** [`decisions/SK-PIVOT-007-memory-schema-versioning.md`](./decisions/SK-PIVOT-007-memory-schema-versioning.md). Agent memory has one canonical schema — `agent_memory_v1`'s four tables (`facts`, `episodes`, `entities`, `entity_facts`) — and it is part of the **public contract** once shipped.
+**Body:** [`decisions/SK-PIVOT-006-additive-engine-track.md`](./decisions/SK-PIVOT-006-additive-engine-track.md). The architectural commitment behind the wedge ships as a parallel **engine track** (archived `E-01..E-07` worksheets) — a canonical `agent_memory_v1` schema preset, additive MCP tools (`nlqdb_remember`, `nlqdb_recall`), per-agent scoping, TTL, pgvector hybrid recall, an `/agents` CreateForm preset, and a workload-analyzer rule.
 
 ### SK-PIVOT-008 — The memory **write** verb is a dedicated server endpoint that builds the SQL itself, never `/v1/run`
 
@@ -110,19 +80,9 @@ gate is **0/5**.
 
 **Body:** [`decisions/SK-PIVOT-005-fsl-self-host.md`](./decisions/SK-PIVOT-005-fsl-self-host.md). The open/free wedge is stated truthfully under **FSL-1.1** (source-available, self-hostable for non-competing use, BYO LLM key at 0% markup) — not the false "Apache-2.0 + `docker compose up`" today. `GLOBAL-019` + `architecture.md §0` synced to "FSL-1.1-ALv2 → Apache-2.0"; `/agents`/`README` state it FSL-accurately (WS-10). The container (`ghcr.io/nlqdb/api`) is pulled forward (WS-11) so the claim is true before `/agents` leads with it.
 
-### SK-PIVOT-013 — The lead string is "Analytical memory for AI agents"; the WS-13 founder gate tripped 2026-06-24
-
-**Body:** [`decisions/SK-PIVOT-013-headline-reposition.md`](./decisions/SK-PIVOT-013-headline-reposition.md). Founder tripped the GLOBAL-036 headline gate 2026-06-24: all four gated lead strings now lead with **"Analytical memory for AI agents."** Head-only — the proof follow-on landed in SK-PIVOT-014, itself since superseded on `/` by SK-WEB-018.
-
-### SK-PIVOT-014 — Home-flow reposition: the home's proof leads the wedge (WS-14 follow-on to WS-13)
-
-**Status:** superseded on `/` by [`SK-WEB-018`](../web-app/decisions/SK-WEB-018-two-door-home.md) — the home is now a two-door chooser; the agent-loop proof relocates to `/agents`.
-
-**Body:** [`decisions/SK-PIVOT-014-home-flow-reposition.md`](./decisions/SK-PIVOT-014-home-flow-reposition.md).
-
 ### SK-PIVOT-015 — Reach is the pivot's third track: search-moment interception + coding-agent injection, driven by its own `/reach` loop
 
-**Body:** [`decisions/SK-PIVOT-015-reach-track.md`](./decisions/SK-PIVOT-015-reach-track.md). The buying decision happens at stage-0/1 searches ("my agent forgets"), increasingly issued by the builder's own coding agent, so a third track ([`worksheets/reach/INDEX.md`](worksheets/reach/INDEX.md), R-01..R-08) wins that moment: intent-mapped solve pages, a one-command setup guide, MCP registry listings, droppable in-repo artifacts, and a coding-agent walker as the yield metric. Runs on its own `/reach` loop (4×/day, offset from `/daily`) so worst-number selection can't starve it; reach numbers live in the reach worksheet's `NUMBERS.md`, never `docs/scorecard.md`.
+**Body:** [`decisions/SK-PIVOT-015-reach-track.md`](./decisions/SK-PIVOT-015-reach-track.md). The buying decision happens at stage-0/1 searches ("my agent forgets"), increasingly issued by the builder's own coding agent, so a third track ([`docs/research/reach/INDEX.md`](../../research/reach/INDEX.md), R-01..R-08) wins that moment: intent-mapped solve pages, a one-command setup guide, MCP registry listings, droppable in-repo artifacts, and a coding-agent walker as the yield metric. Runs on its own `/reach` loop (4×/day, offset from `/daily`) so worst-number selection can't starve it; reach numbers live in the reach worksheet's `NUMBERS.md`, never `docs/scorecard.md`.
 
 ### SK-PIVOT-016 — The launch is condition-gated on a lived dogfood workload; conditions, never calendar dates
 
@@ -134,7 +94,7 @@ gate is **0/5**.
 
 ### SK-PIVOT-018 — Memory ships persona-goal packs on the one canonical schema, never per-vertical schemas
 
-**Body:** [`decisions/SK-PIVOT-018-goal-packs.md`](./decisions/SK-PIVOT-018-goal-packs.md). Goal packs = extraction recipe + seed entities + golden queries, all on the one `agent_memory_v1` schema (`SK-PIVOT-007`). Pack #1 repo-ops (`SK-PIVOT-017`); pack #2 founder-ops (accounts, credential *metadata* — never values — listings, the human-actions log, seeded from [`docs/history/founder-actions-log.md`](../../history/founder-actions-log.md)). A pack adds no pack-specific schema, endpoint or tool; `SK-PIVOT-021` supplies one shared product runner for all packs. Candidates for packs #3..N are proposals awaiting founder ranking in [`worksheets/dogfood/pack-candidates.md`](worksheets/dogfood/pack-candidates.md) (#1 founder-set 2026-07-29); none is decided.
+**Body:** [`decisions/SK-PIVOT-018-goal-packs.md`](./decisions/SK-PIVOT-018-goal-packs.md). Goal packs = extraction recipe + seed entities + golden queries, all on the one `agent_memory_v1` schema (the seed). Pack #1 repo-ops (`SK-PIVOT-017`); pack #2 founder-ops (accounts, credential *metadata* — never values — listings, the human-actions log, seeded from [`docs/history/founder-actions-log.md`](../../history/founder-actions-log.md)). A pack adds no pack-specific schema, endpoint or tool; `SK-PIVOT-021` supplies one shared product runner for all packs. Candidates for packs #3..N are proposals awaiting founder ranking in the archived `pack-candidates.md` (#1 founder-set 2026-07-29); none is decided.
 
 ### SK-PIVOT-019 — nlqdb publishes a reproducible cross-strategy memory benchmark; honest per-purpose winners, never an integrations program
 
@@ -146,7 +106,7 @@ gate is **0/5**.
 
 ### SK-PIVOT-021 — Every goal pack ships as a one-click product journey on one shared runner
 
-**Body:** [`decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md`](./decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md). A skill artifact is not a finished pack: one shared runner owns the CTA, pre-auth evidence, least-permission source access, resumable handoffs, honest progress, durable proof and cleanup, while pack-specific work stays declarative per `SK-PIVOT-018`. Pack #1's public-alpha journey is [`D-08`](./worksheets/dogfood/D-08-repo-ops-one-click-import.md).
+**Body:** [`decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md`](./decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md). A skill artifact is not a finished pack: one shared runner owns the CTA, pre-auth evidence, least-permission source access, resumable handoffs, honest progress, durable proof and cleanup, while pack-specific work stays declarative per `SK-PIVOT-018`. Pack #1's public-alpha journey is the archived `D-08` worksheet.
 
 ### SK-PIVOT-022 — Community memory guidance optimizes for task outcomes, even when nlqdb is absent
 
@@ -157,15 +117,14 @@ gate is **0/5**.
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL;
 index in [`docs/decisions.md`](../../decisions.md)).
 
-- **GLOBAL-036** — Lead positioning: analytical memory for AI agents (dual front door).
-  - *In this feature:* the canonical positioning decision; every worksheet implements a slice of it.
-  - *Dual front door, literal expression:* the two-door home ([`SK-WEB-018`](../web-app/decisions/SK-WEB-018-two-door-home.md)) is the literal dual front door — **Door A** = agent-memory wedge (MCP install), **Door B** = generalist/analytics (BYO ClickHouse via `/app/connect`, `SK-WEB-019` / `SK-DBCONN-001`). The generalist seam is now Door A's *"or just describe your data →"* link to `/app/new` (replacing the SK-WEB-017 secondary hero input; SK-WEB-018 supersedes the three-beat-on-`/` IA).
+- **GLOBAL-041** — Autonomous DBA.
+  - *In this feature:* this is the prior bet; rails maintained only as far as `expert-knowledge-platform` needs them.
 - **GLOBAL-019** — Free + Open Source core.
   - *In this feature:* the anti-VC angle leans on it; its stale "Apache-2.0 today" wording (and `architecture.md §0`) is corrected to FSL-1.1→Apache in this PR. The FSL-accurate self-host *marketing copy* is WS-10.
 - **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid.
   - *In this feature:* the wedge's memory-ops paid line rides this chain and nothing else (`SK-PIVOT-023` axis 1); memory never gets its own meter or SKU. The marketplace fee (axis 2) lives in the expert-knowledge-platform feature, not here.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
-  - *In this feature:* every new wedge CTA (matrix "try this", the `/agents` connect CTA) emits the typed event; wedge conversion = a registered user reaching a first answer (GLOBAL-036).
+  - *In this feature:* every new wedge CTA emits the typed event.
 - **GLOBAL-025** — North-star KPIs (advance ≥ 1, degrade 0).
 - **GLOBAL-033** — Resolution defaults.
 - **GLOBAL-034** — Analytics stack.

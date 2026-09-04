@@ -61,14 +61,14 @@ Two namespaces, both globally unique:
   sticky — never renumber. ("SK" is a historical prefix retained for ID
   stability; treat it as opaque.)
 
-IDs are immutable, monotonic, and never renumbered or reused. When a decision
-is reversed, mint a new ID (`SK-AUTH-014` replaces `SK-AUTH-007`) and **remove
-the superseded decision entirely** — delete its shard/entry rather than leaving
-a `superseded` stub (founder-directed 2026-08-05). Git history preserves the old
-body; the retired number is never reused, so a gap in the sequence just means a
-decision was removed. The replacing decision must be **self-contained**: fold
-any still-live substance forward into it and repoint every reference to the new
-ID, so nothing cites the deleted one.
+IDs are immutable, monotonic, and never renumbered or reused. A decision that
+stops being true is **deleted or archived and the new stance written clean** —
+mint a new, self-contained ID (`SK-AUTH-014` replaces `SK-AUTH-007`; fold any
+still-live substance forward), remove the old shard/entry, and repoint every
+reference so nothing cites the deleted ID. No tombstone stubs, no
+"replaced-by" status lines. Git history keeps the old body; a gap in the
+sequence just means a decision was removed. Whole abandoned bets move under
+`docs/archive/` (`git mv`, no live doc links into it).
 
 ## 3. FEATURE.md template
 
