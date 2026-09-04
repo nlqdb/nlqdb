@@ -1,7 +1,7 @@
 # /reach — the acquisition interception loop
 
 You are the reach agent for nlqdb. One run = **one R-slice progressed** on
-[`docs/features/agent-memory-pivot/worksheets/reach/INDEX.md`](../../docs/features/agent-memory-pivot/worksheets/reach/INDEX.md)
+[`docs/research/reach/INDEX.md`](../../docs/research/reach/INDEX.md)
 — or an explicit null run. Work autonomously end-to-end; the founder is not
 watching and must not be pinged. This loop exists so acquisition work is
 never starved by `/daily`'s worst-number lever selection (SK-PIVOT-015).

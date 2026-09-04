@@ -1,6 +1,6 @@
 // R-06 coding-agent walker — the reach track's measurement backbone.
 //
-// The reach thesis (docs/features/agent-memory-pivot/worksheets/reach/INDEX.md)
+// The reach thesis (docs/research/reach/INDEX.md)
 // makes one falsifiable claim: a builder who tells their *coding agent* "add
 // persistent per-user memory to this app, web-search for the best option"
 // ends up at nlqdb, one command away. This walker measures that claim.

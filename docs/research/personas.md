@@ -50,7 +50,7 @@ correctness bug, not a preference. P2b is the reach track's priority target
 (the stage-0 buyer); P2a is today's Jordan. Shared: MCP install, no up-front
 schema, usage-based pricing. Both search — and increasingly have their coding
 agent (Claude Code/Cursor/Codex) search — at stage 0; the queries they issue
-are the [reach intent map](../features/agent-memory-pivot/worksheets/reach/intent-map.md).
+are the [reach intent map](./reach/intent-map.md).
 
 ### P2a — Hobbyist tool-agent builder
 
@@ -202,7 +202,7 @@ memory layer.
 
 **Real-life use case.** Yuki is on-call at a 40-person startup running SigNoz on self-hosted ClickHouse. At 9am Monday an alert fires: checkout p99 at 4s. Instead of joining `otel_traces` with `otel_logs` by hand in the ClickHouse console, Yuki opens the nlqdb chat pointed at their cluster: `"which services contributed to the checkout latency spike between 8:45 and 9:10"` — ranked breakdown in under 2s. Then: `"top error messages from those services during that window"`. Five minutes of chat replaces 45 minutes of SQL and dashboard-hopping.
 
-**Phase 1 treatment.** **Now in active development** per [`SK-MULTIENG-005`](../features/multi-engine-adapter/decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md); until it ships, acknowledge inbound on the homepage ("Already running ClickHouse? Tell us"). Do not conflate with the managed OTel ingestion pivot in [`otel-grafana-pivot.md`](./otel-grafana-pivot.md): P6 is an NL query skin over the user's existing ClickHouse, not nlqdb owning the storage.
+**Phase 1 treatment.** **Now in active development** per [`SK-MULTIENG-005`](../features/multi-engine-adapter/decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md); until it ships, acknowledge inbound on the homepage ("Already running ClickHouse? Tell us"). Do not conflate with the archived managed-OTel-ingestion idea: P6 is an NL query skin over the user's existing ClickHouse, not nlqdb owning the storage.
 
 **Open questions (resolve before promoting to a feature).**
 - **Read-only enforcement is non-trivial in ClickHouse.** `readonly = 1` does *not* block DDL — TRUNCATE, DROP, ALTER still execute. Safe BYO requires `readonly = 1` + `allow_ddl = 0` + RBAC `GRANT SELECT`, or extending `sql-allowlist` to ClickHouse grammar. ClickHouse's own `mcp-clickhouse` ships with this gap open.

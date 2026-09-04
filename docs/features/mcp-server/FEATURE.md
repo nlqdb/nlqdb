@@ -37,7 +37,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-MCP-NNN
 - [**SK-MCP-012**](decisions/SK-MCP-012-single-scope.md) — Single `mcp` scope; tool-level capability lives in `apps/api/`'s validator.
 - [**SK-MCP-013**](decisions/SK-MCP-013-callback-bridge.md) — Cross-Worker callback bridge mints `sk_mcp_*` server-side via one-shot KV code.
 - [**SK-MCP-014**](decisions/SK-MCP-014-do-revalidation-cache.md) — `McpAgent` DO caches `sk_mcp_*` + revalidates every 1 s.
-- [**SK-MCP-015**](decisions/SK-MCP-015-stay-on-2025-11-25-until-v2-settles.md) — Serve 2025-11-25 until SDK v2 settles; never hand-roll 2026-07-28 on v1. Migration staged in [`E-08`](../agent-memory-pivot/worksheets/engine/E-08-mcp-2026-07-28-revision.md).
+- [**SK-MCP-015**](decisions/SK-MCP-015-stay-on-2025-11-25-until-v2-settles.md) — Serve 2025-11-25 until SDK v2 settles; never hand-roll 2026-07-28 on v1.
 - [**SK-MCP-016**](decisions/SK-MCP-016-mcp-route-allows-any-browser-origin.md) — `/mcp` accepts any browser `Origin` (CORS reflects it, OPTIONS answered, 401 is CORS-readable); the load-bearing invariant is that `/mcp` never accepts cookies. OAuth / consent endpoints keep strict origin + redirect-URI validation. Supersedes the WS06-T5 Origin-allowlist note under **Open questions** below.
 
 ## Install paths

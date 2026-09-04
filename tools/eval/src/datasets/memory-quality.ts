@@ -4,7 +4,7 @@
 // memory-quality measures whether the *memory itself is good*: it seeds
 // `agent_memory_v1`-shaped corpora deliberately built to exercise the four
 // quality axes the research landscape names
-// (`docs/research/agent-memory-quality-landscape.md`), then scores each
+// (`docs/archive/prior-bet/agent-memory-quality-landscape.md`), then scores each
 // question with the existing result-set EX comparator (`score.ts`):
 //
 //   - retrieval    — return the correct SET of memory rows, and only those

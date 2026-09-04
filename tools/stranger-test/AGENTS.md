@@ -39,7 +39,7 @@ tools/stranger-test/
 ```
 
 > **`reach-agent-walk.ts` is owned by the reach track**
-> ([`docs/features/agent-memory-pivot/worksheets/reach/INDEX.md`](../../docs/features/agent-memory-pivot/worksheets/reach/INDEX.md)
+> ([`docs/research/reach/INDEX.md`](../../docs/research/reach/INDEX.md)
 > R-06), not the stranger-test canonical flows. It reuses this tool's
 > conventions (pure grader + spawn layer, JSON-to-`results/`) but drives a
 > nested `claude -p` session (`bash scripts/reach-agent-walk.sh`) rather than a

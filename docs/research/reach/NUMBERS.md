@@ -39,9 +39,9 @@ can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
 - **This cycle's R-09 move (2026-09-04):** the cc-marketplace /
   `claudecodecommands.directory` venue (added last cycle as ledger #27 / R-09
   venue #6) had its exact `nlqdb-memory` payload parked only in the ledger +
-  [mechanism notes](../../../../research/acquisition-channels-mechanisms.md#row-27),
+  [mechanism notes](../acquisition-channels-mechanisms.md#row-27),
   which the founder does not read — so the venue was findable but **not
-  submittable**. Surfaced it into [`blocked-by-human.md` #4](../../../../blocked-by-human.md)
+  submittable**. Surfaced it into [`blocked-by-human.md` #4](../../blocked-by-human.md)
   (the single file the founder reads; hard rule: account-walled submissions →
   founder queue), pointing at the parked payload rather than duplicating it, and
   flipped the ledger #27 disposition to founder-queued. Now actionable in ~10 min

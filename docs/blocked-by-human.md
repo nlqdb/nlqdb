@@ -85,7 +85,7 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    value — gate unchanged, criteria not loosened.** The gate's `MEMORY_PRESET=1` prerequisite **shipped 2026-07-29**
    (#835), so all five criteria are now agent-drivable — D-04's prod prereq is
    clear. Execution track:
-   [`dogfood/INDEX.md`](./features/agent-memory-pivot/worksheets/dogfood/INDEX.md)
+   `dogfood/INDEX.md` (archived)
    (`D-01..D-07`, one slice per criterion), the founder-set weekly focus
    number as of 07-28. Gate progress: **2/5** (criterion 2 green from D-04
    run 1, 2026-08-11 — provisioned + seeded the prod memory DB and ran the

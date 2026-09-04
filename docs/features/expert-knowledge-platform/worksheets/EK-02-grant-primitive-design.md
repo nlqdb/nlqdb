@@ -58,7 +58,7 @@ authorization check**:
   and Stripe's Machine Payments Protocol.
 - **Paydog** ([paydog.app](https://paydog.app/)) already sells pay-per-query
   MCP knowledge — prose inside, but the billing shape is live; tracked in
-  `docs/research/expert-knowledge-platform.md`.
+  the research fold in `docs/features/expert-knowledge-platform/FEATURE.md`.
 
 ## Recommended baseline (design record to confirm or refute)
 

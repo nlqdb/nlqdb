@@ -19,7 +19,7 @@ them. If a sentence here disagrees with a feature or with
 [`docs/research/email-and-marketing.md`](./research/email-and-marketing.md)
 (channels, the "refuse" list: cold outbound, paid ads, lifetime deals,
 design-partner discounts — not duplicated here) ·
-[`docs/research/phase-1-exit-criteria.md`](./research/phase-1-exit-criteria.md).
+`docs/research/phase-1-exit-criteria.md` (archived).
 
 ---
 
@@ -83,7 +83,7 @@ plan (no impersonation) rule out an agent posting or replying there.
   demand-signal events firing — lose none of the free intent signal.
 - [ ] Capacity check (`docs/architecture.md §7.1`): the strict-$0
   inference path can absorb the spike
-  ([`phase-1-exit-criteria.md` item 4](./research/phase-1-exit-criteria.md)).
+  (`phase-1-exit-criteria.md` item 4 (archived)).
 - [ ] Founder clears 48 hours post-submission for inbound.
 
 **Timing.** Tuesday 06:00 PT. Avoid Mondays (noisy) and Fridays.

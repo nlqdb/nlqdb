@@ -123,7 +123,7 @@ OSS Python SDK adding long-term memory (semantic/episodic/procedural) to LangGra
 Markdown-in-git personal brain + Postgres/pgvector hybrid search + MCP/CLI (OpenClaw/Hermes). **Gap:** single-operator knowledge brain, not hosted multi-tenant NL→SQL memory with fail-closed isolation. **Threat:** Medium–high mindshare / DIY; low on the analytical wedge. *(Added 2026-08-01.)*
 
 ### Pinecone Nexus — https://www.pinecone.io (public preview 2026-07)
-"Manifests" distill enterprise documents into queryable knowledge artifacts **curated at setup time**, not retrieved at query time; vendor-claimed ~90% vs ~65% RAG baseline. **Gap:** distills docs a team already has — no NL→SQL, no aggregation over what an agent *remembered*, no hosted memory write path. **Threat:** **High and rising for P2** — narrows the "structure beats prose" messaging gap. *(Added 2026-08-05; receipts in [`research/expert-knowledge-platform.md`](research/expert-knowledge-platform.md) §5.)*
+"Manifests" distill enterprise documents into queryable knowledge artifacts **curated at setup time**, not retrieved at query time; vendor-claimed ~90% vs ~65% RAG baseline. **Gap:** distills docs a team already has — no NL→SQL, no aggregation over what an agent *remembered*, no hosted memory write path. **Threat:** **High and rising for P2** — narrows the "structure beats prose" messaging gap. *(Receipts: [`expert-knowledge-platform`](features/expert-knowledge-platform/FEATURE.md) §5.)*
 
 **Vector / graph recall (P2).** Same gap: rank nearest matches, no relational analytics. Pinecone, Weaviate, Chroma, Qdrant, Milvus — `/vs/*`. **Cognee** (`/vs/cognee`) — OSS knowledge-graph memory (Extract→Cognify→Load); high P2 threat as "not just a vector store," still no SQL.
 

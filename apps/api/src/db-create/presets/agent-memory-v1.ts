@@ -32,7 +32,7 @@
 //
 // Sibling skill: `docs/features/hosted-db-create/FEATURE.md` (the
 // create path E-01 extends) and
-// `docs/features/agent-memory-pivot/worksheets/engine/E-01-memory-schema-preset.md`.
+// `docs/archive/prior-bet/agent-memory-pivot-worksheets/engine/E-01-memory-schema-preset.md`.
 
 import type { Column, ColumnType, ForeignKey, SchemaPlan, Table } from "@nlqdb/db";
 

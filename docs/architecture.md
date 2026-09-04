@@ -316,7 +316,7 @@ Canonical: `GLOBAL-013` (strict-$0 free tier) + [`GLOBAL-026`](./decisions/GLOBA
 | **BYOLLM** (any tier including Free) | $0 from us | Paste an Anthropic / OpenAI / Gemini / Grok / OpenRouter key in `/app/keys`; the router dispatches through your key at 0% markup. Per [`SK-PREMIUM-008`](./features/premium-tier/decisions/SK-PREMIUM-008-byollm.md). | No |
 | **Enterprise** | Custom | VPC peering, SAML SSO, audit-log export, on-prem | Annual |
 
-**Honest billing rules:** no card for free tier, ever. Hitting a limit rate-limits — never silently upgrades. Soft cap email at 80%; hard cap default at 100%. Your data is always readable out with plain SQL, free — no export endpoint or backups exist yet (`blindspot-analysis.md` tracks both), so no tier advertises them. Cancellation is one click, no call, no exit survey.
+**Honest billing rules:** no card for free tier, ever. Hitting a limit rate-limits — never silently upgrades. Soft cap email at 80%; hard cap default at 100%. Your data is always readable out with plain SQL, free — no export endpoint or backups exist yet, so no tier advertises them. Cancellation is one click, no call, no exit survey.
 
 ---
 

@@ -3,7 +3,7 @@
 > **Status:** ready to fire, founder-gated. Written 2026-07-19 (founder
 > directive: acquisition focus, "go for an obvious direction we didn't pick
 > yet"). nlqdb has **never launched anywhere**: a Show HN draft has sat in
-> [`distribution-queue-archive.md`](./distribution-queue-archive.md)
+> `distribution-queue-archive.md` (archived)
 > (2026-06-13) for five weeks;
 > [`fable-recommendation.md §4.2`](./fable-recommendation.md) recommended
 > launch posts on 2026-06-12. Meanwhile 105 passive surfaces yield ~1
@@ -45,7 +45,7 @@ structure only. Sources for venue norms (P2, checked 2026-07-19):
    `HOUR_LIMIT`/`DAY_LIMIT` in `apps/api/src/anon-global-cap.ts` for the
    launch window. Raising it multiplies free-LLM burn — see next.
 2. **Free-LLM ceilings
-   ([phase-1-exit-criteria §4](./phase-1-exit-criteria.md)):** ~500
+   (phase-1-exit-criteria §4 (archived)):** ~500
    plan-generations/day (Gemini RPD) + ~14.4k classifications (Groq) ≈
    2–4k queries/day after plan-cache. 200 launch-day signups fit; a
    viral spike degrades to fallback lanes. Watch `/v1/ask` error rate on
@@ -87,7 +87,7 @@ memory-first positioning; this is one post's framing.
   infrastructure per GLOBAL-013). Genuinely unusual; HN-native; the
   riskiest comment thread — and, per the 2026-08-08 founder exception
   above, **the chosen lead**, with A as the payload. Feeds the
-  free-stack-kit direction ([`docs/future/free-stack-kit.md`](../future/free-stack-kit.md)):
+  free-stack-kit direction (`docs/future/free-stack-kit.md` (archived)):
   launch-day traction on this story is the kit's demand evidence.
 
 ## 3. Venue fact sheets (founder writes final copy)

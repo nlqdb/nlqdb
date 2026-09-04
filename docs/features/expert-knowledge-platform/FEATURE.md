@@ -13,50 +13,37 @@ when-to-load:
 knowledge into a well-designed, queryable database schema any AI agent can
 use as a skill — and earns when agents/consumers pay to query it, with nlqdb
 taking a small, plainly-disclosed fee.
-**Status:** planned — the five governing decisions below were
-**founder-locked 2026-08-05 (in-session)**; implementation is authorized and
-proceeds **in parallel** with the `SK-PIVOT-016` dogfood gate (SK-EKP-005).
-Execution plan: [`worksheets/INDEX.md`](worksheets/INDEX.md) (`EK-01..09`,
-driven by the `/ek` loop). The private `experts` repo exists (founder,
-2026-08-05, all-rights-reserved) and carries the pilot interview CLI + the
-interview-methodology spec. **Direct agent push to `experts` works as of
-2026-08-10** — EK-05 is unparked (#967); its SK-EKP-003 boundary guard
-landed (experts#2, merged) and the CI to run it is in flight (experts#3, open). First engine code landed
-2026-08-08: the EK-06 grant control plane (`/v1/grants` mint/list/revoke).
-`GLOBAL-003`, EK-06 box 5 — **closed**: the grants capability reaches the
-**SDK** (`mintGrant`/`listGrants`/`revokeGrant`, session-only like the key
-verbs; 2026-08-08) and the **CLI** (`nlq grants list/revoke`, session-only,
-mirroring `nlq keys`). **MCP and elements are out of scope by design, not a
-gap**: grants are a session-only cross-tenant *control-plane* action, so they
-must never ride a bearer — an agent's MCP token minting or revoking a grant is
-the exact leaked-credential threat the `requireSession` gate defends against —
-and `<nlq-data>` is a read/display element with no control-plane surface.
-(No `mint` CLI verb: grants are minted by the marketplace selling flow, the
-`SK-EKP-003` private surface, not an operator's terminal.)
-**Owners (code):** none yet. The public rails it builds on are
-agent-memory-pivot surfaces (`agent_memory_v1`, goal packs, the shared
-one-click runner). Product-surface code will live partly in a **private
-repo** per SK-EKP-003.
-**Cross-refs:** vision + roadmap narrative:
-[`docs/future/expert-knowledge-platform.md`](../../future/expert-knowledge-platform.md) ·
-competitive receipts (incl. the kill-test):
-[`docs/research/expert-knowledge-platform.md`](../../research/expert-knowledge-platform.md) ·
-business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md)
-(the two-axis model) · rails: `SK-PIVOT-007`/`018`/`021`,
-`GLOBAL-036`/`GLOBAL-037`.
+**Status:** planned — first app built **on** the autonomous DBA (dogfood,
+founder decision 2026-09-04). Decisions locked 2026-08-05; **build gated on
+Phase A widen-on-write (`GLOBAL-041`)**; the `/ek` loop is paused until then.
+Shipped rails: EK-06 grant control plane (`/v1/grants` mint/list/revoke,
+SDK `mintGrant`/`listGrants`/`revokeGrant`, CLI `nlq grants list/revoke`,
+session-only); the private `experts` repo (pilot interview CLI + methodology
+spec, boundary guard) per SK-EKP-003. No MCP/elements grant surface by
+design: a control-plane action never rides a bearer.
+
+**Relationship to `GLOBAL-041`.** EK is the first real application built on
+the autonomous DBA. Its data layer — packs, interview transcripts, grants —
+is built on **inferred schema**: the expert's answers are inserts, the DBA
+infers and evolves the shape, and the marketplace buyer reads it through
+`/v1/ask`. `agent_memory_v1` is an optional **seed** an operator may start a
+pack from, not the model; there is no versioned preset contract and no
+per-pack DDL. This is why the build waits for Phase A: EK is the dogfood
+workload that proves KPI 1 (first-insert inference rate).
+
+**Owners (code):** `apps/api/src/grants.ts`, `apps/api/src/ask/grant-scope.ts`,
+`apps/api/src/grant-status.ts` (public rails); product surface partly in the
+private repo per SK-EKP-003.
+**Cross-refs:** business model [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md);
+`GLOBAL-037` (egress lanes); narrative + research folded into
+[§ Narrative and research](#narrative-and-research) below.
+
 
 ## Touchpoints — read this feature doc before editing
 
 - `docs/features/expert-knowledge-platform/**`
-- `apps/api/src/grants.ts`, `apps/api/migrations/0026_grants.sql`, the
-  `/v1/grants` routes in `apps/api/src/index.ts` — the EK-06 grant
-  control plane (`SK-EKP-008`)
-- `apps/api/src/ask/grant-scope.ts` — the EK-06 box-2 validation-layer
-  scope guard (`SK-EKP-008` guardrail #1: join-leakage rejected before
-  execution; read-only; deny-by-default)
-- `apps/api/src/grant-status.ts` — the EK-06 box-4 revocation-latency bound
-  (`SK-EKP-008` ≤30 s ceiling for both the NEW-query status cache and the
-  in-flight `statement_timeout`; env-tunable downward only; fail-closed)
+- `apps/api/src/grants.ts`, `apps/api/migrations/0026_grants.sql`, `/v1/grants` routes — EK-06 grant control plane (`SK-EKP-008`)
+- `apps/api/src/ask/grant-scope.ts` (scope guard, deny-by-default), `apps/api/src/grant-status.ts` (≤30 s revocation bound, fail-closed)
 
 ## Decisions
 
@@ -160,8 +147,8 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
 - **Decision (founder, 2026-08-05, inheriting the 2026-07-29 pack lock):**
   The pilot "become AI" profession is the **language tutor** — the
   founder-set #1 goal pack. The pilot journey builds on that pack's
-  extraction recipe, seed entities, and golden queries; no new schema
-  (`SK-PIVOT-007`/`SK-PIVOT-018` stand).
+  extraction recipe, seed entities, and golden queries; no pack-authored
+  DDL (SK-EKP-005) — the shape is inferred from the expert's rows.
 - **Core value:** Goal-first, Simple
 - **Why:** Already founder-locked as pack #1; it is the most human-legible
   analytical-memory demo (error taxonomies, mistake counts, progress trends
@@ -173,42 +160,32 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
   (Alternatives — a regulated profession first, or a new unranked one —
   fall out of the decision + the regulated-professions open question.)
 
-### SK-EKP-005 — The marketplace runs in parallel with the dogfood gate; neither blocks the other
+### SK-EKP-005 — EK builds on the autonomous DBA and is gated on Phase A; it adds no criterion to Phase A
 
-- **Decision (founder, 2026-08-05):** The expert-knowledge marketplace is
-  its own track with **its own launch motion and its own income** — it is
-  **not** gated on the `SK-PIVOT-016` dogfood gate, and it adds **no
-  criterion** to that gate. The gate remains exactly what it was: the
-  condition for the Show HN launch, and the weekly focus per the founder's
-  07-28 setting. Marketplace implementation may begin immediately alongside
-  it; the shared substrate (the D-08 one-click runner) serves both tracks.
+- **Decision (founder, 2026-09-04):** EK is the first application built on
+  the inferred-schema engine. Its build starts when Phase A widen-on-write
+  (`GLOBAL-041`) ships and its KPI-1 floor is measurable; until then EK
+  ships decisions only, no code. EK adds **no criterion** to Phase A's exit
+  gate, and Phase A does not wait on EK. EK keeps its own launch motion and
+  income line (marketplace fee, SK-EKP-002).
 - **Core value:** Goal-first, Simple
-- **Why:** Founder-directed 2026-08-05: "since the marketplace can also be a
-  good income to the company with another type of launch — it's ok to have
-  them done in parallel; it doesn't have to be blocked." The kill-test's
-  timing read (white-space window = quarters, not years) supports not
-  serializing the two. The overlap is real but is leverage, not coupling:
-  runner and reliability work advances both.
-- **Consequence in code:** A reviewer rejects edits that couple the tracks —
-  adding marketplace criteria to `SK-PIVOT-016`, or blocking marketplace
-  slices on gate progress (and vice versa). The marketplace's own launch
-  motion and acceptance criteria are defined at execution planning, in this
-  feature — not inherited from the gate.
-- **Alternatives rejected:** **Marketplace displaces the weekly focus** —
-  unnecessary once the tracks are parallel; the gate keeps its focus and its
-  own momentum. · **Gate as marketplace pre-flight** (agent-proposed) — the
-  founder explicitly declined the coupling; quality bars for expert
-  onboarding will be set in this feature's own launch criteria instead. ·
-  **Marketplace waits for the gate** — serializes two independent income/
-  proof motions for no reason.
+- **Why:** Building EK on the `agent_memory_v1` preset would re-introduce the
+  exact modeling step the bet removes and would make EK the second app that
+  never exercises the engine. Built on inferred schema, EK is the dogfood
+  workload that proves the engine to a stranger with a livelihood on it.
+- **Consequence in code:** A reviewer rejects EK slices that ship pack DDL, a
+  versioned preset contract, or a bespoke endpoint per pack; the expert's
+  rows land through the same widen-on-write path as any app's.
+- **Alternatives rejected:** **Build EK now on the preset** — a modeled
+  schema under a "no modeling" product. · **Archive EK** — it is the only
+  planned workload with a paying counterparty.
 
 ### SK-EKP-006 — One catalog: goal packs are the marketplace's free listings; niche-agent packs are marketplace instances
 
 - **Decision (founder-proposed, 2026-08-05):** The marketplace catalog and
   the goal-pack catalog are **one surface with two listing types**:
   (a) **packs** — free, first-party recipes (the locked
-  [`pack-candidates.md`](../agent-memory-pivot/worksheets/dogfood/pack-candidates.md)
-  order) that an operator installs onto their **own** data via the shared
+  pack-candidates order, archived with the prior bet) that an operator installs onto their **own** data via the shared
   runner — no grant, no fee; (b) **knowledge DBs** — paid, cross-tenant
   listings of an expert's rows (EK-06 grant + SK-EKP-002 fee). The
   niche-agent packs are therefore marketplace instances from day one,
@@ -246,6 +223,30 @@ business model: [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-tw
 
 **Body:** [`decisions/SK-EKP-009-sovereign-hosting-design.md`](decisions/SK-EKP-009-sovereign-hosting-design.md). The EK-07 `P2` research/design pass, resolved from the values per `GLOBAL-033`: v1 sovereign target is own-machine (on-prem) via the `WS-11` self-host image — fewest support surfaces, strongest "possession" claim — with cloud-account (Launch-Stack style) targets deferred to v2, one provider at a time, only after a first expert completes the on-prem walk. DB move = `pg_dump`/restore (small knowledge DBs; logical replication parked-with-trigger). Load-bearing boundary: a sovereign DB leaves `SK-EKP-008`'s platform-provisioned scope, so it is **not brokerable** — in v1 an expert either sells brokered access to a hosted DB *or* takes possession; selling into a sovereign DB is a future decision, deny-by-default. Build (EK-07 boxes 2–3) is hard-gated on `WS-11` shipping; changes no trust copy (that is EK-07 box 3, gated on a real expert walk).
 
+## Narrative and research
+
+**Vision (founder, 2026-08-04):** *"AI can't replace you if you become AI."*
+Any professional — teacher, doctor, carpenter, language tutor — answers
+questions about their craft and the expertise lands as structured, queryable
+rows (material tolerances, error taxonomies, dosage rules) an agent can
+`GROUP BY` and `JOIN`, not just recall. Two pillars, marketed asymmetrically:
+**trust loud** ("not allowed", never "not able" — SK-EKP-001), **fee quiet**
+(SK-EKP-002).
+
+**Research (2026-08-05 pass, sources in git history):** (1) every expertise
+platform and KB service stores prose for similarity recall — deliberately
+authored, structured, agent-queryable expertise has no incumbent; (2) trust is
+marketed everywhere and substantiated nowhere (best-in-class is a contractual
+no-train pledge; enterprise-gated CMEK is the technical ceiling) — schema-only
+LLM egress (`GLOBAL-037`) + self-host is a materially stronger, truthful
+claim; (3) creator demand is proven (Delphi, Poe payouts) while dangled
+revenue programs (GPT Store) burn trust — the fee must be real, disclosed,
+boring; (4) the market moved from structure to prose+LLM because structured
+authoring cost experts too much — cheap authoring via interview-style
+extraction is the bet that reverses it. Pinecone Nexus (setup-time curated
+"manifests", vendor-claimed ~90 % vs ~65 % RAG) is the nearest miss and is
+tracked in `docs/competitors.md`.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per
@@ -257,19 +258,17 @@ GLOBAL; index in [`docs/decisions.md`](../../decisions.md)).
 - **GLOBAL-025** — North-star KPIs.
   - *In this feature:* advances engine quality (structured-vs-prose wedge)
     and onboarding (non-technical authoring); its slices name KPIs per PR.
+- **GLOBAL-041** — Autonomous DBA.
+  - *In this feature:* EK is the first app built on inferred schema; build gated on Phase A (SK-EKP-005).
 - **GLOBAL-026** — LLM strategy.
   - *In this feature:* unchanged; axis 1 of SK-PIVOT-023 still rides it.
-- **GLOBAL-036** — Lead positioning: analytical agent memory.
-  - *In this feature:* this platform is the empire-scale expression of the
-    same bet — structure to compute on, not prose to recall.
 - **GLOBAL-037** — LLM egress lanes (planning schema-only; amended 2026-08-07).
   - *In this feature:* the technical floor under the SK-EKP-001 trust claim — lane 3 (interview authoring, own tenant) is `INV-EKP-037`; EK-09 makes buyer-query paths schema-only end-to-end (lane 2 narration skip).
 
 ## Open questions / known unknowns
 
 - **Fee % and payout mechanics** — founder-set at ship time (SK-EKP-002);
-  no number anywhere before that. (The grant primitive and interview design
-  are no longer open — resolved by SK-EKP-008 and SK-EKP-007.)
+  no number anywhere before that.
 - **Listing demo depth** (EK-05 build decision) — golden-query samples are
   a listing's "honest demo": do they show **real result rows free** (a leak
   of the paid product) or query text/shapes only? Interacts with

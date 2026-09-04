@@ -6,7 +6,7 @@ sits alongside) · [`SK-QUAL-018`](./SK-QUAL-018-persona-bench.md) (the
 `agent_memory` schema this seeds from). Governing:
 [`GLOBAL-036`](../../../decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md)
 (the wedge this measures) · `GLOBAL-026` (the free-vs-frontier bet).
-Research: [`docs/research/agent-memory-quality-landscape.md`](../../../research/agent-memory-quality-landscape.md).
+Research: `docs/research/agent-memory-quality-landscape.md` (archived).
 
 **Status (2026-07-28):** the family now carries **two corpora, 27 gold-verified
 questions**. The repo-ops docs→memory pack landed 2026-07-28

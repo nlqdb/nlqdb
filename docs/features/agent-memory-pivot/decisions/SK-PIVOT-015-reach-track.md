@@ -36,6 +36,6 @@
   by worst-number selection (above). · **One mega "SEO project" PR** —
   unreviewable; violates the daily-run sizing rule the whole pivot is built
   on. · **Paid acquisition** — no budget, and the P2 audience converts on
-  technical proof, not ads (`deepseek-moat-framing.md`). · **A separate
+  technical proof, not ads (the archived moat-framing research). · **A separate
   feature doc** — reach is a pivot distribution concern; a fourth home
   would split the GLOBAL-036 record (P3).

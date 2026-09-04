@@ -24,7 +24,7 @@
 // `agent_isolation` / `end_user_isolation` / `thread_isolation` policies
 // (SK-PIVOT-009) govern the row at write time too.
 //
-// Sibling: `docs/features/agent-memory-pivot/worksheets/engine/E-02-remember-tool.md`.
+// Sibling: `docs/archive/prior-bet/agent-memory-pivot-worksheets/engine/E-02-remember-tool.md`.
 
 import type { RateLimiter } from "../ask/rate-limit.ts";
 import { type AskError, DbConfigError, type DbRecord, type QueryResult } from "../ask/types.ts";
