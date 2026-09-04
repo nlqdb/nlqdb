@@ -1679,18 +1679,27 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // fixed UA the read-side principal join (tenant_id → user.email) can't
     // see, so the only place to exclude it is here, at the write.
     const isSyntheticAsk = isSyntheticUserAgent(c.req.header("user-agent"));
-    const bumpFirst10 = (ok: boolean): void => {
+    // SK-GTM-011 — the same completion also bumps the non-saturating
+    // `asks_total`, and `asks_mcp` when this ask came through the public
+    // MCP surface (an `sk_mcp_` principal). `first10_asks` saturates at 10
+    // and carries no per-ask surface, so it can't answer SK-PIVOT-016
+    // criterion 1; these two can. `asks_mcp` counts every routed ask, not
+    // just the first 10, so the CASE keeps first-10 capped in the same
+    // write (one UPDATE, no `first10_asks < 10` WHERE guard that would
+    // freeze the surface counters once saturated).
+    const askViaMcp = surfaceFromPrincipal(principal) === "mcp";
+    const bumpAskCounters = (ok: boolean): void => {
       if (isSyntheticAsk) return;
       c.executionCtx.waitUntil(
         c.env.DB.prepare(
-          "UPDATE databases SET first10_asks = first10_asks + 1, first10_ok = first10_ok + ? WHERE id = ? AND tenant_id = ? AND first10_asks < 10",
+          "UPDATE databases SET asks_total = asks_total + 1, asks_mcp = asks_mcp + ?, first10_ok = first10_ok + (CASE WHEN first10_asks < 10 THEN ? ELSE 0 END), first10_asks = first10_asks + (CASE WHEN first10_asks < 10 THEN 1 ELSE 0 END) WHERE id = ? AND tenant_id = ?",
         )
-          .bind(ok ? 1 : 0, resolvedDbId, principal.id)
+          .bind(askViaMcp ? 1 : 0, ok ? 1 : 0, resolvedDbId, principal.id)
           .run()
           .catch((err: unknown) => {
             console.error(
               JSON.stringify({
-                msg: "first10_bump_failed",
+                msg: "ask_counters_bump_failed",
                 message: err instanceof Error ? err.message : String(err),
               }),
             );
@@ -1731,14 +1740,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
               surface,
               outcome.error,
             );
-            bumpFirst10(false);
+            bumpAskCounters(false);
           } else {
             // Detach the ask.completed producer so the queue.send
             // round-trip runs after the SSE stream closes (PERFORMANCE
             // §3.1 — the emit is `ctx.waitUntil`-wrapped, never on the
             // user-visible path).
             c.executionCtx.waitUntil(outcome.pendingAskCompleted);
-            bumpFirst10(true);
+            bumpAskCounters(true);
             // SK-TRUST-001 — preview hop didn't exec; skip the anon
             // cap commit (SK-ANON-012) and `last_queried_at` bump so
             // the confirm hop can still land. The cap commits when
@@ -1832,14 +1841,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           surface,
           outcome.error,
         );
-        bumpFirst10(false);
+        bumpAskCounters(false);
         return errorResponse(c, outcome.error);
       }
       // Detach the ask.completed producer so queue.send runs in
       // ctx.waitUntil after the response flushes — keeps /v1/ask p99
       // off the queue producer round-trip (PERFORMANCE §3.1).
       c.executionCtx.waitUntil(outcome.pendingAskCompleted);
-      bumpFirst10(true);
+      bumpAskCounters(true);
       // SK-TRUST-001 — preview hop didn't exec; skip the anon cap
       // commit + `last_queried_at` bump so the confirm hop can still
       // land. Same logic as the SSE branch above.

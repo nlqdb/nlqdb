@@ -16,6 +16,8 @@ function gate(overrides: Partial<GtmMetrics["launchGate"]> = {}): GtmMetrics {
       memoryDbsInternal: 0,
       memoryFirst10Asks: 0,
       memoryFirst10Ok: 0,
+      memoryAsksMcp: 0,
+      memoryAsksTotal: 0,
       memoryFirst10SuccessRate: null,
       memoryLastQueriedAt: null,
       ...overrides,
@@ -41,11 +43,23 @@ describe("launchGateCriteria", () => {
     expect(on?.detail).toContain("MEMORY_PRESET` is on");
   });
 
-  test("criterion 1 marks its count a lower bound once a memory DB exists", () => {
-    const c = launchGateCriteria(gate({ memoryDbs: 2, memoryFirst10Asks: 14 }))[0];
-    expect(c?.value).toBe("≥ 14 / 100 (lower bound)");
+  test("criterion 1 counts real public-MCP asks once a memory DB exists", () => {
+    const c = launchGateCriteria(gate({ memoryDbs: 2, memoryAsksMcp: 37, memoryAsksTotal: 52 }))[0];
+    expect(c?.value).toBe("37 / 100");
     expect(c?.state).toBe("in-progress");
-    expect(c?.detail).toContain("LOWER BOUND");
+    expect(c?.measurement).toBe("live");
+    expect(c?.detail).toContain("asks_mcp");
+    // The old saturated rendering ("≥ N / 100 (lower bound)") is gone.
+    expect(c?.value).not.toContain("(lower bound)");
+    expect(c?.value).not.toContain("≥");
+  });
+
+  test("criterion 1 goes green when public-MCP asks reach the target", () => {
+    const c = launchGateCriteria(
+      gate({ memoryDbs: 2, memoryAsksMcp: 100, memoryAsksTotal: 140 }),
+    )[0];
+    expect(c?.value).toBe("100 / 100");
+    expect(c?.state).toBe("green");
   });
 
   test("criterion 2 says not-measurable at N = 0 and goes live from the counters", () => {

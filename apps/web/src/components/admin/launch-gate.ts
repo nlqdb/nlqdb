@@ -64,16 +64,18 @@ export function launchGateCriteria(m: GtmMetrics): GateCriterion[] {
     {
       n: 1,
       label: `≥ ${TARGET_MCP_ASKS} real public-MCP asks from the ops workload`,
-      state: g.memoryDbs === 0 ? "not-started" : "in-progress",
-      measurement: "live",
-      value:
+      state:
         g.memoryDbs === 0
-          ? `0 / ${TARGET_MCP_ASKS}`
-          : `≥ ${g.memoryFirst10Asks} / ${TARGET_MCP_ASKS} (lower bound)`,
+          ? "not-started"
+          : g.memoryAsksMcp >= TARGET_MCP_ASKS
+            ? "green"
+            : "in-progress",
+      measurement: "live",
+      value: `${g.memoryAsksMcp} / ${TARGET_MCP_ASKS}`,
       detail:
         g.memoryDbs === 0
           ? `No \`agent_memory_v1\` DB exists yet — the workload has not started (${presetNote}). Live count of memory DBs in the control plane; D-04 starts the corpus sync.`
-          : `${g.memoryDbs} memory DB(s), ${g.memoryDbsInternal} on internal accounts. The number is a LOWER BOUND: D1 counts only each DB's first 10 asks (\`first10_asks\` saturates) and carries no per-ask surface attribution, so the MCP-only total is not countable yet — D-04 owns the counter.`,
+          : `${g.memoryDbs} memory DB(s), ${g.memoryDbsInternal} on internal accounts. Live, non-saturating count of asks whose principal was a public-MCP (\`sk_mcp_\`) key, summed over the memory DBs (\`databases.asks_mcp\`, SK-GTM-011) — the real number the gate is defined over, no longer a first-10 lower bound. ${g.memoryAsksTotal} asks across all surfaces.`,
     },
     first10Criterion(g),
     {
