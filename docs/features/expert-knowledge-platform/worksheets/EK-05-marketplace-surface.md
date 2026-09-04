@@ -17,8 +17,11 @@ hosted journey; **gap 1 (SDK wrapper) closed 2026-09-02** — the
 `client.packImports.{create,get,advance,retry,delete}` (`SK-SDK-014`,
 bearer-drivable by construction, guarded in `packages/sdk/test/verbs.test.ts`),
 so `experts` embeds the hosted runner over the SDK per option B without
-importing a rail; box 1 now embeds it (still gated on the `experts` interview
-product + EK-04's box-2 live import).
+importing a rail; box 1 now embeds it. **Box 1's transcript-endpoint infra half
+is deployed + live 2026-09-04** (`experts.nlqdb.com`, experts#6 merged — `GET
+/healthz`=200, unknown/invalid ids → 404, valid SSL), still gated on the
+`experts` interview product + EK-04's box-2 live import (the write path that
+populates those transcripts is not built yet).
 · **Repo:** `experts` (private, all-rights-reserved) ·
 **Risk:** high · **Runs:** multi · **Prereqs:** EK-01, EK-02, EK-04 + repo
 access
