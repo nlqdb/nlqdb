@@ -257,13 +257,12 @@ in our repo), **crawl** (aggregators index it; nothing to submit), **submit**
 - ❌ #5 **skillsclaude.org** — **dropped 2026-08-05, never re-queue:** founder VPN
   security filter flagged it, zero independent reputation footprint, already lowest-yield
   (repo-linked). Listing a trust-first product in a flagged, unvetted directory is net-negative.
-- ✅ #6 **cc-marketplace / `claudecodecommands.directory`** — payload parked 2026-09-03
-  (P2 sweep). 688★ Claude Code plugin+command directory
-  ([`ananddtyagi/cc-marketplace`](https://github.com/ananddtyagi/cc-marketplace)); passes the
-  trust bar #5 failed. Cross-repo PR / form submit is out of scope → `nlqdb-memory` payload in
-  [ledger](../../../../research/acquisition-channels.md) #27 +
-  [notes](../../../../research/acquisition-channels-mechanisms.md#row-27); repo-linked →
-  `github`-ref like #24.
+- ✅ #6 **cc-marketplace / `claudecodecommands.directory`** — 688★ Claude Code plugin+command
+  directory ([`ananddtyagi/cc-marketplace`](https://github.com/ananddtyagi/cc-marketplace)); passes
+  the trust bar #5 failed. Submit (cross-repo PR / form) is out of scope; `nlqdb-memory` payload in
+  [notes](../../../../research/acquisition-channels-mechanisms.md#row-27) (ledger #27),
+  **founder-queued** 2026-09-04 ([blocked-by-human #4](../../../../blocked-by-human.md));
+  repo-linked → `github`-ref like #24.
 - ⬜ **Install-yield gate:** closes when `/app/admin` shows one real `claude-plugin`
   visit (same bar R-07 carries; why `plugin.json`'s `homepage` keeps its own key).
 
