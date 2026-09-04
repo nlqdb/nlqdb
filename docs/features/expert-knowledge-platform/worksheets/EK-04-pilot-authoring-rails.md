@@ -28,9 +28,12 @@ scope and non-owner role production runs, then reconciles planned-vs-written
 from a real read-back and asserts the golden-query vocabulary + `source_episode`
 provenance land and stay agent-isolated — proving the write side is real on the
 engine, not just faithful in a mock (gated on `NEON_TEST_BRANCH_URL`, skips
-without it). Remaining: `acquire`'s live transcript endpoint is wired only via
-injected `fetch` until the `experts` interview service ships (box 2, gates on
-EK-05), which is what the live-import box (2) needs.
+without it). Remaining: the hosted transcript endpoint is **deployed + live 2026-09-04**
+(`experts.nlqdb.com`, experts#6 — healthz 200 / unknown-id 404 / valid SSL), so
+`acquire` now has a real endpoint to read; **box 2 (live end-to-end import) is
+still open** — the endpoint serves transcripts but the `experts` interview
+write path that populates them is not built yet, which is what the live-import
+box (2) needs.
 
 ## Goal
 

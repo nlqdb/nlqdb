@@ -165,3 +165,9 @@ well the queue bullet was prepared, not by the action itself.
 | Date | Action (surface) | Unblocked | Replay note |
 |---|---|---|---|
 | 2026-08-30 | **Confirmed `qwen/qwen3.8-27b` bills $0 on the card-free Groq key** and approved merging PR #1067 (re-head strict-$0 planner Qwen3.6-27B → Qwen3.8-27B on the existing `GROQ_API_KEY`) | discharges `blocked-by-human.md` bullet #2 (queued via #1071) — the one check CI can't do (LLM keys mocked, `SK-QUAL-002`); the swap holds strict-$0 (`GLOBAL-013`/`GLOBAL-026`). Revert to 3.6 is one line | in-session approval; independent review found 0 code issues + a D4 net-shrink on the router FEATURE.md; SK-LLM-054 is the decision record |
+
+## Era 14 — 2026-09-04 (hosted transcript endpoint go-live)
+
+| Date | Action (surface) | Unblocked | Replay note |
+|---|---|---|---|
+| 2026-09-04 | Added `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` repo secrets to the `nlqdb` + `experts` repos, then merged `experts` PR #6 (GitHub repo settings + PR merge) | EK-05 box 1's infra half — the hosted transcript endpoint at `experts.nlqdb.com` is deployed + verified live (`GET /healthz`=200, unknown/invalid ids → 404, valid SSL), so the shared import runner can read the `debriefToTranscript` bytes it acquires via `client.packImports.create("interview:…")` (`SK-SDK-014`); EK-04 box 2's live end-to-end import still waits on the `experts` interview write path (transcripts are served but nothing writes them yet) | ~5 min; secret *names* only, values live in the repo secret store; replay: the endpoint's DNS + Cloudflare Worker route ship in `experts` code (experts#6), so only the two CF deploy secrets + the merge are operator steps |

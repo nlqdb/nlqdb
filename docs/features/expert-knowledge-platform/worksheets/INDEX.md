@@ -111,7 +111,7 @@ Tick on merge. Durable status (scorecard rows are regenerated; this is not).
   builder and reconciling planned-vs-written from a real read-back with
   golden-query vocabulary + provenance; only box 2 live end-to-end import
   remains, gated on the `experts` interview endpoint)
-- [ ] EK-05 — marketplace surface v0 (`experts`) — unparked 2026-08-10 (direct agent push confirmed); box 4 boundary guard landed (experts#2, merged; CI to run it in experts#3, open), boxes 1–3 gated on EK-04/EK-06; runner-reuse **gap 1 (SDK wrapper) closed 2026-09-02** — `client.packImports.*` shipped in `@nlqdb/sdk` (`SK-SDK-014`, bearer-drivable) so `experts` embeds the hosted runner over the SDK per option B
+- [ ] EK-05 — marketplace surface v0 (`experts`) — unparked 2026-08-10 (direct agent push confirmed); box 4 boundary guard landed (experts#2, merged; CI to run it in experts#3, open), boxes 1–3 gated on EK-04/EK-06; runner-reuse **gap 1 (SDK wrapper) closed 2026-09-02** — `client.packImports.*` shipped in `@nlqdb/sdk` (`SK-SDK-014`, bearer-drivable) so `experts` embeds the hosted runner over the SDK per option B; **box 1 transcript-endpoint infra half deployed + live 2026-09-04** (`experts.nlqdb.com`, experts#6 merged — healthz 200 / unknown-id 404 / valid SSL); box 1's remaining half is EK-04 box-2's live write path (transcripts are served but nothing writes them yet — follow-up)
 - [x] EK-06 — grant primitive implementation (complete 2026-08-28)
   (control plane + all box-2 pure builders shipped; live-PG RLS-bypass kill-test
   shipped 2026-08-23 — `grant-scoping.integration.test.ts` proves owner-rows-only,
