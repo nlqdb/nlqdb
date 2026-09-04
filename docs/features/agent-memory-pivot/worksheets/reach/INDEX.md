@@ -320,5 +320,5 @@ Tick on merge; full state per slice is in § Slices above, only what is still
 - [x] R-06 — coding-agent walker + baseline
 - [ ] R-07 — droppable in-repo artifacts — **owed:** external distribution with attributable yield (a real `agent-artifacts` visit in `/app/admin`)
 - [x] R-08 — answer-engine citation baseline
-- [ ] R-09 — host plugin/skill venues — **owed:** one real `claude-plugin` visit in `/app/admin` (6/6 venues resolved — cc-marketplace #6 payload parked 2026-09-03)
+- [ ] R-09 — host plugin/skill venues — **owed:** one real `claude-plugin` visit in `/app/admin` (6/6 venues resolved — cc-marketplace #6 founder-queued 2026-09-04)
 - [x] R-10 — authority / referring domains — sweep ✅ (08-05), asset ✅ (08-06, `/agent-memory-benchmarks`), crawl lever ✅ (08-07: `/agents` links 4 wedge `/solve` pages), first nonzero DR ✅ (08-31: nlqdb.com + docs.nlqdb.com 0.0 → 0.1)
