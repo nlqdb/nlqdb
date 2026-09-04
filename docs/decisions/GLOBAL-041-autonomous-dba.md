@@ -63,22 +63,19 @@
     on apply (`GLOBAL-005`). Physical reshapes never bump `schema_hash`
     (the surviving half of the old widen rule); logical drop/rename/retype
     do, and the plan cache evicts by miss — no cache walk.
-  - **Void as of this decision** (archived or deleted in the execution
-    plan's approved batches — never "superseded"): `GLOBAL-004`'s "once
-    observed, never removed" half; `GLOBAL-017` (two endpoints);
-    `GLOBAL-036` (agent-memory lead positioning — pending founder release
-    of its "permanent" clause); `SK-SCHEMA-003/004/007`, `SK-DB-008`,
-    `SK-MULTIENG-003`, `SK-MIGRATE-003`, `SK-PIVOT-007`; `GLOBAL-006`'s
-    absolute (narrowed: a logical drop/rename changes `schema_hash` —
-    still content addressing, not invalidation); `architecture.md` §0
-    "schemas only widen" and §8 "not building: schema editor / migrations
-    tool / dashboard". Until a batch lands, this GLOBAL wins any conflict.
+  - **Executed in PR #1097:** `GLOBAL-004` and `GLOBAL-017` rewritten,
+    `GLOBAL-006` amended, `GLOBAL-036` deleted; `SK-SCHEMA-003/004/007`
+    replaced by `SK-SCHEMA-009`, `SK-DB-008` deleted, `SK-MULTIENG-003`
+    and `SK-MIGRATE-003` rewritten, `SK-PIVOT-007/013/014` deleted;
+    `architecture.md` §0 / §8 restated. Prior-bet docs live under
+    `docs/archive/` (nothing there is canonical).
   - **Unchanged:** `GLOBAL-026` (LLM lanes), `GLOBAL-013` (strict $0), the
     infrastructure, and the **marketing lane** (ICP mining, acquisition,
     comparison / solve / blog pages, GTM metrics, stranger-test, `/reach`)
     — kept as a separate lane, not the product bet. The agent-memory pivot
     is archived; its rails survive only as far as the expert-knowledge
-    platform needs them, whose fate is a pending founder decision.
+    platform needs them — EK is the first app built on the DBA, gated on
+    Phase A (`SK-EKP-005`).
   - Execution order, archive/delete batches, and the compass rewrites live
     in [`docs/pivot-autonomous-dba.md`](../pivot-autonomous-dba.md).
 

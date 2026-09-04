@@ -25,7 +25,7 @@ when-to-load:
 
 **Sibling features to read alongside:**
 - `docs/features/ask-pipeline/FEATURE.md` — the classifier branches off the existing `/v1/ask` orchestrator; this feature owns the `kind=create` arm
-- `docs/features/db-adapter/FEATURE.md` — the provisioner uses the adapter; SK-DB-007 (schema-per-DB tenancy) and SK-DB-008 (ALTER TABLE ADD COLUMN NULL) constrain what we emit
+- `docs/features/db-adapter/FEATURE.md` — the provisioner uses the adapter; SK-DB-007 (schema-per-DB tenancy) and SK-SCHEMA-009 (schema evolution) constrain what we emit
 - `docs/features/llm-router/FEATURE.md` — the classifier and schema-inference are LLM calls; provider routing + cost accounting belongs there
 - `docs/features/sql-allowlist/FEATURE.md` — owns the read/write validator; SK-HDC-006 here owns the DDL-path validator that sits next to it
 
@@ -51,7 +51,6 @@ block.
 - [**SK-HDC-002**](decisions/SK-HDC-002-typed-schemaplan-deterministic-compiler.md) — LLM emits a typed `SchemaPlan`; a deterministic compiler (our code) emits the SQL — the LLM never authors DDL.
 - [**SK-HDC-003**](decisions/SK-HDC-003-defense-in-depth-zod-libpgquery.md) — Defense in depth: Zod over the plan + libpg_query parse over the compiled DDL, in series.
 - [**SK-HDC-004**](decisions/SK-HDC-004-semantic-layer-at-create-time.md) — Semantic layer (`metrics` + `dimensions`) is generated at create-time, in the same plan.
-- [**SK-HDC-005**](decisions/SK-HDC-005-dbid-resolution-superseded.md) — *(superseded by SK-ASK-009)* `dbId` resolution: deterministic fast-path then cheap-tier LLM, confidence floor + visible echo.
 - [**SK-HDC-006**](decisions/SK-HDC-006-two-validator-paths.md) — Two validator paths: read/write allowlist vs DDL allowlist + libpg_query parse; kept separate, never merged.
 - [**SK-HDC-007**](decisions/SK-HDC-007-provisioner-abstraction-split.md) — Provisioner abstraction split now: `provisionDb(plan)` vs `registerByoDb(connection_url, plan)`.
 - [**SK-HDC-008**](decisions/SK-HDC-008-create-rate-caps-pow.md) — Per-IP and per-account rate caps on create; hashcash PoW on signup if abused.
@@ -86,8 +85,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Classifier confidence threshold — Resolved** (`GLOBAL-033`): one env-tunable threshold gates create-vs-clarify (mirrors `SK-LLM-022`'s `0.75`); the low-confidence *response* stays per-surface (`SK-HDC-005`). One knob, per-surface routing.
-- **`SchemaPlan` type breadth — native `enum` deferred to Phase 2** (resolved per `GLOBAL-033`). Phase 1 ships `text / int / numeric / timestamptz / uuid / boolean / jsonb`; a constrained category is `text` (optionally `+ CHECK`). Native `enum` needs its own decision (adding a value is `ALTER TYPE`, not the `ADD COLUMN` widen `SK-DB-008` allows) — **parked until** a goal needs it.
+- **Classifier confidence threshold — Resolved** (`GLOBAL-033`): one env-tunable threshold gates create-vs-clarify (mirrors `SK-LLM-022`'s `0.75`); the low-confidence *response* stays per-surface (`SK-ASK-009`). One knob, per-surface routing.
+- **`SchemaPlan` type breadth — native `enum` deferred to Phase 2** (resolved per `GLOBAL-033`). Phase 1 ships `text / int / numeric / timestamptz / uuid / boolean / jsonb`; a constrained category is `text` (optionally `+ CHECK`). Native `enum` needs its own decision (adding a value is `ALTER TYPE`, not the `ADD COLUMN` widen `SK-SCHEMA-008` emits) — **parked until** a goal needs it.
 - **Multi-statement transactional boundary — Resolved** (`GLOBAL-033`): schema + sample rows + `databases` row commit atomically; embedding is decoupled (best-effort, retried, never rolls back a provision — a rate-limit can't cost the user their DB), and a constraint-violating seed row degrades to an un-seeded DB rather than a 500 (`SK-HDC-018`), each attempt still atomic.
 - **May the planner be told which demo rows we seeded? — open, founder-gated.** `SK-HDC-022` stops a seeded owner table from *blocking* a write, but the planner still cannot see that `users` holds three nlqdb-authored demo rows, so "add an idea" can't deliberately pick one or cite them when it clarifies. Telling it would send cell-values on the planning lane, which [`GLOBAL-037`](../../decisions/GLOBAL-037-schema-only-llm-egress.md) closes and reserves to the founder — even for values nlqdb authored, since after provisioning they are ordinary rows in the user's DB and nothing downstream distinguishes them. **Parked until** the founder rules on a narrow "seed rows only" carve-out (which would need a durable seed marker to stay honest).
 - **Phase 4 BYO connect introspection cost — Resolved** (`GLOBAL-033`/`GLOBAL-026`): **absorb** the connect-time `pg_catalog` read + table-card embedding as onboarding cost; never bill the first connect. Gating first value behind cost is what the free chain forbids.

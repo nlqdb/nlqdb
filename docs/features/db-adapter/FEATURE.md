@@ -90,15 +90,7 @@ sockets ([`SK-DBCONN-002`](../byo-connect/decisions/SK-DBCONN-002-byo-postgres-d
   - Branch-per-DB on Neon Free — runs out of branch quota almost immediately.
   - Per-user Workers Secret — hard cap on Wrangler secret count; doesn't scale past ~hundreds of users.
 
-### SK-DB-008 — Schema evolution is `ALTER TABLE ADD COLUMN ... NULL` only (no migrations)
-
-- **Decision:** When the planner observes a new field, the schema widens via `ALTER TABLE ADD COLUMN <name> <type> NULL`. Columns are never dropped, narrowed, or reordered. No migrations tool; a true schema break means `nlq new` makes a fresh DB, the old one untouched (`docs/architecture.md` §12).
-- **Core value:** Bullet-proof, Simple
-- **Why:** "Schemas only widen" (`GLOBAL-004`) is the invariant that keeps the plan-cache stable (`GLOBAL-006`) — old plans stay valid against widened schemas because referenced fields still exist. ADD COLUMN NULL is the cheapest operation preserving it. A migrations tool invites branching schemas, forcing the plan-cache to either invalidate aggressively (slow) or branch keys (combinatorial explosion).
-- **Consequence in code:** Consumers building DDL emit ADD COLUMN NULL only; DROP / RENAME / type changes are out-of-band and not exposed via `/v1/ask`. The schema-widening feature (`SK-SCHEMA-*`) owns the trigger + storage; this adapter just executes the resulting SQL.
-- **Alternatives rejected:**
-  - In-place migrations — defeats `GLOBAL-004`.
-  - Versioned schemas (`v1.users`, `v2.users` schemas) — explodes the plan-cache key surface; `GLOBAL-004` rejects this explicitly.
+Schema evolution policy has one home — `SK-SCHEMA-009` in `schema-widening/FEATURE.md`; this adapter executes whatever DDL that compiler emits.
 
 ### SK-DB-009 — Engine-tagged Plan + `AsyncIterable<Row>` result; `meta` for engine extras
 
@@ -124,7 +116,7 @@ without a second endpoint (`GLOBAL-017`).
 
 **Body:** [`decisions/SK-DB-011-byo-postgres-promoted.md`](./decisions/SK-DB-011-byo-postgres-promoted.md).
 BYO Postgres ships active; the `phase-plan.md §7` signal-gate is
-superseded. **Now wired end-to-end** in `SK-DBCONN-001`
+replaced. **Now wired end-to-end** in `SK-DBCONN-001`
 ([`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md)). Shape unchanged from
 [`architecture.md §3.6.7`](../../architecture.md#367-byo-postgres-phase-4-decided-shape):
 `/v1/db/connect`, `provisionDb` vs `registerByoDb` split (already
@@ -182,7 +174,7 @@ Pure + zero-dep, deterministic; the connect step after introspection (`SK-DB-014
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
-- **GLOBAL-004** — Logical schemas widen; physical layout reshapes.
+- **GLOBAL-004** — The logical schema is inferred and evolves in both directions; physical layout reshapes freely.
 - **GLOBAL-012** — Errors are one sentence with the next action.
 - **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).

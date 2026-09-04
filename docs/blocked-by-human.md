@@ -74,7 +74,7 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    `/agents` memory dashboard + "we ran our company's ops on our own memory
    through the public MCP endpoint — here's what broke"): per
    [`docs/research/launch-kit.md`](./research/launch-kit.md), pick the angle
-   (§2; GLOBAL-036 says lead with analytical agent memory), write the Show
+   (§2), write the Show
    HN post + first comment in your own voice from the §3.1 fact sheet
    (never agent copy — the r/SQL lesson), soft-launch lobste.rs/r/SideProject
    first, then Show HN Tue–Thu morning, Product Hunt ≥ 1 week later

@@ -183,9 +183,10 @@ it composes on the same auth/SDK; framework wrappers third.
 LLM lane, wired in §10 above, turned on when §6 tripped —
 live 2026-08-14.)
 
-**Exit gate:** MCP installed in 3+ distinct host apps; 1 agent product
-publicly uses nlqdb as memory; 3 non-engineers complete CSV analysis
-<10 min unassisted; inference cost <$1/mo per active anon-or-signed-in
+**Exit gate:** **Phase A of [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md)
+shipped** — widen-on-write live, first-insert inference rate ≥ 95 % on a
+dogfood workload; MCP installed in 3+ distinct host apps; 3 non-engineers
+complete CSV analysis <10 min unassisted; inference cost <$1/mo per active anon-or-signed-in
 user. **North-star floors cleared** per
 [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md): BIRD-dev EM
 ≥ 60% on the free chain, ≥ 80% on agentic-frontier (free-vs-agentic
@@ -199,15 +200,16 @@ below the no-preview baseline.
 **Item 2 — CLI** bootstrap + key-management + raw-SQL slices shipped: data verbs (`ask`, `new`, bare-form, `db list/create`, `query`, `use`, `whoami`, `logout`, `mcp detect`, `update`), credential store (keychain + AES-GCM fallback per `SK-CLI-009`), state/config (`SK-CLI-010/013`), update check (`SK-CLI-015`), MCP detect (`SK-CLI-011`), `nlq keys list/revoke` (`SK-APIKEYS-010/011`) backed by `GET/DELETE /v1/keys[/:id]`, `nlq run [--db <id>] <sql>` + SDK `client.runSql()` + `POST /v1/run` (`SK-SDK-009`/`GLOBAL-015`, all three surfaces one PR per `GLOBAL-003`; same `/v1/ask` allow-list, DDL still rejected, pk_live writes rejected per `SK-APIKEYS-003`). Deferred verbs (`login`, `mcp install` key-write, `chat`, `keys rotate`) gated on `POST /v1/auth/device` + `POST /v1/keys/:id/rotate` — see [`cli/FEATURE.md`](./features/cli/FEATURE.md). **Dashboard `/app/keys` shipped** per [`SK-APIKEYS-012`](./features/api-keys/decisions/SK-APIKEYS-012-dashboard-ui.md) — copy-once mint + confirm-revoke; SDK `client.mintKey()` added.
 **Item 4 — `<nlq-action>` v0.1 shipped** in `packages/elements/src/action-element.ts` per [`SK-ELEM-010..013`](./features/elements/decisions/): preview→Apply via [`SK-TRUST-001`](./features/trust-ux/FEATURE.md)'s diff hop, FormData → goal-text suffix, cookie-session auth (cross-origin write-token deferred — see [`api-keys/FEATURE.md`](./features/api-keys/FEATURE.md)). Bundle < 6 KB gzipped (`SK-ELEM-007`).
 **Item 5 — framework wrappers — shipped:** `@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` + native Swift Package `Nlqdb` (`packages/nlqdb-swift`) all P1 · Shipped per [`progress.md §0`](./progress.md#0-surface-status-matrix--single-source-of-truth); React Native / Expo / Python / Go remain Phase 2 P1.
-**Item 9 — quality-eval — slices 1 + 2 + 3a + 3b + 3c shipped:** `tools/eval/` workspace, BIRD Mini-Dev SQLite runner, free + single-model frontier lanes, multiset EX scorer. Slice 2 added baseline diff (`tools/eval/baseline-2026-06-15.json`), McNemar's paired-binary test (`SK-QUAL-006`), regression detection on `feature.eval.regression` events (threshold + McNemar parallel triggers), `feature.eval.weekly` summary emission via `POST /v1/events/eval` (bearer-token → Cloudflare Queues → LogSnag `#north-star`), manual `workflow_dispatch` run. **Slice 3a (`SK-QUAL-007`):** Spider 2.0-lite SQLite-subset loader (`tools/eval/src/datasets/spider2-lite.ts`) — pulls upstream `xlang-ai/Spider2@main` (547 rows; HF mirror stale at 260), filters to 135 `local###`. **Slice 3b (`SK-QUAL-008`) shipped:** TypeScript port of `compare_pandas_table` / `compare_multi_pandas_table` (`tools/eval/src/score.ts`) + minimal pandas-CSV parser (`tools/eval/src/csv.ts`); per-instance gold CSV(s) + `condition_cols` / `ignore_order` resolved off-disk via a sparse-cloned `evaluation_suite/gold/` cache. All 135 `local###` rows now contribute to `spider_accuracy`. **Slice 3c (`SK-QUAL-009`) shipped:** bounded `withExecRetry` helper (`tools/eval/src/exec-retry.ts`) wraps `plan() → score()` for the `free` + new `agentic-frontier` lanes (production-aligned `maxAttempts: 3`, exec-error-only, threads `PlanRequest.previousAttempt` per `GLOBAL-022`); single-model `frontier` retained unscaffolded as the ablation reference per `SK-QUAL-004`. New headline KPI `free_vs_agentic_frontier_delta` flows through `EvalReport` + `FeatureEvalWeeklyEvent.freeVsAgenticFrontierDelta` + the LogSnag card per `GLOBAL-025`. Internal `db.create` eval deferred to a later slice (depends on privacy-stripped R2 export). Multi-model frontier expansion (GPT-5, Gemini 2.5 Pro) deferred until Sonnet 4.6 baseline lands.
+**Item 9 — quality-eval — slices 1–3c shipped:** `tools/eval/` runs BIRD Mini-Dev + Spider 2.0-lite (all 135 `local###` rows) on the free, single-model-frontier and agentic-frontier lanes with baseline diff + McNemar regression detection (`SK-QUAL-006..009`); headline `free_vs_agentic_frontier_delta` flows to the LogSnag `#north-star` card per `GLOBAL-025`. Slice detail lives in `quality-eval/FEATURE.md`; current numbers in `docs/scorecard.md`.
 
 ---
 
 ## 5. Phase 3 — The engine (the moat)
 
-- Query Log → Workload Analyzer → Migration Orchestrator.
-- ClickHouse via Tinybird as second engine (analytics; daily reshape
-  via Pipes).
+- **`GLOBAL-041` Phase B** — inspection (`pg_stat_*`, `EXPLAIN` on hot
+  fingerprints) → typed proposals → `/app/dba` dashboard → 1-click
+  apply/undo; then **Phase C** — per-table engine placement (ClickHouse via
+  Tinybird) from the same proposal pipeline with dual-read verification.
 - **Hobby $10 + Pro $25 live + hosted-premium LLM lane lit up**
   ([`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md))
   — flat subscription + included monthly request allowance per
@@ -226,8 +228,10 @@ below the no-preview baseline.
   [`docs/future/semantic-layer.md`](./future/semantic-layer.md) into
   an active feature. (The harness itself ships in Phase 2.)
 
-**Exit gate:** ≥100 successful auto-migrations with zero user-visible
-downtime; 50 paying customers across tiers (if monetization shipped);
+**Exit gate:** `GLOBAL-041` Phase B floors — first-insert inference
+≥ 99 %, evolution-without-user-action ≥ 90 %, optimizer yield ≥ 1 applied
+proposal / active DB / month with median p95 improvement ≥ 20 % and no
+un-undone regression > 10 %; 50 paying customers across tiers (if monetization shipped);
 otherwise ≥200 weekly-active users. **North-star floors per
 [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md):** BIRD-dev EM
 ≥ 72% on free chain, ≥ 88% on agentic-frontier (free-vs-agentic
@@ -286,7 +290,7 @@ capacity-driven).
   of Phase 4+ to active dev** per [`SK-DB-011`](./features/db-adapter/decisions/SK-DB-011-byo-postgres-promoted.md)
   / [`SK-MULTIENG-005`](./features/multi-engine-adapter/decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md);
   shared `registerByoDb` path, shape in [`architecture.md §3.6.7`](./architecture.md#367-byo-postgres-phase-4-decided-shape).
-  Engine-specifics + the superseded signal-gate live in those SKs.
+  Engine-specifics + the retired signal-gate live in those SKs.
 - **Embeddable NL library** ("Stripe of NL-Q" — their app, their end-users) and
   **notebook-style multi-query docs** — both **parked** as speculative scope
   (`GLOBAL-033`): revisit only when a paying / design-partner customer asks. A

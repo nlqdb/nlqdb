@@ -4,7 +4,7 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Extends
 [`SK-LLM-018`](./SK-LLM-018-schema-fidelity-prompt.md) (the `PLAN_DIRECTIVES`
 block) alongside [`SK-LLM-027`](./SK-LLM-027-result-shape-directives.md)
 (projection / REAL-cast) and [`SK-LLM-029`](./SK-LLM-029-null-safe-extremum.md)
-(NULL-safe extremum) — it is not superseded; this is one more bullet in the
+(NULL-safe extremum) — it still stands; this is one more bullet in the
 same block.
 
 - **Decision:** `PLAN_DIRECTIVES` (`packages/llm/src/prompts.ts`) gains one

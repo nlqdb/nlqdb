@@ -79,7 +79,7 @@ condition-gated (the repo's idiom — never date-gated).
   until shipped.
 - **No regulated professions** (doctor/lawyer/accountant) in any public
   pack until the liability research pass exists (FEATURE.md open question).
-- **No new schema, endpoint, or tool per pack** (`SK-PIVOT-007`/`018`) —
+- **No new schema, endpoint, or tool per pack** (`SK-EKP-005` / `SK-PIVOT-018`) —
   the expert pack is content + recipe on `agent_memory_v1`; the grant
   primitive (EK-06) is generic engine surface added once, not per-pack.
 - **The dogfood gate is untouchable from here** (`SK-EKP-005`): no EK slice

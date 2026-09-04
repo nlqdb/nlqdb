@@ -2,7 +2,7 @@
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Extends the
 day-1 chain in [`SK-LLM-003`](./SK-LLM-003-strict-zero-chain.md) — it is
-not superseded; Gemini → Groq → Workers-AI → OpenRouter remain the
+still stands; Gemini → Groq → Workers-AI → OpenRouter remain the
 failover order behind the new head.
 
 - **Decision:** A fifth free-tier provider, **Cerebras**, joins the

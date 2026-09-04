@@ -33,7 +33,7 @@ when-to-load:
 
 ### SK-WEB-002 — Goal-first hero: one input, no pricing dialog, no signup wall
 
-- **Status:** Superseded in part by [`SK-WEB-017`](./decisions/SK-WEB-017-connect-first-hero.md). The no-signup-wall floor (GLOBAL-007) and the morph-to-chat behaviour are **retained**; only the "one input is THE hero" structural claim is replaced — the home hero now leads with the SK-WEB-016 `<McpInstall>` row as primary, with the goal input retained as a secondary affordance below it. `/agents` already followed that split; SK-WEB-017 extends it to `/`.
+- **Status:** Replaced in part by [`SK-WEB-017`](./decisions/SK-WEB-017-connect-first-hero.md). The no-signup-wall floor (GLOBAL-007) and the morph-to-chat behaviour are **retained**; only the "one input is THE hero" structural claim is replaced — the home hero now leads with the SK-WEB-016 `<McpInstall>` row as primary, with the goal input retained as a secondary affordance below it. `/agents` already followed that split; SK-WEB-017 extends it to `/`.
 - **Decision:** The marketing-site hero centres a single goal input — *"What are you building?"* — that morphs into a chat via View Transitions (first reply streams; the DB materializes silently). No pricing dialog, no "create your first database" button, no signup wall before first value. (SK-WEB-017 demotes the input from *primary* to *secondary* on the home hero; the no-wall floor and morph behaviour below are retained.)
 - **Core value:** Goal-first, Effortless UX, Free
 - **Why:** No persona ever woke up wanting to "create a database" (`docs/runbook.md §10`). The goal-first inversion (`docs/architecture.md §0.1`) is core; every required input before first value drops the funnel, so the no-wall floor is non-negotiable.
@@ -54,7 +54,7 @@ when-to-load:
 
 ### SK-WEB-004 — Demo endpoint `POST /v1/demo/ask`: no auth, canned fixtures, server-owned
 
-- **Status:** Superseded by `SK-WEB-008` (canned fixtures lied on a matcher miss; the demo now hits real `/v1/ask` with an anon bearer). See `SK-WEB-008` for the live rationale.
+- **Status:** Replaced by `SK-WEB-008` (canned fixtures lied on a matcher miss; the demo now hits real `/v1/ask` with an anon bearer). See `SK-WEB-008` for the live rationale.
 
 ### SK-WEB-008 — Demo === real `/v1/ask` with anon bearer; canned fixtures live only in the static carousel
 
@@ -73,7 +73,7 @@ Supersedes `SK-WEB-004`: the marketing hero, `/app/new`, and every first-party `
 
 ### SK-WEB-006 — Cookie is `__Secure-session` with cross-subdomain `Domain=nlqdb.com`
 
-- **Status:** Superseded by `SK-WEB-009` once `apps/web` and `apps/api` merged into one same-origin worker (the merge removes the cross-subdomain `Domain=` need). See `SK-WEB-009` for the live cookie posture.
+- **Status:** Replaced by `SK-WEB-009` once `apps/web` and `apps/api` merged into one same-origin worker (the merge removes the cross-subdomain `Domain=` need). See `SK-WEB-009` for the live cookie posture.
 
 ### SK-WEB-009 — Host-only `__Secure-…session` cookie on `app.nlqdb.com` after the web/API merge
 
@@ -112,9 +112,9 @@ When `GET /v1/billing/status` reports `cancelAtPeriodEnd`, the `/pricing` curren
 
 ### SK-WEB-015 — Three-beat homepage + quiet-brutalism token system
 
-**Status:** superseded — the three-beat IA on `/` by [`SK-WEB-018`](./decisions/SK-WEB-018-two-door-home.md) (two-door home), and the quiet-brutalism **token system by [`SK-WEB-020`](./decisions/SK-WEB-020-calm-token-system.md)** (the calm system), site-wide.
+**Status:** replaced — the three-beat IA on `/` by [`SK-WEB-018`](./decisions/SK-WEB-018-two-door-home.md) (two-door home), and the quiet-brutalism **token system by [`SK-WEB-020`](./decisions/SK-WEB-020-calm-token-system.md)** (the calm system), site-wide.
 
-**Body:** [`decisions/SK-WEB-015-three-beat-quiet-brutalism.md`](./decisions/SK-WEB-015-three-beat-quiet-brutalism.md) (superseded; see SK-WEB-018 / SK-WEB-020).
+**Body:** [`decisions/SK-WEB-015-three-beat-quiet-brutalism.md`](./decisions/SK-WEB-015-three-beat-quiet-brutalism.md) (replaced; see SK-WEB-018 / SK-WEB-020).
 
 ### SK-WEB-016 — One-click MCP install affordance: shared `<McpInstall>` at five venues, deep-link where supported
 
@@ -123,14 +123,14 @@ A shared MCP-install surface (host descriptors in `lib/mcp-install.ts`) renders 
 
 ### SK-WEB-017 — Connect-first hero on the agent-memory home; goal input retained as secondary
 
-**Status:** superseded in part by [`SK-WEB-018`](./decisions/SK-WEB-018-two-door-home.md) — the connect-first vertical hero on `/` is replaced by the two-door chooser; SK-WEB-017's `<McpInstall>`-primacy is **absorbed into Door A**.
+**Status:** replaced in part by [`SK-WEB-018`](./decisions/SK-WEB-018-two-door-home.md) — the connect-first vertical hero on `/` is replaced by the two-door chooser; SK-WEB-017's `<McpInstall>`-primacy is **absorbed into Door A**.
 
 **Body:** [`decisions/SK-WEB-017-connect-first-hero.md`](./decisions/SK-WEB-017-connect-first-hero.md).
 
 ### SK-WEB-018 — Two-door home: agent-memory door + question-your-ClickHouse door
 
 **Body:** [`decisions/SK-WEB-018-two-door-home.md`](./decisions/SK-WEB-018-two-door-home.md).
-The home (`/`) becomes a responsive two-door chooser (side-by-side wide, stacked narrow): **Door A** "Use as agent memory" (the SK-WEB-016 `<McpInstall>` host row, click→reveal-fallback-in-place, plus a quiet *"or just describe your data →"* link to `/app/new`) and **Door B** "Question your ClickHouse" (CTA → sign-in → `/app/connect`). Replaces the SK-WEB-015 / SK-WEB-017 three-beat-on-`/` IA (now rendered in the SK-WEB-020 calm token system; SK-WEB-017's McpInstall primacy absorbed into Door A); the literal expression of GLOBAL-036's dual front door; GLOBAL-007 preserved via the `/app/new` link.
+The home (`/`) becomes a responsive two-door chooser (side-by-side wide, stacked narrow): **Door A** "Use as agent memory" (the SK-WEB-016 `<McpInstall>` host row, click→reveal-fallback-in-place, plus a quiet *"or just describe your data →"* link to `/app/new`) and **Door B** "Question your ClickHouse" (CTA → sign-in → `/app/connect`). Replaces the SK-WEB-015 / SK-WEB-017 three-beat-on-`/` IA (now rendered in the SK-WEB-020 calm token system; SK-WEB-017's McpInstall primacy absorbed into Door A); the literal expression of the prior bet's dual front door; GLOBAL-007 preserved via the `/app/new` link.
 
 ### SK-WEB-019 — `/app/connect`: auth-guarded BYO-connect page + `ConnectForm.tsx`
 

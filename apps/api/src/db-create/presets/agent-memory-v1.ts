@@ -18,7 +18,7 @@
 // test. Defense-in-depth (SK-HDC-003) is preserved: the preset still
 // flows through the validator + provisioner when wired (E-01 run 2).
 //
-// Contract (SK-PIVOT-007): the table + column set below is part of the
+// Seed contract (GLOBAL-041: an optional seed the DBA evolves): the table + column set below is part of the
 // public contract once shipped. Widen by `ALTER TABLE ADD COLUMN`
 // (GLOBAL-004); evolve breaking changes by promoting to
 // `agent_memory_v2`; never rename or drop in place on an active preset.
@@ -48,7 +48,7 @@ export const AGENT_MEMORY_V1_VERSION = "agent_memory_v1" as const;
 // skip inferSchema/classifyEngine/compileDdl.
 export type MemoryPreset = typeof AGENT_MEMORY_V1_VERSION;
 
-// The canonical column set per table (SK-PIVOT-007 contract). The
+// The canonical column set per table (seed contract). The
 // test pins these so a silent rename/drop is rejected at PR time;
 // adding a column here is a widen and is allowed.
 export const AGENT_MEMORY_V1_COLUMNS = {

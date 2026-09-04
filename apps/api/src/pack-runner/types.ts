@@ -148,7 +148,7 @@ export type AcquireResult =
 export type PackAdapter = {
   /** Stable pack id — the `packId` on the draft row and in the URL. */
   readonly id: string;
-  /** Preset the runner provisions for this pack (`SK-PIVOT-007`: one schema). */
+  /** Preset the runner provisions for this pack (one seed schema). */
   readonly preset: "agent_memory_v1";
   /** One-line copy the runner renders; the runner hard-codes no pack words. */
   readonly label: string;

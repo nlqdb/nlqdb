@@ -19,7 +19,7 @@
     typed error ([`GLOBAL-012`](./GLOBAL-012-one-sentence-errors.md)). So this
     is strictly a UX upgrade over the prior behaviour — never a new failure
     mode.
-  - **Supersedes [`GLOBAL-023`](./GLOBAL-023-trust-ux-baseline.md) rule (3)**
+  - **Replaces [`GLOBAL-023`](./GLOBAL-023-trust-ux-baseline.md) rule (3)**
     ("plans below the floor refuse rather than guess" → "clarify rather than
     guess"). GLOBAL-023 rules (1) diff-preview-on-write and (2) visible-SQL-trace
     are unchanged.

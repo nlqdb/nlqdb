@@ -38,7 +38,7 @@ Apply to every edit, whatever the user asked for.
 `docs/features/<feature>/FEATURE.md` (local `SK-<FEATURE>-NNN`) are the
 canonical record of why the system is the way it is. If a request would
 violate one — even subtly — **stop and raise it with the user**, citing the
-specific ID(s). Don't rationalise around it. The user may decide to supersede it; if so, follow `P3`.
+specific ID(s). Don't rationalise around it. The user may decide to delete or archive it and write the new stance clean; follow `P3`.
 
 ### P2. On any ambiguity or unfamiliar error, web-research first
 
@@ -174,7 +174,7 @@ supported; else read manually before editing.)
 | `packages/db/**` | `docs/features/db-adapter/FEATURE.md` |
 | `apps/api/src/db-connect/**`, `apps/api/src/ask/build-deps.ts`, `packages/db/src/clickhouse-byo.ts` (BYO — egress + sealed-secret; security-sensitive) | `docs/features/byo-connect/FEATURE.md` |
 | `packages/db/src/clickhouse-tinybird/**`, `packages/db/src/introspect-clickhouse.ts` (non-Postgres engines) | `docs/features/multi-engine-adapter/FEATURE.md` |
-| anything touching `schema_hash`, schema fingerprinting | `docs/features/schema-widening/FEATURE.md` |
+| anything touching `schema_hash`, schema inference / evolution (`GLOBAL-041` Phase A) | `docs/features/schema-widening/FEATURE.md` |
 | any `POST`/`PATCH`/`DELETE` handler | `docs/features/idempotency/FEATURE.md` |
 | `packages/otel/**`, new spans / metrics | `docs/features/observability/FEATURE.md` · `docs/features/byo-otel/FEATURE.md` |
 | `apps/api/src/stripe/**`, Stripe webhooks | `docs/features/stripe-billing/FEATURE.md` |
@@ -274,6 +274,6 @@ user. Don't guess across a documented decision.
 
 ## 10. Workflow
 
-Follow §5 → relevant `FEATURE.md` → P1–P6 → §8. Adding or superseding a
+Follow §5 → relevant `FEATURE.md` → P1–P6 → §8. Adding or replacing a
 decision follows [`docs/feature-conventions.md`](docs/feature-conventions.md);
 do not duplicate that canonical procedure here.

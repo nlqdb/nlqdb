@@ -45,7 +45,7 @@
   build otherwise, never a reader.
 - **Alternatives rejected:**
   - **`/.well-known/mcp/server-card.json` with a tools list** — the
-    superseded SEP-1649 shape; the current draft explicitly rejects both the
+    replaced SEP-1649 shape; the current draft explicitly rejects both the
     placement and the enumeration.
   - **Build-time generation (Astro endpoint / integration)** — more moving
     parts for documents that change rarely; static files + drift pins give

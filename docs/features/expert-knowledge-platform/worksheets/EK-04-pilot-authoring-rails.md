@@ -62,7 +62,7 @@ generic plumbing, no marketplace code):
    Verification renders row cards with **edit/rank/forced-choice** affordances;
    a yes/no "correct?" read-back is prohibited (`SK-EKP-007` stake 3).
 3. **Write path + verification** — rows land on `agent_memory_v1`
-   (`SK-PIVOT-007`, no new DDL) through the public MCP/API surface only;
+   (the `agent_memory_v1` seed, no pack-authored DDL) through the public MCP/API surface only;
    completion runs the pack's golden queries as the durable proof
    (`SK-PIVOT-021` / P6).
 

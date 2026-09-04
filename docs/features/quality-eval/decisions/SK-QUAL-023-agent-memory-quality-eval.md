@@ -4,7 +4,7 @@ Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md). Siblings:
 [`SK-QUAL-003`](./SK-QUAL-003-three-dataset-canon.md) (the NL→SQL canon this
 sits alongside) · [`SK-QUAL-018`](./SK-QUAL-018-persona-bench.md) (the
 `agent_memory` schema this seeds from). Governing:
-[`GLOBAL-036`](../../../decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md)
+the prior bet
 (the wedge this measures) · `GLOBAL-026` (the free-vs-frontier bet).
 Research: `docs/research/agent-memory-quality-landscape.md` (archived).
 
@@ -51,7 +51,7 @@ pending E-05's free-chain embedding provider, LLM-router work, not infra).
 
 - **Core value:** Bullet-proof, Honest latency, Goal-first
 
-- **Why:** `GLOBAL-036` leads with "analytical memory for AI agents," but
+- **Why:** the prior bet led with "analytical memory for AI agents," but
   nothing measured whether the memory is *good* — the loop optimised
   BIRD/Spider (generic text-to-SQL) while the wedge went unmeasured. Research
   (2026-07-09) found the field grades end-to-end QA on mostly

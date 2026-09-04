@@ -235,7 +235,7 @@ const REPO_OPS_MEMORY: MemorySchema = {
 
 // The language-tutor expert pack (EK-04, SK-EKP-004) — the pilot "become AI"
 // pack's public-rail half, on the same `agent_memory_v1` Graphiti shape as
-// repo-ops (no new DDL, SK-PIVOT-007/018). Extraction categories the pack's
+// repo-ops (no new DDL, SK-PIVOT-018). Extraction categories the pack's
 // interview produces: error taxonomy (`mistake` facts tagged by the word or
 // grammar rule slipped on), vocabulary encounters (`vocab_encounter`, with the
 // spaced-repetition review date in `expires_at`), student-profile facts

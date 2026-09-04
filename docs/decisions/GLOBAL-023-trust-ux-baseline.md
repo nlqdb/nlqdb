@@ -1,7 +1,7 @@
 # GLOBAL-023 — Trust UX baseline
 
 > **Rule (3) amended 2026-08-20 by [`GLOBAL-040`](./GLOBAL-040-guided-turn-not-dead-end.md).**
-> "Refuse rather than guess" was a fast-fail dead-end; it is superseded by
+> "Refuse rather than guess" was a fast-fail dead-end; it is replaced by
 > "**clarify** rather than guess" — a below-floor plan is still never silently
 > executed, but its outcome is now a guided one-click `clarify_required` turn,
 > not a typed error. Rules (1) and (2) are unchanged. The wording below reflects

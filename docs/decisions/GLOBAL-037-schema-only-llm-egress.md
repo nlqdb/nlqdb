@@ -6,7 +6,7 @@
 > narration step) and by the founder-approved interview path (`SK-EKP-007`).
 > The Fable review of #918/#923 surfaced both; the founder approved this
 > rewrite (F2) and the Option-B hardening (F1) the same day. Per the
-> delete-on-supersede rule the text below is the only truth — the old
+> delete-on-replace rule the text below is the only truth — the old
 > headline survives in git history, not here.
 
 - **Decision:** Exactly **three lanes** of egress to third-party LLMs

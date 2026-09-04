@@ -33,7 +33,7 @@ when-to-load:
 Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-ICP-NNN`. The list below is the index; open the linked file for the full five-field block (Decision / Core value / Why / Consequence / Alternatives). New decisions get a new ID and a new file; existing IDs are sticky.
 
 - [**SK-ICP-001**](decisions/SK-ICP-001-weekly-scrape-to-kv.md) — Weekly Monday cron scrapes every source and writes raw items to KV (deduped 90d).
-- [**SK-ICP-002**](decisions/SK-ICP-002-llm-scoring.md) — `runIcpScore` scores each raw item 0–10 per persona via the free chain; `RELEVANCE_FLOOR` discards the rest. (Prefilter clause superseded by SK-ICP-010.)
+- [**SK-ICP-002**](decisions/SK-ICP-002-llm-scoring.md) — `runIcpScore` scores each raw item 0–10 per persona via the free chain; `RELEVANCE_FLOOR` discards the rest. (Prefilter clause replaced by SK-ICP-010.)
 - [**SK-ICP-003**](decisions/SK-ICP-003-cluster-and-evidence-file.md) — Cluster scored items per persona and write the monthly `icp-evidence-<yyyy-mm>.md` to GitHub.
 - [**SK-ICP-004**](decisions/SK-ICP-004-github-issues.md) — GitHub Issues source (`GH_TOKEN`-gated, rolling 7-day `created:>` filter).
 - [**SK-ICP-005**](decisions/SK-ICP-005-stack-overflow.md) — Stack Overflow source via Stack Exchange API 2.3 (anon quota 60× budget).

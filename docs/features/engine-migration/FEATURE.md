@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Engine Migration
 
 **One-liner:** Phase 3 reshape loop — daily workload analyser creates Tinybird Pipes for hot ClickHouse fingerprints and writes advisory audit rows for hot Postgres ones; cross-engine migration still planned.
-**Status:** partial — intra-engine reshape live (`SK-MIGRATE-001..006`); cross-engine migration (PG ↔ ClickHouse / Redis / Mongo) still planned.
+**Status:** partial — intra-engine reshape live (`SK-MIGRATE-001..006`); optimizer proposals + dashboard + 1-click apply/undo are `GLOBAL-041` Phase B; cross-engine migration (PG ↔ ClickHouse) is Phase C.
 **Owners (code):** `apps/api/src/workload-analyser/**`, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql`
 **Cross-refs:** `multi-engine-adapter/FEATURE.md` `SK-MULTIENG-003` (the rule this feature operationalises) · `events-pipeline/FEATURE.md` `SK-EVENTS-009` (the `query_log` Data Source the analyser reads) · `plan-cache/FEATURE.md` `SK-PLAN-002` (cache key must outlive reshape) · `docs/phase-plan.md §5` (Migration Orchestrator + Workload Analyzer) · `docs/phase-plan.md §5` (Phase 3 exit criteria — auto-migration is the gate) · `docs/performance.md §3.1` (`nlqdb.workload_analyser.*` spans)
 
@@ -48,16 +48,15 @@ when-to-load:
   - p50 latency floor — dashboards live or die on the tail; p99 is the right discriminator.
   - Env-var thresholds — a knob that's easy to nudge silently is the wrong shape for a feature whose correctness rides on staying inside `GLOBAL-004`.
 
-### SK-MIGRATE-003 — Reshape kinds in v1: `clickhouse_pipe_create` (acts) + `pg_add_column_suggestion` (advisory)
+### SK-MIGRATE-003 — The analyser proposes for every engine, including Postgres DDL; proposals land in a dashboard and apply in one click with undo
 
-- **Decision:** Two reshape kinds ship in v1. `clickhouse_pipe_create` mutates Tinybird — a Pipe is created against the `(schema_hash, query_hash)` fingerprint via the management API. `pg_add_column_suggestion` is advisory only — an audit row is written with the fingerprint plus stats; no Postgres DDL runs.
-- **Core value:** Bullet-proof, Simple
-- **Why:** ClickHouse via Tinybird supports a non-destructive create-Pipe operation that doesn't touch live data — the upside is bounded, the downside is "an unused Pipe sits in the workspace". Postgres' equivalents (ALTER TABLE ADD COLUMN, materialised view, index) all touch the live table; auto-issuing them on a cron without a human review is the wrong shape for a Phase 3 v1. The audit row is enough to surface the suggestion to operators while we learn what the analyser actually proposes on real workloads. PG-side automation lands in a later SK-MIGRATE once the proposal generator has ground truth to be evaluated against.
-- **Consequence in code:** The cron's switch on `proposal.kind` has exactly two arms — no registry, no plugin shape (per P5). Adding a third kind = a new arm and a new SK-MIGRATE supersession. The audit row's `after_json` is non-null for `clickhouse_pipe_create` (carries the Pipe name) and null for `pg_add_column_suggestion`. Reviewers reject any path that issues PG DDL from the cron in v1.
+- **Decision:** The workload analyser emits typed proposals for every engine — `create_index`, `drop_index`, `retype_column`, `drop_column`, `rename_column`, `move_to_engine`, `clickhouse_pipe_create` — each carrying its reasoning, expected impact (affected fingerprints, predicted p95 delta) and its **recorded inverse**. Proposals land in the optimizer dashboard; apply is one click, undo is the inverse, both under `SK-HDC-010` timeouts with an `Idempotency-Key` (`GLOBAL-005`) and an OTel span (`GLOBAL-014`). Logical proposals bump `schema_hash` (`SK-SCHEMA-009`); physical ones never do. Auto-apply is an **opt-in policy added later**, defaulting to physical, non-destructive proposals only.
+- **Core value:** Bullet-proof, Honest latency, Effortless UX
+- **Why:** An advisor tab nobody reads is what every DB host already ships (`GLOBAL-041`); the value is in acting — previewed and undoable. Recording the inverse before apply is what makes Postgres DDL from an automated path safe.
+- **Consequence in code:** `proposal.kind` is the discriminant of one typed union compiled by one DDL compiler (mirrors `compile-ddl.ts`); adding a kind = a union member, a compiler arm and an inverse. The first Postgres kind is `create_index` (replacing the empty advisory audit row the v1 cron wrote). Reviewers reject any apply path without a recorded inverse. KPI 3 (`GLOBAL-041`, optimizer yield) is measured from the applied-history table.
 - **Alternatives rejected:**
-  - Auto-DDL on Postgres — risks ALTER TABLE under load on a Phase-1 shared Neon branch (`SK-DB-007`); operator review gate is the right cost in v1.
-  - Postgres-side as a separate feature — the analyser already touches Postgres-backed DBs to read `query_log` fingerprints; threading the advisory output through the same audit table costs one extra D1 row per hot fingerprint and zero new infra.
-  - Single ClickHouse-only kind — drops the only PG-side visibility surface and silently loses information about hot PG queries.
+  - Advisory-only Postgres (the v1 rule) — surfaced nothing anyone acted on.
+  - Auto-apply everything from the cron — destructive logical changes need the one-click gate until the KPI-3 regression floor is proven.
 
 ### SK-MIGRATE-004 — `schema_hash` is invariant across reshape; tests assert before/after byte-equality
 
@@ -72,7 +71,7 @@ when-to-load:
 
 ### SK-MIGRATE-005 — Audit row per reshape; `/v1/ask` surfaces a one-line `pipe_advisory` when within 24h
 
-- **Decision:** Every reshape (kind ∈ {`clickhouse_pipe_create`, `pg_add_column_suggestion`}) writes one row to D1's `workload_analyser_runs` table with full before/after snapshots and a one-sentence `reasoning`. When `/v1/ask` resolves a `(db_id, query_hash)` for which an audit row was written within the last 24h, the response carries a `pipe_advisory` field — surfaces render it as one line in the trace ("pipe: <name> (created Nh ago)").
+- **Decision:** Every reshape (every `proposal.kind` — `clickhouse_pipe_create`, `create_index`, …) writes one row to D1's `workload_analyser_runs` table with full before/after snapshots and a one-sentence `reasoning`. When `/v1/ask` resolves a `(db_id, query_hash)` for which an audit row was written within the last 24h, the response carries a `pipe_advisory` field — surfaces render it as one line in the trace ("pipe: <name> (created Nh ago)").
 - **Core value:** Honest latency, Effortless UX
 - **Why:** The audit table is the operational source of truth (operators query it directly). The `/v1/ask` field is a forward-compat hook so the user-visible signal lands the day read-path routing through Pipes does; if we waited to wire the trace until routing existed, every later worksheet would have to revisit `/v1/ask`. **Caveat:** in v1 Pipe creation does not change the read path — the trace line advertises a Pipe that was created but isn't yet on the hot path. That's a deliberate forward-compat trade: the line is honest about creation time, and the routing-through-Pipe step is an explicit later SK-MIGRATE.
 - **Consequence in code:** `OrchestrateDeps.lookupPipeAdvisory?(dbId, queryHash) → Promise<PipeAdvisory | null>` — orchestrate calls it once after `queryHash` lands and folds the result onto `AskResult.pipe_advisory` when non-null. SSE mode emits a `pipe_advisory` event before `plan_pending`. Tests stub the dep; production wires it to a D1 query against `workload_analyser_runs` with a 24h window. The single extra D1 read per `/v1/ask` is counted in `docs/performance.md §2.1` headroom (D1 warm read p99 ≈ 30ms).
@@ -96,7 +95,8 @@ when-to-load:
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
-- **GLOBAL-004** — Logical schemas widen; physical layout reshapes freely.
+- **GLOBAL-041** — Autonomous DBA; this feature is the optimizer (Phase B) and engine placement (Phase C).
+- **GLOBAL-004** — The logical schema is inferred and evolves in both directions; physical layout reshapes freely.
   - *In this feature:* `SK-MIGRATE-004` is the assertion that the cron honours the rule on every Pipe creation — `schema_hash` is re-read after the reshape and equality is asserted. Drift aborts the reshape.
 - **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`.
   - *In this feature:* Pipe creation MUST NOT bump `schema_hash`; the analyser is the only writer of physical reshape under the cache-key invariant.

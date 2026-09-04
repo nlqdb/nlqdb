@@ -57,7 +57,7 @@ rebuild; the times are replay estimates, not measurements:
 | (unrecorded) | Bootstrap-publish `@nlqdb/cli@0.1.0` (npm) | `npx @nlqdb/cli` shim | same procedure |
 | (unrecorded) | Stripe live-mode sitting: keys, 2 prices, webhook (5 events), Tax, customer portal (Stripe dashboard) | paid-plan readiness (scorecard row #20) | ~30 min; (pricing doc archived) |
 | (unrecorded) | GSC service account + `GSC_SERVICE_ACCOUNT_JSON` (Google console) | `scripts/gsc-pull.ts` — scorecard row #7's Google-side instrument | ~10 min |
-| 2026-06-12 | Submitted the original Anthropic MCP directory form (clau.de form) | nothing — produced no listing; superseded by the plan-gated admin-portal path (ledger row #9, still queued) | lesson: verify the live submission path first |
+| 2026-06-12 | Submitted the original Anthropic MCP directory form (clau.de form) | nothing — produced no listing; replaced by the plan-gated admin-portal path (ledger row #9, still queued) | lesson: verify the live submission path first |
 
 ## Era 2 — the 2026-07-26 sitting (seven actions, queue 9 → 2)
 

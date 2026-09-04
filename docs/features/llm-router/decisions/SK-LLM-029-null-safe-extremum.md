@@ -5,7 +5,7 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Extends
 block) alongside [`SK-LLM-027`](./SK-LLM-027-result-shape-directives.md) — it
 is one additional bullet in the same block, demonstrated by the refit
 [`SK-LLM-026`](./SK-LLM-026-static-few-shot-plan-exemplars.md) exemplar 3.
-Neither is superseded.
+Both still stand.
 
 - **Decision:** `PLAN_DIRECTIVES` (`packages/llm/src/prompts.ts`) gains one
   result-correctness bullet after the REAL-cast bullet: "When selecting a

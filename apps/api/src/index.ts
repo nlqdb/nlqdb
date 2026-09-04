@@ -3528,7 +3528,7 @@ app.delete("/v1/keys/byollm", requireSession, async (c) => {
 // reports `premium.live: false`). Records demand in the
 // `premium_interest` D1 table (one row per account — the durable, queryable
 // signal for the §6 go/no-go); this is a premium-tier demand capture, not a
-// waitlist / access gate (GLOBAL-027 stays intact — the product is open).
+// waitlist / access gate (GLOBAL-007: no access gate — the product is open).
 // Session-only: "whoever clicked" is the session identity.
 //
 // Dispatch-after-insert (SK-IDEMP-006): the table dedups by construction, so

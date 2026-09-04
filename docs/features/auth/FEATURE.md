@@ -36,7 +36,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-AUTH-NN
 - [**SK-AUTH-010**](decisions/SK-AUTH-010-anon-adoption-single-row-update.md) — Anonymous-mode adoption is a single-row update — no conditional code paths.
 - [**SK-AUTH-011**](decisions/SK-AUTH-011-rotation-grace-global-signout-skips-live.md) — Rotation has a 60-day grace window + webhook; global sign-out leaves `sk_live_` / `pk_live_` alone.
 - [**SK-AUTH-012**](decisions/SK-AUTH-012-no-plaintext-key-retrieval.md) — No plaintext key retrieval — lost means rotate.
-- [**SK-AUTH-013**](decisions/SK-AUTH-013-cors-and-trustedorigins-cover-previews.md) — Both auth gates cover Workers-Versions preview URLs. *Superseded by `SK-AUTH-016`.*
+- [**SK-AUTH-013**](decisions/SK-AUTH-013-cors-and-trustedorigins-cover-previews.md) — Both auth gates cover Workers-Versions preview URLs. *Replaced by `SK-AUTH-016`.*
 - [**SK-AUTH-014**](decisions/SK-AUTH-014-nlqdb-api-workers-dev-true.md) — `nlqdb-api` keeps `workers_dev = true` so `wrangler versions upload` returns a `preview_url`.
 - [**SK-AUTH-015**](decisions/SK-AUTH-015-oauth-init-top-level-get.md) — OAuth init is a top-level GET to `/api/auth/oauth-init/:provider`, not a `fetch + JS redirect`.
 - [**SK-AUTH-016**](decisions/SK-AUTH-016-merged-web-api-worker.md) — `apps/web` and `apps/api` ship as a single Cloudflare Worker on `app.nlqdb.com`.

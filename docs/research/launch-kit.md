@@ -60,7 +60,7 @@ framing — instead of a surprise in the comments.
 ## 2. Angles (candidate hooks — founder picks; all verified true)
 
 Lead positioning is **analytical agent memory** per
-[GLOBAL-036](../decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md);
+the prior bet;
 an angle that leads elsewhere needs a deliberate exception, not drift.
 **That exception exists (founder, 2026-08-08):** the Show HN may **lead
 with the C story** — the agent-operated, $0-stack company — carrying angle
@@ -68,10 +68,10 @@ A as the product payload inside it (*"we run our company on free tiers with
 Claude agents; nlqdb is what it built"*). Rationale: the founder's genuine
 excitement lives in C, and an unexcited author can't write the post or
 defend the thread (the r/SQL lesson generalizes: authentic voice is the
-channel). GLOBAL-036 itself is unchanged — product surfaces keep the
+channel). the prior bet itself is unchanged — product surfaces keep the
 memory-first positioning; this is one post's framing.
 
-- **A. Agent memory that can answer "how many"** (GLOBAL-036 lead): memory
+- **A. Agent memory that can answer "how many"** (the prior bet lead): memory
   as four Postgres tables + NL analytics over it; Mem0/Zep/Letta matrix on
   `/agents`; one-command MCP install. Honesty gates: FSL-1.1, never
   "Apache-2.0 today" (GLOBAL-019). (Stale gate removed 2026-08-08:

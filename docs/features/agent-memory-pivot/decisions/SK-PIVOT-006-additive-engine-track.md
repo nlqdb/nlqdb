@@ -15,7 +15,7 @@
   design its own schema via generic `db.create`, so the "zero schema design"
   claim isn't yet true. The engine track makes it true without an
   incompatible rebuild: keep `SK-MCP-002`'s tool contract and `db.create`'s
-  generalist path (GLOBAL-036's dual front door), add memory shapes
+  generalist path (the prior bet's dual front door), add memory shapes
   alongside. Renames are a hidden tax on early adopters; additive is the
   right shape pre-PMF.
 - **Consequence in code:** New `apps/api/src/db-create/presets/agent-memory-v1.ts`
@@ -31,7 +31,7 @@
 - **Alternatives rejected:** **Rename `nlqdb_query` to memory verbs** —
   breaks SK-MCP-002 and every integrated host for cosmetic gain. · **Replace
   the generalist `db.create` path with the memory preset** — destroys the
-  P1/P3/P4 surfaces the dual-front-door (GLOBAL-036) is committed to. ·
+  P1/P3/P4 surfaces the dual-front-door (the prior bet) is committed to. ·
   **Skip the engine track and let agents build their own memory schema via
   generic `db.create`** — what we have today; the "zero schema design"
   wedge claim is then false. · **One mega-PR for the whole track** —

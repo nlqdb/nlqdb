@@ -58,6 +58,4 @@ risk *is* the maxed eval proxy above; the focus re-point retires it before it lo
 All `daily.md` decision IDs (GLOBAL-025/026/033/038, SK-*) resolve to canonical
 files; all cited paths exist; last week's `lint → check` gate fix holds (rules 6 +
 step 4). No dangling references, dead rules, or contradictions found — no `daily.md`
-edit this week. (Note: this file's own GLOBAL-027 "canonical file missing" archetype
-in `weekly.md` is now itself stale — the file exists — but that is prompt-illustrative
-and outside the `daily.md`-only fix scope.)
+edit this week.

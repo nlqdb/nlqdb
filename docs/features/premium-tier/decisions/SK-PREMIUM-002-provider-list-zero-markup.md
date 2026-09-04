@@ -37,7 +37,7 @@ Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md). Parent GLOBAL:
 
 - **Supersession (2026-08, this PR):** the prior plan **batched meter events
   through Lago-on-Fly** ([`phase-plan.md §6`](../../../phase-plan.md)). That is
-  **superseded**: we report to **Stripe Billing Meters directly**, no Lago. The
+  **replaced**: we report to **Stripe Billing Meters directly**, no Lago. The
   event contract, idempotency, and a daily reconciliation against Stripe meter
   summaries live in
   [`SK-PREMIUM-017`](./SK-PREMIUM-017-stripe-billing-meters.md). `phase-plan.md

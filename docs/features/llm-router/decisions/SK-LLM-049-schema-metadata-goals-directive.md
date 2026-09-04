@@ -6,7 +6,7 @@ block) — the metadata sibling of its "schema-literal identifiers" bullet,
 placed immediately after it so the two schema-grounding rules read together.
 Orthogonal to the result-shape / grain / cast bullets
 ([`SK-LLM-027`](./SK-LLM-027-result-shape-directives.md) and successors). Not
-superseded; one more bullet in the same block.
+replaced; one more bullet in the same block.
 
 - **Decision:** `PLAN_DIRECTIVES` (`packages/llm/src/prompts.ts`) gains one
   bullet after the schema-literal bullet: "When the goal asks about the

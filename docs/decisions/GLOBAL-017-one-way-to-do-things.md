@@ -1,21 +1,22 @@
-# GLOBAL-017 — Two endpoints, two CLI verbs, one chat box — one way to do each thing
+# GLOBAL-017 — One way to do each thing
 
-- **Decision:** The HTTP API exposes two primary endpoints (`/v1/ask`,
-  `/v1/run`). The CLI exposes two primary verbs (`nlq ask`, `nlq run`).
-  The web app exposes one chat box. There is exactly one way to
-  perform each conceptual operation; no aliases, no shadow endpoints.
+- **Decision:** `/v1/ask` is the single natural-language entry point
+  (create, read, write, extend). Each control-plane resource — databases,
+  keys, grants, optimizer proposals — has exactly one REST resource, and the
+  CLI, MCP server and SDK expose exactly one verb / tool / method per
+  operation. No aliases, no shadow endpoints. `/v1/run` stays the raw-SQL
+  escape hatch ([`GLOBAL-015`](./GLOBAL-015-power-user-escape-hatch.md)).
 - **Core value:** Simple, Effortless UX
-- **Why:** Surface area is the enemy of learnability. If a user can
-  do X "via two endpoints" or "via three commands," they spend energy
-  on which one to pick instead of on their goal. A small canonical
-  surface keeps docs short and behavior consistent.
-- **Consequence in code:** New conceptual operations require a
-  decision: extend an existing endpoint/verb, or introduce a third
-  one (which requires explicit justification). No aliases. The CLI
-  may have helpers (`nlq init`, `nlq login`) — but the *operations
-  on data* are the two verbs.
+- **Why:** Surface area is the enemy of learnability. If a user can do X
+  "via two endpoints" or "via three commands," they spend energy on which
+  one to pick instead of on their goal. A small canonical surface keeps docs
+  short and behaviour consistent.
+- **Consequence in code:** A new conceptual operation gets one home: extend
+  `/v1/ask` when it is expressible in language, otherwise one new REST
+  resource shipped to every surface in one PR (`GLOBAL-003`). The DBA
+  surface follows this — proposals live at `/v1/dba/proposals` with
+  `apply` / `undo`, `nlq dba …`, `nlqdb_dba_*` — one way each.
 - **Alternatives rejected:**
-  - REST resource explosion (`/v1/queries`, `/v1/runs`, `/v1/plans`)
-    — bigger surface, more docs, more inconsistency.
-  - Multiple aliased CLI verbs — every alias becomes a new way to
-    misuse the tool.
+  - Counting endpoints ("two endpoints, two verbs") — the count was a proxy
+    for the rule and broke the first time a control-plane resource appeared.
+  - Aliased CLI verbs — every alias is a new way to misuse the tool.

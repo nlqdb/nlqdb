@@ -12,6 +12,10 @@
   a session. CLI's first `nlq ask` accepts an anonymous device, which
   later attaches to a Better Auth identity on first sign-in. The API
   has an explicit anonymous-mode rate-limit tier.
+- **No access gate, ever (founder directive 2026-07-01, open pre-beta):**
+  no gate middleware, waitlist, or invite valve exists or may be
+  reintroduced. Quality risk is carried by trust UX (`GLOBAL-023`), never
+  by a door.
 - **Alternatives rejected:**
   - Required signup with "free trial" framing — measurably worse for
     activation.

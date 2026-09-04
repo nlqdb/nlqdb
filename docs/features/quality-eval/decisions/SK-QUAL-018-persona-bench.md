@@ -11,7 +11,7 @@ and [`SK-QUAL-015`](./SK-QUAL-015-column-coverage-harness.md).
 - **Decision:** `tools/eval/src/datasets/persona-bench.ts` ships persona-bench
   as nlqdb's **own** benchmark: ICP-shaped SQLite schemas authored as inline
   DDL + seed (v0: `saas_app` for `personas.md` §P1 Solo Builder, `agent_memory`
-  for §P2 Agent Builder — the GLOBAL-036 analytical-memory wedge) and NL→gold-SQL
+  for §P2 Agent Builder — the prior bet analytical-memory wedge) and NL→gold-SQL
   pairs lifted from each persona's "Representative queries". Gold SQL uses
   **literal date bounds, never `date('now')`**, so a "signups this month"
   phrasing compiles to a time-stable gold. v0 ships the **fixture + the

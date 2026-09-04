@@ -5,7 +5,7 @@
 -- is the whole write path and a first insert is the signal to notify the
 -- founder once (dispatch-after-insert, SK-IDEMP-006).
 --
--- Not a waitlist / access gate (GLOBAL-027 removed those): the product
+-- Not a waitlist / access gate (GLOBAL-007: no gate, ever): the product
 -- stays fully open. This is a premium-tier demand signal, queryable for
 -- the §6 go/no-go — `SELECT COUNT(*) FROM premium_interest`.
 CREATE TABLE premium_interest (

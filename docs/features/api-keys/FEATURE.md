@@ -31,11 +31,11 @@ when-to-load:
 Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-APIKEYS-NNN`. The list below is the index; open the linked file for the full five-field block.
 
 - [**SK-APIKEYS-001**](decisions/SK-APIKEYS-001-three-key-types.md) — Three key types: `pk_live_`, `sk_live_`, `sk_mcp_<host>_<device>_`.
-- [**SK-APIKEYS-002**](decisions/SK-APIKEYS-002-argon2id-no-plaintext.md) — Hash at rest; `last_4` for display; no plaintext retrieval. (Hash function superseded by SK-APIKEYS-008.)
+- [**SK-APIKEYS-002**](decisions/SK-APIKEYS-002-argon2id-no-plaintext.md) — Hash at rest; `last_4` for display; no plaintext retrieval. (Hash function replaced by SK-APIKEYS-008.)
 - [**SK-APIKEYS-003**](decisions/SK-APIKEYS-003-pk-live-readonly.md) — `pk_live_` is read-only, origin-pinned; writes need `<nlq-action>` with a signed write-token.
 - [**SK-APIKEYS-004**](decisions/SK-APIKEYS-004-mcp-per-host-per-device.md) — MCP keys are scoped per-host AND per-device.
 - [**SK-APIKEYS-005**](decisions/SK-APIKEYS-005-rotation-grace.md) — Rotation has 60-day grace + webhook; rotate is the only path to recover from a lost key. (Not yet shipped — see Open questions.)
-- [**SK-APIKEYS-006**](decisions/SK-APIKEYS-006-global-signout-scope.md) — Global sign-out clears `sk_mcp_…` but leaves `sk_live_` / `pk_live_` alone. (Superseded by SK-APIKEYS-015 — sign-out revokes no minted key.)
+- [**SK-APIKEYS-006**](decisions/SK-APIKEYS-006-global-signout-scope.md) — Global sign-out clears `sk_mcp_…` but leaves `sk_live_` / `pk_live_` alone. (Replaced by SK-APIKEYS-015 — sign-out revokes no minted key.)
 - [**SK-APIKEYS-007**](decisions/SK-APIKEYS-007-mint-via-post-keys.md) — Mint via `POST /v1/keys`; never display, write straight to host config.
 - [**SK-APIKEYS-008**](decisions/SK-APIKEYS-008-hmac-sha256-storage.md) — HMAC-SHA256 replaces Argon2id for all key storage on the Workers runtime.
 - [**SK-APIKEYS-009**](decisions/SK-APIKEYS-009-sk-mcp-server-side-mint.md) — `sk_mcp_*` minted server-side at `POST /v1/oauth/mcp-callback`, never displayed. (Widened by SK-APIKEYS-015 — `/app/keys` mints one too.)

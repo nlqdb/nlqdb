@@ -1,6 +1,6 @@
 # SK-LLM-015 — OpenRouter code-gen ops default to `qwen/qwen3-coder:free`
 
-> **Superseded by [`SK-LLM-045`](./SK-LLM-045-openrouter-free-roster-refresh.md)** — OpenRouter removed `qwen/qwen3-coder:free` (and the Llama `:free` ids below) from its free catalog; kept here as the historical record of the original decision.
+> **Replaced by [`SK-LLM-045`](./SK-LLM-045-openrouter-free-roster-refresh.md)** — OpenRouter removed `qwen/qwen3-coder:free` (and the Llama `:free` ids below) from its free catalog; kept here as the historical record of the original decision.
 
 - **Decision:** OpenRouter pins `plan` and `schema_infer` to
   `qwen/qwen3-coder:free` (480B MoE, 1M context); `route` /

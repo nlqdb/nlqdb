@@ -38,4 +38,4 @@
   on. · **Paid acquisition** — no budget, and the P2 audience converts on
   technical proof, not ads (the archived moat-framing research). · **A separate
   feature doc** — reach is a pivot distribution concern; a fourth home
-  would split the GLOBAL-036 record (P3).
+  would split the prior bet record (P3).

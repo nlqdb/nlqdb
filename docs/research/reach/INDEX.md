@@ -1,7 +1,6 @@
 # Reach track — search-moment interception + coding-agent injection
 
-Third pivot track, companion to messaging (`WS-*`) and engine (`E-*`).
-Governed by GLOBAL-036; decision record
+Marketing lane (`GLOBAL-041`); decision record
 [SK-PIVOT-015](../../features/agent-memory-pivot/decisions/SK-PIVOT-015-reach-track.md). Driven by its
 own recurring loop, [`/reach`](../../../.claude/commands/reach.md),
 fired every few hours offset from `/daily`.

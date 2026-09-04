@@ -53,7 +53,7 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
     it.)**
   - **Also enable Workers AI JSON mode (`response_format`)** — the
     native `/ai/run` endpoint requires a per-op `json_schema` (no
-    schemaless `json_object`, verified against the Workers AI JSON-mode
+    unconstrained `json_object`, verified against the Workers AI JSON-mode
     docs 2026-06); the prompt's "strict JSON, no fences" contract plus
     the [`SK-LLM-025`](./SK-LLM-025-json-recovery-fallback.md) recovery
     fallback already govern output, so schema-mode is a larger, per-op
