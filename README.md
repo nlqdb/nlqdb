@@ -172,8 +172,8 @@ them are the engine roadmap. Canonical plan + exit gates:
 ### Now — Phase A: the schema infers itself (`GLOBAL-041`)
 
 The first insert creates the shape; later inserts and reads evolve it. KPI:
-first-insert inference rate ≥ 95 % at Phase A exit. Build order in
-[`docs/pivot-autonomous-dba.md` §4](./docs/pivot-autonomous-dba.md).
+first-insert inference rate ≥ 95 % at Phase A exit on the dogfood workload.
+Build order in [`GLOBAL-041`](./docs/decisions/GLOBAL-041-autonomous-dba.md).
 
 - ◯ `kind=extend` typed plan — a write naming an unseen table or field widens
   the schema in the same transaction as the insert, never a `schema_mismatch`
@@ -250,8 +250,8 @@ and shares the link — in under 60 seconds, no card, no config.
   (`0.4.0`)
 - ~ Framework wrappers + native Swift package — built + CI-tested; npm /
   SPM publish pending
-- ✓ Quality-eval harness (BIRD + Spider 2.0, manual on-demand) — the
-  free-vs-frontier accuracy delta is the headline KPI
+- ✓ Quality-eval harness (BIRD + Spider 2.0) — a CI regression alarm for
+  the NL→SQL interface, not a KPI
 - ~ Bring-your-own-LLM dispatch — HTTP lane live; remaining surfaces in
   progress
 - ◯ CSV upload in chat

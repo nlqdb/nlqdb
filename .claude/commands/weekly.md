@@ -10,29 +10,26 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
 
 - `docs/scorecard.md` **and its git history** — the week-over-week trend
   per row, not the day.
-- `git log --since='7 days ago'` — every daily **and reach** PR: title,
-  body, the delta it claims.
-- `docs/research/distribution-queue.md`, `docs/blocked-by-human.md`.
-- [`.claude/commands/daily.md`](daily.md) and
-  [`.claude/commands/reach.md`](reach.md) — the prompts under audit —
-  plus the reach worksheet's `NUMBERS.md` (its scorecard-equivalent;
-  founder-resolved 2026-07-19: the hourly reach loop is inside every
-  check below, same as daily).
+- `git log --since='7 days ago'` — every daily PR: title, body, the delta
+  it claims.
+- `docs/blocked-by-human.md`.
+- [`.claude/commands/daily.md`](daily.md) — the prompt under audit.
+- [`GLOBAL-041`](../../docs/decisions/GLOBAL-041-autonomous-dba.md) — the
+  KPIs, floors and phase gates the week is measured against.
 
 ## The audit — seven checks, worst finding first
 
-1. **Trend.** Per pillar (engine, onboarding, UX, performance) plus the
-   funnel: is the week-over-week direction right? Any regression past a
-   `GLOBAL-025` alert threshold is automatically the worst finding.
+1. **Trend.** Per pillar (engine, onboarding, UX, performance): is the
+   week-over-week direction right? Any regression past a `GLOBAL-025`
+   alert delta — or a red BIRD/Spider regression alarm (`SK-QUAL-002`) —
+   is automatically the worst finding.
 2. **Monoculture.** What share of the week's runs pulled the same lever?
-   If one lever dominates, demand yield evidence (referral visits,
-   indexation, conversions from the shipped surfaces). Volume without
-   yield evidence → next week's focus is *instrumenting the yield*, not
-   more volume.
+   If one lever dominates, demand evidence that it moved its KPI. Volume
+   without a moved number → next week's focus is *instrumenting the
+   number*, not more volume.
 3. **Inert output.** Anything the loop produces that nothing consumes —
-   a queue not draining, drafts nobody publishes, reports nobody reads.
-   The fix is changing the loop (or deleting the output), never raising
-   volume.
+   reports nobody reads, rows nobody moves. The fix is changing the loop
+   (or deleting the output), never raising volume.
 4. **Dark metrics.** Rows stale/carried ≥ 1 week: is the root blocker
    named? Human-only blockers must be in `blocked-by-human.md` at their
    yield-per-founder-minute rank with a days-blocked count; agent-fixable
@@ -43,48 +40,39 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
    regression.
 6. **Prompt drift.** Dangling references (decision IDs with no canonical
    file, paths that no longer exist), dead rules, and contradictions in
-   `daily.md`, `reach.md`, `ek.md`, and this file — a decision ID cited
-   everywhere with no canonical file is the archetype.
+   `daily.md` and this file — a decision ID cited everywhere with no
+   canonical file is the archetype.
 7. **Public-roadmap truth (`README.md § Roadmap`).** The README is the one
-   roadmap strangers read, and no daily loop owns it — it fossilized for
-   10 days once (found 2026-08-08: the entire agent-memory wedge was
-   absent). Each week: tick/untick markers against shipped reality
-   (worksheet trackers are the source), and confirm the "Now"/"Next"
-   sections still name the live focus and the parallel track. A marker
-   claiming ✓ for something dark is a P6 honesty bug, same class as a
-   phantom capability.
+   roadmap strangers read, and no daily loop owns it. Each week: tick/untick
+   markers against shipped reality, and confirm the "Now"/"Next" sections
+   still name the live focus (`GLOBAL-041` Phase A). A marker claiming ✓
+   for something dark is a P6 honesty bug, same class as a phantom
+   capability.
 
 ## Outputs (one PR)
 
 1. **Set the weekly focus number** at the top of `docs/scorecard.md`: one
-   agent-movable number + a one-line why, chosen from the audit.
-   Agent-movable means **movable at $0** (`docs/cost-ladder.md` — no
-   spend while there are no paying customers): a focus whose only lever
-   needs founder spend or founder-held credentials is not agent-movable
-   (founder-directed 2026-07-22; the short-lived 07-19 agentic-frontier
-   focus needed paid frontier credentials and stalled runs 97–98 this way
-   before being re-pointed). If the
+   agent-movable number + a one-line why, chosen from the audit. If the
    founder wrote one this week, keep theirs — never overwrite a founder
-   edit. **Default while the `GLOBAL-038` acquisition focus stands
-   (founder-resolved 2026-07-19): the best agent-movable acquisition/GTM
-   input** — channel coverage per
-   `docs/research/acquisition-channels.md`, attribution/instrument
-   coverage, or a funnel-conversion number — falling back to the pillar
-   furthest from its `GLOBAL-025` floor only when every acquisition
-   lever is blocked. Either way pick **an agent-movable input, never a
-   headline number while that number is dark** (levers exhausted or
-   externally blocked). A focus no daily run can pull
-   scatters the week into meta work and measurement churn — found
-   2026-07-11 (BIRD), repeated 2026-07-18 (BIRD again, runs 90–94)
-   (founder-resolved 2026-07-19).
+   edit. **Default: the `GLOBAL-041` KPI furthest from its floor** — KPI 1
+   (first-insert inference rate, floor ≥ 95 % on the Phase A dogfood
+   workload) until it clears, then KPI 2 / KPI 3 as their instruments land.
+   Agent-movable means **movable at $0** (`docs/cost-ladder.md` — no spend
+   while there are no paying customers): a focus whose only lever needs
+   founder spend or founder-held credentials is not agent-movable. Pick
+   **an agent-movable input, never a headline number while that number is
+   dark** (levers exhausted or externally blocked) — a focus no daily run
+   can pull scatters the week into meta work and measurement churn.
+   Acquisition numbers are never the focus while the lane is paused
+   (`GLOBAL-041`).
 2. **Overwrite `docs/weekly-review.md`** (current-state, ≤ 4 KB, no
    accretion): one short paragraph per check, worst finding first, each
    naming its evidence (PR #s, scorecard rows, URLs).
-3. **One smallest fix to `daily.md` or `reach.md`** if check 6 found
-   drift — a small diff, never a restructure, never touching
-   founder-resolved rules (P1).
+3. **One smallest fix to `daily.md`** if check 6 found drift — a small
+   diff, never a restructure, never contradicting a documented decision
+   (P1).
 4. §8 quality gates green. PR body: the focus number chosen + why, and the
    worst finding.
 
-One focus number, not three. Don't re-litigate founder-resolved decisions —
+One focus number, not three. Don't re-litigate documented decisions —
 flag genuine contradictions with their ID in `weekly-review.md` instead.
