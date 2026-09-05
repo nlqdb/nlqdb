@@ -119,20 +119,15 @@ export type OrchestrateOutcome =
       // emit is wrapped in `ctx.waitUntil`; this keeps doc and code in
       // agreement). The promise itself never throws (`SK-EVENTS-003`).
       pendingAskCompleted: Promise<void>;
-      // SK-SCHEMA-010 — set when this ask was an extend-needed write (a
-      // write whose plan referenced an unobserved table/field) that the
-      // engine absorbed inline: the KPI-1 numerator. Stays unset until
-      // Phase A's `kind=extend` routing lands — no success path sets it
-      // today, so the counter it feeds (`asks_extend_ok`) reads 0.
+      // SK-SCHEMA-010 — a write to an unobserved table the engine absorbed
+      // inline (KPI-1 numerator); nothing sets it until Phase A `kind=extend`.
       extendNeeded?: boolean;
     }
   | {
       ok: false;
       error: AskError;
-      // SK-SCHEMA-010 — set when the failing ask was an extend-needed
-      // write rejected for referencing an unobserved table (the write hit
-      // the schema-mismatch path). The KPI-1 denominator's not-yet-absorbed
-      // half; `asks_extend_failed` is bumped for it in `index.ts`.
+      // SK-SCHEMA-010 — a write to an unobserved table that was rejected
+      // (KPI-1 denominator, bumped as `asks_extend_failed` in `index.ts`).
       extendNeeded?: boolean;
     };
 
@@ -432,10 +427,8 @@ export async function orchestrateAsk(
           referencedTables: mismatch.referencedTables,
           schemaTables: mismatch.schemaTables,
         },
-        // SK-SCHEMA-010 — a write to an unobserved table is the KPI-1
-        // denominator (widen-on-write would create it); a read against a
-        // hallucinated table is a planning miss, not extend demand. Set the
-        // flag only for the write case so read outcomes stay byte-identical.
+        // SK-SCHEMA-010 — only a write is extend demand; a read against a
+        // hallucinated table is a planning miss.
         ...(isWriteVerb(planSql) ? { extendNeeded: true } : {}),
       };
     }
@@ -653,10 +646,9 @@ export async function orchestrateAsk(
             referencedTables: err.referencedTables,
             schemaTables: err.schemaTables,
           },
-          // SK-SCHEMA-010 — same KPI-1 denominator, caught at exec (42P01 /
-          // 3F000) instead of pre-flight. Flag only the write case (reads
-          // that reach here stay byte-identical for the existing envelopes).
-          ...(isWriteVerb(planSql) ? { extendNeeded: true } : {}),
+          // SK-SCHEMA-010 — a 3F000 (orphaned tenant schema) is a control-plane
+          // fault widen-on-write can't absorb, so only a 42P01 write counts.
+          ...(isWriteVerb(planSql) && d?.pgCode !== "3F000" ? { extendNeeded: true } : {}),
         };
       }
       // SK-ASK-022 — one execution-guided repair: re-plan with the PG error

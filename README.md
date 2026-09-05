@@ -178,7 +178,8 @@ first-insert inference rate ≥ 95 % at Phase A exit. Build order in
 - ◯ `kind=extend` typed plan — a write naming an unseen table or field widens
   the schema in the same transaction as the insert, never a `schema_mismatch`
 - ◯ Extend diff + trace on every surface (SDK · CLI · MCP · `<nlq-data>`)
-- ◯ KPI counters `asks_extend_ok` / `asks_extend_failed` on the `/v1/ask` write path
+- ✓ KPI counters `asks_extend_ok` / `asks_extend_failed` on the `/v1/ask` write path
+  (`SK-SCHEMA-010`; the rate reads on `/app/admin`)
 - ◯ Phase B — `pg_stat_*` + `EXPLAIN` collection → typed proposals (index /
   retype / drop / rename / move-to-engine) → `/app/dba` dashboard with
   1-click apply + undo
