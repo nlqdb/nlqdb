@@ -2,7 +2,7 @@
 
 Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md). The prerequisite the
 §4 #2 backlog lever in
-[`quality-score-source-of-truth.md`](../../../progress/quality-score-source-of-truth.md)
+the retired [engine-quality tracker](../../../progress/quality-score-verification-log.md)
 names ("column-level recall risk is per-column — needs an offline recall
 harness like T19's first"). Sibling of
 [`SK-QUAL-014`](./SK-QUAL-014-mismatch-error-class-classifier.md) (mismatch

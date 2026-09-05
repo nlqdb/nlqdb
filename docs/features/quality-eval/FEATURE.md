@@ -1,46 +1,27 @@
 ---
 name: quality-eval
-description: NL→SQL accuracy benchmarking (BIRD-dev + Spider 2.0-lite + persona-bench) across the router's free / BYOLLM / hosted-premium lanes; the free-vs-frontier delta is the engine headline KPI.
+description: NL→SQL accuracy benchmarking (BIRD-dev + Spider 2.0-lite + persona-bench) across the router's free / frontier / agentic lanes — a CI regression alarm for the NL→SQL interface, not a KPI (GLOBAL-041).
 when-to-load:
   globs:
     - packages/llm/**
     - apps/api/src/ask/**
     - tools/eval/**
-  topics: [eval, benchmark, BIRD, Spider, accuracy, semantic-layer, free-vs-frontier-delta]
+  topics: [eval, benchmark, BIRD, Spider, accuracy, regression-alarm, semantic-layer]
 ---
 
 # Feature: Quality Eval
 
-**One-liner:** NL→SQL accuracy benchmarking across the three-dataset canon ([`SK-QUAL-003`](#sk-qual-003)) + persona-bench ([`SK-QUAL-018`](#sk-qual-018)); the **free-vs-agentic-frontier delta** ([`SK-QUAL-004`](#sk-qual-004)) is [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)'s engine headline KPI.
-**Status:** **Phase 2 — slices 1–3c shipped.** BIRD Mini-Dev + Spider 2.0-lite runners + EX scorers; free / single-model-frontier / `agentic-frontier` lanes; baseline diff vs `tools/eval/baseline-2026-06-15.json` + McNemar (`SK-QUAL-006`); `feature.eval.{weekly,regression}` → `POST /v1/events/eval` → Queues → LogSnag `#north-star`. Runner is resumable (`SK-QUAL-011`/`013`), refuses to score a chain-unreachable outage as 0% (`SK-QUAL-020`), runs manually on demand (`SK-QUAL-002`). **Phase 2 exit gate — remaining:** internal `db.create` accepted-answer eval (blocked on a privacy-stripped R2 export). Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) depends on this harness.
-
-**Contribution to north-star:** Engine quality, NL→SQL layer — this feature IS the measurement instrument; the on-demand run (`SK-QUAL-002`) is the alert-and-decision input.
+**One-liner:** NL→SQL accuracy benchmarking across the three-dataset canon ([`SK-QUAL-003`](#sk-qual-003)) + persona-bench ([`SK-QUAL-018`](#sk-qual-018)) on three dispatch lanes ([`SK-QUAL-004`](#sk-qual-004)). The NL→SQL layer is the interface of the autonomous DBA ([`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md)), so this harness is a **regression alarm only** — never a KPI, floor or phase gate.
+**Status:** **regression alarm only** (`GLOBAL-041`, 2026-09-05). Slices 1–3c shipped: BIRD Mini-Dev + Spider 2.0-lite runners + EX scorers; free / single-model-frontier / `agentic-frontier` lanes; baseline diff + McNemar (`SK-QUAL-006`); `feature.eval.{weekly,regression}` → `POST /v1/events/eval` → Queues → LogSnag; resumable runner (`SK-QUAL-011`/`013`); outage guard (`SK-QUAL-020`). **Remaining:** the CI alarm shape of [`SK-QUAL-002`](#sk-qual-002) (fixed sample, fails on > 5 pp drop vs last green after engine-path merges) replaces manual-only dispatch; the persona-bench and memory-quality workflows are deleted (datasets stay runnable via the manual runner). The internal `db.create` eval stays blocked on a privacy-stripped R2 export. Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still reads this harness.
 **Owners (code):** `tools/eval/**`, `packages/llm/**`, `.github/workflows/quality-eval-bird-mini.yml`
 **Cross-refs:** [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) (the moat this harness measures) · `llm-router/FEATURE.md` (system under test) · `trust-ux/FEATURE.md` (calibrates `SK-TRUST-003` confidence floors) · [`docs/research-receipts.md §8`](../../research-receipts.md) (dbt 2026 semantic-layer accuracy)
 
 ## Touchpoints — read this feature before editing
 
-- `tools/eval/` — benchmark runner:
-  - `src/runner.ts` — multi-dataset driver, CLI, lane loop, baseline + emit; `withExecRetry`-wraps scaffolded lanes; `--throttle-ms` (`SK-QUAL-012`), `--capacity-wait-ms` + transient-wall budget-stop `isChainTransientWall` (`SK-QUAL-013`); transport-collapse guard `isTransportCollapse` (`SK-QUAL-020`); `--self-consistency N` / `--sc-temperature T` (`SK-QUAL-017`)
-  - `src/exec-retry.ts` — `withExecRetry` bounded retry on `exec_error` only (`SK-QUAL-009`)
-  - `src/score.ts` — BIRD multiset/sequence-strict EX scorer + the Spider 2.0 multi-CSV port + `scoreOneSpider2` (`SK-QUAL-008`); executes all SQL via `src/sql-exec-child.ts`, a killable subprocess with a hard deadline (`SK-QUAL-021`)
-  - `src/csv.ts` — minimal RFC-4180 CSV parser + type inference for gold CSVs (`SK-QUAL-008`)
-  - `src/lanes.ts` — `free` / `frontier` (`SK-QUAL-004`) / `agentic-frontier` (`RUN_AGENTIC_FRONTIER=1`) lane builders (`SK-QUAL-009`)
-  - `src/baseline.ts` + `src/significance.ts` — baseline diff + McNemar exact-binomial / Edwards' χ² (`SK-QUAL-006`)
-  - `src/emit.ts` — POST report to `/v1/events/eval`
-  - `src/analyze-mismatches.ts` — mismatch error-class classifier (`SK-QUAL-014`); `src/column-coverage.ts` — column-prune recall-ceiling harness (`SK-QUAL-015`); `src/self-consistency.ts` — `majorityVote` + `voteOverSamples` orchestration + `score.ts::{fingerprintRows,executeRows}` (`SK-QUAL-017`)
-  - `src/datasets/{bird-mini,spider2-lite,persona-bench}.ts` — HF BIRD loader; Spider 2.0-lite loader + gold-CSV hydration + external-knowledge injection (`SK-QUAL-007`/`008`/`016`); persona-bench ICP fixture + `loadPersonaBench` materialiser (`SK-QUAL-018`)
-  - `src/output.ts` + `src/checkpoint.ts` — JSON report writer; resumable checkpoint (`SK-QUAL-011`)
-  - `baseline-2026-06-15.json` — pinned canonical baseline (`SK-QUAL-005`)
-- `.github/workflows/quality-eval-bird-mini.yml` — BIRD: manual `workflow_dispatch` only (`SK-QUAL-002`), `mode: full|smoke` (smoke = sampled + resumable per `SK-QUAL-011`); `include_agentic_frontier` → `RUN_AGENTIC_FRONTIER=1` per `SK-QUAL-009`; `self_consistency`/`sc_temperature` → smoke `--self-consistency N --sc-temperature T` per `SK-QUAL-017`
-- `.github/workflows/quality-eval-spider2-lite.yml` — Spider: manual `workflow_dispatch` only (`SK-QUAL-002`), `mode: full|smoke`; `SK-QUAL-007` loader + `SK-QUAL-009` agentic toggle + `SK-QUAL-017` `self_consistency` smoke input
-- `.github/workflows/quality-eval-persona-bench.yml` — persona-bench (ICP): manual `workflow_dispatch` (`persona: all|P1|P2` + `include_frontier`); no fixture download, no baseline/emit, so not blocked by the < 7-day gate (`SK-QUAL-018`)
-- `apps/api/src/events-feature.ts::recordEvalReport` — bearer-token run ingestion
-- `apps/api/src/index.ts` — `POST /v1/events/eval` route wiring
-- `packages/events/src/types.ts` — `FeatureEvalWeeklyEvent`, `FeatureEvalRegressionEvent`
-- `apps/events-worker/src/sinks/logsnag.ts` — `#north-star` channel mappings
-- `packages/llm/src/router.ts` — the system under test (calls `plan()` with `dialect: "sqlite"`)
-- `apps/api/src/ask/sql-validate.ts` — schema-fit checks the harness exercises
+- `tools/eval/src/` — the runner: `runner.ts` (driver, lanes, baseline + emit, `--throttle-ms` `SK-QUAL-012`, budget-stop `SK-QUAL-013`, outage guard `SK-QUAL-020`, `--self-consistency` `SK-QUAL-017`) · `exec-retry.ts` (`SK-QUAL-009`) · `score.ts` + `csv.ts` + `sql-exec-child.ts` (EX scorers `SK-QUAL-008`/`010`, killable subprocess `SK-QUAL-021`) · `lanes.ts` (`SK-QUAL-004`/`009`/`022`) · `baseline.ts` + `significance.ts` (`SK-QUAL-006`) · `emit.ts` · `analyze-mismatches.ts` (`SK-QUAL-014`) · `column-coverage.ts` (`SK-QUAL-015`) · `self-consistency.ts` (`SK-QUAL-017`) · `datasets/{bird-mini,spider2-lite,persona-bench,memory-quality}.ts` (`SK-QUAL-007`/`008`/`016`/`018`/`023`) · `output.ts` + `checkpoint.ts` (`SK-QUAL-011`); `tools/eval/baseline-*.json` — the pinned baseline the full run diffs (`SK-QUAL-002`)
+- `.github/workflows/quality-eval-{bird-mini,spider2-lite}.yml` — the CI regression alarm (fixed-sample `smoke` after engine-path merges) + the manual `full` dispatch (`SK-QUAL-002`). No persona-bench / memory-quality workflow — those datasets run only via `--dataset` on the manual runner
+- `apps/api/src/events-feature.ts::recordEvalReport` + `apps/api/src/index.ts` — `POST /v1/events/eval` ingestion · `packages/events/src/types.ts` — `FeatureEval{Weekly,Regression}Event` · `apps/events-worker/src/sinks/logsnag.ts` — `#north-star` mappings
+- `packages/llm/src/router.ts` (system under test, `dialect: "sqlite"`) · `apps/api/src/ask/sql-validate.ts` (schema-fit checks the harness exercises)
 
 ## Decisions
 
@@ -63,33 +44,24 @@ questions); (3) Spider 2.0-lite
 **SQLite subset only** — 135 `local###` rows, all scored via the
 [`SK-QUAL-008`](#sk-qual-008) multi-CSV evaluator.
 
-### SK-QUAL-004 — Free-vs-agentic-frontier delta is the headline KPI; single-model frontier reports informationally
+### SK-QUAL-004 — Three dispatch lanes per run: free, single-model frontier (ablation reference), agentic-frontier; deltas reported, never a KPI
 
 **Body:** [`decisions/SK-QUAL-004-free-vs-frontier-delta.md`](./decisions/SK-QUAL-004-free-vs-frontier-delta.md).
-Three lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md):
-**free**, **single-model frontier** (informational, ~73% BIRD-dev),
-**agentic-frontier** (~77-82% SOTA). Headline KPI is the
-**free-vs-agentic-frontier delta** — Phase 2 ≤ 25 pp, Phase 3 ≤ 16 pp per
-[`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md).
+Every lane answers the same questions back-to-back
+([`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md));
+`free_vs_frontier_delta` and `free_vs_agentic_frontier_delta` are
+per-question diagnostics. The alarm watches the free lane only.
 
-### SK-QUAL-005 — Baseline by 2026-06-15; Phase 2 floor enforced from first measurement
-
-- **Decision:** Every engine-quality KPI in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) table must have a recorded baseline by **2026-06-15** (met — canonical snapshot `tools/eval/baseline-2026-06-15.json`, diffed by every manual run). The Phase 2 floor (BIRD-dev EM ≥ 72% free / ≥ 88% frontier; delta ≤ 22 pts) is enforced from that point; a below-floor first measurement ships engine work until cleared, never regresses it. PRs touching `packages/llm/**` name the KPI they move.
-- **Core value:** Bullet-proof
-- **Why:** A floor is meaningless without a baseline date; missing it blocks the Phase 2 rollover per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) by design.
-
-### SK-QUAL-002 — Eval cadence: manual on-demand only; never a PR gate
+### SK-QUAL-002 — Eval cadence: CI regression alarm on a fixed sample; full runs manual; never a merge gate, never a KPI
 
 **Body:** [`decisions/SK-QUAL-002-weekly-cron.md`](./decisions/SK-QUAL-002-weekly-cron.md).
-Manual `workflow_dispatch` only, never per-PR/per-merge and never on a
-schedule. A `mode` input picks **full** (500 BIRD / 135 Spider, diffs the
-baseline + emits `feature.eval.weekly` / `feature.eval.regression`, EA
-delta ≤ -5 pp **or** McNemar p < 0.05, `SK-QUAL-006`) or **smoke**
-(sampled slice, no emit, resumable per `SK-QUAL-011`). Gating *decisions*
-not *merges* keeps the harness a measurement tool; on-demand (not
-scheduled) keeps the shared 1M/day free-tier cap available to live
-traffic. Accepted trade-off: drift is unmeasured until an operator runs
-it. Resilience via [`SK-QUAL-011`](#sk-qual-011).
+**Alarm:** the fixed sampled slice runs after a merge to `main` touching
+`packages/llm/**` or `apps/api/src/ask/**` and fails on a > 5 pp free-lane
+drop vs the last green run. **Full:** 500 BIRD / 135 Spider on
+`workflow_dispatch` for diagnosis, diffs the pinned baseline
+(`tools/eval/baseline-*.json`) and emits `feature.eval.{weekly,regression}`
+(EA ≤ −5 pp **or** McNemar p < 0.05, `SK-QUAL-006`). No weekly re-measure,
+no floor, no phase gate. Resilience via [`SK-QUAL-011`](#sk-qual-011).
 
 ### SK-QUAL-011 — Resumable runner: checkpoint + budget-stop so a run survives a free-tier daily token cap
 
@@ -134,8 +106,8 @@ New `tools/eval/src/exec-retry.ts::withExecRetry` wraps `plan() → score()`
 in a bounded loop (`maxAttempts: 3`, exec-error-only, threads
 `PlanRequest.previousAttempt`). Two lanes scaffold (`free` +
 `agentic-frontier`); single-model `frontier` stays the unscaffolded ablation
-reference. New headline KPI `free_vs_agentic_frontier_delta` lands on
-`EvalReport` + `FeatureEvalWeeklyEvent` + the LogSnag card per `GLOBAL-025`.
+reference. `free_vs_agentic_frontier_delta` lands on `EvalReport` +
+`FeatureEvalWeeklyEvent` + the LogSnag card (diagnostic, `SK-QUAL-004`).
 
 ### SK-QUAL-010 — BIRD scorer compares positional value tuples (column names ignored), matching canonical `evaluation.py`
 
@@ -144,7 +116,7 @@ reference. New headline KPI `free_vs_agentic_frontier_delta` lands on
 (`.values()`) not name-keyed objects (`.all()`), so output aliases / casing
 no longer enter the comparison — matching canonical BIRD `set(fetchall())`.
 Multiset + ORDER-BY strictness (`SK-QUAL-008`) retained (conservative lower
-bound); first post-fix cron re-seeds the baseline (`SK-QUAL-005`).
+bound); the first post-fix full run re-pins the baseline (`SK-QUAL-002`).
 
 ### SK-QUAL-012 — Inter-question throttle so a low-RPM free chain measures reasoning, not availability
 
@@ -205,9 +177,8 @@ The third quality number alongside BIRD/Spider: NL→gold-SQL over the schemas
 `personas.md` builds — `saas_app` (§P1) + `agent_memory` (§P2), now **23
 questions** with time-stable gold + a **gold-executability invariant** (23/23
 execute, non-empty). `loadPersonaBench` materialises each schema to SQLite on
-demand (`--dataset persona-bench [--persona P1|P2]`), additive;
-`quality-eval-persona-bench.yml` dispatches it baseline-safe, ungated by
-`SK-QUAL-002`'s < 7-day rule; 50–100-q growth target in the body.
+demand (`--dataset persona-bench [--persona P1|P2]`), additive and
+baseline-safe; no workflow of its own. 50–100-q growth target in the body.
 
 ### SK-QUAL-019 — persona-bench ranked golds must be tie-free (no false-negative under sequence-strict scoring)
 
@@ -260,8 +231,8 @@ schema ([`SK-QUAL-018`](#sk-qual-018)): four axes (retrieval / temporal /
 forgetting+contradiction / consolidation) **plus** the task no benchmark runs
 — analytical queries over episodic memory head-to-head against a vector-recall
 baseline on identical data, reported honestly including where a pure-SQL store
-loses. Measures the prior bet
-wedge; a memory-quality row joins the scorecard Engine lane.
+loses. A prior-bet rail: dataset kept runnable via `--dataset memory-quality`,
+no workflow, no scorecard row.
 
 ## GLOBALs governing this feature
 
@@ -270,8 +241,9 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 - **GLOBAL-013** — $0/month free tier. *The harness uses the same strict-$0 chain users hit; exceeding it on eval hides cost users will hit too.*
 - **GLOBAL-014** — OTel span on every external call. *Per-question spans so failures debug like production.*
 - **GLOBAL-024** — Demand-signal telemetry. *Eval results emit `feature.eval.*` events.*
-- **GLOBAL-025** — North-star KPIs. *This feature owns the engine pillar's interface KPI: the NL→SQL canon (BIRD/Spider EX, free-vs-frontier delta) + persona-bench (`SK-QUAL-018`) + the agent-memory-quality eval (`SK-QUAL-023`, prior-bet rail); the headline engine KPIs (inference / evolution / optimizer yield) are `GLOBAL-041`'s. Baseline per `SK-QUAL-005`.*
-- **GLOBAL-026** — LLM strategy. *Eval runs the free + hosted-premium chains (`SK-QUAL-004`); BYOLLM lane instrumented but never gates a floor.*
+- **GLOBAL-041** — Autonomous DBA. *NL→SQL is the interface; this harness is its regression alarm (`SK-QUAL-002`), never a KPI or phase gate.*
+- **GLOBAL-025** — North-star KPIs. *The engine KPIs are `GLOBAL-041`'s; this feature owns no KPI row.*
+- **GLOBAL-026** — LLM strategy. *Eval runs the free + frontier lanes (`SK-QUAL-004`); BYOLLM lane instrumented but gates nothing.*
 - **GLOBAL-037** — Schema-only egress to third-party LLMs; never send user cell-values. *Settles the value-retrieval question: the cell-sampling lever is not built (`SK-QUAL-014` run 18 → ~0 BIRD rows standalone); the harness measures schema-only prompts.*
 
 ## Open questions / known unknowns

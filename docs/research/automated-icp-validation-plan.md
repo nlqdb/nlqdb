@@ -62,7 +62,7 @@
 >    target +5pp/week until 0.65; Spider's residual 36 `no_sql` are
 >    `gemini:http_4xx`/`mistral:network` errors on small schemas (the
 >    "oversized-DDL" read was falsified 2026-06-13, see
->    [`quality-score-source-of-truth.md`](../progress/quality-score-source-of-truth.md) §2),
+>    [`quality-score-verification-log.md`](../progress/quality-score-verification-log.md)),
 >    so the named lever is bucketing those error bodies, not schema pruning.
 > 2. **First-value seed *quality* on `create` — the open engine-quality
 >    sub-lever.** When a stranger's first ask is a "create me a DB for X"

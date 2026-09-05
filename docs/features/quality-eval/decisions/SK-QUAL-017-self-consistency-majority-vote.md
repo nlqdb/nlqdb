@@ -2,7 +2,7 @@
 
 Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md). Implements the
 deterministic core of the §4 #3 reasoning lever
-([`quality-score-source-of-truth.md`](../../../progress/quality-score-source-of-truth.md)
+(the retired [engine-quality tracker](../../../progress/quality-score-verification-log.md)
 §4 #3), the top remaining free-chain lever now that the prompt-directive
 levers (T13–T22) have saturated on BIRD and the [`SK-QUAL-014`](./SK-QUAL-014-mismatch-error-class-classifier.md)
 literal/date axes falsified value-retrieval standalone.

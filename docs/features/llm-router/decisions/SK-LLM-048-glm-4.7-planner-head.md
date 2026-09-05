@@ -61,7 +61,7 @@ head's latency profile.
   provider.
 - **Measurement gate (do not merge blind):** This changes the planner head, the
   single most engine-quality-sensitive component, so — per the
-  `quality-score-source-of-truth.md` §5 guardrail ("measured, not assumed") and
+  the retired engine-quality tracker (history: `quality-score-verification-log.md`) ("measured, not assumed") and
   [`GLOBAL-025`](../../../decisions/GLOBAL-025-north-star.md)'s "degrades 0"
   rule — **promotion is gated on a BIRD-dev +
   Spider quality-eval dispatch** showing non-regression versus the current

@@ -12,9 +12,10 @@ here.
 If a sentence here disagrees with a feature, **the feature wins**. This
 document owns the phase ordering, the items in each phase, and the
 measurable exit gate. Feature-level decisions (the `SK-*` blocks) own the
-*how*. Exit gates from Phase 1.5 onward reference KPI floors defined in
-[`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md) (engine quality,
-onboarding, UX). LLM strategy across all phases is fixed by
+*how*. Phase 2 and Phase 3 exit on the
+[`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md) Phase A / Phase B
+gates; the onboarding / UX / performance floors are in
+[`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md). LLM strategy across all phases is fixed by
 [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
 
 ---
@@ -120,9 +121,8 @@ and across every existing feature.
 **Exit gate:** every Phase 1 surface emits a `surface` label and a
 demand-signal event on the documented failure paths; trust-UX diff
 preview measurably reduces the destructive-op retry rate in user
-tests; **north-star baselines measured** — TTFV, first-10-queries success,
-destructive-op retry rate, and BIRD-dev/Spider 2.0-lite EM on the
-free chain all have a recorded `2026-05` value per the
+tests; the onboarding / UX instruments (TTFV, first-10-queries success,
+destructive-op retry rate) exist per the
 [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md) KPI table.
 
 **Status (2026-05):** capture-pipe shipped. `SK-EVENTS-010` +
@@ -166,13 +166,11 @@ it composes on the same auth/SDK; framework wrappers third.
    zones free).
 
 9. **Quality-eval harness** ([`quality-eval`](./features/quality-eval/FEATURE.md))
-   — BIRD-dev + Spider 2.0-lite + an internal eval over `db.create`
-   schemas, run weekly, accuracy reported per
-   [`llm-router`](./features/llm-router/FEATURE.md) tier and per
-   dispatch lane (free / BYOLLM / hosted-premium). **Promoted from
-   Phase 3** because the engine north-star
-   ([`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md)) is
-   unprovable without it. Slice-1 status in the footer below.
+   — BIRD-dev + Spider 2.0-lite accuracy per
+   [`llm-router`](./features/llm-router/FEATURE.md) tier and dispatch
+   lane, kept as a **CI regression alarm only** (`GLOBAL-041`): fails on a
+   > 5 pp drop vs the last green run on a fixed sample; no floor, no
+   weekly re-measure, not a KPI.
 10. **BYOLLM dispatch** — per
    [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md),
    every user (free or paid) can paste a provider key and route
@@ -184,23 +182,18 @@ LLM lane, wired in §10 above, turned on when §6 tripped —
 live 2026-08-14.)
 
 **Exit gate:** **Phase A of [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md)
-shipped** — widen-on-write live, first-insert inference rate ≥ 95 % on a
-dogfood workload; MCP installed in 3+ distinct host apps; 3 non-engineers
-complete CSV analysis <10 min unassisted; inference cost <$1/mo per active anon-or-signed-in
-user. **North-star floors cleared** per
-[`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md): BIRD-dev EM
-≥ 60% on the free chain, ≥ 80% on agentic-frontier (free-vs-agentic
-delta ≤ 25 pp; single-model frontier reported informationally per
-[`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md)); TTFV p50 ≤ 60 s,
-first-10-queries success ≥ 95%; destructive-op retry rate measurably
-below the no-preview baseline.
+shipped, and nothing else** — widen-on-write live and first-insert
+inference rate ≥ 95 % on the Phase A dogfood workload defined there (the
+`/daily` loop's own writes through `@nlqdb/sdk`; first 200 unseen-field
+inserts in a 14-day window). No BIRD/Spider floor, no MCP-host count, no
+CSV user test, no TTFV — TTFV gates Phase 3.
 
 **Status (2026-05):**
 **Item 1 — MCP server** — `SK-MCP-010` slices 1–3c shipped: `sk_live_`/`sk_mcp_*` mint, `packages/mcp/` stdio with three tools, `apps/mcp/` Cloudflare Worker on `mcp.nlqdb.com` (Streamable-HTTP at `/mcp`), `workers-oauth-provider` + `McpAgent` Durable Object sessions per `SK-MCP-011..014` (cross-Worker callback bridge mints `sk_mcp_*` server-side, DO revalidation cache for 1 s revocation), per-bucket rate-limit (all `sk_*` keyed by `rl:${api_keys.id}` per `SK-MCP-009`; migration 0014 renames `user_id` → `bucket_key`), auth-failure observability (`nlqdb.mcp.http.request` span + `nlqdb.mcp.auth.failures.total{error_code,status}`). Remaining: slice 4 (`nlq mcp install` host-detect) — see [`mcp-server/FEATURE.md`](./features/mcp-server/FEATURE.md) + [`cli/FEATURE.md`](./features/cli/FEATURE.md).
 **Item 2 — CLI** bootstrap + key-management + raw-SQL slices shipped: data verbs (`ask`, `new`, bare-form, `db list/create`, `query`, `use`, `whoami`, `logout`, `mcp detect`, `update`), credential store (keychain + AES-GCM fallback per `SK-CLI-009`), state/config (`SK-CLI-010/013`), update check (`SK-CLI-015`), MCP detect (`SK-CLI-011`), `nlq keys list/revoke` (`SK-APIKEYS-010/011`) backed by `GET/DELETE /v1/keys[/:id]`, `nlq run [--db <id>] <sql>` + SDK `client.runSql()` + `POST /v1/run` (`SK-SDK-009`/`GLOBAL-015`, all three surfaces one PR per `GLOBAL-003`; same `/v1/ask` allow-list, DDL still rejected, pk_live writes rejected per `SK-APIKEYS-003`). Deferred verbs (`login`, `mcp install` key-write, `chat`, `keys rotate`) gated on `POST /v1/auth/device` + `POST /v1/keys/:id/rotate` — see [`cli/FEATURE.md`](./features/cli/FEATURE.md). **Dashboard `/app/keys` shipped** per [`SK-APIKEYS-012`](./features/api-keys/decisions/SK-APIKEYS-012-dashboard-ui.md) — copy-once mint + confirm-revoke; SDK `client.mintKey()` added.
 **Item 4 — `<nlq-action>` v0.1 shipped** in `packages/elements/src/action-element.ts` per [`SK-ELEM-010..013`](./features/elements/decisions/): preview→Apply via [`SK-TRUST-001`](./features/trust-ux/FEATURE.md)'s diff hop, FormData → goal-text suffix, cookie-session auth (cross-origin write-token deferred — see [`api-keys/FEATURE.md`](./features/api-keys/FEATURE.md)). Bundle < 6 KB gzipped (`SK-ELEM-007`).
 **Item 5 — framework wrappers — shipped:** `@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` + native Swift Package `Nlqdb` (`packages/nlqdb-swift`) all P1 · Shipped per [`progress.md §0`](./progress.md#0-surface-status-matrix--single-source-of-truth); React Native / Expo / Python / Go remain Phase 2 P1.
-**Item 9 — quality-eval — slices 1–3c shipped:** `tools/eval/` runs BIRD Mini-Dev + Spider 2.0-lite (all 135 `local###` rows) on the free, single-model-frontier and agentic-frontier lanes with baseline diff + McNemar regression detection (`SK-QUAL-006..009`); headline `free_vs_agentic_frontier_delta` flows to the LogSnag `#north-star` card per `GLOBAL-025`. Slice detail lives in `quality-eval/FEATURE.md`; current numbers in `docs/scorecard.md`.
+**Item 9 — quality-eval — slices 1–3c shipped:** `tools/eval/` runs BIRD Mini-Dev + Spider 2.0-lite (all 135 `local###` rows) on the free, single-model-frontier and agentic-frontier lanes with baseline diff + McNemar regression detection (`SK-QUAL-006..009`). Slice detail in `quality-eval/FEATURE.md`; last green run in `tools/eval/baseline-*.json`.
 
 ---
 
@@ -231,15 +224,11 @@ below the no-preview baseline.
 **Exit gate:** `GLOBAL-041` Phase B floors — first-insert inference
 ≥ 99 %, evolution-without-user-action ≥ 90 %, optimizer yield ≥ 1 applied
 proposal / active DB / month with median p95 improvement ≥ 20 % and no
-un-undone regression > 10 %; 50 paying customers across tiers (if monetization shipped);
-otherwise ≥200 weekly-active users. **North-star floors per
-[`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md):** BIRD-dev EM
-≥ 72% on free chain, ≥ 88% on agentic-frontier (free-vs-agentic
-delta ≤ 16 pp); Spider 2.0-lite EM ≥ 15% on free chain, ≥ 25% on
-frontier (SQLite subset only — Spider 2.0-lite ships no PG rows);
-TTFV p50 ≤ 30 s; first-10-queries success ≥ 95%; Sean-Ellis "very
-disappointed" ≥ 40% (PMF) — measured monthly per
-[`founder-playbook.md` §2](./founder-playbook.md).
+un-undone regression > 10 %; **TTFV p50 ≤ 60 s** (moved here from the
+Phase 2 gate); the remaining onboarding / UX / performance floors per the
+[`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md) KPI table; 50 paying
+customers across tiers, otherwise ≥ 200 weekly-active users. DBA pricing is
+decided after Phase B ships (`GLOBAL-041`).
 
 ---
 
@@ -303,10 +292,9 @@ capacity-driven).
 
 ## 8. Always-on (cross-phase)
 
-- Build-in-public cadence: 1 long-form blog/week, 3 threads/week. See
-  [`docs/research/email-and-marketing.md`](./research/email-and-marketing.md)
-  and [`docs/founder-playbook.md`](./founder-playbook.md) for the
-  channel + recruitment + interview cadence.
+- Build-in-public cadence, blog drip and channel work: **paused until
+  `GLOBAL-041` Phase A measures**; existing pages stay live. Recruitment +
+  interview cadence in [`docs/founder-playbook.md`](./founder-playbook.md).
 - Security hygiene: Trivy + CodeQL on every PR; secret rotation
   quarterly; Renovate (`renovate.json5`) for dependency updates.
 - Inference cost monitoring: weekly Grafana; if any free provider hits

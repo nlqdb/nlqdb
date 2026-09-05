@@ -5,19 +5,18 @@ Execution track for
 Build gated on Phase A widen-on-write (`GLOBAL-041`) per `SK-EKP-005`; EK
 adds no criterion to Phase A's exit gate. Until Phase A ships, `/ek` runs are null runs.
 Driven by its own recurring loop,
-[`/ek`](../../../../.claude/commands/ek.md) (founder-approved 2026-08-06),
-mirroring `/reach` — because `/daily`'s worst-number lever selection has no
-EK number to pick and would otherwise starve the track (measured: 3 daily
-runs post-lock, 0 EK slices).
+`/ek` — **deleted 2026-09-05**: EK is gated on `GLOBAL-041` Phase A
+(`SK-EKP-005`); no loop runs until Phase A measures. The track is kept here
+so slices resume from a known state.
 Sized and sequenced like the engine track: one slice per run where
 possible, concrete `Done when` boxes, prereqs stated.
 
-Governing decisions (bodies in [`../FEATURE.md`](../FEATURE.md) and
-[`SK-PIVOT-023`](../../agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md)
-— never restated here): `SK-EKP-001` (trust claim + sovereign-hosting
-roadmap) · `SK-EKP-002` (fee shape) · `SK-EKP-003` (hybrid repo split) ·
-`SK-EKP-004` (pilot = language tutor) · `SK-EKP-005` (gated on Phase A) ·
-`SK-PIVOT-023` (two-axis business model).
+Governing decisions (bodies in [`../FEATURE.md`](../FEATURE.md) — never
+restated here): `SK-EKP-001` (trust claim + sovereign-hosting roadmap) ·
+`SK-EKP-002` (fee shape) · `SK-EKP-003` (hybrid repo split) · `SK-EKP-004`
+(pilot = language tutor) · `SK-EKP-005` (gated on Phase A). Monetization
+outside the marketplace fee is `GLOBAL-041`'s (premium tier stays; DBA
+pricing after Phase B).
 
 ## The repo boundary (SK-EKP-003, applied to slices)
 

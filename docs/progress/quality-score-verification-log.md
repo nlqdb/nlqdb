@@ -1,12 +1,10 @@
 # Engine quality — verification log
 
 > Append-only, dated, evidence-referenced log of every shipped engine-quality
-> lever. Split out of
-> [`quality-score-source-of-truth.md`](./quality-score-source-of-truth.md)
-> (`CLAUDE.md` §D4) so the progress-bar tracker stays under the 20 KB cap;
-> this log itself is D4-exempt (append-only carve-out, founder-approved 2026-07-16).
-> The tracker's §3 table is the current-state view; this file is the history.
-> On any conflict the tracker and the canonical `SK-*`/`GLOBAL-*` homes win.
+> lever; D4-exempt (append-only carve-out). The progress-bar tracker it was
+> split from was retired 2026-09-05 — BIRD/Spider is a CI regression alarm,
+> not a KPI ([`GLOBAL-041`](../decisions/GLOBAL-041-autonomous-dba.md),
+> `SK-QUAL-002`). On any conflict the canonical `SK-*`/`GLOBAL-*` homes win.
 
 | Date | Event | Evidence |
 |---|---|---|

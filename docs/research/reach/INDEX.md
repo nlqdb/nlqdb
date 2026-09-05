@@ -1,9 +1,8 @@
 # Reach track — search-moment interception + coding-agent injection
 
-Marketing lane (`GLOBAL-041`); decision record
-[SK-PIVOT-015](../../features/agent-memory-pivot/decisions/SK-PIVOT-015-reach-track.md). Driven by its
-own recurring loop, [`/reach`](../../../.claude/commands/reach.md),
-fired every few hours offset from `/daily`.
+Marketing lane — **paused until `GLOBAL-041` Phase A measures**: the
+`/reach` loop is deleted, existing pages stay live. Decision record
+[SK-PIVOT-015](../../features/agent-memory-pivot/decisions/SK-PIVOT-015-reach-track.md).
 
 ## The thesis (why this track exists)
 

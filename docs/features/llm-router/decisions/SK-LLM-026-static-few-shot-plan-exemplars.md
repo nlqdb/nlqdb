@@ -57,7 +57,7 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
   add ≈250–350 input tokens to every `plan` call. The free-tier binding
   limit is per-minute token quota, so under burst load this can
   marginally raise the chain-exhaustion `no_sql` rate the
-  [engine-quality source of truth](../../../progress/quality-score-source-of-truth.md)
+  [engine-quality verification log](../../../progress/quality-score-verification-log.md)
   §2 tracks. The set is kept to the literature-optimal **floor of 3** to
   bound that cost; the combined effect (EX lift vs token-budget pressure)
   is measured on the next eval run after this lands — it is not

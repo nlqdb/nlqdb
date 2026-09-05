@@ -46,7 +46,7 @@ AI Gateway included, is done and off this queue); #2 costs money and waits per
 `docs/cost-ladder.md` unless a Team org already exists. No founder action remains on the Phase A path itself — it is agent work
 (rule 4 / GLOBAL-033: never park an agent-performable action on the founder).
 (Resolved 2026-08-05, same sitting — Era 6: the "Become AI" five locks →
-`SK-EKP-001..005`/`SK-PIVOT-023`, the goal-pack build order locked
+`SK-EKP-001..005` and the two-axis business model (since archived under `GLOBAL-041`), the goal-pack build order locked
 (niche-quality lens → `pack-candidates.md` header), the Anthropic
 plugin-directory submission (pending review), and Cline issue #2197
 (pending review). **Dropped, not resolved:** the skillsclaude.org paste —

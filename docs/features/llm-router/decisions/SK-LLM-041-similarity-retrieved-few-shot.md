@@ -104,7 +104,7 @@ identifiers identically.
   prefix intact).
 - **Core value:** Engine quality, Free
 - **Why:** The engine-quality source of truth ranks
-  [§4 #1 similarity-retrieved few-shot](../../../progress/quality-score-source-of-truth.md)
+  similarity-retrieved few-shot (backlog item of the retired engine-quality tracker; history in [`quality-score-verification-log.md`](../../../progress/quality-score-verification-log.md))
   as the top reasoning lever alongside §4 #3 self-consistency, after the
   prompt-directive levers (T13–T16/T22) **saturated** on BIRD (06-19 re-run
   flat, McNemar p=0.50) and the `SK-QUAL-014` literal axis **falsified**

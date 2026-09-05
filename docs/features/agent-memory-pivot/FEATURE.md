@@ -100,10 +100,6 @@ slices. `/reach` continues as the marketing lane on
 
 **Body:** [`decisions/SK-PIVOT-019-memory-strategy-benchmark.md`](./decisions/SK-PIVOT-019-memory-strategy-benchmark.md). Same corpus (`SK-PIVOT-017`), same golden queries per `SK-QUAL-023` axis, run against memory strategies (v1: nlqdb, DIY pgvector, plain-context; hosted competitors one per run, ToS-checked) with per-purpose winners published even where nlqdb loses. Public harness in `tools/`; rendered on `/agents`. Build starts when the corpus exists; explicitly not an integrations program.
 
-### SK-PIVOT-023 — Business model, second cut: two axes — hosted memory operations + the expert-knowledge marketplace fee
-
-**Body:** [`decisions/SK-PIVOT-023-two-axis-business-model.md`](./decisions/SK-PIVOT-023-two-axis-business-model.md). Founder-decided 2026-08-05: axis 1 = hosted memory ops on the GLOBAL-026 premium chain (the body carries axis-1's full free/paid definition and its rejected alternatives); axis 2 = the expert-knowledge marketplace's small, Stripe-style, plainly-disclosed fee ([`SK-EKP-002`](../expert-knowledge-platform/FEATURE.md)), living only in the marketplace surface. Free unchanged; pricing numbers founder-only. (First cut retired 2026-08-05; body in git history.)
-
 ### SK-PIVOT-021 — Every goal pack ships as a one-click product journey on one shared runner
 
 **Body:** [`decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md`](./decisions/SK-PIVOT-021-one-click-goal-pack-journeys.md). A skill artifact is not a finished pack: one shared runner owns the CTA, pre-auth evidence, least-permission source access, resumable handoffs, honest progress, durable proof and cleanup, while pack-specific work stays declarative per `SK-PIVOT-018`. Pack #1's public-alpha journey is the archived `D-08` worksheet.
@@ -122,7 +118,7 @@ index in [`docs/decisions.md`](../../decisions.md)).
 - **GLOBAL-019** — Free + Open Source core.
   - *In this feature:* the anti-VC angle leans on it; its stale "Apache-2.0 today" wording (and `architecture.md §0`) is corrected to FSL-1.1→Apache in this PR. The FSL-accurate self-host *marketing copy* is WS-10.
 - **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid.
-  - *In this feature:* the wedge's memory-ops paid line rides this chain and nothing else (`SK-PIVOT-023` axis 1); memory never gets its own meter or SKU. The marketplace fee (axis 2) lives in the expert-knowledge-platform feature, not here.
+  - *In this feature:* memory never gets its own meter or SKU; monetization is `GLOBAL-041`'s (the shipped premium tier stays; DBA pricing after Phase B). The marketplace fee is `SK-EKP-002`.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
   - *In this feature:* every new wedge CTA emits the typed event.
 - **GLOBAL-025** — North-star KPIs (advance ≥ 1, degrade 0).

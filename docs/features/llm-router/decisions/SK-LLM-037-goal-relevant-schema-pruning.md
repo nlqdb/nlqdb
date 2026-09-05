@@ -2,7 +2,7 @@
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). The conservative
 slice of the schema-linking lever the engine-quality tracker ranked top of
-its backlog (`quality-score-source-of-truth.md` §4 #2); value retrieval
+its backlog (the retired engine-quality tracker (history: `quality-score-verification-log.md`)); value retrieval
 (sample cell-values) stays a separate future lever.
 
 - **Decision:** `buildPlanUser` (`packages/llm/src/prompts.ts`) prunes the
@@ -25,7 +25,7 @@ its backlog (`quality-score-source-of-truth.md` §4 #2); value retrieval
   accuracy lever for small models (C3-SQL [arXiv:2307.07306](https://arxiv.org/abs/2307.07306),
   RSL-SQL [arXiv:2411.00073](https://arxiv.org/abs/2411.00073)). (2)
   *Capacity*: the free chain's verified binding constraint is per-minute TPM
-  (`quality-score-source-of-truth.md` §5), and the schema is the dominant
+  (the retired engine-quality tracker (history: `quality-score-verification-log.md`)), and the schema is the dominant
   variable prompt term. The risk is the known one — pruning out a needed
   table hurts far more than keeping extras ([arXiv:2408.07702](https://arxiv.org/abs/2408.07702)
   measures the asymmetry) — so every guard errs toward the full schema, and

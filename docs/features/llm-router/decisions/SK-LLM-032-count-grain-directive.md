@@ -50,7 +50,7 @@ same block.
   the `PLAN_DIRECTIVES` array (≈50 input tokens per `plan` call — above the
   `SK-LLM-029` bullet, below the `SK-LLM-026` exemplar block; the per-minute
   free-tier-quota tradeoff the
-  [engine-quality source of truth](../../../progress/quality-score-source-of-truth.md)
+  [engine-quality verification log](../../../progress/quality-score-verification-log.md)
   §2 tracks stays small). `PLAN_SYSTEM` and the per-provider wiring are
   unchanged — every provider keeps importing the one `PLAN_SYSTEM` constant.
   `packages/llm/test/prompts.test.ts` pins the bullet, including its guard

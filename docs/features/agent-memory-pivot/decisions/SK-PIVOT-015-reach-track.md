@@ -6,10 +6,9 @@
   (Claude Code / Cursor / Codex)**, looks for agent memory, the first
   actionable answer is nlqdb and acting on it is one free command (the
   per-host strings in `apps/web/src/lib/mcp-install.ts`). The track is
-  driven by a dedicated recurring command
-  ([`.claude/commands/reach.md`](../../../../.claude/commands/reach.md))
-  fired every few hours by a Routine on hours offset from `/daily`'s, and
-  its yield numbers live in the reach worksheet's `NUMBERS.md` (never
+  driven by a dedicated recurring `/reach` command (**deleted 2026-09-05 —
+  acquisition is paused until `GLOBAL-041` Phase A measures**); its yield
+  numbers live in the reach worksheet's `NUMBERS.md` (never
   `docs/scorecard.md`, which stays `/daily`-owned).
 - **Core value:** Goal-first, Creative, Honest
 - **Why:** The buying decision happens at stage 0/1 ("my agent forgets
@@ -26,10 +25,9 @@
   measurement (the R-06 coding-agent walker) makes the campaign sustained
   and falsifiable.
 - **Consequence in code:** `worksheets/reach/INDEX.md` (slices + hard
-  rules) + its `NUMBERS.md` (the overwritten yield ledger),
-  `.claude/commands/reach.md` (the runnable
-  loop), a Routine firing "run /reach prompt" 4×/day offset from
-  `/daily`'s hours. Slices land on existing machinery only: `solve.ts`,
+  rules) + its `NUMBERS.md` (the overwritten yield ledger); the runnable
+  loop and its Routine are gone while the lane is paused. Slices land on
+  existing machinery only: `solve.ts`,
   `/blog`, `llms.txt`, docs site, `tools/stranger-test` conventions,
   `mcp-install.ts` as the single source of command strings.
 - **Alternatives rejected:** **Fold into `/daily`'s lever list** — starved

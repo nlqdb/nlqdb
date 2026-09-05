@@ -42,7 +42,7 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
   - **Make temperature a per-provider env knob** — premature config
     surface (`CLAUDE.md` §P5); no caller wants a non-zero plan
     temperature today. Revisit only if self-consistency-N
-    ([`quality-score-source-of-truth.md` §4 #3](../../../progress/quality-score-source-of-truth.md))
+    (the retired engine-quality tracker; history in [`quality-score-verification-log.md`](../../../progress/quality-score-verification-log.md))
     lands, which deliberately samples at temperature > 0 on a *separate*
     code path — it would not reuse the planner default. **(Landed
     2026-06-21, [`SK-QUAL-017`](../../quality-eval/decisions/SK-QUAL-017-self-consistency-majority-vote.md):

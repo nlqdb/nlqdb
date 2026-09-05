@@ -22,7 +22,7 @@ backup, 4th in the planner chain) without touching any other provider.
   the leg failed with `workers-ai:parse` on effectively every chain-exhaustion
   row, so the chain ran as 5-of-6 even when Workers AI answered correctly. The
   free chain's binding constraint is per-minute capacity (verified §5 risk,
-  `quality-score-source-of-truth.md`), and Workers AI is an **independent
+  the retired engine-quality tracker (history: `quality-score-verification-log.md`)), and Workers AI is an **independent
   10K-neurons/day pool** — reviving it is a pure capacity win targeting the
   chain-exhaustion `no_sql` bucket.
 - **Consequence in code:** `WorkersAIResponse.result.response` widens to
