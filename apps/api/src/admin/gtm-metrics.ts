@@ -87,6 +87,23 @@ export type GtmMetrics = {
      */
     adoptionRateReal: number | null;
   };
+  /**
+   * SK-SCHEMA-010 — the GLOBAL-041 engine KPIs, live from D1 counters.
+   * KPI 1 (first-insert inference rate) is the only one instrumented so
+   * far; KPIs 2-3 (evolution-without-user-action, optimizer yield) get
+   * their own fields when Phase B lands their instruments.
+   */
+  engine: {
+    /** Extend-needed writes the engine absorbed inline (KPI-1 numerator).
+        0 until Phase A `kind=extend` routing lands. */
+    extendOk: number;
+    /** Extend-needed writes rejected on the schema-mismatch path
+        (denominator less numerator) — the widen-on-write demand. */
+    extendFailed: number;
+    /** KPI 1 = extendOk / (extendOk + extendFailed); null at N = 0.
+        The Phase-A-exit floor is ≥ 0.95. */
+    firstInsertInferenceRate: number | null;
+  };
   /** Unique-people counts (SK-GTM-005) — the founder's headline ask. */
   uniques: {
     /** Unique real-stranger accounts (founder/test excluded; email is UNIQUE). */
@@ -287,7 +304,9 @@ export async function computeGtmMetrics(
         SUM(CASE WHEN created_at >= ?1 THEN 1 ELSE 0 END) AS created7d,
         SUM(CASE WHEN last_queried_at >= ?1 THEN 1 ELSE 0 END) AS active7d,
         SUM(CASE WHEN last_queried_at >= ?2 THEN 1 ELSE 0 END) AS active30d,
-        SUM(CASE WHEN source_json IS NOT NULL THEN 1 ELSE 0 END) AS withSource
+        SUM(CASE WHEN source_json IS NOT NULL THEN 1 ELSE 0 END) AS withSource,
+        SUM(asks_extend_ok) AS extendOk,
+        SUM(asks_extend_failed) AS extendFailed
       FROM databases`)
       .bind(cut7d, cut30d),
     db
@@ -493,6 +512,14 @@ export async function computeGtmMetrics(
       adoptionRateReal: ratio(
         num(ad, "realAdoptions"),
         num(dc, "anon") - num(dc, "anonSynthetic") + num(ad, "realAdoptions"),
+      ),
+    },
+    engine: {
+      extendOk: num(dc, "extendOk"),
+      extendFailed: num(dc, "extendFailed"),
+      firstInsertInferenceRate: ratio(
+        num(dc, "extendOk"),
+        num(dc, "extendOk") + num(dc, "extendFailed"),
       ),
     },
     uniques: {

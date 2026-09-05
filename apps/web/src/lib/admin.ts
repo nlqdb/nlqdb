@@ -24,6 +24,12 @@ export type GtmMetrics = {
     adoptionsReal: number;
     adoptionRateReal: number | null;
   };
+  // SK-SCHEMA-010 — GLOBAL-041 engine KPIs (KPI 1 instrumented so far).
+  engine: {
+    extendOk: number;
+    extendFailed: number;
+    firstInsertInferenceRate: number | null;
+  };
   uniques: {
     realUsers: number;
     anonDevices: number;

@@ -12,21 +12,18 @@ Phase A exit). Build order: [`pivot-autonomous-dba.md` §4](pivot-autonomous-dba
 The prior focus (agent-memory dogfood gate) is retired with the archived
 prior bet; funnel / ops / E2E rows below stand.
 
-**Worst number today (run 195, 2026-09-04) — WEEKLY-FOCUS INSTRUMENT: dogfood gate criterion 1 was UNMEASURABLE, not merely unmet — shipped the `SK-GTM-011` per-surface ask counter that makes it a live dashboard read.**
-The `/weekly` (08-29) focus was **dogfood gate `SK-PIVOT-016` 2/5 → ≥ 3/5** — retired 09-04 by `GLOBAL-041` (see weekly focus above). Step 0: **open PRs = 0** — clean slate; my branch even with `main`.
-**Why this lever:** the fast measurable levers are exhausted — CTR/snippet lane dead (fresh 09-04 GSC; strengthen-next leader `/solve/` index pos 34.8 = page 4, authority-gated), attribution/UTM already covered, engine BIRD/Spider + criterion 4 dark. Investigating the weekly-focus gate surfaced criterion 1's real blocker: **not grind but a measurement gap** (`SK-GTM-008`) — `first10_asks` saturates at 10, so "≥ 100 asks through the public MCP surface" was un-countable.
-**Lever (this run):** shipped the documented smallest shape — `databases.asks_total` + `asks_mcp` (migration 0034), bumped in the `/v1/ask` completion UPDATE alongside `first10_*`, non-saturating; the launch gate reads `SUM(asks_mcp)` and criterion 1 is now a real live count that can go green (`SK-GTM-011`). **Numbers moved:** row #17 docs-ambiguity **~12 → ~11**; criterion-1 measurability **impossible → live**. Details in "Last change".
-**P2 UX-flow green** (FLOW-005 6/6, carried run 184). BIRD/Spider dark; memory-quality proxy MET at 79.49 % (off-lever).
-**Top `blocked-by-human` bullet:** Show HN launch sequence (⏱ ~30 min, **idle 82 days since 06-13**),
-condition-gated on `GLOBAL-041` Phase A (the `SK-PIVOT-016` gate it sat on is retired). #2 Anthropic
-connector directory (money-gated, 07-21). Queue **depth 2+**, head age 82 d.
-**Dark (rule 8, reported not pulled):** dogfood criterion 3 (silent-wrong-answer, E-09/GLOBAL-037); criterion 4 (query-shape
-lever within ±5 pp noise); engine **#8 BIRD 0.5382** (39 d) / **#9 Spider 0.2222** (**46 d** stale, async multi-window resume); rows **#2/#4/#5/#16**
-stranger-dependent (N = 0 until launch); row **#15** opencheck lane (free-lane saturation, remedy costs money ⇒ rule 4).
+**Worst number today (run 196, 2026-09-05) — WEEKLY-FOCUS INSTRUMENT SHIPPED: KPI 1 (first-insert inference rate) read `unmeasured — build the instrument` (the `/daily` step-1 lever candidate #1); this run built it.**
+The weekly focus (2026-09-04, `GLOBAL-041` Phase A) is **KPI 1** — its instrument did not exist, so no run could show widen-on-write moving it. Step 0: **open PRs = 0** — clean slate; branch even with `main@0ded779`.
+**Why this lever:** engine KPIs are lever priority #1 (founder-set 2026-09-04) and step 1 names a *missing KPI instrument* as candidate #1. BIRD/Spider dark (async multi-window, `main` moved); UX-flow rows #21/#15 green; fast distribution levers exhausted (CTR lane dead, fresh 09-04 GSC). Building KPI 1's instrument is the one lever that turns the weekly focus from blind to live.
+**Lever (this run):** shipped the `SK-SCHEMA-010` two-counter instrument (`asks_extend_ok`/`asks_extend_failed`, migration 0035, `SK-GTM-011` shape). The orchestrator flags an extend-needed **write** (a write plan referencing an unobserved table — Defense A pre-flight or Defense B exec `42P01`/`3F000`) via `OrchestrateOutcome.extendNeeded`; `bumpAskCounters` folds the two deltas into the existing ask-completion UPDATE; `computeGtmMetrics` surfaces `engine.firstInsertInferenceRate` and the admin dashboard renders it. **Number moved:** KPI 1 (rows E1) **unmeasured → live** (rate null at N=0; numerator 0 until Phase A `kind=extend`, denominator now counts widen-on-write demand). Details in "Last change".
+**P2 UX-flow green** (FLOW-005 6/6, carried run 184). BIRD/Spider dark.
+**Top `blocked-by-human` bullet:** Show HN launch sequence (⏱ ~30 min, **idle 84 days since 06-13**),
+condition-gated on `GLOBAL-041` Phase A. #2 Anthropic connector directory (money-gated, 07-21). Queue **depth 2+**, head age 84 d.
+**Dark (rule 8, reported not pulled):** dogfood criterion 3 (silent-wrong-answer, E-09/GLOBAL-037); criterion 4 (query-shape lever within ±5 pp noise); engine **#8 BIRD 0.5382** (41 d) / **#9 Spider 0.2222** (**48 d** stale, async multi-window resume); rows **#2/#4/#5/#16** stranger-dependent (N = 0 until launch); row **#15** opencheck lane (free-lane saturation, remedy costs money ⇒ rule 4).
 
-**Rule 6 — GREEN.** Branch based on `main@64f521b` (latest; #1089/#1091/#1092 merged since run 194 — #1092 an empty squash, a benign duplicate of #1086's Ahrefs work). Health
-re-measured live: **`typecheck` 0** (workspace, post-`bun install`), **`bun run check` exit 0** (biome; 53 pre-existing warnings, 0 errors), **`bun run test` exit 0**.
-`deploy-web` + `deploy-api` latest `main` runs both **success**. Diff: migration 0034 + the `bumpAskCounters` write + `gtm-metrics.ts`/`launch-gate.ts` read + `SK-GTM-011` docs + tests, scorecard, and the dev.to queue-line drain. **Open PRs: 0** at step 0.
+**Rule 6 — GREEN.** Branch based on `main@0ded779` (latest; #1097/#1098 GLOBAL-041 pivot merged). Health
+re-measured live: **`typecheck` 0** (workspace, post-`bun install`), **`bun run check` exit 0** (biome; 53 pre-existing warnings, 0 errors), **`bun run test` exit 0** (baseline, pre-change).
+Diff: migration 0035 + `extendNeeded` on the two write schema-mismatch returns + the `bumpAskCounters` fold + `gtm-metrics.ts` `engine` block + admin dashboard tile + `SK-SCHEMA-010` docs + tests, scorecard, and the dev.to queue-line drain. **Open PRs: 0** at step 0.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -39,7 +36,11 @@ re-measured live: **`typecheck` 0** (workspace, post-`bun install`), **`bun run 
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **112** content pages (`/solve` **41** + `/vs` 31 + `/blog` 40; unchanged this run — CTR lever, not a new page). Unpublished blog drafts **0** (queue drained) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
 | 7 | Surface yield | posts **40** (dev.to drip throttled this run — 1/day guard, 10 variants remain). **GSC live 09-04** (28d 08-04→08-31): top pages **~1443 impr / 160 rows**, ~4 clicks visible (hall-of-fame 3, terms 1). **CTR lane exhausted (fresh-confirmed):** page-1 zero-click pages carry hand-written SERP meta — `count-rows-per-day…` (pos 7.1 / 56 impr, metaed run 183) + `count-consecutive-days` (pos 11.1 / 52 impr) — snippet no longer the lever; position/authority-gated. "Strengthen next" leader `/solve/` index is pos 34.8 / 92 impr = page 4 (content/authority-gated, not snippet). Referral (live 09-04): google 10. Wedge pages 6/6 indexed | `gsc-pull.ts` + `rum-pull.ts`. Page-1 zero-click CTR pool metaed-out; page-2+ authority/launch-gated |
-| | **Engine** — BIRD 07-26 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
+| | **Engine — `GLOBAL-041` KPIs first** (headline) then the interface KPI | | `pivot-autonomous-dba.md` §4 build order |
+| E1 | **KPI 1 — first-insert inference rate** | **live instrument (run 196, `SK-SCHEMA-010`)** — `engine.firstInsertInferenceRate` = SUM(`asks_extend_ok`)/SUM(`asks_extend_ok`+`asks_extend_failed`); **null at N=0** today (no extend-needed write recorded yet). Numerator 0 until Phase A `kind=extend` lands; denominator = writes to an unobserved table (widen-on-write demand). Was `unmeasured — build the instrument` | Phase A exit floor **≥ 0.95**; live on `/app/admin` |
+| E2 | KPI 2 — evolution-without-user-action rate | **unmeasured — build the instrument** (Phase B) | detected shape changes absorbed vs error / fresh DB |
+| E3 | KPI 3 — optimizer yield | **unmeasured — build the instrument** (Phase B) | proposals applied / active DB / 30 d + p95 delta |
+| | **Engine — interface KPI** — BIRD 07-26 · Spider 07-19 · persona-bench 07-09 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **33 d old, staleness trigger fired**, but **dark (rule 8)**: resume is async multi-window and `main` moved since the 07-27 checkpoint. #1041 (planner re-head) now merged ⇒ a fresh BIRD/Spider re-measure is a valid next-run engine lever | target 0.65 / **Phase 2 floor 0.60** — gap 6.2 pp. Offline levers exhausted |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on `04fa3d0`, **40 d old**). 07-27 re-dispatch exited **partial** (`SK-QUAL-013` budget-stop) | target 0.75. Worst engine number. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is source of truth |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004)) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
@@ -67,33 +68,33 @@ re-measured live: **`typecheck` 0** (workspace, post-`bun install`), **`bun run 
 **41 canonical `/solve` pages** + **40 `/blog` posts** + **31 `/vs` pages** live under `nlqdb.com/`
 (`SK-SOLVE-001` / `SK-BLOG-001` / `SK-CMP-001`). The registries are `apps/web/src/data/{solve,blog,competitors}.ts`.
 
-- **This run (195):** drained one dev.to variant — `five-fallback-models-one-provider` →
+- **This run (196):** drained one dev.to variant — `most-active-user-is-your-test-suite` →
+  [dev.to](https://dev.to/omer_hochman/your-most-active-user-is-your-test-suite-4bbb)
+  (**8 variants remain**). No new `/blog` page (blog-draft queue empty). Weekly-focus engine lever (`SK-SCHEMA-010` KPI-1 instrument).
+- **Run 195:** drained one dev.to variant — `five-fallback-models-one-provider` →
   [dev.to](https://dev.to/omer_hochman/your-five-fallback-models-are-one-point-of-failure-24jb)
-  (**9 variants remain**). No new `/blog` page (blog-draft queue empty). Weekly-focus instrument lever (`SK-GTM-011` per-surface ask counter).
+  (9 remained). Weekly-focus instrument lever (`SK-GTM-011` per-surface ask counter).
 - **Run 194:** drained `decided-questions-rot-in-your-decision-log` →
   [dev.to](https://dev.to/omer_hochman/an-open-question-thats-already-decided-is-worse-than-one-thats-still-open-3619)
   (10 remained). Lane-2 UX-flow instrument lever (row #21 walker launch fix).
 - **Run 193:** drained `emit-metrics-where-the-distinction-is-certain` →
   [dev.to](https://dev.to/omer_hochman/your-metric-is-only-as-honest-as-the-layer-you-emit-it-from-54ma)
   (11 remained). Lane-2 UX-flow (E2E freshness) lever run.
-- **Run 192:** drained `rotate-encryption-key-without-a-version-column` →
-  [dev.to](https://dev.to/omer_hochman/you-need-to-rotate-an-encryption-key-you-dont-need-a-key-version-column-1h50)
-  (12 remained). Weekly-focus measurement-reconciliation run.
 
 ## Last change
 
-**2026-09-04 (run 195)** — **WEEKLY-FOCUS INSTRUMENT: dogfood gate criterion 1 was unmeasurable, not merely unmet — shipped the `SK-GTM-011` per-surface ask counter that makes it a live dashboard read.**
-Step 0: open PRs = 0, branch even with `main@64f521b`. **Lever choice:** the fast measurable levers are exhausted — CTR/snippet dead (fresh 09-04 GSC: page-1 zero-click pages already metaed, strengthen-next
-leader `/solve/` index pos 34.8 = page 4, authority-gated), attribution/UTM already covered (github/npm/devto integrity tests), engine BIRD/Spider + criterion 4 dark. Investigating the weekly-focus gate itself
-surfaced criterion 1's real blocker: an **instrument gap** (`SK-GTM-008` open question) — `first10_asks` saturates at 10 and carries no per-ask surface, so "≥ 100 asks through the public MCP surface" was
-un-countable (dashboard rendered a saturated lower bound). **Change (the documented smallest honest shape):** migration 0034 adds non-saturating `databases.asks_total` + `asks_mcp`; the `/v1/ask` completion
-bump (`bumpAskCounters`, renamed from `bumpFirst10`) now advances both in the same UPDATE as `first10_*` — first-10 stays capped via `CASE` (semantics unchanged), `asks_mcp` counts the `sk_mcp_`-principal
-subset (`surfaceFromPrincipal === "mcp"`), both off the response path + stranger-walker-excluded. The launch gate reads `SUM(asks_mcp)` over the `agent_memory_v1` DBs; `launch-gate.ts` criterion 1 now renders a
-real live count (`memoryAsksMcp / 100`) that can go green, not a first-10 lower bound. Docs: resolved the `SK-GTM-008` open-question bullet, added `SK-GTM-011` (decision + FEATURE list + Status), updated the
-dogfood `INDEX.md` criterion-1 row. **Verified:** `first10.test.ts` proves totals count past 10 while first-10 saturates + `asks_mcp` only on the MCP surface; `admin-metrics.test.ts` proves `SUM(asks_mcp)`=70 /
-`asks_total`=90 over memory DBs (non-memory 99s excluded); `launch-gate.test.ts` proves criterion 1 renders `37/100` in-progress and `100/100` green. **Numbers moved:** row #17 docs-ambiguity **≈12 → ≈11**;
-criterion-1 measurability **impossible → live** (a named direct input to the weekly-focus gate). **KPI (GLOBAL-025 — onboarding/UX pillar, via the GLOBAL-038 GTM instrument):** the dogfood gate the weekly
-focus tracks is now measurable where it was blind. No KPI degrades — `typecheck` 0, `check` 0 (53 pre-existing warnings), full `test` green (api 1459 passed); the counter is telemetry, never load-bearing.
+**2026-09-05 (run 196)** — **WEEKLY-FOCUS INSTRUMENT SHIPPED: `GLOBAL-041` KPI 1 (first-insert inference rate) read `unmeasured — build the instrument`; this run built it (`SK-SCHEMA-010`).**
+Step 0: open PRs = 0, branch even with `main@0ded779`. **Lever choice:** engine KPIs are lever priority #1 (founder-set 2026-09-04) and step 1 names a *missing KPI instrument* as candidate #1 — KPI 1 is the
+weekly focus and had no instrument, so no run could show widen-on-write moving it. BIRD/Spider dark (async multi-window resume, `main` moved); UX-flow rows #21/#15 green; fast distribution levers exhausted
+(CTR lane dead, fresh 09-04 GSC). **Change (the `SK-GTM-011` counter shape, reused for the engine):** migration 0035 adds non-saturating `databases.asks_extend_ok` + `asks_extend_failed`. The orchestrator flags
+an ask as extend-needed (`OrchestrateOutcome.extendNeeded`) when a **write** plan references an **unobserved table** — caught pre-flight (`checkSchemaTables`, Defense A) or at exec (`42P01`/`3F000`, Defense B);
+set only for the write case so read schema-mismatch envelopes stay byte-identical. `index.ts` `bumpAskCounters` folds the two deltas (extend_ok on an absorbed write, extend_failed on a rejected one) into the
+same fire-and-forget ask-completion UPDATE, stranger-walker-excluded. `computeGtmMetrics` sums both into an `engine` block and computes `firstInsertInferenceRate = extendOk/(extendOk+extendFailed)` (null at N=0);
+`/app/admin` renders a KPI-1 tile. The numerator stays 0 until Phase A's `kind=extend` routing lands (`pivot-autonomous-dba.md` §4 steps 1-6) — the rate then climbs off its honest floor with no further
+instrument change. **Verified:** `first10.test.ts` proves the extend counters split by outcome and never saturate; `orchestrate.test.ts` proves a write-to-unseen-table sets `extendNeeded` while a read stays
+byte-identical; `admin-metrics.test.ts` proves `SUM` + rate (6/(6+4)=0.6) and the empty-state null. **Number moved:** KPI 1 (row E1) **unmeasured → live** — a named direct input to the weekly-focus number.
+**KPI (GLOBAL-025 — engine-quality pillar = the three `GLOBAL-041` KPIs):** the headline engine KPI the weekly focus tracks is now measurable where it was blind. No KPI degrades — `typecheck` 0, `check` 0
+(53 pre-existing warnings), full `test` green (api 145 in the touched files; web 588); the counters are telemetry, never load-bearing.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

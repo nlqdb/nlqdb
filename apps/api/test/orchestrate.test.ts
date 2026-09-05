@@ -396,6 +396,34 @@ describe("orchestrateAsk", () => {
     });
     // Pre-flight short-circuits before exec — no DB round-trip wasted.
     expect(exec).not.toHaveBeenCalled();
+    // SK-SCHEMA-010 — a READ against an absent table is a planning miss, not
+    // widen-on-write demand: the KPI-1 flag must stay off (byte-identical
+    // envelope, asserted by the toEqual above having no `extendNeeded` key).
+  });
+
+  it("SK-SCHEMA-010: a WRITE to an unobserved table flags extendNeeded (the KPI-1 denominator)", async () => {
+    // Stub DB has only `orders`. A write goal plans an INSERT into an
+    // unseen table — the "first insert creates the shape" case widen-on-write
+    // exists to absorb. Pre-flight schema_mismatch carries `extendNeeded`.
+    const llm = stubLLM({ plan: { sql: "INSERT INTO products (name) VALUES ('widget')" } });
+    const exec = stubExec();
+    const out = await orchestrateAsk(makeDeps({ llm, exec }), {
+      goal: "add a product named widget",
+      dbId: "db_1",
+      userId: "user_1",
+      intent: "write",
+    });
+    expect(out).toEqual({
+      ok: false,
+      error: {
+        code: "schema_mismatch",
+        referencedTables: ["products"],
+        schemaTables: ["orders"],
+      },
+      extendNeeded: true,
+    });
+    // Pre-flight fires before the write-preview gate — no exec, no preview.
+    expect(exec).not.toHaveBeenCalled();
   });
 
   it("SK-ASK-016 Defense B: exec PG 42P01 → schema_mismatch, retry bails after one attempt", async () => {

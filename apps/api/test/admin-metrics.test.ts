@@ -55,6 +55,9 @@ async function seedDb(
         one field. */
     asksMcp?: number;
     asksTotal?: number;
+    /** SK-SCHEMA-010 — KPI-1 extend counters; default 0 (no extend demand). */
+    extendOk?: number;
+    extendFailed?: number;
     lastQueriedAt?: number | null;
     synthetic?: boolean;
     sourceJson?: string | null;
@@ -66,7 +69,7 @@ async function seedDb(
   } = {},
 ) {
   await env.DB.prepare(
-    "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, first10_asks, first10_ok, asks_mcp, asks_total, last_queried_at, synthetic, source_json, source_surface, created_at) VALUES (?, ?, 'postgres', 'ref', ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, unixepoch()))",
+    "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, first10_asks, first10_ok, asks_mcp, asks_total, asks_extend_ok, asks_extend_failed, last_queried_at, synthetic, source_json, source_surface, created_at) VALUES (?, ?, 'postgres', 'ref', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, unixepoch()))",
   )
     .bind(
       id,
@@ -75,6 +78,8 @@ async function seedDb(
       opts.ok ?? 0,
       opts.asksMcp ?? 0,
       opts.asksTotal ?? opts.asks ?? 0,
+      opts.extendOk ?? 0,
+      opts.extendFailed ?? 0,
       opts.lastQueriedAt ?? null,
       opts.synthetic ? 1 : 0,
       opts.sourceJson ?? null,
@@ -285,6 +290,7 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
     expect(m.funnel.adoptionRate).toBeNull();
     expect(m.funnel.adoptionRateReal).toBeNull();
     expect(m.activation.first10SuccessRate).toBeNull();
+    expect(m.engine).toEqual({ extendOk: 0, extendFailed: 0, firstInsertInferenceRate: null });
     expect(m.retention.strangersRetained7d).toBe(0);
     expect(m.uniques).toEqual({
       realUsers: 0,
@@ -309,6 +315,22 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
       memoryFirst10SuccessRate: null,
       memoryLastQueriedAt: null,
     });
+  });
+
+  it("SK-SCHEMA-010: sums the KPI-1 extend counters and computes the first-insert inference rate", async () => {
+    await seedUser("u_e1", "eng@builders.io", "2026-08-01T00:00:00.000Z");
+    // Two DBs' worth of extend-needed writes: 6 absorbed inline, 4 rejected.
+    // Rate = 6 / (6 + 4) = 0.6 — the platform-wide first-insert inference
+    // rate, summed across DBs, non-saturating.
+    await seedDb("db_e1", "u_e1", { extendOk: 4, extendFailed: 3 });
+    await seedDb("db_e2", "u_e1", { extendOk: 2, extendFailed: 1 });
+    // A DB with no extend demand contributes nothing to either side.
+    await seedDb("db_e3", "u_e1", { asks: 5, ok: 5 });
+
+    const m = await computeGtmMetrics(env.DB);
+    expect(m.engine.extendOk).toBe(6);
+    expect(m.engine.extendFailed).toBe(4);
+    expect(m.engine.firstInsertInferenceRate).toBeCloseTo(0.6);
   });
 });
 
@@ -457,6 +479,7 @@ describe("/v1/admin/metrics — SK-GTM-002 auth gate", () => {
         "acquisition",
         "activation",
         "customers",
+        "engine",
         "funnel",
         "generatedAt",
         "launchGate",

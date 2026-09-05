@@ -27,6 +27,11 @@ function metrics(overrides: Partial<GtmMetrics> = {}): GtmMetrics {
       adoptionsReal: 3,
       adoptionRateReal: 0.5,
     },
+    engine: {
+      extendOk: 0,
+      extendFailed: 0,
+      firstInsertInferenceRate: null,
+    },
     uniques: {
       realUsers: 2,
       anonDevices: 5,
