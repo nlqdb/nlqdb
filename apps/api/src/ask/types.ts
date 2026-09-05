@@ -251,6 +251,14 @@ export class DbConfigError extends Error {
 // missing relation; arrays are empty). Outer catch maps to the typed
 // `schema_mismatch` envelope; SK-ASK-013's retry loop bails after one
 // attempt — retrying the same SQL produces the same error.
+// `reason` is the classifier's verdict even when Neon drops `.code` and
+// `pgCode` falls back to `msg_match` (SK-ASK-019).
+export type SchemaMismatchDiag = {
+  reason: "schema_missing" | "table_missing";
+  pgCode: string;
+  pgMessage: string;
+};
+
 export class SchemaMismatchError extends Error {
   readonly code = "schema_mismatch" as const;
   readonly referencedTables: string[];
@@ -262,12 +270,8 @@ export class SchemaMismatchError extends Error {
   // orchestrator persists it to the KV diag sink where preview/e2e logs
   // vanish (same black hole SK-ASK-023 closed for `db_unreachable`). Absent
   // on the pre-flight path, which populates the arrays instead.
-  readonly diag?: { pgCode: string; pgMessage: string };
-  constructor(
-    referencedTables: string[],
-    schemaTables: string[],
-    diag?: { pgCode: string; pgMessage: string },
-  ) {
+  readonly diag?: SchemaMismatchDiag;
+  constructor(referencedTables: string[], schemaTables: string[], diag?: SchemaMismatchDiag) {
     super(
       referencedTables.length > 0
         ? `SQL references table(s) not in schema: ${referencedTables.join(", ")}`

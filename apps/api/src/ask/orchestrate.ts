@@ -119,8 +119,17 @@ export type OrchestrateOutcome =
       // emit is wrapped in `ctx.waitUntil`; this keeps doc and code in
       // agreement). The promise itself never throws (`SK-EVENTS-003`).
       pendingAskCompleted: Promise<void>;
+      // SK-SCHEMA-010 — a write to an unobserved table the engine absorbed
+      // inline (KPI-1 numerator); nothing sets it until Phase A `kind=extend`.
+      extendNeeded?: boolean;
     }
-  | { ok: false; error: AskError };
+  | {
+      ok: false;
+      error: AskError;
+      // SK-SCHEMA-010 — a write to an unobserved table that was rejected
+      // (KPI-1 denominator, bumped as `asks_extend_failed` in `index.ts`).
+      extendNeeded?: boolean;
+    };
 
 export async function orchestrateAsk(
   deps: OrchestrateDeps,
@@ -418,6 +427,9 @@ export async function orchestrateAsk(
           referencedTables: mismatch.referencedTables,
           schemaTables: mismatch.schemaTables,
         },
+        // SK-SCHEMA-010 — only a write is extend demand; a read against a
+        // hallucinated table is a planning miss.
+        ...(isWriteVerb(planSql) ? { extendNeeded: true } : {}),
       };
     }
   }
@@ -634,6 +646,10 @@ export async function orchestrateAsk(
             referencedTables: err.referencedTables,
             schemaTables: err.schemaTables,
           },
+          // SK-SCHEMA-010 — an orphaned tenant schema (3F000, code or
+          // message-matched) is a control-plane fault widen-on-write can't
+          // absorb, so only a missing-table write counts.
+          ...(isWriteVerb(planSql) && d?.reason !== "schema_missing" ? { extendNeeded: true } : {}),
         };
       }
       // SK-ASK-022 — one execution-guided repair: re-plan with the PG error

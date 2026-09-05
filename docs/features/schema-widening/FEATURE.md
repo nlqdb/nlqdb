@@ -13,7 +13,7 @@ when-to-load:
 # Feature: Schema Evolution
 
 **One-liner:** The logical schema is inferred from inserts and reads and evolves in both directions (add / drop / rename / retype / index) as typed, previewed, versioned operations the engine generates — never a user-authored migration. `schema_hash` is the version.
-**Status:** partial — `schema_hash` is plumbed end-to-end (D1 → registry → orchestrator → plan-cache key); widen-on-write (`SK-SCHEMA-008`) is Phase A of `GLOBAL-041`, drop / rename / retype / index proposals (`SK-SCHEMA-009`) are Phase B.
+**Status:** partial — `schema_hash` is plumbed end-to-end (D1 → registry → orchestrator → plan-cache key); the KPI-1 instrument is live (`SK-SCHEMA-010` — `asks_extend_ok`/`asks_extend_failed`, surfaced as `engine.firstInsertInferenceRate`, floor at 0 until the path lands); widen-on-write (`SK-SCHEMA-008`) is Phase A of `GLOBAL-041`, drop / rename / retype / index proposals (`SK-SCHEMA-009`) are Phase B.
 **Owners (code):** `apps/api/src/db-registry.ts`, `apps/api/src/ask/orchestrate.ts`, `apps/api/src/ask/types.ts`, `apps/api/src/ask/plan-cache.ts`, `packages/db/**`
 **Cross-refs:** docs/architecture.md §0.1 (on-ramp inversion bullets), §9 row "Schema mismatch" (line 936) · docs/phase-plan.md §1 (plan cache key — Phase 0 deliverable) · docs/performance.md §2.1 stage 4 / §2.2 stage 4 (hash compute budget — 1 ms p50 / 5 ms p99; folded into the parent span, no dedicated `nlqdb.ask.hash`) · [GLOBAL-004](../../decisions/GLOBAL-004-logical-schema-evolves.md) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
@@ -90,6 +90,17 @@ when-to-load:
   - Widen-only + `nlq new` for breaks (the prior `SK-SCHEMA-003/004/007`) — the exact chore the bet removes.
   - User-authored migration files — couples "current schema" to "history of changes" and puts modeling back on the developer.
   - Silent in-place evolution without preview — a rename or drop nobody saw is a data-loss incident; the diff + undo is what makes acting safe.
+
+### SK-SCHEMA-010 — KPI-1 instrument: two non-saturating per-DB extend counters
+
+- **Decision:** The `GLOBAL-041` headline KPI 1 (first-insert inference rate) is instrumented by two non-saturating counters on D1's `databases` row — `asks_extend_ok` (numerator) and `asks_extend_failed` (denominator less numerator) — the `SK-GTM-011` counter shape reused for the engine. The orchestrator flags an ask as extend-needed (`OrchestrateOutcome.extendNeeded`) when a **write** plan references an **unobserved table** — caught pre-flight (`checkSchemaTables`, Defense A) or at exec (`42P01`, Defense B; an orphaned tenant schema — `3F000` or its `SK-ASK-019` message-matched fallback — is a control-plane fault widen-on-write cannot absorb, so it is excluded). `apps/api/src/index.ts` `bumpAskCounters` bumps `asks_extend_ok` when such a write is absorbed inline and `asks_extend_failed` when it is rejected, folded into the same fire-and-forget UPDATE as the other ask counters, stranger-walker-excluded. `computeGtmMetrics` surfaces `engine.firstInsertInferenceRate = extendOk / (extendOk + extendFailed)` (null at N = 0). The numerator stays 0 until Phase A's `kind=extend` routing lands ([`pivot-autonomous-dba.md` §4](../../pivot-autonomous-dba.md) steps 1-6): the rate then climbs off its honest floor with no further instrument change.
+- **Core value:** Bullet-proof, Honest latency
+- **Why:** "No change without a number" (the `/daily` loop) makes the KPI the precondition for building the lever it measures — the instrument must exist before the widen-on-write path so the path's effect is measurable on day one. Scoping the v1 denominator to **writes referencing an unseen table** (not reads, which are planning misses, and not yet column-level `42703` adds, which land classified with the Phase A routing) keeps it well-defined: a table that doesn't exist is the unambiguous "first insert creates the shape" case. A saturating counter (the `first10_*` mistake, `SK-GTM-011`) would freeze the denominator and lie about the rate.
+- **Consequence in code:** `extendNeeded` is set only for the write case. Migration `0035` adds both columns (`DEFAULT 0`). When Phase A adds the `kind=extend` success path it sets `extendNeeded` on the ok outcome (on the committed hop only — never the `SK-TRUST-001` preview hop, which would double-count) — the only change needed for `asks_extend_ok` to start counting. Column-level extend demand (`42703` on a write) joins the denominator when the Phase A router classifies it; until then it is out of scope, not miscounted.
+- **Alternatives rejected:**
+  - Reusing `first10_ok/asks` — saturates at 10 and carries no extend/read split; can't express the rate.
+  - Counting all `schema_mismatch` (reads included) — pollutes the denominator with LLM hallucinations that widen-on-write would never absorb.
+  - A separate D1 UPDATE per extend event — a second round-trip for a counter that rides the existing ask-completion write for free.
 
 ## GLOBALs governing this feature
 

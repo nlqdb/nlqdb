@@ -396,7 +396,92 @@ describe("orchestrateAsk", () => {
     });
     // Pre-flight short-circuits before exec — no DB round-trip wasted.
     expect(exec).not.toHaveBeenCalled();
+    // SK-SCHEMA-010 — a READ against an absent table is a planning miss, not
+    // widen-on-write demand: the KPI-1 flag must stay off (byte-identical
+    // envelope, asserted by the toEqual above having no `extendNeeded` key).
   });
+
+  it("SK-SCHEMA-010: a WRITE to an unobserved table flags extendNeeded (the KPI-1 denominator)", async () => {
+    // Stub DB has only `orders`. A write goal plans an INSERT into an
+    // unseen table — the "first insert creates the shape" case widen-on-write
+    // exists to absorb. Pre-flight schema_mismatch carries `extendNeeded`.
+    const llm = stubLLM({ plan: { sql: "INSERT INTO products (name) VALUES ('widget')" } });
+    const exec = stubExec();
+    const out = await orchestrateAsk(makeDeps({ llm, exec }), {
+      goal: "add a product named widget",
+      dbId: "db_1",
+      userId: "user_1",
+      intent: "write",
+    });
+    expect(out).toEqual({
+      ok: false,
+      error: {
+        code: "schema_mismatch",
+        referencedTables: ["products"],
+        schemaTables: ["orders"],
+      },
+      extendNeeded: true,
+    });
+    // Pre-flight fires before the write-preview gate — no exec, no preview.
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it("SK-SCHEMA-010 Defense B: a confirmed WRITE hitting exec 42P01 flags extendNeeded", async () => {
+    // SchemaText null bypasses Defense A; `confirm: true` skips the preview
+    // gate so the INSERT reaches exec and Postgres raises the missing table.
+    const exec = stubExec(
+      Object.assign(new Error('relation "products" does not exist'), { code: "42P01" }),
+    );
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const out = await orchestrateAsk(
+        makeDeps({
+          resolveDb: vi.fn(async () => stubDb({ schemaText: null })),
+          llm: stubLLM({ plan: { sql: "INSERT INTO products (name) VALUES ('widget')" } }),
+          exec,
+        }),
+        { goal: "add a product", dbId: "db_1", userId: "user_1", intent: "write", confirm: true },
+      );
+      expect(out).toEqual({
+        ok: false,
+        error: { code: "schema_mismatch", referencedTables: [], schemaTables: [] },
+        extendNeeded: true,
+      });
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it.each([
+    ["3F000", { code: "3F000" }],
+    ["message-matched 3F000 (Neon dropped .code)", {}],
+  ])(
+    "SK-SCHEMA-010: a WRITE failing on %s (orphaned schema) is NOT extend demand",
+    async (_, shape) => {
+      // Widen-on-write creates tables inside the tenant schema; it can never
+      // absorb a dropped schema, so counting it would depress KPI 1 for a
+      // control-plane fault. The envelope stays byte-identical to the read case.
+      const exec = stubExec(Object.assign(new Error('schema "acme_a723a5" does not exist'), shape));
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const out = await orchestrateAsk(
+          makeDeps({
+            resolveDb: vi.fn(async () => stubDb({ schemaText: null })),
+            llm: stubLLM({ plan: { sql: "INSERT INTO acme_a723a5.products (name) VALUES ('w')" } }),
+            exec,
+          }),
+          { goal: "add a product", dbId: "db_1", userId: "user_1", intent: "write", confirm: true },
+        );
+        expect(out).toEqual({
+          ok: false,
+          error: { code: "schema_mismatch", referencedTables: [], schemaTables: [] },
+        });
+        expect(out).not.toHaveProperty("extendNeeded");
+      } finally {
+        errorSpy.mockRestore();
+      }
+    },
+  );
 
   it("SK-ASK-016 Defense B: exec PG 42P01 → schema_mismatch, retry bails after one attempt", async () => {
     // SchemaText null bypasses Defense A so we exercise the post-exec

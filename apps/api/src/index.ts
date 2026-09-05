@@ -1688,13 +1688,17 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // write (one UPDATE, no `first10_asks < 10` WHERE guard that would
     // freeze the surface counters once saturated).
     const askViaMcp = surfaceFromPrincipal(principal) === "mcp";
-    const bumpAskCounters = (ok: boolean): void => {
+    // SK-SCHEMA-010 — the KPI-1 extend counters ride the same UPDATE, split
+    // by outcome, so an extend-needed write costs no extra D1 round-trip.
+    const bumpAskCounters = (ok: boolean, extendNeeded = false): void => {
       if (isSyntheticAsk) return;
+      const extendOk = extendNeeded && ok ? 1 : 0;
+      const extendFailed = extendNeeded && !ok ? 1 : 0;
       c.executionCtx.waitUntil(
         c.env.DB.prepare(
-          "UPDATE databases SET asks_total = asks_total + 1, asks_mcp = asks_mcp + ?, first10_ok = first10_ok + (CASE WHEN first10_asks < 10 THEN ? ELSE 0 END), first10_asks = first10_asks + (CASE WHEN first10_asks < 10 THEN 1 ELSE 0 END) WHERE id = ? AND tenant_id = ?",
+          "UPDATE databases SET asks_total = asks_total + 1, asks_mcp = asks_mcp + ?, asks_extend_ok = asks_extend_ok + ?, asks_extend_failed = asks_extend_failed + ?, first10_ok = first10_ok + (CASE WHEN first10_asks < 10 THEN ? ELSE 0 END), first10_asks = first10_asks + (CASE WHEN first10_asks < 10 THEN 1 ELSE 0 END) WHERE id = ? AND tenant_id = ?",
         )
-          .bind(askViaMcp ? 1 : 0, ok ? 1 : 0, resolvedDbId, principal.id)
+          .bind(askViaMcp ? 1 : 0, extendOk, extendFailed, ok ? 1 : 0, resolvedDbId, principal.id)
           .run()
           .catch((err: unknown) => {
             console.error(
@@ -1740,14 +1744,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
               surface,
               outcome.error,
             );
-            bumpAskCounters(false);
+            bumpAskCounters(false, outcome.extendNeeded);
           } else {
             // Detach the ask.completed producer so the queue.send
             // round-trip runs after the SSE stream closes (PERFORMANCE
             // §3.1 — the emit is `ctx.waitUntil`-wrapped, never on the
             // user-visible path).
             c.executionCtx.waitUntil(outcome.pendingAskCompleted);
-            bumpAskCounters(true);
+            bumpAskCounters(true, outcome.extendNeeded);
             // SK-TRUST-001 — preview hop didn't exec; skip the anon
             // cap commit (SK-ANON-012) and `last_queried_at` bump so
             // the confirm hop can still land. The cap commits when
@@ -1841,14 +1845,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           surface,
           outcome.error,
         );
-        bumpAskCounters(false);
+        bumpAskCounters(false, outcome.extendNeeded);
         return errorResponse(c, outcome.error);
       }
       // Detach the ask.completed producer so queue.send runs in
       // ctx.waitUntil after the response flushes — keeps /v1/ask p99
       // off the queue producer round-trip (PERFORMANCE §3.1).
       c.executionCtx.waitUntil(outcome.pendingAskCompleted);
-      bumpAskCounters(true);
+      bumpAskCounters(true, outcome.extendNeeded);
       // SK-TRUST-001 — preview hop didn't exec; skip the anon cap
       // commit + `last_queried_at` bump so the confirm hop can still
       // land. Same logic as the SSE branch above.

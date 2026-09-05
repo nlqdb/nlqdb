@@ -287,6 +287,27 @@ function Metrics({ m }: { m: GtmMetrics }) {
         </div>
       </section>
 
+      <section aria-labelledby="admin-h-engine">
+        <h2 id="admin-h-engine">Engine — autonomous DBA (GLOBAL-041)</h2>
+        <div className="admin__tiles">
+          <Tile
+            label="First-insert inference rate"
+            valueText={fmtPct(m.engine.firstInsertInferenceRate)}
+            hint="KPI 1 — extend-needed writes absorbed with no user action; Phase A floor ≥ 95%"
+          />
+          <Tile
+            label="Extend-needed writes"
+            value={m.engine.extendOk + m.engine.extendFailed}
+            hint={`${m.engine.extendOk} absorbed · ${m.engine.extendFailed} rejected (widen-on-write demand)`}
+          />
+        </div>
+        <p className="admin__note">
+          KPI 1 (pivot-autonomous-dba.md §4): a write whose plan references an unobserved table is
+          the denominator. The numerator (absorbed inline) stays 0 until Phase A’s{" "}
+          <code>kind=extend</code> routing lands — the rate then climbs off its honest floor.
+        </p>
+      </section>
+
       <section aria-labelledby="admin-h-pmf">
         <h2 id="admin-h-pmf">PMF signals</h2>
         <div className="admin__tiles">

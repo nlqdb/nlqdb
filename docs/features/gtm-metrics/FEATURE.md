@@ -21,7 +21,7 @@ when-to-load:
 
 **Contribution to north-star:** Onboarding — the funnel/activation/retention numbers ARE the onboarding pillar's measurement ([`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)), now continuous; acquisition measurement is first-class ([`GLOBAL-038`](../../decisions/GLOBAL-038-gtm-pmf-instrumentation.md)). No pillar degrades: admin-only D1 reads, off every product request path.
 
-**Cross-refs:** `docs/scorecard.md` funnel rows #1–#5 · [`onboarding`](../onboarding/FEATURE.md) (`SK-ONBOARD-006` counters) · [`anonymous-mode`](../anonymous-mode/FEATURE.md) · [`events-pipeline`](../events-pipeline/FEATURE.md) (PostHog) · [`agent-memory-pivot`](../agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md) (the gate `SK-GTM-008` mirrors)
+**Cross-refs:** `docs/scorecard.md` funnel rows #1–#5 · [`onboarding`](../onboarding/FEATURE.md) (`SK-ONBOARD-006` counters) · [`anonymous-mode`](../anonymous-mode/FEATURE.md) · [`events-pipeline`](../events-pipeline/FEATURE.md) (PostHog) · [`schema-widening`](../schema-widening/FEATURE.md) (`SK-SCHEMA-010` — the `engine` block) · [`agent-memory-pivot`](../agent-memory-pivot/decisions/SK-PIVOT-016-dogfood-launch-gate.md) (the gate `SK-GTM-008` mirrors)
 
 ## Touchpoints — read this feature before editing
 
