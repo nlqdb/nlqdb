@@ -4,7 +4,7 @@
 
 import { trace } from "@opentelemetry/api";
 import { Nonrecoverable } from "./retry.ts";
-import { SchemaMismatchError } from "./types.ts";
+import { type SchemaMismatchDiag, SchemaMismatchError } from "./types.ts";
 
 const TABLE_MISSING_MSG = /relation .* does not exist/i;
 const SCHEMA_MISSING_MSG = /schema .* does not exist/i;
@@ -30,9 +30,7 @@ export function classifySchemaError(
   const isSchemaMissing = code === "3F000" || SCHEMA_MISSING_MSG.test(msg);
   const isTableMissing = code === "42P01" || TABLE_MISSING_MSG.test(msg);
   if (!isSchemaMissing && !isTableMissing) return null;
-  const reason: "schema_missing" | "table_missing" = isSchemaMissing
-    ? "schema_missing"
-    : "table_missing";
+  const reason: SchemaMismatchDiag["reason"] = isSchemaMissing ? "schema_missing" : "table_missing";
   const pgCode = code === "3F000" || code === "42P01" ? code : "msg_match";
   recordSchemaMismatch({ ...ctx, reason, pgCode, pgMessage: msg });
   // Carry the SQLSTATE onto the error so the orchestrator can persist it to
@@ -84,13 +82,7 @@ export function recordExecUnreachable(
   return { pgCode, pgMessage: message };
 }
 
-function recordSchemaMismatch(
-  detail: SchemaMismatchContext & {
-    reason: "schema_missing" | "table_missing";
-    pgCode: string;
-    pgMessage: string;
-  },
-): void {
+function recordSchemaMismatch(detail: SchemaMismatchContext & SchemaMismatchDiag): void {
   const truncate = (s: string) => s.slice(0, 500);
   const span = trace.getActiveSpan();
   if (span) {
