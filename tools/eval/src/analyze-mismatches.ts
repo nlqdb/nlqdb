@@ -5,13 +5,12 @@
 // differs from gold. This pure classifier diffs predicted vs gold SQL on a
 // fixed set of structural features so a run's loss mass can be bucketed
 // (aggregation grain, DISTINCT grain, join/table count, subquery shape,
-// projection width, ...) and the §4 backlog in
-// `docs/progress/quality-score-source-of-truth.md` can be prioritised from
+// projection width, ...) and the eval backlog can be prioritised from
 // evidence instead of guesswork.
 //
 // It is deliberately a *surface* diff: tags flag a structural difference, not
 // a proven semantic error. `SUM(IIF(...))` vs `COUNT(*)` can be equivalent,
-// and BIRD carries known gold-annotation noise (§4 #5), so a tag is a lead to
+// and BIRD carries known gold-annotation noise, so a tag is a lead to
 // read, not a verdict. The quote-aware table parser matters — predicted SQL
 // frequently quotes identifiers (`FROM "transactions_1k"`); a bare-word-only
 // regex undercounts tables and falsely inflates `fewer_tables` (the bug this

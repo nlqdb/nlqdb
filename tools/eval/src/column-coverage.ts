@@ -1,11 +1,11 @@
 // SK-QUAL-015 — offline column-coverage harness.
 //
-// The §4 #2 backlog lever (`quality-score-source-of-truth.md`) is "value
-// retrieval + column-level pruning (the M-Schema half SK-LLM-037/T19 left)".
+// The backlog lever here is value retrieval + column-level pruning (the
+// M-Schema half SK-LLM-037/T19 left).
 // SK-LLM-037 prunes whole *tables* by goal-token match and is recall-monotone
 // because the FK closure re-admits join targets. Pruning *columns* by the same
 // goal-token rule has no such safety net — a needed column that shares no token
-// with the goal is simply dropped — so §4 #2 says the column pruner "needs an
+// with the goal is simply dropped — so this lever says the column pruner "needs an
 // offline recall harness like T19's first". This is that harness.
 //
 // It measures the **recall ceiling** of goal-token column pruning: of the
@@ -17,7 +17,7 @@
 //     SK-LLM-037's FK closure re-admits join *tables*; and
 //   - value/measure — a column the goal names by its *value* not its name
 //     ("SME" → `Segment`, "CZK" → `Currency`), recoverable only by the
-//     value-retrieval half of §4 #2, never by pruning.
+//     value-retrieval half of that lever, never by pruning.
 //
 // Pure + deterministic: reads a BIRD gold JSON (the same file `analyze-mismatches`
 // is handed), no keys, no quota, no chain change. A *ceiling*, not the real
