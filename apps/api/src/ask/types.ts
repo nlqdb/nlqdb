@@ -217,6 +217,11 @@ export type AskError =
   // parsed, the SQL ran, but the values matched no rows. `verb` / `table`
   // are omitted only when the plan's target couldn't be named.
   | { code: "write_no_rows"; phase: "preview" | "commit"; verb?: string; table?: string }
+  // SK-TRUST-005 — a `confirm: true` hop whose one-shot preview stash is gone
+  // (consumed by a prior confirm, or expired). Re-planning would commit a write
+  // the user never previewed (SK-TRUST-001), so the confirm is refused. HTTP 409;
+  // the surface re-runs the request for a fresh preview.
+  | { code: "confirm_expired" }
   // SK-ASK-029 — the write reached the engine and the engine refused it: a
   // required column was missing, a foreign key pointed at a row that doesn't
   // exist, a unique/check rule failed. Deterministic (never retried) and

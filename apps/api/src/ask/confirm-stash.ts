@@ -55,8 +55,8 @@ export function makeConfirmStash(store: KVStore & Pick<KVNamespace, "delete">): 
       try {
         return JSON.parse(raw) as StashedPlan;
       } catch {
-        // Corrupted entry — treat as no stash; the confirm hop falls back to
-        // re-planning rather than throwing.
+        // Corrupted entry — treat as no stash; the confirm hop then returns
+        // `confirm_expired` for a write (SK-TRUST-005) rather than throwing.
         return null;
       }
     },

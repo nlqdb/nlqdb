@@ -1334,13 +1334,13 @@ describe("orchestrateAsk", () => {
     expect(confirmExec).toHaveBeenCalledTimes(1);
   });
 
-  it("SK-TRUST-005: with no stashed preview, confirm falls back to re-planning (legacy path)", async () => {
-    // A confirm with an empty stash (expired / legacy client) must not brick —
-    // it re-plans, exactly the pre-SK-TRUST-005 behaviour.
-    const stash = stubConfirmStash();
+  it("SK-TRUST-005: with confirmStash UNWIRED, a confirm re-plans and commits (legacy fallback)", async () => {
+    // The re-plan fallback survives only when no stash is configured at all
+    // (a deployment without the KV binding). With a stash wired but empty the
+    // hop returns `confirm_expired` instead — see the SK-ASK-033 tests below.
     const llm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } });
     const exec = vi.fn(async () => ({ rows: [], rowCount: 1 }));
-    const out = await orchestrateAsk(makeDeps({ llm, exec, confirmStash: stash }), {
+    const out = await orchestrateAsk(makeDeps({ llm, exec }), {
       goal: "delete order 1",
       dbId: "db_1",
       userId: "user_1",
@@ -1349,39 +1349,8 @@ describe("orchestrateAsk", () => {
     expect(out.ok).toBe(true);
     if (!out.ok) throw new Error("unreachable");
     expect(out.result.requires_confirm).toBeUndefined();
-    expect(stash.lookup).toHaveBeenCalledTimes(1);
     expect(llm.plan).toHaveBeenCalledTimes(1); // re-planned on the miss
     expect(exec).toHaveBeenCalledTimes(1);
-  });
-
-  it("SK-TRUST-005: the stash is one-shot — a second confirm never replays the committed statement", async () => {
-    const stash = stubConfirmStash();
-    const previewLlm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } });
-    const previewExec = vi.fn(async () => ({ rows: [{ c: 1 }], rowCount: 1 }));
-    await orchestrateAsk(makeDeps({ llm: previewLlm, exec: previewExec, confirmStash: stash }), {
-      goal: "delete order 1",
-      dbId: "db_1",
-      userId: "user_1",
-    });
-    const confirmLlm = stubLLM({ plan: { sql: "SELECT 1" } });
-    const confirmExec = vi.fn(async (_db: DbRecord, _sql: string) => ({ rows: [], rowCount: 1 }));
-    const first = await orchestrateAsk(
-      makeDeps({ llm: confirmLlm, exec: confirmExec, confirmStash: stash }),
-      { goal: "delete order 1", dbId: "db_1", userId: "user_1", confirm: true },
-    );
-    expect(first.ok).toBe(true);
-    expect(stash.delete).toHaveBeenCalledTimes(1);
-    expect(confirmLlm.plan).not.toHaveBeenCalled();
-    // Re-sent confirm (double-click / lost response): the stash is spent, so
-    // the approved DELETE is not run again — the hop falls back to a fresh plan.
-    await orchestrateAsk(makeDeps({ llm: confirmLlm, exec: confirmExec, confirmStash: stash }), {
-      goal: "delete order 1",
-      dbId: "db_1",
-      userId: "user_1",
-      confirm: true,
-    });
-    expect(confirmLlm.plan).toHaveBeenCalledTimes(1);
-    expect(confirmExec.mock.calls.filter(([, sql]) => /DELETE/i.test(sql))).toHaveLength(1);
   });
 
   it("SK-TRUST-005: a failed commit leaves the stash so a retry runs the exact previewed SQL", async () => {
@@ -1401,6 +1370,116 @@ describe("orchestrateAsk", () => {
     );
     expect(out.ok).toBe(false);
     expect(stash.delete).not.toHaveBeenCalled();
+  });
+
+  it("SK-ASK-033 (a): a first confirm with its live stash commits the previewed write", async () => {
+    const stash = stubConfirmStash();
+    const preview = await orchestrateAsk(
+      makeDeps({
+        llm: stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } }),
+        exec: vi.fn(async () => ({ rows: [{ c: 1 }], rowCount: 1 })),
+        confirmStash: stash,
+      }),
+      { goal: "delete order 1", dbId: "db_1", userId: "user_1" },
+    );
+    expect(preview.ok && preview.result.requires_confirm).toBe(true);
+
+    const confirmExec = vi.fn(async () => ({ rows: [], rowCount: 1 }));
+    const commit = await orchestrateAsk(
+      makeDeps({
+        llm: stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } }),
+        exec: confirmExec,
+        confirmStash: stash,
+      }),
+      { goal: "delete order 1", dbId: "db_1", userId: "user_1", confirm: true },
+    );
+    expect(commit.ok).toBe(true);
+    if (!commit.ok) throw new Error("unreachable");
+    expect(commit.result.requires_confirm).toBeUndefined();
+    expect(commit.result.rowCount).toBe(1);
+    expect(confirmExec).toHaveBeenCalledTimes(1);
+    expect(stash.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it("SK-ASK-033 (b): a second confirm after the stash is consumed returns confirm_expired, no second write", async () => {
+    const stash = stubConfirmStash();
+    await orchestrateAsk(
+      makeDeps({
+        llm: stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } }),
+        exec: vi.fn(async () => ({ rows: [{ c: 1 }], rowCount: 1 })),
+        confirmStash: stash,
+      }),
+      { goal: "delete order 1", dbId: "db_1", userId: "user_1" },
+    );
+    // First confirm commits and consumes the one-shot stash.
+    const firstExec = vi.fn(async () => ({ rows: [], rowCount: 1 }));
+    const first = await orchestrateAsk(
+      makeDeps({
+        llm: stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } }),
+        exec: firstExec,
+        confirmStash: stash,
+      }),
+      { goal: "delete order 1", dbId: "db_1", userId: "user_1", confirm: true },
+    );
+    expect(first.ok).toBe(true);
+    expect(stash.delete).toHaveBeenCalledTimes(1);
+    expect(firstExec).toHaveBeenCalledTimes(1);
+
+    // Second confirm: a double-click with a fresh Idempotency-Key that missed
+    // the same-key idempotency replay. The stash is spent, so the re-planned
+    // write must be refused terminally — never committed unpreviewed.
+    const secondExec = vi.fn(async () => ({ rows: [], rowCount: 1 }));
+    const second = await orchestrateAsk(
+      makeDeps({
+        llm: stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } }),
+        exec: secondExec,
+        confirmStash: stash,
+      }),
+      { goal: "delete order 1", dbId: "db_1", userId: "user_1", confirm: true },
+    );
+    expect(second.ok).toBe(false);
+    if (second.ok) throw new Error("unreachable");
+    expect(second.error.code).toBe("confirm_expired");
+    expect(secondExec).not.toHaveBeenCalled(); // no second write
+  });
+
+  it("SK-ASK-033 (c): a retry while the stash still lives commits — a replayed success, never confirm_expired", async () => {
+    const stash = stubConfirmStash();
+    await orchestrateAsk(
+      makeDeps({
+        llm: stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } }),
+        exec: vi.fn(async () => ({ rows: [{ c: 1 }], rowCount: 1 })),
+        confirmStash: stash,
+      }),
+      { goal: "delete order 1", dbId: "db_1", userId: "user_1" },
+    );
+    // Transient commit failure preserves the stash (not one-shot-deleted).
+    const failed = await orchestrateAsk(
+      makeDeps({
+        llm: stubLLM({ plan: { sql: "SELECT 1" } }),
+        exec: stubExec(new Error("ECONNRESET")),
+        confirmStash: stash,
+      }),
+      { goal: "delete order 1", dbId: "db_1", userId: "user_1", confirm: true },
+    );
+    expect(failed.ok).toBe(false);
+    expect(stash.delete).not.toHaveBeenCalled();
+
+    // The retry still finds its stash and commits the previewed write — this is
+    // the replayed-success path a genuine same-key retry takes, not confirm_expired.
+    const retryExec = vi.fn(async (_db: DbRecord, _sql: string) => ({ rows: [], rowCount: 1 }));
+    const retry = await orchestrateAsk(
+      makeDeps({
+        llm: stubLLM({ plan: { sql: "SELECT 1" } }),
+        exec: retryExec,
+        confirmStash: stash,
+      }),
+      { goal: "delete order 1", dbId: "db_1", userId: "user_1", confirm: true },
+    );
+    expect(retry.ok).toBe(true);
+    if (!retry.ok) throw new Error("unreachable");
+    expect(retry.result.requires_confirm).toBeUndefined();
+    expect(retryExec.mock.calls.some(([, sql]) => /DELETE/i.test(sql))).toBe(true);
   });
 
   it("SK-ASK-025: a committed write plan never lands in the shared plan cache", async () => {

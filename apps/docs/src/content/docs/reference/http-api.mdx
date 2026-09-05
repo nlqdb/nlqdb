@@ -72,6 +72,7 @@ retryable and which need a human. `code` is the discriminant the SDK exposes as
 | `schema_mismatch` | 409 | The plan named a table this database doesn't have (`body.params`). | No | Ask about a table it has, or create a new database. |
 | `write_constraint` | 409 | An approved write hit a constraint (FK / unique / not-null / check); nothing was written (`body.params`). | No | Fix the named field, then ask again. |
 | `write_no_rows` | 409 | An approved write matched no rows — previewed or committed (`body.params.phase`). | No | Name the row or widen the filter, then ask again. |
+| `confirm_expired` | 409 | A `confirm: true` hop found no live preview — the one-shot preview was already consumed or expired; nothing was written. | No | Re-run the request to get a fresh preview, then confirm it. |
 | `invalid_value` | 409 | A value didn't fit its column (Postgres SQLSTATE class 22). | No | Restate with values that match the column types. |
 | `goal_too_long` | 400 | `goal` exceeds the length limit (`body.params.maxLength`). | No | Shorten it to the essential question. |
 | `invalid_scope` | 400 | `agentId` / `endUserId` / `threadId` weren't strings. | No | Send strings, or omit the fields. |

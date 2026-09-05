@@ -440,6 +440,17 @@ export async function orchestrateAsk(
     }
   }
 
+  // SK-TRUST-005 — a `confirm: true` hop for a write with NO matching stash is
+  // an expired preview: the one-shot stash was consumed by a prior confirm, or
+  // it timed out. Re-planning here would commit a write the user never previewed
+  // (SK-TRUST-001), so refuse terminally with `confirm_expired` and let the
+  // surface re-run for a fresh preview. Guarded on `confirmStash` being wired so
+  // a legacy caller with no stash keeps the additive re-plan fallback; reads
+  // carry no preview, so `confirm` is a no-op for them and they fall through.
+  if (req.confirm && confirmStash && !fromConfirmStash && isWriteVerb(planSql)) {
+    return { ok: false, error: { code: "confirm_expired" } };
+  }
+
   // SK-TRUST-001 — render-before-commit gate. On a write plan with no
   // `confirm` flag, build a diff (pre-flight COUNT(*) for UPDATE/DELETE,
   // values length for INSERT) and return without exec. The surface
@@ -484,8 +495,9 @@ export async function orchestrateAsk(
     }
     // SK-TRUST-005 — bind this exact validated write to its commit so the
     // confirm hop runs THIS SQL, not a re-plan of the goal. Best-effort: a
-    // stash-write blip just drops the confirm hop back to re-planning (the
-    // pre-SK-TRUST-005 behaviour), it never blocks the preview.
+    // stash-write blip means the confirm hop finds no stash and returns
+    // `confirm_expired` (the user re-runs for a fresh preview — never an
+    // unpreviewed commit), it never blocks the preview.
     if (confirmStash) {
       await withSpan(
         "nlqdb.confirm.stash.write",
