@@ -355,6 +355,11 @@ export type ApiErrorCode =
   // SK-TRUST-006 — an approved write that changed nothing, rather than an empty
   // success that reads as "done".
   | "write_no_rows"
+  // SK-TRUST-005 — 409 returned when a `confirm: true` hop finds no matching
+  // one-shot preview (already consumed by a prior confirm, or expired). The
+  // write is refused instead of being re-planned and committed unpreviewed;
+  // the surface re-runs the request to render a fresh preview.
+  | "confirm_expired"
   // SK-ASK-009: 409 returned when the LLM disambiguator's confidence
   // is below the floor on a 2+ DB tenant. Body carries `candidate_dbs`.
   | "ambiguous_db"

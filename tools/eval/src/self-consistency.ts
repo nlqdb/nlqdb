@@ -8,8 +8,7 @@
 // agreement that string-voting would miss. The prompt-directive levers
 // (T13–T22) have saturated on BIRD and the SK-QUAL-014 literal/date axes
 // falsified value-retrieval standalone, so the residual loss is
-// structural-reasoning mass — exactly what consensus sampling attacks
-// (`docs/progress/quality-score-source-of-truth.md` §4 #3).
+// structural-reasoning mass — exactly what consensus sampling attacks.
 //
 // This module is the deterministic *core* of the lever — pure, no LLM, no I/O
 // — proven correct in isolation before the dispatch-bearing wiring, the same

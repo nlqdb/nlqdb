@@ -27,8 +27,8 @@
 //      nothing ("a rejected or errored query emits nothing"). The billable unit
 //      is the successfully-executed query, and the idempotency key (synthesized
 //      + persisted when the client omits one) makes a retry record nothing new
-//      (the `grant_usage` UNIQUE constraint) — the unit SK-PIVOT-023 axis-2
-//      later bills against, keyed on this same key.
+//      (the `grant_usage` UNIQUE constraint) — the unit the usage-based fee
+//      later bills against, keyed on this same key (monetization: GLOBAL-041).
 //   3. NARRATION SKIPPED (GLOBAL-037 / EK-09 box 2) — this returns rows, never
 //      prose: it has no summarize seam, so expert cell values can never transit
 //      the narration lane on a cross-tenant query. The route MUST render these

@@ -85,7 +85,7 @@ signal and a retry can't double-emit.
 - **Consequence in code:** `MAX_GOAL_LENGTH = 2000` is checked in every goal-parsing path before any LLM call; the error body carries `maxLength` (GLOBAL-012).
 - **Alternatives rejected:** Silent truncation — produces a wrong result with no diagnostic. Per-tier limits — complexity for no UX gain; 2 000 chars covers every tier.
 
-### SK-ASK-011 — replaced by SK-ASK-017 (speculative create removed; rollback path was post-COMMIT, producing a 21.6 s tail).
+### SK-ASK-011 — replaced by SK-ASK-017 (speculative create removed).
 
 ### SK-ASK-012 — Per-principal recent-tables LRU (100 entries) in KV
 
@@ -127,11 +127,9 @@ Pre-flight `extractTables` check + a `42P01` exec backstop converge on one
 
 ### SK-ASK-017 — Speculative create removed; cold-start parallelism comes from `kickoffAskPrelude` alone
 
-- **Decision:** `apps/api/src/ask/{route-hint,reconcile-speculative}.ts` and `apps/api/src/db-create/speculative.ts` are deleted. The `/v1/ask` handler no longer races a `startSpeculativeCreate` against `listDatabasesForTenant`. Cold-start parallelism is preserved by `kickoffAskPrelude` (listPromise + recentTablesPromise kick off before `routeAsk`, and routeAsk runs in parallel with listPromise). Replaces SK-ASK-011.
+- **Decision:** `apps/api/src/ask/{route-hint,reconcile-speculative}.ts` + `apps/api/src/db-create/speculative.ts` are deleted; `/v1/ask` no longer races a `startSpeculativeCreate` against `listDatabasesForTenant`. Cold-start parallelism is preserved by `kickoffAskPrelude` (listPromise + recentTablesPromise kick off before `routeAsk`; routeAsk runs in parallel with listPromise). Replaces SK-ASK-011.
 - **Core value:** Simple, Bullet-proof, Honest latency
-- **Why:** SK-ASK-011's rollback path was post-COMMIT — a Workers Postgres tx can't be cancelled mid-flight, so a doomed speculation must finish before its schema can be dropped. Prod trace: a 21.6 s `/v1/ask`, 18 s of it the speculative create finishing under a foregone rollback. The ~600 ms cold-start saving is dwarfed by the tail risk, and the mechanism multiplied three secondary failures (MRU pollution, plan-cache poisoning, classifier mis-route on the zombie DB).
-- **Consequence in code:** the three speculative modules are deleted and the handler drops the kickoff + consume blocks; only canonical creates now reach `recent_tables.touch`, and `dropSchemaAndRegistry` survives for the registry-insert-failed path.
-- **Alternatives rejected:** Gate speculation on listDb=0 — adds wait per cold-create. Cancellable rollback — Workers Postgres tx can't. MRU-touch removal only — tail risk remains. Feature flag — re-introduces dead code.
+- **Why:** SK-ASK-011's rollback was post-COMMIT — a Workers Postgres tx can't be cancelled mid-flight, so a doomed speculation must finish before its schema drops (prod trace: a 21.6 s `/v1/ask`), and it poisoned the MRU / plan-cache / classifier via the zombie DB. The ~600 ms saving is dwarfed by that tail risk and cancellable rollback is impossible here, so it stays removed. Only canonical creates now reach `recent_tables.touch`; `dropSchemaAndRegistry` survives for the registry-insert-failed path.
 
 ### SK-ASK-018 — Seed `routeAsk` recentTables from the pinned DB's `schema_text` on every pinned ask
 
@@ -268,6 +266,14 @@ the same `create_or_query_pinned` clarify — a dead-end loop. Resolving it with
 (`GLOBAL-040`: a clarify is a guided turn, not a dead-end). Pairs with the
 widened `SK-ASK-018`. Shipped SDK + web + CLI (`--force-query`); MCP/elements
 gap tracked in the body.
+
+### SK-ASK-033 — A `confirm` with no live preview stash is refused (`confirm_expired`), never re-planned
+
+**Body:** [`trust-ux/FEATURE.md` SK-TRUST-005](../trust-ux/FEATURE.md). The stash is
+one-shot, so a second `confirm: true` (a double-click with a fresh `Idempotency-Key`
+that misses the same-key replay) finds none and `orchestrateAsk` returns terminal
+`confirm_expired` (409) instead of committing an unpreviewed write (`SK-TRUST-001`);
+the same-key retry replays the stored success ahead of it (`index.ts`).
 
 ## The LLM loop
 

@@ -3,8 +3,8 @@
 -- Cross-tenant granted-query usage ledger (SK-EKP-008, EK-06 box 3).
 --
 -- One row per successfully-executed granted `/v1/ask` query. This is the
--- public-half meter: the unit SK-PIVOT-023 axis-2 fee bills against later,
--- in the private `experts` surface (SK-EKP-003). No fee logic, no fee %,
+-- public-half meter: the unit the usage-based fee bills against later,
+-- in the private `experts` surface (SK-EKP-003; monetization: GLOBAL-041). No fee logic, no fee %,
 -- and no Stripe call lives here (SK-EKP-002) — nlqdb's public core emits
 -- the usage record; only the private surface turns it into money.
 --

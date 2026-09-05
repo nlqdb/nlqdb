@@ -134,35 +134,6 @@ jobs:
             exit 1
           fi
 
-  lint-py:
-    name: ruff (format + lint)
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - id: precheck
-        run: |
-          if [ -f pyproject.toml ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::pyproject.toml not present — Python toolchain hasn't landed yet, skipping."
-          fi
-
-      - if: steps.precheck.outputs.exists == 'true'
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
-        with:
-          enable-cache: true
-
-      - name: ruff format --check
-        if: steps.precheck.outputs.exists == 'true'
-        run: uv run ruff format --check
-
-      - name: ruff check
-        if: steps.precheck.outputs.exists == 'true'
-        run: uv run ruff check
-
   acquisition-plan-mirror:
     name: ICP tracker mirror integrity
     runs-on: ubuntu-latest

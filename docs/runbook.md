@@ -545,8 +545,8 @@ What you see in a PR before merging, by surface:
 
 #### Unified app preview — `apps/api` + `apps/web` (merged worker)
 
-`.github/workflows/preview-app.yml` (replaces the now-disabled
-`preview-api.yml` and `preview-web.yml`) triggers on every PR push
+`.github/workflows/preview-app.yml` (replaces the removed per-app
+`preview-api.yml` / `preview-web.yml`) triggers on every PR push
 and runs `wrangler versions upload` against the `nlqdb-api` Worker.
 Each push produces a non-production version with a stable URL
 `pr-<N>-nlqdb-api.omer-hochman.workers.dev`. The promoted production

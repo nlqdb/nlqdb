@@ -4,8 +4,8 @@
 // control-plane (mint/revoke/list + the fail-closed `getActiveGrant`
 // read); `grant-scope.ts` is the validation-layer scope guard (box 2
 // layer 1). This module owns the usage record every *successfully
-// executed* granted `/v1/ask` emits — the unit SK-PIVOT-023 axis-2 later
-// bills against.
+// executed* granted `/v1/ask` emits — the unit the usage-based fee later
+// bills against (monetization: GLOBAL-041).
 //
 // Posture (SK-EKP-008):
 //   - Billable unit = the successfully-executed authorized query,

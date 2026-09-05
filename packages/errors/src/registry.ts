@@ -238,6 +238,16 @@ export const REGISTRY = {
     action: () =>
       "Restate the goal with values that match the column types (dates, numbers, enums).",
   }),
+  // SK-TRUST-005 — a confirm arrived after its one-shot preview was consumed or
+  // expired. Committing here would run a write the user never previewed
+  // (SK-TRUST-001), so the confirm is refused terminally rather than re-planned.
+  confirm_expired: defineError({
+    httpStatus: 409,
+    recoverability: "clarify",
+    params: NONE,
+    message: () => "That preview has expired, so nothing was changed.",
+    action: () => "Re-run your request to get a fresh preview, then confirm it.",
+  }),
 
   // ── Planning ───────────────────────────────────────────────────────────
   llm_failed: defineError({
