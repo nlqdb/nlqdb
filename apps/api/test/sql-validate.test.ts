@@ -26,6 +26,10 @@ describe("validateSql", () => {
       ["REVOKE ALL ON users FROM public", "grant_or_revoke"],
       ["VACUUM users", "disallowed_verb"],
       ["CREATE TABLE foo (id int)", "disallowed_verb"],
+      // SELECT INTO creates a table — DDL that parses as `type:"select"`.
+      ["SELECT * INTO new_users FROM users", "disallowed_verb"],
+      ["WITH x AS (SELECT 1) SELECT * INTO t FROM x", "disallowed_verb"],
+      ["INSERT INTO t SELECT * INTO t3 FROM u", "disallowed_verb"],
       // Multi-statement (SK-SQLAL-009): a benign lead can't smuggle a second.
       ["SELECT 1; SELECT 2", "multi_statement"],
       ["SELECT 1; DELETE FROM x WHERE id = 1", "multi_statement"],
@@ -73,6 +77,10 @@ describe("validateSql", () => {
       "UPDATE users SET name = 'bob' WHERE id = 1",
       "DELETE FROM users WHERE id = 42",
       "WITH recent AS (SELECT * FROM events) SELECT * FROM recent",
+      // Upserts: the `DO UPDATE SET` action is `type:"update"` with no
+      // WHERE, but it is scoped to the conflicting row — not a mass update.
+      "INSERT INTO users (id, name) VALUES (1, 'a') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name",
+      "INSERT INTO users (id) VALUES (1) ON CONFLICT DO NOTHING",
       "EXPLAIN SELECT * FROM users",
       "EXPLAIN VERBOSE SELECT * FROM users",
       "SHOW search_path",

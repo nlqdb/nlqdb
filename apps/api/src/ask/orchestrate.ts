@@ -293,9 +293,8 @@ export async function orchestrateAsk(
   // still well-formed without claiming a model the cache can't prove.
   let planModel: string;
   let planConfidence: number;
-  // SK-TRUST-005 — set when the commit ran a stashed preview, so the trailing
-  // plan-cache write is skipped: a write plan must never land in the shared
-  // (schema_hash, query_hash) cache (SK-ASK-025 cross-tenant key).
+  // SK-TRUST-005 — set when the commit ran a stashed preview, so the stash is
+  // consumed once the write has run (one-shot).
   let fromConfirmStash = false;
   if (stashed) {
     // Run the exact statement the user approved. Re-validate as defense in
@@ -401,6 +400,13 @@ export async function orchestrateAsk(
       return { ok: false, error: llmFailure(err, deps.lane) };
     }
     cacheHit = false;
+  }
+
+  // SK-APIKEYS-003 — a read-only principal never commits a write, whatever
+  // the plan's source (LLM, cache hit, confirm stash) and whatever `confirm`
+  // says. Same write-anywhere check as the `/v1/run` gate.
+  if (req.readOnly && isWriteVerb(planSql)) {
+    return { ok: false, error: { code: "forbidden", reason: "read_only_principal" } };
   }
 
   const traceBlock: Trace = {
@@ -734,6 +740,17 @@ export async function orchestrateAsk(
     }
   }
 
+  // SK-TRUST-005 — the stash is one-shot: the approved statement has run, so
+  // a re-sent confirm must not replay it. A transient exec failure above left
+  // the stash in place, so a retry still commits the exact previewed SQL.
+  if (fromConfirmStash && confirmStash) {
+    await withSpan(
+      "nlqdb.confirm.stash.delete",
+      () => confirmStash.delete(req.userId, req.dbId, queryHash),
+      { onError: undefined },
+    );
+  }
+
   // SK-TRUST-006 — a write the engine reports as 0 rows affected is not a
   // successful empty read. Postgres reports the AFFECTED-row count (not a
   // returned-row count) for INSERT/UPDATE/DELETE, so this is where the two
@@ -754,10 +771,10 @@ export async function orchestrateAsk(
   // that the LLM emits and the SQL allowlist accepts is not the same as
   // a plan that EXECUTES; caching the former poisons every subsequent
   // request with the same goal. KV blip on the write is still non-fatal
-  // (we already have rows for this request). SK-TRUST-005 — a stashed-preview
-  // commit skips the write: a write plan must not enter the shared,
-  // cross-tenant (schema_hash, query_hash) cache (SK-ASK-025).
-  if (!cacheHit && !fromConfirmStash) {
+  // (we already have rows for this request). A write plan never enters the
+  // shared, cross-tenant (schema_hash, query_hash) cache (SK-ASK-025 /
+  // SK-TRUST-005) — a later identical goal would replay it as a cache hit.
+  if (!cacheHit && !isWrite) {
     const fresh: CachedPlan = {
       sql: planSql,
       schemaHash,

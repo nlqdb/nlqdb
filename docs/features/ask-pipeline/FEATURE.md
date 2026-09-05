@@ -163,7 +163,7 @@ orphan-schema cohort stays greppable where head-sampling would drop it.
 - **Decision:** `/v1/ask` consults the idempotency dedupe store only when the routed `kind` is a mutation (`create` / `extend` / write); pure-query asks (`kind=query`) skip it entirely.
 - **Core value:** Bullet-proof, Simple, Performance
 - **Why:** A read is naturally idempotent — re-running it has no side effect, so a dedupe record is pure overhead (an extra D1 write on the hot read path for no safety gain). The write branch is where `GLOBAL-005` actually bites; `kind=create` dedupes on the `(identity, Idempotency-Key)` shape like any mutation, so a retried "make me a tracker" can't create two DBs. Resolved per `GLOBAL-033` (Simple + Performance).
-- **Consequence in code:** The middleware reads the route decision (`route-ask.ts`) and only enters the dedupe path for mutating kinds; query asks bypass it. Pairs with `SK-IDEMP-011` (the route's idempotency mode is `header-key` for the write branch, effectively `exempt` for reads).
+- **Consequence in code:** The handler consults `idempotencyLookup`/`idempotencyStore` (`ask_confirm` scope, JSON responses) only on a `confirm: true` hop — the one `/v1/ask` that commits a write; reads and preview hops bypass it. Pairs with `SK-IDEMP-011`.
 - **Alternatives rejected:** Dedupe every `/v1/ask` — wastes a D1 write per read for no correctness gain. Never dedupe — violates `GLOBAL-005` for the write branch where a retry can double-create.
 
 ### SK-ASK-022 — Execution-guided repair: a re-plannable PG exec error re-plans once with the error fed back
