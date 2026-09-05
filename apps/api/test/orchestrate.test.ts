@@ -452,32 +452,36 @@ describe("orchestrateAsk", () => {
     }
   });
 
-  it("SK-SCHEMA-010: a WRITE failing on 3F000 (orphaned schema) is NOT extend demand", async () => {
-    // Widen-on-write creates tables inside the tenant schema; it can never
-    // absorb a dropped schema, so counting it would depress KPI 1 for a
-    // control-plane fault. The envelope stays byte-identical to the read case.
-    const exec = stubExec(
-      Object.assign(new Error('schema "acme_a723a5" does not exist'), { code: "3F000" }),
-    );
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    try {
-      const out = await orchestrateAsk(
-        makeDeps({
-          resolveDb: vi.fn(async () => stubDb({ schemaText: null })),
-          llm: stubLLM({ plan: { sql: "INSERT INTO acme_a723a5.products (name) VALUES ('w')" } }),
-          exec,
-        }),
-        { goal: "add a product", dbId: "db_1", userId: "user_1", intent: "write", confirm: true },
-      );
-      expect(out).toEqual({
-        ok: false,
-        error: { code: "schema_mismatch", referencedTables: [], schemaTables: [] },
-      });
-      expect(out).not.toHaveProperty("extendNeeded");
-    } finally {
-      errorSpy.mockRestore();
-    }
-  });
+  it.each([
+    ["3F000", { code: "3F000" }],
+    ["message-matched 3F000 (Neon dropped .code)", {}],
+  ])(
+    "SK-SCHEMA-010: a WRITE failing on %s (orphaned schema) is NOT extend demand",
+    async (_, shape) => {
+      // Widen-on-write creates tables inside the tenant schema; it can never
+      // absorb a dropped schema, so counting it would depress KPI 1 for a
+      // control-plane fault. The envelope stays byte-identical to the read case.
+      const exec = stubExec(Object.assign(new Error('schema "acme_a723a5" does not exist'), shape));
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const out = await orchestrateAsk(
+          makeDeps({
+            resolveDb: vi.fn(async () => stubDb({ schemaText: null })),
+            llm: stubLLM({ plan: { sql: "INSERT INTO acme_a723a5.products (name) VALUES ('w')" } }),
+            exec,
+          }),
+          { goal: "add a product", dbId: "db_1", userId: "user_1", intent: "write", confirm: true },
+        );
+        expect(out).toEqual({
+          ok: false,
+          error: { code: "schema_mismatch", referencedTables: [], schemaTables: [] },
+        });
+        expect(out).not.toHaveProperty("extendNeeded");
+      } finally {
+        errorSpy.mockRestore();
+      }
+    },
+  );
 
   it("SK-ASK-016 Defense B: exec PG 42P01 → schema_mismatch, retry bails after one attempt", async () => {
     // SchemaText null bypasses Defense A so we exercise the post-exec

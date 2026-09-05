@@ -646,9 +646,10 @@ export async function orchestrateAsk(
             referencedTables: err.referencedTables,
             schemaTables: err.schemaTables,
           },
-          // SK-SCHEMA-010 — a 3F000 (orphaned tenant schema) is a control-plane
-          // fault widen-on-write can't absorb, so only a 42P01 write counts.
-          ...(isWriteVerb(planSql) && d?.pgCode !== "3F000" ? { extendNeeded: true } : {}),
+          // SK-SCHEMA-010 — an orphaned tenant schema (3F000, code or
+          // message-matched) is a control-plane fault widen-on-write can't
+          // absorb, so only a missing-table write counts.
+          ...(isWriteVerb(planSql) && d?.reason !== "schema_missing" ? { extendNeeded: true } : {}),
         };
       }
       // SK-ASK-022 — one execution-guided repair: re-plan with the PG error

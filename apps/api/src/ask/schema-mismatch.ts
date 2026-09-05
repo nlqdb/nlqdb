@@ -42,7 +42,7 @@ export function classifySchemaError(
   // stays bounded (the sibling `db_unreachable` sink's posture).
   return new Nonrecoverable(
     "schema_mismatch",
-    new SchemaMismatchError([], [], { pgCode, pgMessage: msg.slice(0, 500) }),
+    new SchemaMismatchError([], [], { reason, pgCode, pgMessage: msg.slice(0, 500) }),
   );
 }
 
