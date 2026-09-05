@@ -71,6 +71,7 @@ when-to-load:
 - **Why:** Conditional code paths between anonymous and authenticated are where adoption bugs live ("works for signed-in users but not anonymous", or vice-versa). Forcing parity through the same orchestrator is the only durable fix; it also keeps `GLOBAL-002` (behavior parity) honest, because the surface differences are limited to surface UX, not pipeline semantics.
 - **Consequence in code:** `apps/api/src/ask/orchestrate.ts` accepts a resolved `principal: { kind: "user" | "anon", id: string }`. Validators, plan cache, executor, and summarizer all consume `principal`; none of them check `kind`. Tests cover anonymous + authenticated through identical fixtures.
 - **Alternatives rejected:** `if (isAnonymous)` branches at each pipeline step (drift, double test surface) and separate anon/authed routes (every endpoint duplicates; every bug fix needs two PRs).
+- **Note (intentional asymmetry, founder-decided 2026-09-05):** anon stays **read-write** on `/v1/ask` — its documented journey is create-then-use, and anon writes still pass the same LLM → allowlist → `SK-TRUST-001` preview gate as any user. Only `pk_live` keys (`SK-APIKEYS-003`) and the raw `/v1/run` escape hatch are forced read-only; anon is deliberately NOT, so don't re-flag it.
 
 ### SK-ANON-007 — PoW challenge: Cloudflare Turnstile; triggers at 3 creates / 5 min per IP
 
