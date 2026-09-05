@@ -54,8 +54,8 @@ EK-01 interview-extraction record); this is the primitive `EK-06` implements.
     and persist a key in the broker when the client omits one, and
     (b) implement replay on the granted path (same key ⇒ same response,
     **no second usage record**). The public engine emits the *usage
-    record*; turning usage into a **billed fee** is `SK-PIVOT-023` axis 2
-    and lives **only** in the private `experts` surface (`SK-EKP-003`) —
+    record*; turning usage into a **billed fee** is the marketplace fee
+    (`SK-EKP-002`) and lives **only** in the private `experts` surface (`SK-EKP-003`) —
     no fee logic, no fee %, and no Stripe call in nlqdb's public core.
     When billing ships, the meter event's `identifier` is that same key
     (Stripe 2026 Billing Meters dedupe on `identifier`).

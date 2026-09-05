@@ -21,7 +21,7 @@
 //      destructive verb (DROP / TRUNCATE / GRANT / REVOKE / ALTER /
 //      CREATE) — catches the `WITH x AS (DROP TABLE foo) SELECT 1`
 //      pattern where leading-verb regex alone gives a false pass.
-//   3. AST checks — DELETE without WHERE rejected.
+//   3. AST checks — DELETE / UPDATE without WHERE and SELECT INTO rejected.
 //
 // Parse failures do NOT fall through to allow — the LLM produced
 // something we can't reason about, so reject. (Earlier behavior was
@@ -333,10 +333,18 @@ function walkForRejected(node: unknown): SqlRejectReason | null {
   // UPDATE with no WHERE rewrites every row (a mass mutation, the same
   // highest-impact accident class as a bare DELETE), including the
   // CTE-embedded `WITH x AS (UPDATE foo SET … RETURNING *) SELECT 1`
-  // form PG executes destructively. `set`/`table` presence marks a real
-  // statement node vs an expression sharing `type:"update"`.
-  if (type === "update" && !obj["where"] && ("set" in obj || "table" in obj)) {
+  // form PG executes destructively. `table` presence marks a real
+  // statement node: an `ON CONFLICT … DO UPDATE SET …` action is also
+  // `{type:"update", set:[…]}` but has no `table` — it is scoped to the
+  // conflicting row by construction, so an upsert must not trip this.
+  if (type === "update" && !obj["where"] && "table" in obj) {
     return "update_without_where";
+  }
+  // `SELECT … INTO new_table` creates a table — DDL in a SELECT's clothing.
+  // node-sql-parser keeps `type:"select"` and puts the target under
+  // `into.expr` (a plain SELECT carries `into: {position: null}`).
+  if (type === "select" && (obj["into"] as { expr?: unknown } | null)?.expr) {
+    return "disallowed_verb";
   }
   // Side-effecting function calls (SK-SQLAL-008). node-sql-parser tags a
   // call as type:"function"/"aggr_func"; the name lives under `name` as

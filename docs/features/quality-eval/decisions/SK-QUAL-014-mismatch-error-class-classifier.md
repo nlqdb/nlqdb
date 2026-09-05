@@ -2,7 +2,7 @@
 
 Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md). Reads the report
 [`SK-QUAL-001`](./SK-QUAL-001-benchmark-canon.md) writes; feeds the §4 backlog
-in [`quality-score-source-of-truth.md`](../../../progress/quality-score-source-of-truth.md).
+in the retired [engine-quality tracker](../../../progress/quality-score-verification-log.md).
 
 - **Decision:** `tools/eval/src/analyze-mismatches.ts` exports a pure
   `classifyMismatch(predicted, gold) → string[]` that tags the **structural**

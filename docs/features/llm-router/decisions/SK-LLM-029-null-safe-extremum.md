@@ -45,7 +45,7 @@ Both still stand.
   pins the bullet and the refit exemplar. The bullet adds ≈25 input tokens per
   `plan` call — below the `SK-LLM-027` two-bullet add and far below the
   `SK-LLM-026` exemplar block, so the per-minute-quota tradeoff the
-  [engine-quality source of truth](../../../progress/quality-score-source-of-truth.md)
+  [engine-quality verification log](../../../progress/quality-score-verification-log.md)
   §2 tracks is negligible. The effect is measured on the next eval run
   after this lands, not on a PR (`SK-QUAL-002`).
 - **Alternatives rejected:**

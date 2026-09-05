@@ -57,7 +57,7 @@ gpt-oss-120b fallback from [`SK-LLM-023`](./SK-LLM-023-cerebras-planner-tier.md)
   An absent key stays harmless (`?? ""` → auth-fails → failover).
 - **Measurement gate:** This changes the planner head — the single most
   engine-quality-sensitive component — so, per the
-  `quality-score-source-of-truth.md` §5 guardrail ("measured, not assumed") and
+  the retired engine-quality tracker (history: `quality-score-verification-log.md`) ("measured, not assumed") and
   [`GLOBAL-025`](../../../decisions/GLOBAL-025-north-star.md)'s "degrades 0"
   rule, a confirming **BIRD-dev + Spider quality-eval dispatch** should run
   before/at merge to show non-regression. PR CI keeps LLM keys mocked

@@ -34,7 +34,7 @@ workload that proves KPI 1 (first-insert inference rate).
 **Owners (code):** `apps/api/src/grants.ts`, `apps/api/src/ask/grant-scope.ts`,
 `apps/api/src/grant-status.ts` (public rails); product surface partly in the
 private repo per SK-EKP-003.
-**Cross-refs:** business model [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md);
+**Cross-refs:** monetization per [`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md) (premium tier stays; DBA pricing after Phase B; the fee is `SK-EKP-002`);
 `GLOBAL-037` (egress lanes); narrative + research folded into
 [§ Narrative and research](#narrative-and-research) below.
 
@@ -100,19 +100,18 @@ private repo per SK-EKP-003.
   backs the shape: the GPT Store's dangled-and-unshipped revenue program
   burned creator trust, Poe's boring shipped payouts work, and content-platform
   splits like Skill Refinery's 50/50 contradict a "small fee" positioning.
-- **Consequence in code:** Fee billing is axis 2 of
-  [`SK-PIVOT-023`](../agent-memory-pivot/decisions/SK-PIVOT-023-two-axis-business-model.md)
-  and lives only in the marketplace surface (private repo per SK-EKP-003) —
-  no fee logic in nlqdb's public core, no memory meters (SK-PIVOT-023 axis-1
-  rejections stand). A reviewer rejects: fee copy inside
+- **Consequence in code:** Fee billing lives only in the marketplace
+  surface (private repo per SK-EKP-003) — no fee logic in nlqdb's public
+  core, no memory meters (the shipped premium tier is the only paid line,
+  `GLOBAL-041`). A reviewer rejects: fee copy inside
   trust marketing; any seller-facing flow that does not state the fee before
   the seller commits; any fee percentage anywhere before the founder sets it.
 - **Alternatives rejected:** **Content-platform splits (30–50%)** —
   contradicts the founder's "small fee, Stripe-style" directive and the
   positioning against Skill Refinery's 50/50. · **No monetization** — rejects
   the founder's directive; the marketplace is also company income with its
-  own launch (SK-EKP-005). · **Usage meters on memory** — already rejected at
-  the SK-PIVOT-023 axis-1 level; unchanged.
+  own launch (SK-EKP-005). · **Usage meters on memory** — rejected; the
+  shipped premium tier is the only paid line (`GLOBAL-041`).
 
 ### SK-EKP-003 — Hybrid repo split: rails public in nlqdb, marketplace product surface in a private repo with its own CI
 
@@ -201,13 +200,13 @@ private repo per SK-EKP-003.
   research's GPT-Store lesson demands).
 - **Consequence in code:** EK-05's catalog renders both listing types from
   one model. Installing a pack = the runner journey on the installer's own
-  tenant — **never** a grant, **never** a fee (`SK-PIVOT-023`'s axes and
-  free line unchanged). Querying a knowledge DB = grant + fee. A reviewer
+  tenant — **never** a grant, **never** a fee (the free tier is unchanged,
+  `GLOBAL-026`). Querying a knowledge DB = grant + fee. A reviewer
   rejects a second, separate pack-discovery surface, and any fee attached
   to a first-party pack install.
 - **Alternatives rejected:** **Separate pack directory beside the
   marketplace** — duplicated discovery, split audience. · **Making packs
-  paid** — kills the free wedge and contradicts SK-PIVOT-023's free line. ·
+  paid** — kills the free wedge (`GLOBAL-026` free chain forever). ·
   **Marketplace without packs** — launches empty; cold-start is the
   documented creator-platform killer.
 
@@ -261,7 +260,7 @@ GLOBAL; index in [`docs/decisions.md`](../../decisions.md)).
 - **GLOBAL-041** — Autonomous DBA.
   - *In this feature:* EK is the first app built on inferred schema; build gated on Phase A (SK-EKP-005).
 - **GLOBAL-026** — LLM strategy.
-  - *In this feature:* unchanged; axis 1 of SK-PIVOT-023 still rides it.
+  - *In this feature:* unchanged; the shipped premium tier rides it (`GLOBAL-041` monetization line).
 - **GLOBAL-037** — LLM egress lanes (planning schema-only; amended 2026-08-07).
   - *In this feature:* the technical floor under the SK-EKP-001 trust claim — lane 3 (interview authoring, own tenant) is `INV-EKP-037`; EK-09 makes buyer-query paths schema-only end-to-end (lane 2 narration skip).
 

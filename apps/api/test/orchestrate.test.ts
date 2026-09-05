@@ -48,6 +48,9 @@ function stubConfirmStash(seed: Map<string, StashedPlan> = new Map()) {
     write: vi.fn(async (tenantId: string, dbId: string, queryHash: string, plan: StashedPlan) => {
       seed.set(`${tenantId}:${dbId}:${queryHash}`, plan);
     }),
+    delete: vi.fn(async (tenantId: string, dbId: string, queryHash: string) => {
+      seed.delete(`${tenantId}:${dbId}:${queryHash}`);
+    }),
   } satisfies ConfirmStash;
 }
 
@@ -1348,6 +1351,133 @@ describe("orchestrateAsk", () => {
     expect(out.result.requires_confirm).toBeUndefined();
     expect(stash.lookup).toHaveBeenCalledTimes(1);
     expect(llm.plan).toHaveBeenCalledTimes(1); // re-planned on the miss
+    expect(exec).toHaveBeenCalledTimes(1);
+  });
+
+  it("SK-TRUST-005: the stash is one-shot — a second confirm never replays the committed statement", async () => {
+    const stash = stubConfirmStash();
+    const previewLlm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } });
+    const previewExec = vi.fn(async () => ({ rows: [{ c: 1 }], rowCount: 1 }));
+    await orchestrateAsk(makeDeps({ llm: previewLlm, exec: previewExec, confirmStash: stash }), {
+      goal: "delete order 1",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    const confirmLlm = stubLLM({ plan: { sql: "SELECT 1" } });
+    const confirmExec = vi.fn(async (_db: DbRecord, _sql: string) => ({ rows: [], rowCount: 1 }));
+    const first = await orchestrateAsk(
+      makeDeps({ llm: confirmLlm, exec: confirmExec, confirmStash: stash }),
+      { goal: "delete order 1", dbId: "db_1", userId: "user_1", confirm: true },
+    );
+    expect(first.ok).toBe(true);
+    expect(stash.delete).toHaveBeenCalledTimes(1);
+    expect(confirmLlm.plan).not.toHaveBeenCalled();
+    // Re-sent confirm (double-click / lost response): the stash is spent, so
+    // the approved DELETE is not run again — the hop falls back to a fresh plan.
+    await orchestrateAsk(makeDeps({ llm: confirmLlm, exec: confirmExec, confirmStash: stash }), {
+      goal: "delete order 1",
+      dbId: "db_1",
+      userId: "user_1",
+      confirm: true,
+    });
+    expect(confirmLlm.plan).toHaveBeenCalledTimes(1);
+    expect(confirmExec.mock.calls.filter(([, sql]) => /DELETE/i.test(sql))).toHaveLength(1);
+  });
+
+  it("SK-TRUST-005: a failed commit leaves the stash so a retry runs the exact previewed SQL", async () => {
+    const stash = stubConfirmStash();
+    const llm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } });
+    await orchestrateAsk(
+      makeDeps({
+        llm,
+        exec: vi.fn(async () => ({ rows: [{ c: 1 }], rowCount: 1 })),
+        confirmStash: stash,
+      }),
+      { goal: "delete order 1", dbId: "db_1", userId: "user_1" },
+    );
+    const out = await orchestrateAsk(
+      makeDeps({ llm, exec: stubExec(new Error("ECONNRESET")), confirmStash: stash }),
+      { goal: "delete order 1", dbId: "db_1", userId: "user_1", confirm: true },
+    );
+    expect(out.ok).toBe(false);
+    expect(stash.delete).not.toHaveBeenCalled();
+  });
+
+  it("SK-ASK-025: a committed write plan never lands in the shared plan cache", async () => {
+    const cache = stubPlanCache();
+    const llm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } });
+    const exec = vi.fn(async () => ({ rows: [], rowCount: 1 }));
+    const out = await orchestrateAsk(makeDeps({ llm, exec, planCache: cache }), {
+      goal: "delete order 1",
+      dbId: "db_1",
+      userId: "user_1",
+      confirm: true,
+    });
+    expect(out.ok).toBe(true);
+    expect(exec).toHaveBeenCalledTimes(1);
+    expect(cache.write).not.toHaveBeenCalled();
+  });
+
+  it("SK-APIKEYS-003: a read-only principal's write plan is forbidden — confirm:true does not override", async () => {
+    const llm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } });
+    const exec = vi.fn(async () => ({ rows: [], rowCount: 1 }));
+    for (const confirm of [false, true]) {
+      const out = await orchestrateAsk(makeDeps({ llm, exec }), {
+        goal: "delete order 1",
+        dbId: "db_1",
+        userId: "user_1",
+        readOnly: true,
+        confirm,
+      });
+      expect(out).toEqual({
+        ok: false,
+        error: { code: "forbidden", reason: "read_only_principal" },
+      });
+    }
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it("SK-APIKEYS-003: read-only rejects a write hidden in a CTE and a stashed write; reads still run", async () => {
+    const cteLlm = stubLLM({
+      plan: { sql: "WITH x AS (DELETE FROM orders WHERE id = 1 RETURNING id) SELECT * FROM x" },
+    });
+    const exec = vi.fn(async () => ({ rows: [{ id: 1 }], rowCount: 1 }));
+    const cte = await orchestrateAsk(makeDeps({ llm: cteLlm, exec }), {
+      goal: "remove order 1",
+      dbId: "db_1",
+      userId: "user_1",
+      readOnly: true,
+    });
+    expect(cte.ok).toBe(false);
+    if (cte.ok) throw new Error("unreachable");
+    expect(cte.error.code).toBe("forbidden");
+
+    // A stash written by a full-account preview must not let a read-only
+    // confirm commit it.
+    const stash = stubConfirmStash();
+    await orchestrateAsk(
+      makeDeps({
+        llm: stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } }),
+        exec: vi.fn(async () => ({ rows: [{ c: 1 }], rowCount: 1 })),
+        confirmStash: stash,
+      }),
+      { goal: "delete order 1", dbId: "db_1", userId: "user_1" },
+    );
+    const stashed = await orchestrateAsk(makeDeps({ llm: cteLlm, exec, confirmStash: stash }), {
+      goal: "delete order 1",
+      dbId: "db_1",
+      userId: "user_1",
+      readOnly: true,
+      confirm: true,
+    });
+    expect(stashed.ok).toBe(false);
+    expect(exec).not.toHaveBeenCalled();
+
+    const read = await orchestrateAsk(
+      makeDeps({ llm: stubLLM({ plan: { sql: "SELECT * FROM orders" } }), exec }),
+      { goal: "list orders", dbId: "db_1", userId: "user_1", readOnly: true },
+    );
+    expect(read.ok).toBe(true);
     expect(exec).toHaveBeenCalledTimes(1);
   });
 

@@ -1,8 +1,8 @@
 # Acquisition channels — canonical ledger
 
-Founder-resolved 2026-07-19: the operating focus is **user acquisition**
-([`GLOBAL-038`](../decisions/GLOBAL-038-gtm-pmf-instrumentation.md)). This
-file is the one place that answers *"which channels exist, which have we
+Acquisition is **paused until `GLOBAL-041` Phase A measures** (existing
+pages stay live; the [`GLOBAL-038`](../decisions/GLOBAL-038-gtm-pmf-instrumentation.md)
+instrument keeps measuring). This file is the one place that answers *"which channels exist, which have we
 actually tried, and what did each yield?"* — the question the scorecard's
 surface counts (row #6) never answered.
 

@@ -41,7 +41,7 @@ block, orthogonal to each of them.
     BIRD ·
     [`SK-QUAL-008`](../../quality-eval/decisions/SK-QUAL-008-spider2-lite-multi-csv-scorer.md)
     Spider) — the territory of §4's mismatch backlog in the
-    [engine-quality source of truth](../../../progress/quality-score-source-of-truth.md).
+    [engine-quality verification log](../../../progress/quality-score-verification-log.md).
   The directive is prompt-only and **independent** of every existing bullet —
   `SK-LLM-018` fixes identifier fidelity, `SK-LLM-027` the projection / ratio
   cast, `SK-LLM-029` the extremum NULL guard, `SK-LLM-032` the count *object*,
@@ -54,7 +54,7 @@ block, orthogonal to each of them.
 - **Consequence in code:** `packages/llm/src/prompts.ts` adds one string to the
   `PLAN_DIRECTIVES` array (≈55 input tokens per `plan` call — the per-minute
   free-tier-quota tradeoff the
-  [engine-quality source of truth](../../../progress/quality-score-source-of-truth.md)
+  [engine-quality verification log](../../../progress/quality-score-verification-log.md)
   §2 tracks stays small). `PLAN_SYSTEM` and the per-provider wiring are
   unchanged — every provider keeps importing the one `PLAN_SYSTEM` constant.
   `packages/llm/test/prompts.test.ts` pins the bullet, including the

@@ -765,6 +765,24 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     const wantsSse = accept.includes("text/event-stream");
     const wantsJsonOnly = accept.includes("application/json") && !accept.includes("*/*");
 
+    // GLOBAL-005 / SK-ASK-021 — the confirm hop is the `/v1/ask` that commits
+    // a write, and the SDK auto-keys it and retries 5xx / network failures. A
+    // retried `Idempotency-Key` replays the stored response instead of
+    // re-executing. JSON only: a stored envelope can't be replayed as SSE.
+    const confirmIdemKey =
+      parsed.body.confirm && !wantsSse ? c.req.header("Idempotency-Key") : undefined;
+    const priorConfirm = await idempotencyLookup(
+      c.env.KV,
+      "ask_confirm",
+      principal.id,
+      confirmIdemKey,
+    );
+    if (priorConfirm) {
+      span.setAttribute("nlqdb.ask.outcome", "idempotent_replay");
+      span.end();
+      return c.json(priorConfirm);
+    }
+
     // SK-APIKEYS-003: pk_live_ keys are read-only and scoped to one DB.
     // Auto-fill dbId from the principal if the caller omitted it, and
     // block any non-query kind at parse time so the create path is never
@@ -1412,14 +1430,17 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     span.setAttribute("nlqdb.ask.kind_reason", routeOutput.reason);
     span.setAttribute("nlqdb.ask.tenant_db_count", tenantCandidates.length);
 
+    // SK-APIKEYS-003 — pk_live_ keys are read-only: neither a create nor a
+    // write reaches the planner. `orchestrateReq.readOnly` below backstops a
+    // kind=query goal that still plans as a write.
+    if (principal.kind === "pk_live" && routeOutput.kind !== "query") {
+      span.setAttribute("nlqdb.ask.outcome", "pk_live_write_rejected");
+      span.end();
+      return fail(c, "forbidden", { reason: "read_only_principal" });
+    }
+
     // kind=create dispatch.
     if (routeOutput.kind === "create") {
-      // SK-APIKEYS-003 — pk_live_ keys are read-only; creates are forbidden.
-      if (principal.kind === "pk_live") {
-        span.setAttribute("nlqdb.ask.outcome", "pk_live_create_rejected");
-        span.end();
-        return c.json({ error: "forbidden", reason: "pk_live_read_only" }, 403);
-      }
       if (parsed.body.dbId) {
         // SK-ASK-014 — pinned dbId + classifier wants create. Surface
         // a typed clarification chip rather than letting the LLM emit
@@ -1539,6 +1560,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // above); map query→query, write→write.
       intent: routeOutput.kind === "write" ? ("write" as const) : ("query" as const),
       ...(parsed.body.confirm ? { confirm: true as const } : {}),
+      ...(principal.kind === "pk_live" ? { readOnly: true as const } : {}),
     };
 
     // SK-PREMIUM-009/007 — settle the hosted-premium allowance + meter after a
@@ -1872,6 +1894,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         ...(selectedDbEcho ? { selected_db: selectedDbEcho } : {}),
         ...(premiumTrace ? { premium: premiumTrace } : {}),
       };
+      idempotencyStore(c.executionCtx, c.env.KV, "ask_confirm", principal.id, confirmIdemKey, body);
       return c.json(body);
     } finally {
       span.end();

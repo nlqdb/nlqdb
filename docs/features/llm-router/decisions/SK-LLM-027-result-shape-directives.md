@@ -46,7 +46,7 @@ bullets in the same block, demonstrated by the
   pins both bullets and the cast demonstration. The two bullets add ≈40
   input tokens per `plan` call — far below the `SK-LLM-026` exemplar block,
   so the per-minute-quota tradeoff the
-  [engine-quality source of truth](../../../progress/quality-score-source-of-truth.md)
+  [engine-quality verification log](../../../progress/quality-score-verification-log.md)
   §2 tracks is negligible. The combined effect is measured on the next
   eval run after this lands, not on a PR (`SK-QUAL-002`).
 - **Alternatives rejected:**

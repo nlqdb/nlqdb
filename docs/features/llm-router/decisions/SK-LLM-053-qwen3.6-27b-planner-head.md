@@ -75,7 +75,7 @@ from [`SK-LLM-023`](./SK-LLM-023-cerebras-planner-tier.md).
   no longer blocks. See [`history/founder-actions-log.md`](../../../history/founder-actions-log.md).
 - **Measurement gate (the rule that was waived):** This changes the planner head — the
   single most engine-quality-sensitive component — so, per the
-  `quality-score-source-of-truth.md` §5 guardrail ("measured, not assumed") and
+  the retired engine-quality tracker (history: `quality-score-verification-log.md`) ("measured, not assumed") and
   [`GLOBAL-025`](../../../decisions/GLOBAL-025-north-star.md)'s "degrades 0" rule,
   **promotion is gated on a BIRD-dev + Spider quality-eval dispatch** showing
   non-regression, before this merges to production. PR CI keeps LLM keys mocked

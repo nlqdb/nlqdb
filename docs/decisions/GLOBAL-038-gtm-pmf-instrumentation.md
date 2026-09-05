@@ -11,14 +11,15 @@
   exact sign-in address plus any `@nlqdb.com` account email, enforced
   **server-side in `apps/api`** (`admin/gate.ts`, the sole predicate and
   the only home of the literal list); the web app never re-checks it —
-  it renders the API's 403. Founder directive 2026-07-19: the current
-  operating focus is **user acquisition** — GTM/PMF numbers must be
-  measured continuously and show real progress. This **amends
+  it renders the API's 403. This **amends
   [`GLOBAL-025`](./GLOBAL-025-north-star.md) in part**: its
   "growth-style NSM rejected (premature pre-PMF)" alternative no longer
   bars growth *measurement* — the four quality pillars remain the
-  product compass, but acquisition metrics are now first-class measured
-  numbers with a canonical live instrument.
+  product compass, but acquisition metrics are first-class measured
+  numbers with a canonical live instrument. This GLOBAL sets the
+  **instrument, not the operating focus**: the focus is set by
+  [`GLOBAL-041`](./GLOBAL-041-autonomous-dba.md), which paused acquisition
+  until Phase A measures; the instrument keeps measuring regardless.
 - **Core value:** Free, Simple, Bullet-proof
 - **Why:** Until now every GTM number was a hand-pulled point-in-time
   read (remote-D1 SQL, CF GraphQL) living in `docs/scorecard.md` — it
@@ -35,10 +36,7 @@
   internal-email exclusion patterns) live **only** in
   `apps/api/src/admin/gtm-metrics.ts`; the scorecard funnel rows and any
   loop prompt read `GET /v1/admin/metrics` (or quote that module) rather
-  than re-deriving SQL. The acquisition focus also re-orders the loops'
-  lever priority (acquisition/distribution yield first — `daily.md`
-  step 2, `weekly.md` default focus, both marked founder-resolved
-  2026-07-19) and makes channel yield attributable end-to-end:
+  than re-deriving SQL. Channel yield is attributable end-to-end:
   first-touch capture per `SK-GTM-007`, channel keys canonical in
   [`docs/research/acquisition-channels.md`](../research/acquisition-channels.md). The gate predicate lives only in
   `apps/api/src/admin/gate.ts` (`isAdminEmail`). The daily `scheduled()`

@@ -11,16 +11,14 @@
      rate**, **optimizer yield** — whose definitions and floors live only in
      that file (owners: [`schema-widening`](../features/schema-widening/FEATURE.md),
      [`engine-migration`](../features/engine-migration/FEATURE.md)).
-     NL→SQL is the *interface* layer, measured by
-     [`quality-eval`](../features/quality-eval/FEATURE.md) on BIRD-dev and
-     Spider 2.0-lite per [`llm-router`](../features/llm-router/FEATURE.md)
-     tier and on the free chain vs frontier (the "free-vs-frontier delta"
-     — the interface KPI, no longer the headline). Both fail the same way
-     to the user — "the answer came back wrong" — so they share the pillar.
+     NL→SQL is the *interface* layer of the same pillar: an app whose data
+     was never modeled by hand addresses it through `/v1/ask`, so a wrong
+     answer fails the user the same way a failed insert does. Its accuracy
+     ([`quality-eval`](../features/quality-eval/FEATURE.md), BIRD-dev +
+     Spider 2.0-lite) is a **regression alarm, not a KPI**.
   2. **Seamless onboarding** — a stranger reaches first answer in
      ≤ 60 s with no config. Measured by TTFV p50/p95, first-10-queries
-     success rate, and the unguided user-test pass-rate already in
-     [`phase-plan.md` §2 exit gate](../phase-plan.md).
+     success rate, and the unguided user-test pass rate.
   3. **Seamless UX** — once on-ramp lands, every subsequent
      interaction stays trustworthy and recoverable. Measured by
      destructive-op retry rate
@@ -33,15 +31,12 @@
      doesn't dominate the experience. Measured by p50/p95 `/v1/ask`
      latency (cache hit / cache miss), cold-start latency, and CLI
      start time. Per-stage budgets and the span/metric catalog live
-     in [`docs/performance.md`](../performance.md); the headline
-     floors below come from the `architecture.md §0` core-values
-     commitment.
+     in [`docs/performance.md`](../performance.md).
 
-  Concrete KPI targets and review cadence live in §**KPI table** below.
-  The "must not degrade" half of the rule is binary — no per-PR drift
-  allowance. The Phase 2 / Phase 3 floors are the absolute bar; weekly
-  KPI snapshots are the canonical truth; sustained week-over-week
-  degradation is investigated and reverted.
+  Concrete floors live in §**KPI table** below. The "must not degrade"
+  half of the rule is binary — no per-PR drift allowance. Weekly KPI
+  snapshots are the canonical truth; sustained week-over-week degradation
+  is investigated and reverted.
 
 - **Core value:** Bullet-proof, Honest latency, Free, Tax-free integration
 - **Why:** With a strict-$0 budget, multi-surface scope, and a
@@ -51,35 +46,29 @@
   never reached it" / "the second click broke them" / "every click
   is slow enough that nothing else matters") and force every PR to
   declare which one it moves — and to prove it didn't break the
-  others. The bet is asymmetric: **make it
-  great on free LLMs and the gap to competitors widens — not narrows —
-  when frontier models drop in price or capability**, because our
-  scaffolding (planner, validator, plan-cache, schema retrieval,
-  trust UX) compounds with whatever model is underneath. The Spider
-  2.0 frontier in 2026 is 5–23% — proof that engine work, not model
-  picking, is where the moat lives. See
+  others. The LLM bet is asymmetric: **make it great on free LLMs and the
+  gap to competitors widens — not narrows — when frontier models drop in
+  price or capability**, because the scaffolding (planner, validator,
+  plan-cache, schema retrieval, trust UX) compounds with whatever model is
+  underneath. See
   [`GLOBAL-026`](./GLOBAL-026-llm-strategy-byollm-hosted-premium.md)
   for the LLM strategy this compass implies.
 - **Consequence in code & docs:**
-  - Every `FEATURE.md` adds a `## Contribution to north-star` section
-    (one short paragraph: which of {engine, onboarding, UX,
-    performance} the feature moves and by what mechanism, plus
-    confirmation it does not degrade the others). New features
-    carry the line; existing features grow it on their next edit.
-  - The KPI table below is the **single source of truth** for north-star
-    metrics. Implementation lives in
-    [`quality-eval/FEATURE.md`](../features/quality-eval/FEATURE.md)
-    (engine), [`onboarding/FEATURE.md`](../features/onboarding/FEATURE.md)
-    (onboarding), [`trust-ux/FEATURE.md`](../features/trust-ux/FEATURE.md)
-    (UX), and [`docs/performance.md`](../performance.md) (performance).
-  - Phase exit gates in [`phase-plan.md`](../phase-plan.md) name
-    KPI thresholds, not feature lists. A phase doesn't roll over
-    until **every** north-star KPI clears its floor.
-  - Weekly review reads the KPI table; regression on any KPI by the
-    `alert` threshold (below) pages the on-call per
-    [`SK-QUAL-002`](../features/quality-eval/FEATURE.md). Sustained
-    degradation on any pillar triggers a revert of the slice that
-    caused it, regardless of which pillar the slice was advancing.
+  - Every PR body names the pillar it advances and confirms none degrades
+    (`CLAUDE.md` §8).
+  - The KPI table below is the **single source of truth** for the
+    onboarding / UX / performance floors; the engine floors are
+    `GLOBAL-041`'s. Instruments live in
+    [`onboarding/FEATURE.md`](../features/onboarding/FEATURE.md),
+    [`trust-ux/FEATURE.md`](../features/trust-ux/FEATURE.md),
+    [`docs/performance.md`](../performance.md).
+  - Phase exit gates in [`phase-plan.md`](../phase-plan.md) are the
+    `GLOBAL-041` phase gates: Phase 2 exits on Phase A alone; Phase 3 exits
+    on Phase B plus the floors below.
+  - `/weekly` reads the KPI table; regression on any KPI by its `alert`
+    delta is that week's worst finding; sustained degradation on any pillar
+    triggers a revert of the slice that caused it, regardless of which
+    pillar the slice was advancing.
 - **Alternatives rejected:**
   - **Single NSM** (e.g. "weekly answered questions") — too reductive.
     Engine / onboarding / UX fail independently; one number hides
@@ -89,155 +78,101 @@
   - **Growth-style NSM** (DAU, conversion %) — premature pre-PMF;
     biases work toward distribution before quality is provable.
     *Amended in part by
-    [`GLOBAL-038`](./GLOBAL-038-gtm-pmf-instrumentation.md)
-    (founder directive 2026-07-19): growth/acquisition metrics are now
-    first-class **measured** numbers with a canonical live instrument;
-    the four pillars above remain the product compass.*
+    [`GLOBAL-038`](./GLOBAL-038-gtm-pmf-instrumentation.md): acquisition
+    metrics are measured continuously on a canonical live instrument; the
+    four pillars above remain the product compass, and `GLOBAL-041` sets
+    the operating focus.*
   - **OKRs instead of KPIs** — quarterly noise; KPIs with a measurement
-    instrument + per-PR contribution line are tighter and lighter.
+    instrument are tighter and lighter.
+  - **A `## Contribution to north-star` section in every FEATURE.md** —
+    mandated 2026-05, adopted by 6 of 43 features; the PR body already
+    carries the claim, so the section only duplicated it.
 
 ## KPI table — the unambiguous bar
 
-KPI columns:
-- **Baseline (2026-05):** measured today, or `tbd-by-<date>` if the
-  instrument is not yet shipped.
-- **Phase 2 floor / Phase 3 floor:** the value below which a phase
-  rollover is blocked (per [`phase-plan.md` §3, §4](../phase-plan.md)).
-- **Alert:** week-over-week delta that pages on-call (per
-  [`SK-QUAL-002`](../features/quality-eval/FEATURE.md)).
-- **Owner:** the FEATURE.md that owns the measurement.
+Columns: **Current** — the latest measured value, or `unmeasured` (the owning
+FEATURE.md ships the instrument; no dated deadline). **Floor** — the value
+below which the named phase does not roll over
+([`phase-plan.md`](../phase-plan.md)). **Alert** — the week-over-week delta
+that makes a KPI `/weekly`'s worst finding. **Owner** — the FEATURE.md that
+owns the measurement.
 
-### Engine quality — NL→SQL layer
+### Engine quality — the autonomous DBA (`GLOBAL-041`)
 
-**Frontier definition (revised 2026-05 per the BIRD-2026 leaderboard
-reality).** "Frontier" in the floors below means **agentic-orchestrated
-frontier** (Agentar-class: planner + validator + retry + ensembling on a
-frontier model) — the system class on the leading edge of the canonical
-BIRD-dev leaderboard. **Canonical-set SOTA 2026 sits at ~77-82%**:
-AskData+GPT-4o 77.64% dev / 81.95% test (current #1); Agentar-Scale-SQL
-74.90% dev / 81.67% test ([arXiv:2509.24403](https://arxiv.org/abs/2509.24403)).
-The ~93% figures from 2026 papers like ReViSQL
-([arXiv:2603.20004](https://arxiv.org/html/2603.20004v2)) are measured on
-the **Arcwise-corrected** variant
-([arXiv:2601.08778](https://arxiv.org/abs/2601.08778), corrects 52.8% of
-Mini-Dev annotations), **not** on canonical BIRD-dev. Pure **single-model
-frontier** (Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro, no orchestration) tops
-out at ~73% on canonical BIRD-dev in 2026 (Gemini-SQL 73.27% dev) and is
-reported *informationally* on a separate row below. nlqdb's own engine
-work IS the agentic orchestration; the moat thesis is "our scaffolding
-closes the agentic-vs-single-model gap faster than the gap to humans
-grows", measured by the free-vs-agentic-frontier delta.
+Definitions and floors are canonical in `GLOBAL-041`; this table only
+routes.
 
-| KPI | Baseline (2026-05) | Phase 2 floor | Phase 3 floor | Alert | Owner |
-|---|---|---|---|---|---|
-| BIRD-dev execution match (free chain) | tbd-by-2026-06-15 (target ≥ 50%) | ≥ 60% | ≥ 72% | −5 pp wk/wk OR McNemar p<0.05 | `quality-eval` |
-| BIRD-dev execution match (agentic-frontier — Agentar-class) | tbd-by-2026-09-01 | ≥ 80% | ≥ 88% | −3 pp wk/wk OR McNemar p<0.05 | `quality-eval` |
-| BIRD-dev execution match (single-model frontier — Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro) | tbd-by-2026-06-15 (target ≥ 65%) | report only (single-model SOTA 2026 ≈ 73%) | report only | informational | `quality-eval` |
-| Spider 2.0-lite execution match (free chain, SQLite subset only — see Open Question) | tbd-by-2026-07-15 | report only | ≥ 15% | regression −3 pp | `quality-eval` |
-| Spider 2.0-lite execution match (frontier, SQLite subset only) | tbd-by-2026-07-15 | report only | ≥ 25% | regression −3 pp | `quality-eval` |
-| **Free-vs-agentic-frontier delta** (BIRD-dev) | tbd | **≤ 25 pp** | **≤ 16 pp** | +3 pp wk/wk (gap widening) | `quality-eval` |
-| Validator false-positive rate (correct plan blocked) | tbd-by-2026-07-01 | ≤ 2% | ≤ 1% | +1 pp wk/wk | `ask-pipeline` |
-| Refuse-on-low-confidence rate (vs hallucinated answer rate) | tbd | refuse > hallucinate | refuse > hallucinate × 3 | inversion pages | `trust-ux` |
-
-The **free-vs-agentic-frontier delta is the headline *interface* number.** It
-is what proves "great on free LLMs ⇒ invincible on frontier LLMs": as
-our scaffolding improves, the delta narrows; when it narrows past the
-Phase 3 floor, the moat is real. Phase 2 floor widened from ≤ 22 pp to
-≤ 25 pp to reflect the lifted frontier ceiling.
-
-**Regression-detection methodology (SK-QUAL-002 + SK-QUAL-006).** "Alert"
-rows above fire on **two parallel triggers**: (1) point-in-time threshold
-on the per-lane EA delta, *and* (2) McNemar's paired-binary test
-(p < 0.05) on per-question outcomes between the current run and
-[`tools/eval/baseline-2026-06-15.json`](../../tools/eval/baseline-2026-06-15.json).
-McNemar factors out questions both runs agree on, which is the right
-test at N≈500 where the binomial SE on raw EA is ~2.2 pp; a 5-pp drop can
-fire on noise, but a McNemar p<0.05 says the worsening is on a
-non-trivial set of questions that used to pass.
-
-### Engine quality — autonomous-DBA layer
-
-KPIs 1–3 (first-insert inference rate, evolution-without-user-action rate,
-optimizer yield) and their Phase A / Phase B floors are defined **only** in
-[`GLOBAL-041`](./GLOBAL-041-autonomous-dba.md) (P3). Cross-engine dual-read
-equivalence (100 %, any divergence pages) stays the Phase C gate in
-[`engine-migration`](../features/engine-migration/FEATURE.md).
+| KPI | Current | Floor | Alert | Owner |
+|---|---|---|---|---|
+| **1. First-insert inference rate** | unmeasured — instrument = the Phase A dogfood workload (`/daily` writes through `@nlqdb/sdk`; first 200 unseen-field inserts in a 14-day window) | ≥ 95 % at Phase A exit (= Phase 2 exit) · ≥ 99 % at Phase B exit | any miss on the dogfood workload is inspected the same run | `schema-widening` |
+| **2. Evolution-without-user-action rate** | unmeasured — Phase B instrument | ≥ 90 % at Phase B exit | −5 pp wk/wk | `schema-widening` |
+| **3. Optimizer yield** | unmeasured — Phase B instrument | ≥ 1 applied / active DB / month; median p95 improvement ≥ 20 %; 0 un-undone regressions > 10 % | any un-undone regression | `engine-migration` |
+| Cross-engine dual-read equivalence | unmeasured — Phase C | 100 % | any divergence | `engine-migration` |
+| **BIRD-dev / Spider 2.0-lite accuracy** | last green run in `tools/eval/baseline-*.json` | **regression alarm only, not a KPI** — CI fails on > 5 pp drop vs last green on the fixed sample (`SK-QUAL-002`); no floor, no phase gate | a red alarm is a bug | `quality-eval` |
 
 ### Onboarding
 
-| KPI | Baseline (2026-05) | Phase 2 floor | Phase 3 floor | Alert | Owner |
-|---|---|---|---|---|---|
-| TTFV — median seconds, landing → first answer | tbd-by-2026-06-01 | ≤ 60 s | ≤ 30 s | +10 s wk/wk | `onboarding` |
-| TTFV — p95 seconds, landing → first answer | tbd | ≤ 120 s | ≤ 60 s | +20 s wk/wk | `onboarding` |
-| First-10-queries success rate (per new user/DB, share of their first 10 `/v1/ask` calls answered successfully — 2xx, non-refused) | unmeasured — instrument shipped 2026-07-01, awaiting data | ≥ 95% | ≥ 95% | −5 pts wk/wk | `onboarding` |
-| Unguided user-test pass rate (4/5 strangers complete the 60s flow) | per Phase 1 gate | 4/5 | 5/5 | regression blocks rollover | `onboarding` |
-| Drop-off rate landing → first query | tbd | ≤ 25% | ≤ 15% | +5 pts wk/wk | `onboarding` |
+| KPI | Current | Floor (Phase 3 exit = `GLOBAL-041` Phase B) | Alert | Owner |
+|---|---|---|---|---|
+| TTFV — median seconds, landing → first answer | unmeasured (stranger N = 0) | ≤ 60 s | +10 s wk/wk | `onboarding` |
+| TTFV — p95 seconds, landing → first answer | unmeasured | ≤ 120 s | +20 s wk/wk | `onboarding` |
+| First-10-queries success rate (share of a new user/DB's first 10 `/v1/ask` calls answered — 2xx, non-refused) | instrument live (`SK-ONBOARD-006`); stranger N = 0 | ≥ 95 % | −5 pts wk/wk | `onboarding` |
+| Unguided user-test pass rate (strangers completing the 60 s flow) | unmeasured | 5/5 | regression blocks rollover | `onboarding` |
+| Drop-off rate landing → first query | unmeasured | ≤ 15 % | +5 pts wk/wk | `onboarding` |
 
 ### UX
 
-| KPI | Baseline (2026-05) | Phase 2 floor | Phase 3 floor | Alert | Owner |
-|---|---|---|---|---|---|
-| Destructive-op retry rate (per Phase 1.5 gate) | tbd-by-2026-06-01 | measurable reduction vs no-preview baseline | ≤ 5% | regression blocks rollover | `trust-ux` |
-| Sean-Ellis "very disappointed" share | tbd-by-2026-08-01 | ≥ 25% | ≥ 40% (PMF) | regression blocks rollover | `founder-playbook` |
-| Session retention (% of users running ≥ 2 queries per session) | tbd | ≥ 60% | ≥ 75% | −5 pts wk/wk | `web-app` |
-| Recoverable-failure recovery rate (`GLOBAL-022`) — % of recoverable errors retried-to-success without surfacing | tbd | ≥ 95% | ≥ 99% | regression alerts | `observability` |
+| KPI | Current | Floor (Phase 3 exit) | Alert | Owner |
+|---|---|---|---|---|
+| Destructive-op retry rate | unmeasured | ≤ 5 % | regression blocks rollover | `trust-ux` |
+| Sean-Ellis "very disappointed" share | unmeasured (survey live, `SK-GTM-006`) | ≥ 40 % (PMF) | regression blocks rollover | `founder-playbook` |
+| Session retention (% of users running ≥ 2 queries per session) | unmeasured | ≥ 75 % | −5 pts wk/wk | `web-app` |
+| Recoverable-failure recovery rate (`GLOBAL-022`) | unmeasured | ≥ 99 % | regression alerts | `observability` |
 
 ### Performance
 
-Per-stage budgets and span/metric catalog live in
+Per-stage budgets and the span/metric catalog live in
 [`docs/performance.md`](../performance.md); the floors below are the
 headline user-visible numbers from `architecture.md §0`.
 
-| KPI | Baseline (2026-05) | Phase 2 floor | Phase 3 floor | Alert | Owner |
-|---|---|---|---|---|---|
-| p50 `/v1/ask` latency — cache hit | tbd-by-2026-06-15 | ≤ 400 ms | ≤ 250 ms | +50 ms wk/wk | `performance.md` |
-| p95 `/v1/ask` latency — cache miss | tbd-by-2026-06-15 | ≤ 1.5 s | ≤ 1.0 s | +200 ms wk/wk | `performance.md` |
-| Cold-start latency (warm Worker p99) | tbd-by-2026-06-15 | ≤ 800 ms | ≤ 500 ms | +100 ms wk/wk | `performance.md` |
-| CLI start time (`nlq` no-op) | 5 ms (measured per `SK-CLI-001`) | ≤ 30 ms | ≤ 20 ms | regression alerts | `cli` |
-| Error rate (5xx, rolling 1 h, per route) | per `performance.md §1` | < 0.1% | < 0.1% | any breach pages | `performance.md` |
+| KPI | Current | Floor (Phase 3 exit) | Alert | Owner |
+|---|---|---|---|---|
+| p50 `/v1/ask` latency — cache hit | 16.4 ms wall-time p50, all routes (2026-07-27) | ≤ 250 ms | +50 ms wk/wk | `performance.md` |
+| p95 `/v1/ask` latency — cache miss | 1.48 s wall-time p95, all routes (2026-07-27) | ≤ 1.0 s | +200 ms wk/wk | `performance.md` |
+| Cold-start latency (warm Worker p99) | unmeasured | ≤ 500 ms | +100 ms wk/wk | `performance.md` |
+| CLI start time (`nlq` no-op) | 5 ms (`SK-CLI-001`) | ≤ 20 ms | regression alerts | `cli` |
+| Error rate (5xx, rolling 1 h, per route) | per `performance.md §1` | < 0.1 % | any breach pages | `performance.md` |
 
 ## How measurement is operationalized
 
-- **Instrument source.** Engine KPIs come from the on-demand
-  `tools/eval` runner (see
-  [`SK-QUAL-002`](../features/quality-eval/FEATURE.md)). Onboarding
-  and UX KPIs come from the existing event pipeline (`packages/events`,
-  see [`GLOBAL-024`](./GLOBAL-024-demand-signal-telemetry.md)) plus
-  the `nlqdb.surface` label introduced in
-  [`phase-plan.md` §3](../phase-plan.md); the first-10-queries KPI
-  reads from the D1 `first10_*` counters
-  (`SK-ONBOARD-006` in [`onboarding`](../features/onboarding/FEATURE.md)). Sean-Ellis is a manual
-  monthly cadence per
-  [`founder-playbook.md` §2](../founder-playbook.md).
-- **Where the dashboard lives.** Grafana board
-  `dashboards/north-star.json` (planned with first `quality-eval`
-  commit). Weekly snapshot posts to LogSnag channel `#north-star`.
-- **What "tbd-by-<date>" means.** A baseline must be measured before
-  the listed date; the owning FEATURE.md is responsible for shipping
-  the instrument. Missing the date triggers a P2 follow-up.
-- **What floors do.** Phase rollover does not happen until the
-  floor is met. A floor miss is not a bug — it's a signal that the
-  next slice should be engine / onboarding / UX work, not new
-  surfaces.
+- **Engine KPI 1** reads the two `/v1/ask` write-path counters over the
+  dogfood workload (`GLOBAL-041`). **Onboarding and UX KPIs** come from the
+  event pipeline (`packages/events`,
+  [`GLOBAL-024`](./GLOBAL-024-demand-signal-telemetry.md)) plus the
+  `nlqdb.surface` label; first-10-queries reads the D1 `first10_*` counters
+  (`SK-ONBOARD-006`). Sean-Ellis is captured in-product (`SK-GTM-006`) and
+  read on `/app/admin`. **Performance** reads the OTel catalog in
+  `docs/performance.md`.
+- **Where the numbers surface:** `docs/scorecard.md` (regenerated by
+  `/daily`) and `/app/admin` (`GLOBAL-038`).
+- **What floors do.** Phase rollover does not happen until the floor is
+  met. A floor miss is not a bug — it is the signal that the next slice is
+  engine / onboarding / UX work, not a new surface.
 
 ## Mapping to existing decisions
 
 This GLOBAL is a compass, not a contradiction. It *names* what the
 following decisions already implied:
-
-- [`GLOBAL-011`](./GLOBAL-011-honest-latency.md) — honest latency is
-  a UX KPI input.
-- [`GLOBAL-012`](./GLOBAL-012-one-sentence-errors.md) — one-sentence
-  errors compound into the retry-rate metric.
-- [`GLOBAL-020`](./GLOBAL-020-zero-config-first-60s.md) — zero-config
-  is the onboarding mechanism; this GLOBAL sets its measurement.
-- [`GLOBAL-022`](./GLOBAL-022-recoverable-failures-retry-to-success.md)
-  — recovery-rate becomes a UX KPI here.
-- [`GLOBAL-023`](./GLOBAL-023-trust-ux-baseline.md) — trust UX is
-  the UX north-star mechanism.
-- [`GLOBAL-024`](./GLOBAL-024-demand-signal-telemetry.md) — demand
-  signal is the instrument that makes these KPIs measurable.
-- [`GLOBAL-026`](./GLOBAL-026-llm-strategy-byollm-hosted-premium.md)
-  — LLM strategy is the lever for the interface layer.
-- [`GLOBAL-041`](./GLOBAL-041-autonomous-dba.md) — defines the engine
-  pillar's three KPIs.
+[`GLOBAL-011`](./GLOBAL-011-honest-latency.md) (honest latency → UX input) ·
+[`GLOBAL-012`](./GLOBAL-012-one-sentence-errors.md) (one-sentence errors →
+retry rate) · [`GLOBAL-020`](./GLOBAL-020-zero-config-first-60s.md)
+(zero-config → the onboarding mechanism) ·
+[`GLOBAL-022`](./GLOBAL-022-recoverable-failures-retry-to-success.md)
+(recovery rate → UX KPI) ·
+[`GLOBAL-023`](./GLOBAL-023-trust-ux-baseline.md) (trust UX → the UX
+mechanism) · [`GLOBAL-024`](./GLOBAL-024-demand-signal-telemetry.md) (the
+instrument) ·
+[`GLOBAL-026`](./GLOBAL-026-llm-strategy-byollm-hosted-premium.md) (LLM
+strategy for the interface layer) ·
+[`GLOBAL-041`](./GLOBAL-041-autonomous-dba.md) (the engine pillar's KPIs,
+phases and operating focus).

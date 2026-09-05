@@ -63,6 +63,11 @@ export type AskRequest = {
   // is no bypass on `/v1/ask` — the escape hatch for power users is
   // `/v1/run` (GLOBAL-015).
   confirm?: boolean;
+  // SK-APIKEYS-003 — a read-only principal (`pk_live_` embed). A plan that
+  // is a write — from the LLM, the plan cache, or the confirm stash — is
+  // refused before exec with `forbidden / read_only_principal`, the same
+  // gate `/v1/run` applies. `confirm: true` does not override it.
+  readOnly?: boolean;
   // SK-ASK-009 — the routed `kind`, carried into orchestration. `"write"`
   // reaches the planner (so it emits a data-modifying statement) and is
   // enforced post-plan: a write goal that plans as a read is re-planned, not
@@ -185,6 +190,8 @@ export type AskError =
   | { code: "db_misconfigured" }
   | { code: "db_unreachable" }
   | { code: "sql_rejected"; reason: string }
+  // SK-APIKEYS-003 — a read-only principal planned a write.
+  | { code: "forbidden"; reason: "read_only_principal" }
   // SK-LLM-051 — the bounded, secret-free cause the router already computed.
   // Discarding it is what made a rejected BYOLLM key read as "try rephrasing"
   // (2026-08-17). Raw provider text stays on the `llm.plan` span.

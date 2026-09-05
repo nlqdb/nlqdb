@@ -13,7 +13,9 @@
 // there would leak one tenant's write into another tenant's identical goal.
 // This key is scoped to `(tenant, db, query_hash)` and holds only a preview
 // awaiting its own owner's confirm. Short-lived: a preview the user never
-// approves expires on its own.
+// approves expires on its own. One-shot: the commit hop deletes it once the
+// write has run, so a re-sent confirm (double-click, client retry after the
+// response was lost) can never replay the same approved statement.
 //
 // Pure storage (mirrors `plan-cache.ts`) — spans are emitted by the consumer
 // (`orchestrate.ts`) so this stays unit-testable against a plain Map stub.
@@ -38,13 +40,14 @@ export type StashedPlan = {
 export type ConfirmStash = {
   lookup(tenantId: string, dbId: string, queryHash: string): Promise<StashedPlan | null>;
   write(tenantId: string, dbId: string, queryHash: string, plan: StashedPlan): Promise<void>;
+  delete(tenantId: string, dbId: string, queryHash: string): Promise<void>;
 };
 
 function key(tenantId: string, dbId: string, queryHash: string): string {
   return `${KEY_PREFIX}${tenantId}:${dbId}:${queryHash}`;
 }
 
-export function makeConfirmStash(store: KVStore): ConfirmStash {
+export function makeConfirmStash(store: KVStore & Pick<KVNamespace, "delete">): ConfirmStash {
   return {
     async lookup(tenantId, dbId, queryHash) {
       const raw = await store.get(key(tenantId, dbId, queryHash));
@@ -61,6 +64,9 @@ export function makeConfirmStash(store: KVStore): ConfirmStash {
       await store.put(key(tenantId, dbId, queryHash), JSON.stringify(plan), {
         expirationTtl: CONFIRM_STASH_TTL_SECONDS,
       });
+    },
+    async delete(tenantId, dbId, queryHash) {
+      await store.delete(key(tenantId, dbId, queryHash));
     },
   };
 }

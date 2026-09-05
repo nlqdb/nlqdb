@@ -22,7 +22,7 @@ when-to-load:
 
 **Contribution to north-star:** Engine quality (hosted-premium + BYOLLM give heavy users frontier-model accuracy on real schemas, feeding `quality-eval`'s free-vs-frontier delta KPI per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)) and UX (request-denominated Shape B + opt-in fallback per `SK-PREMIUM-011` keep the boundary honest, no "first-token bill" surprise).
 **Owners (code):** none yet — `apps/api/src/{billing,ask}/**`, `packages/{llm,sdk,elements,mcp}/**`, `apps/web/**`, `cli/` will all carry slices.
-**Cross-refs:** docs/architecture.md §5/§6/§8 (add-on · pricing row · model catalog) · `llm-router/FEATURE.md` (`SK-LLM-007` chain selector, `SK-LLM-008` Pro privacy, `SK-LLM-009` caching) · `stripe-billing/FEATURE.md` (`SK-STRIPE-004` Checkout) · `rate-limit/FEATURE.md` (spend cap open) · `web-app/FEATURE.md` (CTA) · `sdk` / `cli` / `mcp-server` / `elements` FEATUREs (surface parity per `GLOBAL-003`) · [`agent-memory-pivot/FEATURE.md`](../agent-memory-pivot/FEATURE.md) (`SK-PIVOT-023` — the memory wedge's paid line is hosted memory *operations* riding this feature's premium chain; no memory-specific meter or SKU)
+**Cross-refs:** docs/architecture.md §5/§6/§8 (add-on · pricing row · model catalog) · `llm-router/FEATURE.md` (`SK-LLM-007` chain selector, `SK-LLM-008` Pro privacy, `SK-LLM-009` caching) · `stripe-billing/FEATURE.md` (`SK-STRIPE-004` Checkout) · `rate-limit/FEATURE.md` (spend cap open) · `web-app/FEATURE.md` (CTA) · `sdk` / `cli` / `mcp-server` / `elements` FEATUREs (surface parity per `GLOBAL-003`) · [`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md) (monetization: this shipped tier stays as is; DBA pricing is decided after Phase B)
 
 ## Touchpoints — read this feature before editing
 
