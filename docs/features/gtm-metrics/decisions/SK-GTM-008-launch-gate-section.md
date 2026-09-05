@@ -18,7 +18,7 @@
     (`GATE_STATIC`) carrying its **as-of date and source**, used only
     where no queryable source exists: criterion 3 (proven by the E-03
     invariant suite + eval runs, not a counter), criterion 4 (per-axis
-    temporal EX lives in the `quality-eval-memory` CI summary), criterion
+    temporal EX lives in the `--dataset memory-quality` run summary), criterion
     5 (the `/agents` dashboard boolean, D-06), and the `D-n/7` track
     count.
   A criterion with no source states that in words — "not yet measurable,

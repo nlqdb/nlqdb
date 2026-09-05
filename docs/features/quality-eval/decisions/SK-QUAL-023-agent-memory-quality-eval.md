@@ -14,7 +14,7 @@ questions**. The repo-ops docs→memory pack landed 2026-07-28
 questions** (retrieval 2 / temporal 4 / forgetting 2 / consolidation 2 /
 analytical 2) on the shipped preset's real column shape, gold-verified offline
 against a hand-authored seed — **no EX measured on them yet** (next
-`quality-eval-memory` dispatch). That dispatch's per-axis table now reads
+`--dataset memory-quality` run). That run's per-axis table now reads
 question→axis from the dataset (`--axes`) instead of guessing from id ranges,
 which mislabelled everything past id 14 as `analytical`.
 
@@ -22,10 +22,11 @@ which mislabelled everything past id 14 as `analytical`.
 **and first canonical EX** shipped — `tools/eval/src/datasets/memory-quality.ts`
 (then 15 gold-verified questions, 3 per axis + analytical) + runner wiring
 (`--dataset memory-quality`) + gold-executability / tie-free /
-axis-semantics tests + `.github/workflows/quality-eval-memory.yml`
-(`workflow_dispatch`, free chain + optional frontier lane, per-axis EX
-breakdown in the run summary; mirrors the persona-bench dispatch — no
-fixture download, no baseline, no emit). **First EX (run 68, 2026-07-14,
+axis-semantics tests. It runs **manual-only** via `bun src/runner.ts
+--dataset memory-quality` (free chain + optional frontier lane, per-axis EX
+breakdown in the run summary; no fixture download, no baseline, no emit — the
+dedicated `quality-eval-memory.yml` dispatch was retired with the prior-bet
+memory lane, `GLOBAL-041`). **First EX (run 68, 2026-07-14,
 main `a5e72e6`, GHA 29305503755): free-chain 86.67% (13/15)**, p50 949 ms /
 p95 1999 ms, `no_sql` 0 — a real measurement (`transport_failed:null`).
 Per-axis: retrieval / forgetting / analytical 3/3; **temporal + consolidation

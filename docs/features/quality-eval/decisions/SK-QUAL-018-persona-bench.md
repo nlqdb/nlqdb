@@ -24,9 +24,10 @@ and [`SK-QUAL-015`](./SK-QUAL-015-column-coverage-harness.md).
   `KNOWN_DATASETS` with a `--persona P1|P2` filter, so `bun src/runner.ts
   --dataset persona-bench` scores the free chain's EX. The wiring adds only a new
   dataset branch (BIRD/Spider paths byte-unchanged) and PR CI never fires real
-  keys (`SK-QUAL-002`), so **no baseline moves**. The **dispatch half** is the
-  manual `.github/workflows/quality-eval-persona-bench.yml` (`workflow_dispatch`,
-  `persona: all|P1|P2`, `include_frontier`): no upstream fixture download (inline
+  keys (`SK-QUAL-002`), so **no baseline moves**. It runs **manual-only** via
+  `bun src/runner.ts --dataset persona-bench [--persona P1|P2]` (the dedicated
+  `quality-eval-persona-bench.yml` dispatch was retired with the paused ICP lane,
+  `GLOBAL-041`): no upstream fixture download (inline
   DDL materialised by `loadPersonaBench`) and no `--baseline`/`--emit` — a
   measurement that never overwrites the canonical baseline, so unlike a back-to-back
   BIRD/Spider run it is **not** blocked by the `SK-QUAL-002` < 7-day gate. The
