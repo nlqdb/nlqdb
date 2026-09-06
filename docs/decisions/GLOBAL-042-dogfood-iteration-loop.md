@@ -44,10 +44,12 @@
   4. **Iteration protocol** — strictly in this order, never overlapping:
      1. Run the iteration.
      2. Write the retrospective to
-        [`docs/history/dogfood-iterations/NNN-<slug>.md`](../history/dogfood-iterations/README.md):
+        [`docs/history/dogfood-iterations/NNN-<slug>.md`](../history/dogfood-iterations/README.md),
+        opened from [`TEMPLATE.md`](../history/dogfood-iterations/TEMPLATE.md):
         how it went, what went right, what went wrong, **concrete numbers**
         (inserts, unseen-field hits/misses, KPI 1 rate, manual steps taken,
-        time), and the next iteration's one change.
+        time), the next iteration's one change, and the three-line leverage
+        verdict (§Leverage below).
      3. **Clean up everything the iteration created** — hosted DBs, API
         keys, branches, scratch code, test tenants. The repo and the
         platform look as if the iteration never ran, except for the retro.
@@ -71,3 +73,34 @@
     explicitly.
   - **Carry state between iterations** — leftover DBs, keys and branches
     hide what the next iteration actually needed from a clean start.
+
+## Leverage
+
+Design-for-leverage verdict for this loop, recorded 2026-09-06 after the
+discovery gate below; every iteration's retro re-states it for its own diff.
+
+```
+Leverage: spend-with-seams
+N+1: iteration 002 copies docs/history/dogfood-iterations/TEMPLATE.md and writes only its §1 goal, §4 inventory, §5 specifics and the §6.1 "Today" column; the seam is TEMPLATE.md (extraction trigger for anything more: a cleanup or retro step re-done by hand in two consecutive retros)
+Category: "a real app built on nlqdb through the public surfaces only, measured, then cleaned up" — 0 prior instances; one level up, "a workload that exercises nlqdb end to end and measures it" — 7 instances
+```
+
+Discovery (re-runnable): `ls examples/ tools/ tests/ scripts/`;
+`find examples tests packages -path '*e2e*'`; `grep -rli dogfood` over
+`*.md|*.ts|*.sh`; `grep -rlIi 'demo app|sample app|reference app|built on nlqdb'`.
+Nearest near-misses, none an app with journeys: `examples/*` (11 one-file
+`<nlq-data>` read embeds), `tools/stranger-test/fixtures/agent-app/` (scratch
+fixture a cold agent edits, never deployed), the `/daily` dogfood workload
+(`.claude/commands/daily.md`, SDK writes of run logs — the KPI 1 instrument,
+not a product), `tests/opencheck/tests-{a,b,c}.yaml` (create → write → cleanup
+lifecycle on the web surface). The one-level-up instances —
+`tools/stranger-test` FLOW-001/002/003, `scripts/flow-005-walk.sh`,
+`scripts/flow-005-stdio-walk.sh`, `scripts/verify-flows.sh`,
+`scripts/reach-agent-walk.sh`, `tools/eval` (BIRD/Spider), opencheck — all
+emit a JSON outcome per run; a retro is prose with numbers, so none is
+extendable into the iteration brief. Of the 001 brief, ~55 % was mechanics
+(quarantine, token handling, code-location rules, retro fields, cleanup) —
+that fraction is `TEMPLATE.md`. No iteration script: nearest is
+`scripts/stranger-test.sh`; a `new`/`retro`/`cleanup` entry at one iteration
+would be `cp` plus steps the SDK/CLI should own (`nlq db delete` is missing —
+a `GLOBAL-003` gap, logged by the iteration, not scripted around).

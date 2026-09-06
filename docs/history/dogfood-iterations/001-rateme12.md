@@ -1,7 +1,7 @@
 # Dogfood iteration 001 — rateme12 on nlqdb
 
 **Status:** brief (not started) · **Governs:** [`GLOBAL-042`](../../decisions/GLOBAL-042-dogfood-iteration-loop.md) · **Measures:** [`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md) Phase A KPI 1
-This file is the execution brief; the retro (§7) is appended to it when the iteration ends.
+Instantiates [`TEMPLATE.md`](./TEMPLATE.md) — the mechanics (§2 quarantine, §3 token handling, §5 fixed rules, §7 retro fields, §8 cleanup) live there and are not repeated here. The retro (§7) is appended to this file when the iteration ends.
 
 ## 1. Goal
 
@@ -13,22 +13,14 @@ Founder, verbatim (2026-09-06):
 
 **Working** for this iteration means: `https://rateme12.nlqdb.com` renders the same primary user journeys as rateme12 (§4 inventory), and every read and write goes through the published `@nlqdb/sdk` against one hosted nlqdb database whose schema nlqdb inferred from the app's own inserts — **zero hand-written DDL, zero model file, zero copied schema**. Two phases: the clone (§5a) starts now and is independent of nlqdb; the data last mile (§5b) starts only when the readiness gate (§6.1) is green. Until then §6.2 is the work queue for the core nlqdb agents.
 
-## 2. Schema quarantine — before opening any file of the clone source
+## 2. Schema quarantine
 
-Mechanical; run in this order, in the scratchpad, never in this repo.
-
-1. `git clone` rateme12 into `<scratch>/rateme12-src` (§3). Do **not** open any file yet.
-2. List by **name only** (`find … -iname`), never by content, every path matching:
-   migrations (`migrations/`, `migrate/`, `db/migrate/`), ORM schema/models (`prisma/`, `*.prisma`, `drizzle/`, `schema.ts`, `schema.rb`, `structure.sql`, `models.py`, `models/`, `entities/`, `typeorm`, `sequelize`, `knex`, `kysely`), `*.sql`, `seeds/`, `fixtures/`, `*.dump`, `*.erd`, `*.graphql`/OpenAPI specs (row-shaped types), `supabase/`, any `docs/**` file named `*db*`/`*schema*`/`*data-model*`, and the backend query/repository layer (`repositories/`, `queries/`, `dao/`, `db/`, `database/`, `*Repository*`, `*Query*`).
-3. `mv` every match to `<scratch>/quarantine/` (outside the source tree). Save the list to `<scratch>/quarantine/PATHS.txt`; copy it into §7 of this file. Never open anything in `quarantine/`.
-4. **Grey area:** frontend UI props and component code may be read. A type or object that mirrors a table row (id + fields + timestamps) is **not copied** — stop reading that file, add it to `PATHS.txt`, and design the UI shape from the rendered product instead.
-5. The real schema is read only **post-hoc**: after §5b works and §7 is written (GLOBAL-042 rule 2).
+Run [`TEMPLATE.md §2`](./TEMPLATE.md#2-schema-quarantine--before-opening-any-file-of-the-clone-source) with `<slug>=rateme12` before opening any file of the source. `PATHS.txt` is copied into §7.
 
 ## 3. Repo access
 
-- The token arrives as `$RATEME12_GH_TOKEN`. Use it **only** as `Authorization: Bearer $RATEME12_GH_TOKEN` in `curl`, or via a git credential helper that reads the env var. Never in a remote URL, shell history file, log, commit, PR body, or doc.
+- Token: `$RATEME12_GH_TOKEN`, handled per [`TEMPLATE.md §3`](./TEMPLATE.md#3-repo-access).
 - Repo: `omerhochman/rateme12` (founder-confirmed). This proxy may limit `api.github.com` to repo-scoped endpoints, so do not rely on listing. Live URL: confirm with the founder if it differs from rateme12's obvious domain.
-- Clone with `git -c credential.helper='!f(){ echo username=x-access-token; echo password=$RATEME12_GH_TOKEN; };f' clone https://github.com/omerhochman/rateme12 <scratch>/rateme12-src`.
 
 ## 4. Product inventory — fill on day 1, before §5a step 2
 
@@ -47,15 +39,13 @@ Written from the **live product** and the non-quarantined UI code; nothing here 
 
 ## 5. Build plan
 
-**Where the code lives.** `apps/rateme12/` — a Cloudflare Worker with Static Assets (mirror `apps/web/wrangler.toml`, `apps/mcp/wrangler.toml`), deployed by a new `.github/workflows/deploy-rateme12.yml` copied from `deploy-web.yml`. Its `package.json` depends on the **published** `@nlqdb/sdk` at a pinned version (`0.4.0` at writing; re-check `npm view @nlqdb/sdk version`) — never `workspace:*`, never an import from `packages/**` or `apps/api/**`. Cleanup is therefore `rm -rf apps/rateme12 .github/workflows/deploy-rateme12.yml`. The clone is TypeScript on Workers **whatever rateme12's stack is**: only journeys and look-and-feel are cloned ([`GLOBAL-013`](../../decisions/GLOBAL-013-free-tier-bundle-budget.md) $0, ≤ 3 MiB). Note `@nlqdb/sdk`'s `main` points at TypeScript source — wrangler's bundler handles it.
-
-**Domain.** `[[routes]] pattern = "rateme12.nlqdb.com", custom_domain = true` in `wrangler.toml`; `workers_dev = false`. The zone is on Cloudflare, so the first deploy provisions the record if the CI `CLOUDFLARE_API_TOKEN` has Zone → DNS edit. **Founder step:** confirm that scope, or add the record by hand in the Cloudflare dashboard.
+Fixed rules per [`TEMPLATE.md §5`](./TEMPLATE.md#5-build-plan). Iteration specifics: code in `apps/rateme12/`, workflow `.github/workflows/deploy-rateme12.yml`, `@nlqdb/sdk` pinned at `0.4.0` at writing (re-check `npm view @nlqdb/sdk version`; its `main` points at TypeScript source — wrangler's bundler handles it). Domain: `[[routes]] pattern = "rateme12.nlqdb.com", custom_domain = true` in `wrangler.toml`, `workers_dev = false`. The zone is on Cloudflare, so the first deploy provisions the record if the CI `CLOUDFLARE_API_TOKEN` has Zone → DNS edit. **Founder step:** confirm that scope, or add the record by hand in the Cloudflare dashboard.
 
 ### 5a. The clone — starts now, no nlqdb dependency
 
 1. **Scaffold** `apps/rateme12/` (Worker + assets, typecheck/lint in `bun run check`, deploy workflow, custom domain). Ship an honest placeholder page first so the URL is live on day 1.
 2. **Inventory** (§4) from the live product.
-3. **One data module.** `apps/rateme12/src/data.ts` is the only file that will ever call the SDK. It exports one function per read/write the journeys need (named after the journey action, e.g. `listRatings`, `submitRating`), constructs `createClient({ apiKey })` **server-side only**, and until §5b returns the honest "not connected yet" state — **no mock rows, no fixtures, no in-memory store** (P6: empty states get real design).
+3. **One data module.** `apps/rateme12/src/data.ts`, one function per journey action (e.g. `listRatings`, `submitRating`), "not connected yet" state until §5b.
 4. **Journeys, look-and-feel.** Routes, layout, styling, forms, auth screens, empty/partial/error states, matching the live product side by side. Every form posts to a Worker route that calls `data.ts`.
 5. **Visual walk** of every route against the live product; fix parity gaps. The clone is "done" for 5a when a stranger cannot tell the two apart except for the "not connected" states.
 
@@ -87,22 +77,18 @@ Verified against code on 2026-09-06 (`apps/api/src/ask/orchestrate.ts`, `princip
 - Framework wrappers (`<NlqData>`/`<NlqAction>`) are React/Vue/Svelte/Astro/Solid drop-ins over `/v1/ask`; useful only for reads with `pk_live_`. Not needed for the Worker path.
 - Free Neon: 0.5 GB total across all hosted DBs (`docs/cost-ladder.md`); adopted DBs have no per-DB cap.
 - Every mutation needs an `Idempotency-Key`; the SDK auto-generates one per call, so form double-submits are **not** deduped unless `data.ts` passes a deterministic key.
+- No `nlq db delete` — cleanup of the hosted DB needs the SDK or the `/app` typed-name confirm (`GLOBAL-003` gap, log in §7).
 
 ## 7. Retrospective — filled at the end
 
-- **Dates / wall-clock hours.**
-- **Quarantine list** (`PATHS.txt`, verbatim).
-- **What went right.**
-- **What went wrong.**
-- **Numbers:** inserts attempted / landed; unseen-field writes hit / missed (KPI 1 rate); `schema_mismatch`, `confirm_expired`, `rate_limited` counts; manual steps (list each); tables and columns nlqdb created; p50/p95 insert latency as seen by the app.
-- **Post-hoc schema comparison** (read only now): nlqdb's schema vs the real one — as good / better / worse, and why, per table.
-- **Decisions to rethink** (GLOBAL / SK-IDs by ID) — edited per P1/P3 **after** this file is committed, never mid-iteration.
-- **The one change for iteration 002.**
+Fields per [`TEMPLATE.md §7`](./TEMPLATE.md#7-retrospective--filled-at-the-end). Leverage verdict of this brief at design time (reconciled here when the iteration ends):
+
+```
+Leverage: spend-with-seams
+N+1: iteration 002 copies TEMPLATE.md and writes only §1, §4, §5 specifics and its §6.1 "Today" column; the seam is docs/history/dogfood-iterations/TEMPLATE.md
+Category: a real app built on nlqdb through the public surfaces only — 0 prior instances (queries in GLOBAL-042 §Leverage); one level up, "a workload that exercises nlqdb end to end and measures it" — 7 instances, all JSON-outcome walkers, none builds an app
+```
 
 ## 8. Cleanup checklist — after §7 is committed
 
-- [ ] Hosted DB deleted (`client.deleteDatabase()` or `/app` typed-name confirm — there is no `nlq db delete`); `sk_live_` + `pk_live_` revoked (`/app/keys`).
-- [ ] `rm -rf apps/rateme12 .github/workflows/deploy-rateme12.yml tests/e2e/rateme12`; `bun run check && bun run typecheck` green.
-- [ ] Worker `rateme12` deleted in Cloudflare; `rateme12.nlqdb.com` record removed (founder or CI token).
-- [ ] Scratch (`rateme12-src`, `quarantine/`) deleted; iteration branches merged or deleted.
-- [ ] README index row updated with the outcome.
+[`TEMPLATE.md §8`](./TEMPLATE.md#8-cleanup-checklist--after-7-is-committed) with `<slug>=rateme12`: hosted DB + both keys, `apps/rateme12` + `deploy-rateme12.yml` + `tests/e2e/rateme12`, Worker `rateme12` + `rateme12.nlqdb.com` record, scratch `rateme12-src` + `quarantine/`, README index row.
