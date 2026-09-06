@@ -18,7 +18,7 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
   KPIs, floors and phase gates the week is measured against.
 - [`GLOBAL-042`](../../docs/decisions/GLOBAL-042-dogfood-iteration-loop.md) + the current iteration brief [`001-rateme12.md`](../../docs/history/dogfood-iterations/001-rateme12.md) — the goal; did the week move its §6.1 readiness table?
 
-## The audit — seven checks, worst finding first
+## The audit — eight checks, worst finding first
 
 1. **Trend.** Per pillar (engine, onboarding, UX, performance): is the
    week-over-week direction right? Any regression past a `GLOBAL-025`
@@ -50,6 +50,16 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
    for something dark is a P6 honesty bug, same class as a phantom
    capability.
 
+8. **Free-model roster** (`GLOBAL-026`, `SK-LLM-003`). List the free models
+   the router round-robins today, in preference order — best first — from
+   `apps/api/src/llm-router.ts` (the provider chain), `packages/llm/src/providers/**`
+   and the key names in `apps/api/src/env.d.ts` / `.env.example` (a key in
+   this environment is also in Actions and Workers). Web-research the current
+   best free models (P2, cite sources) and cross-check. A better model
+   missing from the roster: its key already exists → add it at the right
+   position in this PR; no key → one ranked `docs/blocked-by-human.md` bullet
+   with the research and why that key is worth the founder's minute.
+
 ## Outputs (one PR)
 
 1. **Set the weekly focus number** at the top of `docs/scorecard.md`: one
@@ -75,5 +85,6 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
 4. §8 quality gates green. PR body: the focus number chosen + why, and the
    worst finding.
 
-One focus number, not three. Don't re-litigate documented decisions —
+Everything above ships as **one PR** — the check-8 roster change or its
+blocked-by-human bullet included. One focus number, not three. Don't re-litigate documented decisions —
 flag genuine contradictions with their ID in `weekly-review.md` instead.
