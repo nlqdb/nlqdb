@@ -63,12 +63,14 @@ Verified against code on 2026-09-06 (`apps/api/src/ask/orchestrate.ts`, `princip
 
 ### 6.1 Readiness gate — all four green before §5b step 6
 
-| # | Capability | Today | Green when |
-|---|---|---|---|
-| R1 | **Widen-on-write.** A write naming an unobserved table/field lands. | Unbuilt — routes to `schema_mismatch`, bumps `asks_extend_failed` (Phase A 0/9). | Phase A steps 1–7 merged; E2E step 9 green; an `ask()` insert with a new field returns `ok` and the column appears in `schema_text`. |
-| R2 | **Headless hosted-DB create from a goal.** | `sk_live_` gets 403 `create_requires_session`; `nlq login` device flow unshipped — only a browser session can goal-create. | Either an `sk_live_` goal-create is accepted, or the founder creates the DB in `/app` chat and mints the key (a public-surface step, recorded in §7 as one manual step). |
-| R3 | **Value-safe write from the app's Worker.** | `ask()` writes are NL goals: user-typed values ride the goal text to the LLM planning lane, cost preview + confirm (an LLM plan per uncached insert), 60/min per key. `runSql()` has no `params` — literals must be inlined by the app. | A write primitive that carries values out of band (e.g. `runSql({ sql, params })` or structured values on `ask()`), or an explicit founder ruling that goal-text values are acceptable for this iteration. |
-| R4 | **Browser reads.** | `pk_live_` is read-only and accepts any origin (pinning unbuilt); browser writes need an nlqdb cookie session — rateme12's end users are not nlqdb users. | Reads may use `pk_live_` from the browser; **all writes go through the clone's Worker with `sk_live_`** — an architecture rule, not a blocker. Green now. |
+Single source for these gaps — `CLAUDE.md` §1 points here; every engine PR names the row it moves (`CLAUDE.md` §8 item 7). Update **Today** in the same PR.
+
+| # | Capability | Owner (feature doc · code) | Today | Green when |
+|---|---|---|---|---|
+| R1 | **Widen-on-write.** A write naming an unobserved table/field lands. | [`schema-widening`](../../features/schema-widening/FEATURE.md) `SK-SCHEMA-008` · `apps/api/src/ask/orchestrate.ts` | Unbuilt — routes to `schema_mismatch`, bumps `asks_extend_failed` (Phase A 0/9). | Phase A steps 1–7 merged; E2E step 9 green; an `ask()` insert with a new field returns `ok` and the column appears in `schema_text`. |
+| R2 | **Headless hosted-DB create from a goal.** | [`hosted-db-create`](../../features/hosted-db-create/FEATURE.md) `SK-HDC-021` · `apps/api/src/db-create/`; or [`cli`](../../features/cli/FEATURE.md) `SK-CLI-006` + `SK-AUTH-004` · `cli/internal/cmd/` | `sk_live_` gets 403 `create_requires_session`; `nlq login` device flow unshipped — only a browser session can goal-create. | Either an `sk_live_` goal-create is accepted, or the founder creates the DB in `/app` chat and mints the key (a public-surface step, recorded in §7 as one manual step). |
+| R3 | **Value-safe write from the app's Worker.** | [`sdk`](../../features/sdk/FEATURE.md) `SK-SDK-009` · `packages/sdk/src/index.ts`, `apps/api/src/run/orchestrate.ts` | `ask()` writes are NL goals: user-typed values ride the goal text to the LLM planning lane, cost preview + confirm (an LLM plan per uncached insert), 60/min per key. `runSql()` has no `params` — literals must be inlined by the app. | A write primitive that carries values out of band (e.g. `runSql({ sql, params })` or structured values on `ask()`), or an explicit founder ruling that goal-text values are acceptable for this iteration. |
+| R4 | **Browser reads.** | [`api-keys`](../../features/api-keys/FEATURE.md) `SK-APIKEYS-003` | `pk_live_` is read-only and accepts any origin (pinning unbuilt); browser writes need an nlqdb cookie session — rateme12's end users are not nlqdb users. | Reads may use `pk_live_` from the browser; **all writes go through the clone's Worker with `sk_live_`** — an architecture rule, not a blocker. Green now. |
 
 ### 6.2 Further gaps (log, don't fix inside the iteration)
 

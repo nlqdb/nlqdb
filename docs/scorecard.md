@@ -4,6 +4,8 @@ Point-in-time tracker, regenerated each [`/daily`](../.claude/commands/daily.md)
 run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 `progress/quality-score-verification-log.md`.
 
+**Goal ([`GLOBAL-042`](decisions/GLOBAL-042-dogfood-iteration-loop.md)):** iteration 001 — [rateme12 on nlqdb](history/dogfood-iterations/001-rateme12.md); its §6.1 readiness table is the engine work queue, KPI 1 below is the measure.
+
 **Q1–Q5 resolved 2026-09-05 → [`GLOBAL-041`](decisions/GLOBAL-041-autonomous-dba.md):**
 Phase 2 exits on Phase A alone; acquisition paused; BIRD/Spider = regression
 alarm only; premium tier stays. Retired rows dropped below.

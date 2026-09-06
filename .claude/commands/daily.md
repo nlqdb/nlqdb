@@ -18,8 +18,9 @@ number is never overwritten.
 KPI 1, first-insert inference rate ≥ 95 % on the dogfood workload.**
 This loop's job is to advance the current
 [`GLOBAL-042`](../../docs/decisions/GLOBAL-042-dogfood-iteration-loop.md)
-dogfood iteration (agent builds a real product on nlqdb via public surfaces
-only) and, when one ends, log its retro and clean up before the next.
+dogfood iteration — read its brief
+[`001-rateme12.md`](../../docs/history/dogfood-iterations/001-rateme12.md)
+first; §6.1 is the engine work queue — and, when one ends, log its retro and clean up before the next.
 Acquisition, content and the EK track are paused; this loop pulls no
 channel, content or marketplace lever.
 
