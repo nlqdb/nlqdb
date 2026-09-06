@@ -26,36 +26,9 @@ builds a real product on it), [`GLOBAL-025`](decisions/GLOBAL-025-north-star.md)
   [`phase-plan.md`](phase-plan.md) and `GLOBAL-041`'s build order. This doc
   changes only by deliberate amendment (a steering session, or a PR whose
   stated purpose is the amendment), never as a side effect of shipping.
-
-## How to write this
-
-Write the app as if it shipped and you are watching one person use it. A
-sentence passes if an agent can build to it without asking and a reviewer
-can tell from the running app whether it's true.
-
-- **Flows, not features.** "Export to CSV" is a feature. "She taps Export;
-  a sheet slides up with the file name pre-filled from the list title, and
-  the share sheet opens in under a second" is a flow step.
-- **Ban the adjectives.** Intuitive, seamless, delightful, clean, fast,
-  simple, easy, powerful — each is a placeholder for a fact you haven't
-  decided yet. Replace it with the observable: what's on screen, what the
-  user does, how long it takes, what the copy says verbatim.
-- **Numbers over vibes.** "Fast" → "first paint under 300 ms; shows the
-  last result instantly while refreshing". "Works offline" → "every read
-  works with no network; writes queue behind a one-line banner: `Saved on
-  this device — syncs when you're back online`."
-- **Feeling, then its cause.** "Relief that it remembered" is only useful
-  next to "because the field is pre-filled from last time".
-- **Say what isn't there.** The button you refused to add, the setting that
-  doesn't exist, the confirmation you removed. Absences are the part of a
-  spec agents most often "helpfully" undo.
-
-| Bad | Good |
-|-----|------|
-| Onboarding is smooth and intuitive. | First launch opens straight onto a live example already populated with sample data; the only affordance is the input, focused, keyboard up. No tour, no account, no permission prompt. |
-| Fast search with great results. | Results update on every keystroke, first paint under 100 ms from the local index. A query with no match shows the three nearest terms as tappable chips — never an empty list. |
-| Handles errors gracefully. | Save retries silently, three times over 10 s. Only then a one-line banner — `Couldn't save — check your connection. Retrying…` — and the draft is never lost. |
-| Supports sharing. | Tapping Share copies a link and shows `Link copied` inline for 2 s. The recipient opens it to the exact same view, no account, in under 2 s on 3G. |
+- **Amendments follow the template's writing rules** — flows not features,
+  no adjectives, numbers over vibes, say what isn't there:
+  [build-with-agents END_GOAL.md § How to write this](https://github.com/omerhochman/build-with-agents/blob/main/docs/END_GOAL.md#how-to-write-this).
 
 ## Personas & entry points
 
