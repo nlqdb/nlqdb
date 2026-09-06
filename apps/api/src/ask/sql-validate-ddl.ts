@@ -35,7 +35,7 @@
 import type {
   AlterTableCmd,
   AlterTableStmt,
-  AlterTableType,
+  ColumnDef,
   Constraint,
   ConstrType,
   CopyStmt,
@@ -113,33 +113,59 @@ type RejectHit = {
 };
 
 function checkAlterTable(stmt: AlterTableStmt): RejectHit | null {
-  // ALTER TABLE is allowed iff every cmd in the stmt is AT_AddConstraint
-  // (the FK-attach pass our compiler emits). Any other subtype (drop
-  // column, drop constraint, set default, …) reverts to the destructive
-  // bucket — the compiler doesn't emit them, so seeing one means a
+  // ALTER TABLE is allowed iff every cmd in the stmt is one of:
+  //   • AT_AddConstraint of a FOREIGN KEY — the FK-attach pass the create
+  //     compiler emits (compile-ddl.ts);
+  //   • AT_AddColumn of a nullable, no-default, unconstrained column — the
+  //     widen-on-write compiler's ADD COLUMN (compile-write-ddl.ts,
+  //     GLOBAL-041 Phase A / SK-SCHEMA-008).
+  // Any other subtype (drop column, drop constraint, set default, …) reverts
+  // to the destructive bucket — no compiler emits it, so seeing one means a
   // regression.
-  const allowedSubtype: AlterTableType = "AT_AddConstraint";
   const allowedContype: ConstrType = "CONSTR_FOREIGN";
   for (const cmd of stmt.cmds ?? []) {
     const inner = (cmd as { AlterTableCmd?: AlterTableCmd }).AlterTableCmd;
     if (!inner) continue;
-    if (inner.subtype !== allowedSubtype) {
-      return {
-        reason: "destructive_verb",
-        details: { altercmd_subtype: inner.subtype },
-      };
+    if (inner.subtype === "AT_AddConstraint") {
+      // AT_AddConstraint allows non-FK constraints in principle (CHECK,
+      // UNIQUE, PRIMARY KEY). Our compiler only emits CONSTR_FOREIGN —
+      // narrow accordingly so a future bug emitting `ADD CHECK (1=0)`
+      // can't slip through.
+      const def = (inner.def as { Constraint?: Constraint } | undefined)?.Constraint;
+      if (!def || def.contype !== allowedContype) {
+        return {
+          reason: "destructive_verb",
+          details: { constraint_kind: def?.contype ?? null },
+        };
+      }
+      continue;
     }
-    // AT_AddConstraint allows non-FK constraints in principle (CHECK,
-    // UNIQUE, PRIMARY KEY). Our compiler only emits CONSTR_FOREIGN —
-    // narrow accordingly so a future bug emitting `ADD CHECK (1=0)`
-    // can't slip through.
-    const def = (inner.def as { Constraint?: Constraint } | undefined)?.Constraint;
-    if (!def || def.contype !== allowedContype) {
-      return {
-        reason: "destructive_verb",
-        details: { constraint_kind: def?.contype ?? null },
-      };
+    if (inner.subtype === "AT_AddColumn") {
+      // Widen adds columns NULLable with no default (SK-SCHEMA-008): a plain
+      // `ADD COLUMN "x" TYPE` parses to a ColumnDef with no constraints and no
+      // default. A NOT NULL / DEFAULT / CHECK / UNIQUE / PK add attaches a
+      // Constraint node (or the not-null / default flags) — reject any of
+      // those so the added column is provably nullable and effect-free on the
+      // table's existing rows.
+      const colDef = (inner.def as { ColumnDef?: ColumnDef } | undefined)?.ColumnDef;
+      const hasConstraint = (colDef?.constraints?.length ?? 0) > 0;
+      if (
+        hasConstraint ||
+        colDef?.is_not_null === true ||
+        colDef?.raw_default != null ||
+        colDef?.cooked_default != null
+      ) {
+        return {
+          reason: "destructive_verb",
+          details: { add_column_not_plain: colDef?.colname ?? null },
+        };
+      }
+      continue;
     }
+    return {
+      reason: "destructive_verb",
+      details: { altercmd_subtype: inner.subtype },
+    };
   }
   return null;
 }
