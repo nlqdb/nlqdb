@@ -16,6 +16,7 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
 - [`.claude/commands/daily.md`](daily.md) — the prompt under audit.
 - [`GLOBAL-041`](../../docs/decisions/GLOBAL-041-autonomous-dba.md) — the
   KPIs, floors and phase gates the week is measured against.
+- [`GLOBAL-042`](../../docs/decisions/GLOBAL-042-dogfood-iteration-loop.md) + the current iteration brief [`001-rateme12.md`](../../docs/history/dogfood-iterations/001-rateme12.md) — the goal; did the week move its §6.1 readiness table?
 
 ## The audit — seven checks, worst finding first
 

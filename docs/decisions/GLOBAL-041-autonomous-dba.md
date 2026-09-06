@@ -20,7 +20,9 @@
   The LLM bet stands: great on free LLMs ⇒ invincible on frontier LLMs
   ([`GLOBAL-026`](./GLOBAL-026-llm-strategy-byollm-hosted-premium.md)).
   Until Phase A (below) has measured, **the whole company works on Phase A**:
-  acquisition is paused and no other gate exists.
+  acquisition is paused and no other gate exists. Phase A is driven and
+  measured by the [`GLOBAL-042`](./GLOBAL-042-dogfood-iteration-loop.md)
+  dogfood-iteration loop.
 
 - **Core value:** Goal-first, Effortless UX, Bullet-proof, Simple, Honest latency
 
