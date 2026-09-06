@@ -16,6 +16,10 @@ number is never overwritten.
 **The company works on one thing until it measures:
 [`GLOBAL-041`](../../docs/decisions/GLOBAL-041-autonomous-dba.md) Phase A —
 KPI 1, first-insert inference rate ≥ 95 % on the dogfood workload.**
+This loop's job is to advance the current
+[`GLOBAL-042`](../../docs/decisions/GLOBAL-042-dogfood-iteration-loop.md)
+dogfood iteration (agent builds a real product on nlqdb via public surfaces
+only) and, when one ends, log its retro and clean up before the next.
 Acquisition, content and the EK track are paused; this loop pulls no
 channel, content or marketplace lever.
 
