@@ -16,18 +16,18 @@ Phase A dogfood workload: `/daily`'s own writes through `@nlqdb/sdk`, first
 200 unseen-field inserts in a 14-day window — dogfood DB not yet created,
 window not open). Build order: `GLOBAL-041`.
 
-**Worst number today (run 196, 2026-09-05) — WEEKLY-FOCUS INSTRUMENT SHIPPED: KPI 1 (first-insert inference rate) read `unmeasured — build the instrument` (the `/daily` step-1 lever candidate #1); this run built it.**
-The weekly focus (2026-09-04, `GLOBAL-041` Phase A) is **KPI 1** — its instrument did not exist, so no run could show widen-on-write moving it. Step 0: **open PRs = 0** — clean slate; branch even with `main@0ded779`.
-**Why this lever:** engine KPIs are lever priority #1 (founder-set 2026-09-04) and step 1 names a *missing KPI instrument* as candidate #1. BIRD/Spider dark (async multi-window, `main` moved); UX-flow rows #21/#15 green; fast distribution levers exhausted (CTR lane dead, fresh 09-04 GSC). Building KPI 1's instrument is the one lever that turns the weekly focus from blind to live.
-**Lever (this run):** shipped the `SK-SCHEMA-010` two-counter instrument (`asks_extend_ok`/`asks_extend_failed`, migration 0035, `SK-GTM-011` shape). The orchestrator flags an extend-needed **write** (a write plan referencing an unobserved table — Defense A pre-flight or Defense B exec `42P01`) via `OrchestrateOutcome.extendNeeded`; `bumpAskCounters` folds the two deltas into the existing ask-completion UPDATE; `computeGtmMetrics` surfaces `engine.firstInsertInferenceRate` and the admin dashboard renders it. **Number moved:** KPI 1 (row E1) **unmeasured → live** (rate null at N=0; numerator 0 until Phase A `kind=extend`, denominator now counts widen-on-write demand). Details in "Last change".
+**Worst number today (run 197, 2026-09-06) — WEEKLY-FOCUS KPI 1 (first-insert inference rate) reads `null` at N=0: the live instrument (run 196) has no numerator because the widen-on-write path is unbuilt. This run built the load-bearing first slice of that path — the widen-DDL emitter + allow-list (`GLOBAL-041` Phase A steps 3–4).**
+The weekly focus (2026-09-04, `GLOBAL-041` Phase A) is **KPI 1** — the numerator (`asks_extend_ok`) stays 0 until the extend path absorbs a write, so the rate is blind. Step 0: **open PRs = 0** — clean slate; branch even with `main@1f7ec84` (#1101).
+**Why this lever:** engine KPIs are lever priority #1 (founder-set 2026-09-04) and step-2 lever #1 is the `GLOBAL-041` Phase A build order (`kind=extend` → extend prompt → **compile-write-ddl** → **validator** → transaction → `schema_hash` rewrite → trace parity → dogfood → E2E). BIRD/Spider dark (async multi-window, `main` moved); UX-flow rows #21/#15 green; distribution paused (`GLOBAL-041`). The deterministic compiler + allow-list are the pure, testable, zero-hot-path-risk foundation every later step depends on.
+**Lever (this run):** built `apps/api/src/db-create/compile-write-ddl.ts` — the only emitter of widen DDL (`ALTER TABLE … ADD COLUMN` nullable / widen-path `CREATE TABLE`), a typed `{ add_columns[], create_tables[] }` plan → deterministic SQL, reusing the create compiler's column/table grammar (one emitter across both paths) — and widened `ask/sql-validate-ddl.ts` `checkAlterTable` to accept `AT_AddColumn` (nullable, no NOT NULL / DEFAULT / constraint) alongside the FK `AT_AddConstraint`. Pure/tenant-agnostic like `compile-ddl.ts`; RLS + grants for a widen-created table ride the provisioner's existing emitter at execution (step 5). **Number moved:** row 16 (Phase 2 exit gate = `GLOBAL-041` Phase A) / row E1 build-order state — **extend path 0/9 → widen-DDL compiler + allow-list built (steps 3–4/9)**, a named direct input to KPI 1. Details in "Last change".
 **P2 UX-flow green** (FLOW-005 6/6, carried run 184). BIRD/Spider dark.
 **Top `blocked-by-human` bullet:** Show HN launch sequence (⏱ ~30 min, **idle 84 days since 06-13**),
 condition-gated on `GLOBAL-041` Phase A. #2 Anthropic connector directory (money-gated, 07-21). Queue **depth 2+**, head age 84 d.
 **Dark (rule 8, reported not pulled):** dogfood criterion 3 (silent-wrong-answer, E-09/GLOBAL-037); criterion 4 (query-shape lever within ±5 pp noise); engine **#8 BIRD 0.5382** (41 d) / **#9 Spider 0.2222** (**48 d** stale, async multi-window resume); rows **#2/#4/#5/#16** stranger-dependent (N = 0 until launch); row **#15** opencheck lane (free-lane saturation, remedy costs money ⇒ rule 4).
 
-**Rule 6 — GREEN.** Branch based on `main@0ded779` (latest; #1097/#1098 GLOBAL-041 pivot merged). Health
-re-measured live: **`typecheck` 0** (workspace, post-`bun install`), **`bun run check` exit 0** (biome; 53 pre-existing warnings, 0 errors), **`bun run test` exit 0** (baseline, pre-change).
-Diff: migration 0035 + `extendNeeded` on the two write schema-mismatch returns + the `bumpAskCounters` fold + `gtm-metrics.ts` `engine` block + admin dashboard tile + `SK-SCHEMA-010` docs + tests, scorecard, and the dev.to queue-line drain. **Open PRs: 0** at step 0.
+**Rule 6 — GREEN.** Branch even with `main@1f7ec84` (#1101, latest). Health re-measured live post-`bun install`:
+**`typecheck` 0** (workspace), **`bun run check` exit 0** (biome; 53 pre-existing warnings, 0 errors), **`bun run test` exit 0** (api **1492 passed** / 26 skipped, db 281, events-worker 54, mcp-server 32, web 588). CI + deploy-api + deploy-web green on `main@1f7ec84`; deploy-mcp `action_required` (standing manual environment-approval gate, founder territory — same on prior commits, not a broken build).
+Diff (pure/additive, no hot-path change): new `db-create/compile-write-ddl.ts` + its test; `compile-ddl.ts` exports `quoteIdent`/`quoted`/`checkReserved`/`compileColumn`/`compileTable` (reuse); `ask/sql-validate-ddl.ts` `checkAlterTable` accepts `AT_AddColumn` + tests; `schema-widening` FEATURE status; scorecard. No content drain (acquisition paused, `GLOBAL-041`). **Open PRs: 0** at step 0.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -41,7 +41,7 @@ Diff: migration 0035 + `extendNeeded` on the two write schema-mismatch returns +
 | 6 | Indexable surfaces | **112** content pages (`/solve` **41** + `/vs` 31 + `/blog` 40; unchanged this run — CTR lever, not a new page). Unpublished blog drafts **0** (queue drained) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
 | 7 | Surface yield | posts **40** (dev.to drip throttled this run — 1/day guard, 10 variants remain). **GSC live 09-04** (28d 08-04→08-31): top pages **~1443 impr / 160 rows**, ~4 clicks visible (hall-of-fame 3, terms 1). **CTR lane exhausted (fresh-confirmed):** page-1 zero-click pages carry hand-written SERP meta — `count-rows-per-day…` (pos 7.1 / 56 impr, metaed run 183) + `count-consecutive-days` (pos 11.1 / 52 impr) — snippet no longer the lever; position/authority-gated. "Strengthen next" leader `/solve/` index is pos 34.8 / 92 impr = page 4 (content/authority-gated, not snippet). Referral (live 09-04): google 10. Wedge pages 6/6 indexed | `gsc-pull.ts` + `rum-pull.ts`. Page-1 zero-click CTR pool metaed-out; page-2+ authority/launch-gated |
 | | **Engine — `GLOBAL-041` KPIs first** (headline) then the interface KPI | | `GLOBAL-041` Phase A/B build order |
-| E1 | **KPI 1 — first-insert inference rate** | **live instrument (run 196, `SK-SCHEMA-010`)** — `engine.firstInsertInferenceRate` = SUM(`asks_extend_ok`)/SUM(`asks_extend_ok`+`asks_extend_failed`); **null at N=0** today (no extend-needed write recorded yet). Numerator 0 until Phase A `kind=extend` lands; denominator = writes to an unobserved table (widen-on-write demand). Was `unmeasured — build the instrument` | Phase A exit floor **≥ 0.95**; live on `/app/admin` |
+| E1 | **KPI 1 — first-insert inference rate** | **live instrument (run 196, `SK-SCHEMA-010`)** — `engine.firstInsertInferenceRate` = SUM(`asks_extend_ok`)/SUM(`asks_extend_ok`+`asks_extend_failed`); **null at N=0** today (numerator 0 until the extend path absorbs a write). **Path build (run 197): widen-DDL compiler `compile-write-ddl.ts` + allow-list `AT_AddColumn` built — steps 3–4/9;** routing/prompt (1–2), transaction/rewrite (5–6), trace parity + dogfood + E2E (7–9) remain | Phase A exit floor **≥ 0.95**; live on `/app/admin` |
 | E2 | KPI 2 — evolution-without-user-action rate | **unmeasured — build the instrument** (Phase B) | detected shape changes absorbed vs error / fresh DB |
 | E3 | KPI 3 — optimizer yield | **unmeasured — build the instrument** (Phase B) | proposals applied / active DB / 30 d + p95 delta |
 | | **Engine — interface KPI (regression alarm only, `GLOBAL-041`/`SK-QUAL-002`)** — BIRD 07-26 · Spider 07-19 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
@@ -56,7 +56,7 @@ Diff: migration 0035 + `extendNeeded` on the two write schema-mismatch returns +
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
 | 15 | E2E manual-suite freshness | **0.14 → 0.64 (this run's lever)** — sdk + examples had decayed to freshness 0 (last success 08-22, 11 d); re-dispatched both on `main@1fbd3e4` this run: **sdk ✅ ([run 33578892318](https://github.com/nlqdb/nlqdb/actions/runs/33578892318)) + examples ✅ ([run 33578894339](https://github.com/nlqdb/nlqdb/actions/runs/33578894339))**, freshness 1.0 each; **mcp ✅ 0.57** (last success 08-30, PR trigger); opencheck **0** (07-17, dark — costs money, rule 4). Score = mean(pass×freshness) over 4 = (1+1+0.57+0)/4 | Never dispatch opencheck alongside another lane consumer. Triage: `e2e-coverage/opencheck-operations.md`. Re-dispatch is a lever candidate (workflow_dispatch, agent-runnable) — pulled runs 182, 193 |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
-| 16 | Phase 2 exit gate = `GLOBAL-041` Phase A | **KPI 1 unmeasured** — extend path unbuilt, dogfood DB not created, 0/200 inserts, window not open | ≥ 95 % first-insert inference on the dogfood workload; nothing else gates Phase 2 |
+| 16 | Phase 2 exit gate = `GLOBAL-041` Phase A | **KPI 1 blind (null at N=0)** — extend path **2/9 built** (run 197: widen-DDL compiler + allow-list, steps 3–4); dogfood DB not created, 0/200 inserts, window opens at build-order step 8 | ≥ 95 % first-insert inference on the dogfood workload; nothing else gates Phase 2 |
 | 17 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** — swept run 166; docs-only diff. GSC still shows the `http://` variant of `/solve/count-consecutive-days-streak-in-sql/` indexed (25 impr, pos 15.6) → splits signal with the https canonical; the redirect exists but Google indexed http — the fix is a zone Redirect Rule (console click, founder territory, standing blind spot) | target 0. Standing blind spots: external inbound links to bare paths, `www.`/`http://` host un-redirected (zone Redirect Rule ⇒ console) |
 | | **Product-readiness** — client-blocking gaps | | |
 | 18 | Live-surface claim integrity | **0 ✓** (resolved 07-29): `#826` published `@nlqdb/sdk@0.2.2` + `@nlqdb/mcp@0.1.1`; a clean-dir install resolves `dist/` entrypoints | target 0 ✓ |
@@ -71,7 +71,9 @@ Diff: migration 0035 + `extendNeeded` on the two write schema-mismatch returns +
 **41 canonical `/solve` pages** + **40 `/blog` posts** + **31 `/vs` pages** live under `nlqdb.com/`
 (`SK-SOLVE-001` / `SK-BLOG-001` / `SK-CMP-001`). The registries are `apps/web/src/data/{solve,blog,competitors}.ts`.
 
-- **This run (196):** drained one dev.to variant — `most-active-user-is-your-test-suite` →
+- **This run (197):** no content drain (acquisition paused, `GLOBAL-041`). Weekly-focus **engine** lever:
+  widen-DDL compiler `db-create/compile-write-ddl.ts` + allow-list `AT_AddColumn` — `GLOBAL-041` Phase A steps 3–4.
+- **Run 196:** drained one dev.to variant — `most-active-user-is-your-test-suite` →
   [dev.to](https://dev.to/omer_hochman/your-most-active-user-is-your-test-suite-4bbb)
   (**8 variants remain**). No new `/blog` page (blog-draft queue empty). Weekly-focus engine lever (`SK-SCHEMA-010` KPI-1 instrument).
 - **Run 195:** drained one dev.to variant — `five-fallback-models-one-provider` →
@@ -80,24 +82,22 @@ Diff: migration 0035 + `extendNeeded` on the two write schema-mismatch returns +
 - **Run 194:** drained `decided-questions-rot-in-your-decision-log` →
   [dev.to](https://dev.to/omer_hochman/an-open-question-thats-already-decided-is-worse-than-one-thats-still-open-3619)
   (10 remained). Lane-2 UX-flow instrument lever (row #21 walker launch fix).
-- **Run 193:** drained `emit-metrics-where-the-distinction-is-certain` →
-  [dev.to](https://dev.to/omer_hochman/your-metric-is-only-as-honest-as-the-layer-you-emit-it-from-54ma)
-  (11 remained). Lane-2 UX-flow (E2E freshness) lever run.
 
 ## Last change
 
-**2026-09-05 (run 196)** — **WEEKLY-FOCUS INSTRUMENT SHIPPED: `GLOBAL-041` KPI 1 (first-insert inference rate) read `unmeasured — build the instrument`; this run built it (`SK-SCHEMA-010`).**
-Step 0: open PRs = 0, branch even with `main@0ded779`. **Lever choice:** engine KPIs are lever priority #1 (founder-set 2026-09-04) and step 1 names a *missing KPI instrument* as candidate #1 — KPI 1 is the
-weekly focus and had no instrument, so no run could show widen-on-write moving it. BIRD/Spider dark (async multi-window resume, `main` moved); UX-flow rows #21/#15 green; fast distribution levers exhausted
-(CTR lane dead, fresh 09-04 GSC). **Change (the `SK-GTM-011` counter shape, reused for the engine):** migration 0035 adds non-saturating `databases.asks_extend_ok` + `asks_extend_failed`. The orchestrator flags
-an ask as extend-needed (`OrchestrateOutcome.extendNeeded`) when a **write** plan references an **unobserved table** — caught pre-flight (`checkSchemaTables`, Defense A) or at exec (`42P01`, Defense B; an orphaned-schema `3F000` is excluded);
-set only for the write case so read schema-mismatch envelopes stay byte-identical. `index.ts` `bumpAskCounters` folds the two deltas (extend_ok on an absorbed write, extend_failed on a rejected one) into the
-same fire-and-forget ask-completion UPDATE, stranger-walker-excluded. `computeGtmMetrics` sums both into an `engine` block and computes `firstInsertInferenceRate = extendOk/(extendOk+extendFailed)` (null at N=0);
-`/app/admin` renders a KPI-1 tile. The numerator stays 0 until Phase A's `kind=extend` routing lands (`GLOBAL-041` Phase A steps 1-6) — the rate then climbs off its honest floor with no further
-instrument change. **Verified:** `first10.test.ts` proves the extend counters split by outcome and never saturate; `orchestrate.test.ts` proves a write-to-unseen-table sets `extendNeeded` while a read stays
-byte-identical; `admin-metrics.test.ts` proves `SUM` + rate (6/(6+4)=0.6) and the empty-state null. **Number moved:** KPI 1 (row E1) **unmeasured → live** — a named direct input to the weekly-focus number.
-**KPI (GLOBAL-025 — engine-quality pillar = the three `GLOBAL-041` KPIs):** the headline engine KPI the weekly focus tracks is now measurable where it was blind. No KPI degrades — `typecheck` 0, `check` 0
-(53 pre-existing warnings), full `test` green (api 1465 passed; web 588); the counters are telemetry, never load-bearing.
+**2026-09-06 (run 197)** — **WEEKLY-FOCUS KPI 1 PATH BUILD: the widen-DDL emitter + allow-list — `GLOBAL-041` Phase A steps 3–4.**
+Step 0: open PRs = 0, branch even with `main@1f7ec84` (#1101). **Lever choice:** engine KPIs are lever priority #1 (founder-set 2026-09-04); KPI 1's live instrument (run 196) reads `null` at N=0 because the
+widen-on-write path is unbuilt, so the numerator (`asks_extend_ok`) can never move. Step-2 lever #1 is the `GLOBAL-041` Phase A build order — and the deterministic compiler (step 3) + allow-list (step 4) are
+the pure, fully-testable, **zero-hot-path-risk** foundation every later step depends on. BIRD/Spider dark; UX-flow rows #21/#15 green; distribution paused (`GLOBAL-041`). **Change:** new
+`apps/api/src/db-create/compile-write-ddl.ts` — the **only** emitter of widen DDL: a typed `{ add_columns[], create_tables[] }` plan → `ALTER TABLE … ADD COLUMN <name> <type>` (nullable, no default) and widen-path
+`CREATE TABLE`, reusing `compile-ddl.ts`'s `quoteIdent`/`quoted`/`checkReserved`/`compileColumn`/`compileTable` (now exported) so both paths emit one grammar. Nullable-only guard (`add_column_not_nullable`/
+`add_column_has_default`) matches `SK-SCHEMA-008` (a NOT NULL / DEFAULT add is a `SK-SCHEMA-009` retype proposal). Widened `ask/sql-validate-ddl.ts` `checkAlterTable` to accept `AT_AddColumn` (rejecting any
+NOT NULL / DEFAULT / constraint node) alongside the FK `AT_AddConstraint`. Pure/tenant-agnostic like `compile-ddl.ts` — RLS + tenant-role grants for a widen-created table ride the provisioner's existing
+emitter at execution (step 5), keeping the tenant literal out of a pure function. **Verified:** `compile-write-ddl.test.ts` (10 cases — byte-exact ADD COLUMN / CREATE TABLE, emission order, empty-plan,
+nullable-only, reserved/duplicate/PK guards); `sql-validate-ddl.test.ts` (+5 — accepts a real `compileWriteDdl` run, plain nullable ADD COLUMN; rejects NOT NULL / DEFAULT / DROP COLUMN). **Number moved:**
+row 16 (Phase 2 exit gate) / row E1 build-order state — **extend path 0/9 → steps 3–4 built** (a named direct input to KPI 1). KPI 1 itself stays `null` (numerator moves only when routing/transaction land,
+steps 1–2/5–6). **KPI (GLOBAL-025 — engine-quality pillar):** advanced; no KPI degrades — `typecheck` 0, `check` 0 (53 pre-existing warnings), full `test` green (api 1492 passed / 26 skipped, db 281,
+events-worker 54, mcp 32, web 588). Diff is pure + additive; the `/v1/ask` hot path is untouched (the new files are not yet wired into the orchestrator — Phase A steps 1–2, 5).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

