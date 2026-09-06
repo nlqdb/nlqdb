@@ -262,7 +262,8 @@ lint` / `format` check 0 files (exit 1) — pass explicit paths. CI is unaffecte
 6. New capability added → SDK + CLI + MCP + elements all updated, or
    gap tracked in the affected feature (`GLOBAL-003`).
 7. PR body names the `GLOBAL-025` KPI advanced **and** the §6.1 readiness
-   row it moves (or `none`); no other KPI degrades.
+   row it moves (or `none`); no other KPI degrades. The
+   [PR template](.github/pull_request_template.md) pre-fills the line.
 
 ## 9. Workflow
 
