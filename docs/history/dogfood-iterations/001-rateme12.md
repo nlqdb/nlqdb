@@ -27,8 +27,8 @@ Mechanical; run in this order, in the scratchpad, never in this repo.
 ## 3. Repo access
 
 - The token arrives as `$RATEME12_GH_TOKEN`. Use it **only** as `Authorization: Bearer $RATEME12_GH_TOKEN` in `curl`, or via a git credential helper that reads the env var. Never in a remote URL, shell history file, log, commit, PR body, or doc.
-- This proxy may limit `api.github.com` to repo-scoped endpoints (no `/user/repos` listing). **The one open input from the founder: the exact `owner/repo`** of rateme12 — and the live URL if it differs from rateme12's obvious domain.
-- Clone with `git -c credential.helper='!f(){ echo username=x-access-token; echo password=$RATEME12_GH_TOKEN; };f' clone https://github.com/<owner>/<repo> <scratch>/rateme12-src`.
+- Repo: `omerhochman/rateme12` (founder-confirmed). This proxy may limit `api.github.com` to repo-scoped endpoints, so do not rely on listing. Live URL: confirm with the founder if it differs from rateme12's obvious domain.
+- Clone with `git -c credential.helper='!f(){ echo username=x-access-token; echo password=$RATEME12_GH_TOKEN; };f' clone https://github.com/omerhochman/rateme12 <scratch>/rateme12-src`.
 
 ## 4. Product inventory — fill on day 1, before §5a step 2
 
