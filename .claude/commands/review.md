@@ -1,5 +1,7 @@
 # /review — PR review + merge loop
 
+Read [`GLOBAL-042`](../../docs/decisions/GLOBAL-042-dogfood-iteration-loop.md) and the current iteration brief [`001-rateme12.md`](../../docs/history/dogfood-iterations/001-rateme12.md) first; a PR body must name the §6.1 readiness row it moves or `none` (`CLAUDE.md` §8 item 7) — check the claim against the table.
+
 Your review criteria: security (including sql injection), readability, scalability, consistency, reusability, developer experience and most importantly user experience (minimum actions for maximum value and minimum user-regretted-seconds like interruptions / spam etc), observability (non-spammy), robustness, 1-sentence judicious comments (not-spammy), docs kept in-sync, and the design-for-leverage skill.
 
 If we have open PRs from me (omer hochman) that are not draft, start a background agent for each of these PR  - the agent should review based on the above criteria, should fix any findings, rebase and carefully resolve any conflicts, and make sure CI is green. **Every review and re-review agent must run on Opus or stronger — never Sonnet or any smaller/faster model. Reviewer judgment is the gate that authorizes a merge; it must not be economized.** if any fixes were applied then you should spin up another background agent to review that PR rigorously and thoroughly again. if the review resulted with 0 fixable issues then please merge it. yes, you can merge it.
