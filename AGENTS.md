@@ -21,12 +21,12 @@ as good as or better than the hand-made one —
 by `GLOBAL-041` KPI 1 (first-insert inference ≥ 95 %). Every engine PR asks:
 does this bring the readiness table in
 [`001-rateme12.md` §6.1](docs/history/dogfood-iterations/001-rateme12.md#61-readiness-gate--all-four-green-before-5b-step-6)
-closer to green? Name the row in the PR body. That table is the work queue:
-
-- **R1 widen-on-write** — unbuilt; `docs/features/schema-widening/FEATURE.md`.
-- **R2 headless DB create** (`sk_live_` goal-create or `nlq login`) —
-  `docs/features/hosted-db-create/FEATURE.md`, `docs/features/cli/FEATURE.md`.
-- **R3 value-safe write** (values out of the goal text) — `docs/features/sdk/FEATURE.md`.
+closer to green? Name the row in the PR body. That table is the work queue —
+each row carries its own owner feature doc and today-status, so they are not
+restated here. What those rows add up to, flow by flow, is
+[`docs/END_GOAL.md`](docs/END_GOAL.md): read it before taking an item and
+before judging a PR; an item contradicting a flow there is the item's bug,
+fixed in the same PR.
 
 Acquisition paused. Numbers: [`docs/scorecard.md`](docs/scorecard.md).
 
@@ -146,18 +146,10 @@ nlqdb/
 ├── cli/                 # `nlq` command-line tool
 ├── packages/
 │   ├── sdk/             # @nlqdb/sdk — the only HTTP client (GLOBAL-001)
-│   ├── elements/        # <nlq-data> web component
-│   ├── react/ next/ vue/ nuxt/ svelte/ sveltekit/ astro/ solid/  # framework wrappers
-│   ├── nlqdb-swift/ nlqdb-rb/ nlqdb-rs/  # Swift / Ruby / Rust SDKs
-│   ├── cli-shim/        # @nlqdb/cli — npm shim for the `nlq` binary
-│   ├── db/              # engine-agnostic DB adapter
-│   ├── platform-db/     # control-plane DB (not user DBs)
-│   ├── llm/             # LLM router + providers
-│   ├── mcp/             # MCP server + host detection
-│   ├── otel/            # OpenTelemetry helpers
-│   ├── auth-internal/   # Better Auth wrapper
-│   ├── email/           # transactional email templates
-│   └── events/          # event-pipeline producer types
+│   ├── elements/ + react/ next/ vue/ nuxt/ svelte/ sveltekit/ astro/ solid/  # <nlq-data> + wrappers
+│   ├── nlqdb-swift/ nlqdb-rb/ nlqdb-rs/ cli-shim/  # other-language SDKs + `nlq` npm shim
+│   ├── db/ platform-db/ # engine-agnostic adapter · control-plane DB (not user DBs)
+│   └── llm/ mcp/ otel/ auth-internal/ email/ events/  # router · MCP · OTel · auth · email · events
 ├── tools/               # workspace tooling (eval, stranger-test)
 ├── docs/                # long-form reference docs (see §6)
 │   └── features/        # per-feature decision records (mandatory pre-read)
@@ -222,6 +214,7 @@ supported; else read manually before editing.)
 | File | What for |
 |---|---|
 | [`docs/decisions.md`](docs/decisions.md) + [`docs/decisions/`](docs/decisions/) | **Canonical** `GLOBAL-NNN` decisions — index + one body per file. |
+| [`docs/END_GOAL.md`](docs/END_GOAL.md) | The finished product, flow by flow — north star for every item and PR. |
 | [`docs/feature-conventions.md`](docs/feature-conventions.md) | How `docs/features/` is structured. Read before adding/editing a feature. |
 | [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, tech-stack rationale, risks. |
 | [`docs/phase-plan.md`](docs/phase-plan.md) | **Canonical phase plan** — per-phase items, exit gates, the §6 monetization + scaling trigger. |
@@ -273,6 +266,7 @@ lint` / `format` check 0 files (exit 1) — pass explicit paths. CI is unaffecte
 
 ## 9. Workflow
 
-§5 → its `FEATURE.md` → the cited `GLOBAL-NNN` → P1–P6 → §8; still unsure,
+[`docs/END_GOAL.md`](docs/END_GOAL.md) → §5 → its `FEATURE.md` → the cited
+`GLOBAL-NNN` → P1–P6 → §8; still unsure,
 ask the user — never guess across a documented decision. Adding or replacing
 a decision follows [`docs/feature-conventions.md`](docs/feature-conventions.md).
