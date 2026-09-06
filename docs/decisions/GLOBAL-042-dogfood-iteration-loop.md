@@ -32,9 +32,12 @@
      workload, the retro/cleanup tooling below).
   2. **nlqdb owns the schema.** The schema is created and evolved by nlqdb
      from the product's inserts and reads, from scratch. The real project's
-     schema is **never an input to a build**: not read, not compared
-     against, not learned from while an iteration is running. See the open
-     question below for post-hoc use.
+     schema is **never an input during a build**: not read, not compared
+     against, not learned from while an iteration is running. It may be
+     read, compared against and learned from **only post-hoc** — after the
+     product built in that iteration is working and its retro is written.
+     Founder, 2026-09-06: *"yes it can be learned post-hoc after the
+     product is working."*
   3. **Success bar.** nlqdb's resulting schema is **as good as or better
      than** the real one. Until an iteration clears that bar the goal is
      not met, whatever else shipped.
@@ -68,11 +71,3 @@
     explicitly.
   - **Carry state between iterations** — leftover DBs, keys and branches
     hide what the next iteration actually needed from a clean start.
-
-## Open questions (founder)
-
-- **Post-hoc grading.** Assumption to confirm: once an iteration is frozen
-  (retro written, nothing further changed), the real schema may be used
-  **only** as a grading reference to judge "as good or even better". Not
-  resolved — the agent does not touch the real schema at any point until
-  the founder answers.
