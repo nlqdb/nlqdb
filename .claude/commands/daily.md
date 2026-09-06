@@ -5,7 +5,7 @@
 List the open PRs on `nlqdb/nlqdb`.
 
 - **≥ 1 open non-draft PR → run [`/review`](review.md) and stop.** That is
-  the whole run — one mode per run keeps each run's context on one job.
+  the whole run — one mode per run keeps its context on one job.
 - **0 open non-draft PRs → continue below**, as the worker.
 
 **Draft = parked, not a claim.** Dispatch ignores drafts. `/review` drafts a
@@ -13,13 +13,17 @@ PR it will neither merge nor fix, naming the condition that un-drafts it;
 before picking a lever (step 2) you adopt a draft whose condition is now met
 — merge `main` in, fix, mark ready for review — and that adoption **is** this
 run's lever. Nothing else touches drafts, and no lever edits a draft's files
-(the step-1 scorecard regeneration is exempt; every run updates it).
+(step-1 scorecard regeneration excepted — every run updates it).
 
 **Sunday (UTC) runs, in either mode:** also spawn ONE background sub-agent
-(Agent tool, Opus or stronger) instructed exactly: *"If `git log
---since='6 days ago' -- docs/weekly-review.md` is empty, run `/weekly`
-end-to-end and open its PR; otherwise exit with 'weekly already done this
-week'."* Don't wait on it beyond finishing your own job.
+(Agent tool, Opus or stronger) instructed exactly: *"Exit with 'weekly
+already done this week' if `git log --since='6 days ago' --
+docs/weekly-review.md` is non-empty **or** any open PR (drafts included)
+touches that file — list PRs + their files, or `git ls-remote --heads
+origin` then `git log origin/<branch> -- docs/weekly-review.md` for branches
+under 6 days old. Otherwise run `/weekly` end-to-end and open its PR."*
+It fires twice on Sunday, so the open-PR half is what stops the duplicate.
+Don't wait on it.
 
 You are the daily operating agent for nlqdb. One run = **one measured
 improvement** — or an explicit null run (step 2) when no lever clears the
@@ -39,8 +43,8 @@ This loop's job is to advance the current
 dogfood iteration — read its brief
 [`001-rateme12.md`](../../docs/history/dogfood-iterations/001-rateme12.md)
 first; §6.1 is the engine work queue — and, when one ends, log its retro and clean up before the next.
-Acquisition, content and the EK track are paused (`GLOBAL-041`): this loop
-pulls no channel, content or marketplace lever, and existing pages stay live.
+Acquisition, content and the EK track are paused (`GLOBAL-041`): no channel,
+content or marketplace lever; existing pages stay live.
 
 ## Operating rules (non-negotiable)
 
@@ -51,9 +55,9 @@ pulls no channel, content or marketplace lever, and existing pages stay live.
    number you intend to move, and its current value. If you cannot name one,
    either do D5 deletion/cleanup (docs over 20 KB, dead code, stale prose)
    or end the run as a null run (step 2) — never build. **Suite pass-counts
-   and new-test counts are never the number moved:** a test proves a fix
-   holds — it is evidence, not a delta. Name the scorecard row (or a named
-   direct input to one) the fix moves.
+   and new-test counts are never the number moved:** a test is evidence,
+   not a delta. Name the scorecard row (or a named direct input to one) the
+   fix moves.
 3. **Measure → change → re-measure.** Engine work: the KPI 1 counters
    (`asks_extend_ok` / `asks_extend_failed`) over the dogfood workload, or
    the E2E extend walk. UX-flow work: the stranger-test walkers
@@ -65,8 +69,7 @@ pulls no channel, content or marketplace lever, and existing pages stay live.
    says resolve those yourself. A true founder bet that **no codified
    decision settles** goes in as a 🔒 **decision-to-lock** bullet
    (GLOBAL-033: cite what was checked, pre-draft the options, conservative
-   default applied so nothing blocks) — this is also rule 8's legal path
-   when a dark metric's root blocker is founder-owned. The file is a
+   default applied so nothing blocks). The file is a
    **ranked queue** (expected user-yield per founder-minute): a new bullet
    opens with `⏱ estimate · blocked since date` and slots in by rank, never
    appends. **A fix that costs money is not a fix** (`docs/cost-ladder.md`:
@@ -147,8 +150,7 @@ so the write succeeds. A write that lands with a field the schema had not
 seen is a KPI 1 hit; one that errors or needs a manual step is a miss —
 record it in the scorecard the same run. The DB id and the window's start
 date live in the scorecard header. Until the extend path exists (Phase A
-item 1), every such write is a miss and the instrument reads honestly at
-0 %. `docs/scorecard.md` keeps only the header + metrics table.
+item 1), every such write is a miss and the instrument reads honestly at 0 %.
 
 ### 2 — One lever, measured
 
@@ -184,15 +186,14 @@ bullet at its yield rank in `docs/blocked-by-human.md`: written for founder
 review, **never self-executed**, the run still a null. One proposal, then
 back to nulls until it is answered.
 
-State the before-value, make the change, re-measure the same way, then
-write this run's delta (and any revert note) as the "Last change" record
+Write this run's delta (and any revert note) as the "Last change" record
 through the dogfood workload above. One lever per run.
 
 ### 3 — Ship
 
 One PR per run, small diff. `CLAUDE.md` §8 gates green before pushing. The
-PR body must name: the number moved,
-before → after values, the GLOBAL-025 KPI advanced, and that none degrade.
+PR body must name: the number moved, before → after values, the GLOBAL-025
+KPI advanced, and that none degrade.
 **A PR whose body names no measured delta does not merge**, with one
 exception: a null run's PR (step 2) ships only the step-1 scorecard update
 and names the recorded finding in place of a delta. Ending without a delta
