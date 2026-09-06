@@ -9,4 +9,4 @@ the next iteration starts.
 
 | # | Iteration | Date | Outcome |
 |---|-----------|------|---------|
-| — | none yet | | |
+| 001 | [rateme12 on nlqdb](001-rateme12.md) — clone `rateme12.nlqdb.com`, data last mile gated on nlqdb readiness | 2026-09-06 (brief) | not started |
