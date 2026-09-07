@@ -17,6 +17,8 @@ import {
   type CallOpts,
   type EngineClassifyRequest,
   type EngineClassifyResponse,
+  type ExtendSchemaRequest,
+  type ExtendSchemaResponse,
   type FailoverReason,
   type LLMOperation,
   type PlanRequest,
@@ -156,6 +158,7 @@ export type LLMRouter = {
   plan(req: PlanRequest, opts?: CallOpts): Promise<PlanResponse>;
   summarize(req: SummarizeRequest, opts?: CallOpts): Promise<SummarizeResponse>;
   schemaInfer(req: SchemaInferRequest, opts?: CallOpts): Promise<SchemaInferResponse>;
+  extendSchema(req: ExtendSchemaRequest, opts?: CallOpts): Promise<ExtendSchemaResponse>;
   engineClassify(req: EngineClassifyRequest, opts?: CallOpts): Promise<EngineClassifyResponse>;
 };
 
@@ -672,6 +675,17 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
         "schema_infer",
         req,
         (p, r, o) => p.schemaInfer(r, o),
+        callerOpts,
+      );
+    },
+    extendSchema(req, callerOpts) {
+      // GLOBAL-041 Phase A step 2 — same tier as schemaInfer (one-shot
+      // structural design, not the hot path), so it rides the `schema_infer`
+      // chain + timeout; the differing prompt lives in the provider.
+      return dispatch<ExtendSchemaRequest, ExtendSchemaResponse>(
+        "schema_infer",
+        req,
+        (p, r, o) => p.extendSchema(r, o),
         callerOpts,
       );
     },

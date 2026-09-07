@@ -9,6 +9,7 @@
 // copy-paste of nearly-identical methods.
 
 import { buildPlanSystem } from "../plan-exemplar-pool.ts";
+import { buildSchemaExtendUser, SCHEMA_EXTEND_SYSTEM } from "../prompts/schema-extend.ts";
 import { buildSchemaInferUser, SCHEMA_INFER_SYSTEM } from "../prompts/schema-inference.ts";
 import {
   buildEngineClassifyUser,
@@ -22,6 +23,7 @@ import {
 import type {
   CallOpts,
   EngineClassifyResponse,
+  ExtendSchemaResponse,
   LLMOperation,
   PlanResponse,
   Provider,
@@ -126,6 +128,25 @@ export function createChatProvider(impl: ChatProviderImpl): Provider {
       // SK-TRUST-002: model + placeholder confidence feed the create
       // response's trace block, same posture as plan() above.
       return { plan: parsed, model, confidence: 1.0 } satisfies SchemaInferResponse;
+    },
+    async extendSchema(req, opts = {}) {
+      // GLOBAL-041 Phase A step 2 — the widen-on-write analogue of
+      // schemaInfer: same tier / model (a one-shot structural design event,
+      // not the hot-path `plan` op), different prompt (extend an observed
+      // schema, don't design a fresh one). Caller validates the parsed object
+      // against `WidenPlanSchema` in `@nlqdb/db/types`.
+      const model = impl.models.schema_infer;
+      const raw = await impl.callChat({
+        model,
+        messages: [
+          { role: "system", content: SCHEMA_EXTEND_SYSTEM },
+          { role: "user", content: buildSchemaExtendUser(req) },
+        ],
+        jsonMode: true,
+        opts,
+      });
+      const parsed = parseJsonResponse<Record<string, unknown>>(raw);
+      return { plan: parsed, model, confidence: 1.0 } satisfies ExtendSchemaResponse;
     },
     async engineClassify(req, opts = {}) {
       const raw = await impl.callChat({

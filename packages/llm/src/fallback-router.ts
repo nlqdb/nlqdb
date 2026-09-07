@@ -76,6 +76,13 @@ export function withFallbackRouter(
       primary.schemaInfer.bind(primary),
       fallback.schemaInfer.bind(fallback),
     ),
+    // GLOBAL-041 Phase A step 2 — same `schema_infer` tier label for the
+    // fallback bookkeeping; it is that tier's chain the router dispatches on.
+    extendSchema: guard(
+      "schema_infer",
+      primary.extendSchema.bind(primary),
+      fallback.extendSchema.bind(fallback),
+    ),
     engineClassify: guard(
       "engine_classify",
       primary.engineClassify.bind(primary),
