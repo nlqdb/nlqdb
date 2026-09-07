@@ -372,3 +372,40 @@ export const SchemaPlanSchema = z.object({
   sample_rows: z.array(SampleRowSchema).max(50),
 });
 export type SchemaPlan = z.infer<typeof SchemaPlanSchema>;
+
+// A single column added to a table that already exists in the schema. The
+// column is validated by the same `ColumnSchema` the create path uses, then
+// narrowed to the widen-only shape: nullable (an already-populated table
+// cannot take a NOT NULL add) and no DEFAULT (a defaulted add against
+// existing rows is a retype-class change — a previewed proposal, SK-SCHEMA-009,
+// never a silent widen). These two refinements mirror `compile-write-ddl.ts`'s
+// `validateAddColumn` and the `sql-validate-ddl.ts` allow-list, one grammar
+// across parse → compile → allow-list.
+export const AddColumnOpSchema = z.object({
+  table: IdentifierSchema,
+  column: ColumnSchema.refine((c) => c.nullable !== false, {
+    message: "a widen ADD COLUMN must be nullable (SK-SCHEMA-008)",
+  }).refine((c) => c.default === undefined || c.default === null, {
+    message: "a widen ADD COLUMN must not carry a DEFAULT (SK-SCHEMA-009 retype proposal)",
+  }),
+});
+export type AddColumnOp = z.infer<typeof AddColumnOpSchema>;
+
+// The typed widen plan the extend prompt emits (GLOBAL-041 Phase A step 2):
+// new tables in full + new nullable columns on existing tables. This is the
+// SK-HDC-003 layer-1 gate the widen path runs LLM output through before
+// `compile-write-ddl.ts` (layer 2 = the libpg_query allow-list), exactly as
+// `SchemaPlanSchema` gates `inferSchema` on the create path — the validator
+// exists before the untrusted-input path that feeds it. The LLM emits JSON in
+// this shape, never DDL text (GLOBAL-037 schema-only egress). Both arrays may
+// be empty individually, but a plan with neither op is rejected here (the
+// compiler's `empty_plan` guard, lifted to parse time).
+export const WidenPlanSchema = z
+  .object({
+    create_tables: z.array(TableSchema).max(20),
+    add_columns: z.array(AddColumnOpSchema).max(50),
+  })
+  .refine((p) => p.create_tables.length > 0 || p.add_columns.length > 0, {
+    message: "a widen plan must contain at least one create_table or add_column op",
+  });
+export type WidenPlan = z.infer<typeof WidenPlanSchema>;
