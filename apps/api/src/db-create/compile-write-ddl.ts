@@ -25,19 +25,17 @@
 //
 // Sibling skill: docs/features/schema-widening/FEATURE.md (SK-SCHEMA-008/009).
 
-import type { Column, Table } from "@nlqdb/db";
+import type { AddColumnOp, Table, WidenPlan } from "@nlqdb/db";
 import { checkReserved, compileColumn, compileTable, quoted } from "./compile-ddl.ts";
 
-// A single column added to a table that already exists in the schema.
-export type AddColumnOp = { table: string; column: Column };
-
-// The typed widen plan the extend prompt emits (GLOBAL-041 Phase A step 2):
-// new tables in full + new columns on existing tables. Both arrays may be
-// empty individually, but a plan with neither op is a caller bug (`empty_plan`).
-export type WidenPlan = {
-  create_tables: Table[];
-  add_columns: AddColumnOp[];
-};
+// The typed widen plan (`WidenPlan`) and its `AddColumnOp` member are the
+// canonical `@nlqdb/db` contract — the Zod-validated shape the extend prompt
+// emits (GLOBAL-041 Phase A step 2, `WidenPlanSchema`). Re-exported here so
+// this compiler's callers keep one import path (mirrors `SchemaPlan` living in
+// `@nlqdb/db` while `compile-ddl.ts` consumes it). The runtime guards below
+// stay as defence-in-depth: they run on the compiled DDL regardless of how the
+// plan reached the compiler (a preset or test may hand-build one).
+export type { AddColumnOp, WidenPlan };
 
 export type CompileWriteDdlResult =
   | { ok: true; statements: string[] }

@@ -102,6 +102,7 @@ export type { RenderedSchema } from "./render-byo-postgres.ts";
 export { renderByoPostgresSchema } from "./render-byo-postgres.ts";
 export { fingerprintSchema } from "./schema-fingerprint.ts";
 export type {
+  AddColumnOp,
   Agg,
   ClickHouseEngineMeta,
   ClickHousePlan,
@@ -124,6 +125,7 @@ export type {
   SampleRow,
   SchemaPlan,
   Table,
+  WidenPlan,
 } from "./types.ts";
 // SchemaPlan family — typed-plan output of the db.create pipeline
 // (`docs/features/hosted-db-create/FEATURE.md` SK-HDC-002). Canonical
@@ -131,6 +133,7 @@ export type {
 // consumers can `import { SchemaPlan } from "@nlqdb/db"` without
 // the subpath. Both styles work; root is the recommended import.
 export {
+  AddColumnOpSchema,
   AggSchema,
   ALLOWED_ENGINES,
   ColumnSchema,
@@ -144,4 +147,5 @@ export {
   SampleRowSchema,
   SchemaPlanSchema,
   TableSchema,
+  WidenPlanSchema,
 } from "./types.ts";
