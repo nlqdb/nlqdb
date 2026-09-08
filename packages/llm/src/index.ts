@@ -151,6 +151,8 @@ export {
   type CallOpts,
   type EngineClassifyRequest,
   type EngineClassifyResponse,
+  type ExtendSchemaRequest,
+  type ExtendSchemaResponse,
   type FailoverReason,
   type FetchLike,
   type LLMOperation,

@@ -149,6 +149,20 @@ export type SchemaInferResponse = {
   confidence: number;
 };
 
+// Widen-on-write extend op (GLOBAL-041 Phase A step 2, exec half). Same
+// tier as `schemaInfer` — typed JSON structure in, no DDL — but the LLM
+// EXTENDS an observed schema rather than designing a fresh one, so it also
+// receives that schema as ground truth (`schema`). The provider returns the
+// parsed JSON object wrapped in `{plan}` for shape uniformity; validation
+// against the canonical `WidenPlanSchema` (`packages/db/src/types.ts`) lives
+// at the call site, keeping `@nlqdb/llm` free of an `@nlqdb/db` dependency.
+export type ExtendSchemaRequest = { goal: string; schema: string };
+export type ExtendSchemaResponse = {
+  plan: Record<string, unknown>;
+  model: string;
+  confidence: number;
+};
+
 // Engine classification (SK-DB-010 / SK-MULTIENG-002). Cheap-tier op
 // that maps a goal string to one of the engines in the engine-fit
 // table (currently `postgres` / `clickhouse`). The classifier prompt
@@ -231,6 +245,7 @@ export type Provider = {
   plan(req: PlanRequest, opts?: CallOpts): Promise<PlanResponse>;
   summarize(req: SummarizeRequest, opts?: CallOpts): Promise<SummarizeResponse>;
   schemaInfer(req: SchemaInferRequest, opts?: CallOpts): Promise<SchemaInferResponse>;
+  extendSchema(req: ExtendSchemaRequest, opts?: CallOpts): Promise<ExtendSchemaResponse>;
   engineClassify(req: EngineClassifyRequest, opts?: CallOpts): Promise<EngineClassifyResponse>;
 };
 

@@ -172,6 +172,7 @@ function freeLane(plan: (req: PlanRequest) => Promise<PlanResponse>): Lane {
       route: notUsed("route") as never,
       summarize: notUsed("summarize") as never,
       schemaInfer: notUsed("schemaInfer") as never,
+      extendSchema: notUsed("extendSchema") as never,
       engineClassify: notUsed("engineClassify") as never,
     },
   };

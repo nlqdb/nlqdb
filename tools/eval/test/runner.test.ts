@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type {
   EngineClassifyRequest,
+  ExtendSchemaRequest,
   PlanRequest,
   PlanResponse,
   RouteRequest,
@@ -35,6 +36,7 @@ function fakeRouter(predicted: string, model = "stub-model"): StubRouter {
     route: notUsed("route") as never as (r: RouteRequest) => Promise<never>,
     summarize: notUsed("summarize") as never as (r: SummarizeRequest) => Promise<never>,
     schemaInfer: notUsed("schemaInfer") as never as (r: SchemaInferRequest) => Promise<never>,
+    extendSchema: notUsed("extendSchema") as never as (r: ExtendSchemaRequest) => Promise<never>,
     engineClassify: notUsed("engineClassify") as never as (
       r: EngineClassifyRequest,
     ) => Promise<never>,

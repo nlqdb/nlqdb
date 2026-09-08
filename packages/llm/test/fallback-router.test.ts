@@ -18,6 +18,8 @@ function stubRouter(tag: string, opts?: { throwOn?: Set<LLMOperation> }): LLMRou
     plan: make("plan"),
     summarize: make("summarize"),
     schemaInfer: make("schema_infer"),
+    // extendSchema rides the same schema_infer tier label (GLOBAL-041 Phase A).
+    extendSchema: make("schema_infer"),
     engineClassify: make("engine_classify"),
   };
 }

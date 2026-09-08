@@ -21,7 +21,15 @@
 // - `docs/features/ask-pipeline/FEATURE.md` — the `kind=create`
 //   branch routes here from `/v1/ask` (SK-ASK-001).
 
-import type { Dimension, Engine, ForeignKey, Metric, SampleRow, SchemaPlan } from "@nlqdb/db";
+import type {
+  Dimension,
+  Engine,
+  ForeignKey,
+  Metric,
+  SampleRow,
+  SchemaPlan,
+  WidenPlan,
+} from "@nlqdb/db";
 import type { LLMRouter } from "@nlqdb/llm";
 import type { MemoryPreset } from "./presets/agent-memory-v1.ts";
 
@@ -65,6 +73,37 @@ export type InferSchemaResult =
   // response — they populate the create response's SK-TRUST-002 trace.
   | { ok: true; plan: SchemaPlan; model: string; confidence: number }
   | { ok: false; reason: Exclude<InferFailureReason, "plan_invalid"> }
+  | { ok: false; reason: "plan_invalid"; details: { issue_count: number } };
+
+// --- extend-schema (widen-on-write, GLOBAL-041 Phase A step 2) -------
+//
+// The evolution analogue of infer-schema: the write's fields aren't all in
+// the observed schema, so the LLM emits a typed `WidenPlan` that extends it.
+// Same injected-router purity as `inferSchema`; the orchestrator (step 1
+// routing, next slice) wires the real router. Reason union mirrors what
+// `extend-schema.ts` actually emits — a widen plan is never "ambiguous"
+// (the observed schema grounds it), so the create path's `ambiguous_goal`
+// has no analogue here.
+
+export type ExtendSchemaDeps = {
+  llm: LLMRouter;
+};
+
+export type ExtendSchemaArgs = {
+  // The write the user asked for — the goal the extend prompt widens toward.
+  goal: string;
+  // The DB's current observed schema (the orchestrator's `db.schemaText`),
+  // handed to the LLM as ground truth to extend, never re-design.
+  schema: string;
+};
+
+export type ExtendFailureReason = "llm_failed" | "plan_invalid";
+
+export type ExtendSchemaResult =
+  // `model` + `confidence` ride through from the extendSchema provider
+  // response — they populate the extend step's GLOBAL-023 trace block.
+  | { ok: true; plan: WidenPlan; model: string; confidence: number }
+  | { ok: false; reason: Exclude<ExtendFailureReason, "plan_invalid"> }
   | { ok: false; reason: "plan_invalid"; details: { issue_count: number } };
 
 // --- compile-ddl ----------------------------------------------------

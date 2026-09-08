@@ -9,6 +9,7 @@ import {
 import {
   type CallOpts,
   type EngineClassifyResponse,
+  type ExtendSchemaResponse,
   type PlanResponse,
   type Provider,
   ProviderError,
@@ -47,6 +48,7 @@ const ROUTE_REQ: RouteRequest = {
 // the fake's name + 1.0 so existing tests stay terse.
 type PlanStubShape = Partial<PlanResponse> & Pick<PlanResponse, "sql">;
 type SchemaInferStubShape = Partial<SchemaInferResponse> & Pick<SchemaInferResponse, "plan">;
+type ExtendSchemaStubShape = Partial<ExtendSchemaResponse> & Pick<ExtendSchemaResponse, "plan">;
 function fakeProvider(
   name: ProviderName,
   stubs: {
@@ -54,6 +56,7 @@ function fakeProvider(
     plan?: Stub<PlanStubShape>;
     summarize?: Stub<SummarizeResponse>;
     schemaInfer?: Stub<SchemaInferStubShape>;
+    extendSchema?: Stub<ExtendSchemaStubShape>;
     engineClassify?: Stub<EngineClassifyResponse>;
   } = {},
 ): Provider & { calls: { op: string; req: unknown; opts: CallOpts | undefined }[] } {
@@ -90,6 +93,16 @@ function fakeProvider(
       calls.push({ op: "schemaInfer", req, opts });
       const out = await resolve<SchemaInferStubShape>(
         stubs.schemaInfer,
+        { plan: { provider: name } },
+        req,
+        opts,
+      );
+      return { model: `${name}-model`, confidence: 1.0, ...out };
+    },
+    async extendSchema(req, opts) {
+      calls.push({ op: "extendSchema", req, opts });
+      const out = await resolve<ExtendSchemaStubShape>(
+        stubs.extendSchema,
         { plan: { provider: name } },
         req,
         opts,
@@ -903,6 +916,35 @@ describe("createLLMRouter — rate-limit cooldown (SK-LLM-030)", () => {
       .getFinishedSpans()
       .find((s) => s.attributes["llm.provider"] === "gemini");
     expect(span?.attributes["nlqdb.llm.retry_after_ms"]).toBe(30_000);
+  });
+});
+
+describe("createLLMRouter — extendSchema (GLOBAL-041 Phase A)", () => {
+  it("dispatches on the schema_infer chain and forwards goal + schema", async () => {
+    const primary = fakeProvider("gemini", { extendSchema: { plan: { widen: "gemini" } } });
+    const router = createLLMRouter({
+      providers: [primary],
+      chains: { schema_infer: ["gemini"] },
+    });
+    const res = await router.extendSchema({ goal: "add total", schema: "TABLE orders(id uuid)" });
+    expect(res.plan).toEqual({ widen: "gemini" });
+    expect(primary.calls).toHaveLength(1);
+    expect(primary.calls[0]?.op).toBe("extendSchema");
+    expect(primary.calls[0]?.req).toEqual({ goal: "add total", schema: "TABLE orders(id uuid)" });
+  });
+
+  it("fails over to the next provider in the chain on a primary error", async () => {
+    const primary = fakeProvider("gemini", {
+      extendSchema: new ProviderError("boom", "http_5xx", { status: 500 }),
+    });
+    const secondary = fakeProvider("groq", { extendSchema: { plan: { widen: "groq" } } });
+    const router = createLLMRouter({
+      providers: [primary, secondary],
+      chains: { schema_infer: ["gemini", "groq"] },
+    });
+    const res = await router.extendSchema({ goal: "g", schema: "s" });
+    expect(res.plan).toEqual({ widen: "groq" });
+    expect(secondary.calls).toHaveLength(1);
   });
 });
 
