@@ -379,8 +379,10 @@ function buildSampleInsert(
 
 // Extract the Postgres SQLSTATE from a Neon `transaction()` rejection.
 // `NeonDbError` carries it in `code`; anything else (TLS reset, timeout
-// with no SQLSTATE) yields `undefined`.
-function sqlStateOf(err: unknown): string | undefined {
+// with no SQLSTATE) yields `undefined`. Exported for the widen-on-write
+// executor (`widen-provision.ts`), which classifies the same rejection
+// shape by SQLSTATE class (GLOBAL-041 Phase A step 5, exec half).
+export function sqlStateOf(err: unknown): string | undefined {
   const code = (err as { code?: string } | null)?.code;
   return typeof code === "string" ? code : undefined;
 }

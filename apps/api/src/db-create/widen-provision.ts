@@ -36,11 +36,13 @@
 // caller might hand-build a plan).
 
 import type { WidenPlan } from "@nlqdb/db";
+import { dbDurationMs } from "@nlqdb/otel";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { assertTenantRoleName, tenantRoleName } from "../tenant-role.ts";
 import type { CompileWriteFailureReason } from "./compile-write-ddl.ts";
 import { compileWriteDdl } from "./compile-write-ddl.ts";
-import { assertSafeIdentifier, escapeSqlLiteral } from "./neon-provision.ts";
-import type { PgTransactionStatement } from "./types.ts";
+import { assertSafeIdentifier, escapeSqlLiteral, sqlStateOf } from "./neon-provision.ts";
+import type { PgClient, PgTransactionResult, PgTransactionStatement } from "./types.ts";
 
 export type WidenBatchResult =
   | { ok: true; statements: PgTransactionStatement[] }
@@ -123,4 +125,93 @@ export async function buildWidenBatch(input: {
   statements.push(insert);
 
   return { ok: true, statements };
+}
+
+// GLOBAL-041 Phase A step 5, EXEC half (SK-SCHEMA-008). Runs the batch
+// `buildWidenBatch` assembled as ONE Neon HTTP transaction (server-side
+// BEGIN/COMMIT via `pg.transaction([...])`, the same primitive
+// `neon-provision.ts` uses), so the widen DDL and the INSERT that needed it
+// commit or roll back together. Pure over its injected `PgClient`: tests pass
+// a stub, the orchestrator (step 1 routing, next slice) passes the real Neon
+// client. Stops at the Postgres commit — rewriting `schema_text` / `schema_hash`
+// in D1 (step 6) is the caller's next hop, deferred until the hash-recompute
+// decision is settled (FEATURE.md open questions), exactly as the create path
+// commits Postgres first then writes D1 (`neon-provision.ts`).
+//
+// Failure classification mirrors `neon-provision.ts::mapTransactionError` but
+// splits along the widen batch's two phases — DDL first, then the INSERT last:
+//   - class 42 (undefined object / syntax / privilege) is the DDL phase; our
+//     compiler + `sql-validate-ddl.ts` authored that SQL, so a reject here is a
+//     compiler/privilege bug, not the user's values → `widen_ddl_failed`.
+//   - class 22 (data exception) / class 23 (integrity constraint) can only come
+//     from the trailing INSERT — the user's write values → `write_rejected`.
+//   - no SQLSTATE (TLS reset / timeout) is infra → `transaction_failed`.
+// The raw `error` rides through on failure so the orchestrator wire-in can reuse
+// its existing `classifyWriteConstraint` / `classifyDataException` to build the
+// precise client envelope (the `write_constraint` clarify, `invalid_value`),
+// while `reason` + `sqlState` give this executor a self-contained, testable
+// outcome for the span and coarse-grained callers.
+export type WidenExecFailureReason = "widen_ddl_failed" | "write_rejected" | "transaction_failed";
+
+export type WidenExecResult =
+  | { ok: true; results: PgTransactionResult[] }
+  | {
+      ok: false;
+      reason: WidenExecFailureReason;
+      sqlState: string | undefined;
+      rolled_back: true;
+      error: unknown;
+    };
+
+export async function executeWidenBatch(
+  deps: { pg: PgClient },
+  statements: PgTransactionStatement[],
+): Promise<WidenExecResult> {
+  // Per-call tracer so it binds to whatever provider is installed when the
+  // call runs (tests use `installTelemetryForTest`, prod the per-request
+  // provider) — the same acquisition posture as `provisionDb`.
+  const tracer = trace.getTracer("@nlqdb/api/db-create");
+  return tracer.startActiveSpan("db.transaction", async (span) => {
+    span.setAttribute("db.system", "postgresql");
+    span.setAttribute("db.transaction.statement_count", statements.length);
+    span.setAttribute("db.transaction.batch_call", true);
+    // Bounded label so dashboards can split the widen transaction from the
+    // create-time provision batch that shares the `db.transaction` span name.
+    span.setAttribute("nlqdb.db.transaction.kind", "widen");
+    const startedAt = performance.now();
+    try {
+      const results = await deps.pg.transaction(statements);
+      return { ok: true as const, results };
+    } catch (err) {
+      span.recordException(err as Error);
+      span.setStatus({ code: SpanStatusCode.ERROR });
+      // SK-HDC-017 — pin the raw SQLSTATE on the span so `widen_ddl_failed`
+      // is never a black hole: an operator can tell an engine-quality DDL
+      // failure from an infra one. Bounded 5-char string (or `none`).
+      const sqlState = sqlStateOf(err);
+      span.setAttribute("db.transaction.error_sqlstate", sqlState ?? "none");
+      return {
+        ok: false as const,
+        reason: mapWidenExecError(sqlState),
+        sqlState,
+        rolled_back: true as const,
+        error: err,
+      };
+    } finally {
+      // Mirror the provisioner's `TRANSACTION`-labelled histogram so the
+      // widen batch shows up alongside create batches + per-statement
+      // durations (docs/performance.md §3.3 cardinality budget).
+      dbDurationMs().record(performance.now() - startedAt, { operation: "TRANSACTION" });
+      span.end();
+    }
+  });
+}
+
+// SQLSTATE class → coarse widen-exec reason. Class split follows the batch's
+// order (DDL then the trailing INSERT), so the class alone pins the phase.
+function mapWidenExecError(sqlState: string | undefined): WidenExecFailureReason {
+  if (sqlState === undefined) return "transaction_failed"; // infra (TLS / timeout)
+  if (sqlState.startsWith("22") || sqlState.startsWith("23")) return "write_rejected"; // INSERT values
+  if (sqlState.startsWith("42")) return "widen_ddl_failed"; // DDL phase — compiler/privilege
+  return "transaction_failed";
 }
