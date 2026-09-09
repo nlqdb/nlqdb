@@ -22,11 +22,10 @@ by `GLOBAL-041` KPI 1 (first-insert inference ≥ 95 %). Every engine PR asks:
 does this bring the readiness table in
 [`001-rateme12.md` §6.1](docs/history/dogfood-iterations/001-rateme12.md#61-readiness-gate--all-four-green-before-5b-step-6)
 closer to green? Name the row in the PR body. That table is the work queue —
-each row carries its own owner feature doc and today-status, so they are not
-restated here. What those rows add up to, flow by flow, is
-[`docs/END_GOAL.md`](docs/END_GOAL.md): read it before taking an item and
-before judging a PR; an item contradicting a flow there is the item's bug,
-fixed in the same PR.
+each row carries its owner feature doc and today-status. What those rows add
+up to, flow by flow, is [`docs/END_GOAL.md`](docs/END_GOAL.md) — the
+top-ranked doc: it outranks P1–P6 and every decision doc; whatever contradicts
+it is the bug, fixed in the same PR.
 
 Acquisition paused. Numbers: [`docs/scorecard.md`](docs/scorecard.md).
 
@@ -38,8 +37,6 @@ quality** (`GLOBAL-041`), **onboarding**, **UX**, **performance**. Every PR
 advances ≥ 1 AND degrades 0 — §8 item 7. The bet: **great on free LLMs ⇒ invincible on
 frontier LLMs** — scaffolding compounds with the model; LLM strategy per
 [`GLOBAL-026`](docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
-BIRD/Spider accuracy is a CI regression alarm, not a KPI
-([`quality-eval`](docs/features/quality-eval/FEATURE.md)).
 
 ## 2. Six behavioral principles (non-negotiable)
 
@@ -47,11 +44,13 @@ Apply to every edit, whatever the user asked for.
 
 ### P1. Never contradict documented decisions silently
 
-`docs/decisions.md` (cross-cutting `GLOBAL-NNN`) and the per-feature
+[`docs/END_GOAL.md`](docs/END_GOAL.md) (highest), then `docs/decisions.md`
+(cross-cutting `GLOBAL-NNN`) and the per-feature
 `docs/features/<feature>/FEATURE.md` (local `SK-<FEATURE>-NNN`) are the
 canonical record of why the system is the way it is. If a request would
 violate one — even subtly — **stop and raise it with the user**, citing the
-specific ID(s). Don't rationalise around it. The user may decide to delete or archive it and write the new stance clean; follow `P3`.
+specific ID(s). Don't rationalise around it. The user may delete or archive
+it and write the new stance clean; follow `P3`.
 
 ### P2. On any ambiguity or unfamiliar error, web-research first
 
@@ -98,9 +97,11 @@ Before documenting any decision or plan:
 
 ### P5. Keep functions simple. Keep high level architecture simple.
 
-Simplify rather than complexify. Each goal must be achieved with minimal steps possible.
-When fixing an issue or adding a feature - always look for a way to remove code, or simplify code rather than adding code. Same for documentations and comments.
-De-prioritize backward compatibility and prioritize clean code - we are still in a building stage.
+Simplify rather than complexify; reach each goal in the fewest steps. A fix or
+feature first looks for code to remove or simplify, never only to add — same
+for docs and comments. Clean code beats backward compatibility; we are still
+building. The no-patch-on-patch rule for the DBA architecture is stated once,
+in [`END_GOAL.md` § Architecture](docs/END_GOAL.md#architecture--simple-and-scalable).
 
 ### P6. Customer journeys must be world-class, not merely functional
 
@@ -214,7 +215,7 @@ supported; else read manually before editing.)
 | File | What for |
 |---|---|
 | [`docs/decisions.md`](docs/decisions.md) + [`docs/decisions/`](docs/decisions/) | **Canonical** `GLOBAL-NNN` decisions — index + one body per file. |
-| [`docs/END_GOAL.md`](docs/END_GOAL.md) | The finished product, flow by flow — north star for every item and PR. |
+| [`docs/END_GOAL.md`](docs/END_GOAL.md) | The finished product, flow by flow — **top-ranked**: outranks P1–P6 and every decision doc. |
 | [`docs/feature-conventions.md`](docs/feature-conventions.md) | How `docs/features/` is structured. Read before adding/editing a feature. |
 | [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, tech-stack rationale, risks. |
 | [`docs/phase-plan.md`](docs/phase-plan.md) | **Canonical phase plan** — per-phase items, exit gates, the §6 monetization + scaling trigger. |
@@ -250,9 +251,7 @@ lint` / `format` check 0 files (exit 1) — pass explicit paths. CI is unaffecte
 
 ## 8. Quality gates before opening a PR
 
-1. `bun run typecheck && bun run check && bun run test` all green — `check` is
-   what CI runs; `bun run lint` alone skips formatting and misses format-only
-   failures.
+1. `bun run typecheck && bun run check && bun run test` all green.
 2. Every new decision has an ID in its canonical home per `P3`; a new
    `GLOBAL` also adds a row to the `docs/decisions.md` index.
 3. `grep -rn '^### GLOBAL-' docs/features/` prints nothing — features
@@ -267,7 +266,7 @@ lint` / `format` check 0 files (exit 1) — pass explicit paths. CI is unaffecte
 
 ## 9. Workflow
 
-[`docs/END_GOAL.md`](docs/END_GOAL.md) → §5 → its `FEATURE.md` → the cited
-`GLOBAL-NNN` → P1–P6 → §8; still unsure,
+[`docs/END_GOAL.md`](docs/END_GOAL.md) (outranks all that follow) → §5 → its
+`FEATURE.md` → the cited `GLOBAL-NNN` → P1–P6 → §8; still unsure,
 ask the user — never guess across a documented decision. Adding or replacing
 a decision follows [`docs/feature-conventions.md`](docs/feature-conventions.md).
