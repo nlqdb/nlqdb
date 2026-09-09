@@ -1,6 +1,7 @@
 # Decisions Log — `GLOBAL-NNN`
 
-Cross-cutting decisions that govern more than one feature. Each
+Cross-cutting decisions that need the five-field record
+(`docs/END_GOAL.md` states principles directly, with no ID). Each
 `GLOBAL-NNN` is a self-contained file under
 [`docs/decisions/`](./decisions/) — that is the canonical text. **This
 file is the index.**
@@ -12,10 +13,9 @@ applies the rule, update that feature's `## GLOBALs governing this
 feature` commentary in the same PR
 (see [`docs/feature-conventions.md`](./feature-conventions.md) §5).
 
-Format of every block follows
+Every block follows
 [`docs/feature-conventions.md`](./feature-conventions.md) §4 — the five
-fields (Decision / Core value / Why / Consequence / Alternatives) are
-mandatory. Core values are cited by name from
+fields, core values cited by name from
 [`docs/architecture.md`](./architecture.md) §0.
 
 To find every feature affected by a GLOBAL:
@@ -67,7 +67,7 @@ grep -rn 'GLOBAL-007' docs/features/
 | [GLOBAL-039](./decisions/GLOBAL-039-https-only-hsts.md) | Production hosts are https-only — dynamic workers 301 http→https + stamp HSTS (`max-age=31536000; includeSubDomains`, no `preload`); static-asset surfaces ship the same header via `_headers`; dev/preview hosts exempt; every new public host wires one of the two mechanisms in its creating PR | web-app, docs-site, mcp-server | active |
 | [GLOBAL-040](./decisions/GLOBAL-040-guided-turn-not-dead-end.md) | Ambiguity and low confidence resolve as a guided one-click `clarify_required` turn, never a dead-end error — one contract for routing/destructive/missing-reference/low-confidence; a below-floor plan is still never silently executed, but its outcome is a continuation not a typed failure; `low_confidence` folds into the clarify rail. Replaces GLOBAL-023 rule (3) "refuse rather than guess" → "clarify rather than guess" | trust-ux, ask-pipeline, premium-tier | active |
 | [GLOBAL-041](./decisions/GLOBAL-041-autonomous-dba.md) | nlqdb is an autonomous DBA — no data modeling by the developer: schema inferred from inserts/reads, evolved in both directions (versioned + previewed), continuously optimized (stats, plans, indexes, layout, engine placement), shown in a dashboard with 1-click apply/undo; NL→SQL is the interface, not the product. Three engine KPIs (first-insert inference, evolution-without-user-action, optimizer yield), the Phase A/B/C build order and gates, the Phase A dogfood workload; acquisition paused until Phase A measures (supersedes GLOBAL-038's operating focus); BIRD/Spider = regression alarm; premium tier stays, DBA pricing after Phase B | every feature | active |
-| [GLOBAL-042](./decisions/GLOBAL-042-dogfood-iteration-loop.md) | The agent builds a real product on nlqdb through the public surfaces only (first target: rateme12), nlqdb creating and optimizing the schema from scratch — the real schema is never an input; success = as good as or better than the real one; each iteration ends with a retro in `docs/history/dogfood-iterations/` then full cleanup before the next; rethinking GLOBALs/SK-IDs between iterations is expected. Drives and measures GLOBAL-041 Phase A | every feature, /daily | active |
+| [GLOBAL-042](./decisions/GLOBAL-042-dogfood-iteration-loop.md) | The agent builds a real product on nlqdb through the public surfaces only (first target: rateme12), nlqdb creating and optimizing the schema from scratch — the real schema is never an input; success = as good as or better than the real one; each iteration ends with a retro in `docs/history/dogfood-iterations/` then full cleanup before the next; rethinking GLOBALs/SK-IDs is expected. Drives and measures GLOBAL-041 Phase A | every feature, /daily | active |
 
 ## Adding a new GLOBAL
 

@@ -1,18 +1,29 @@
 # End goal — nlqdb, finished
 
 The autonomous DBA as the user meets it — every phase the docs plan, no phase
-labels in the flow. IDs are cited, never restated (`CLAUDE.md` P3); bodies live
-in [`decisions.md`](decisions.md) and each `FEATURE.md`. Shaping every row:
+labels in the flow. Shaping every row:
 [`GLOBAL-041`](decisions/GLOBAL-041-autonomous-dba.md),
 [`GLOBAL-042`](decisions/GLOBAL-042-dogfood-iteration-loop.md),
 [`GLOBAL-025`](decisions/GLOBAL-025-north-star.md).
 
 ## How agents use this doc
 
-Read before taking a roadmap item or judging a PR: it **outranks the roadmap**
-(a contradicting item is a roadmap bug, fixed in that PR), `CLAUDE.md` P1–P6
-outranks it, and a gap is a [`blocked-by-human.md`](blocked-by-human.md)
-decision (`GLOBAL-033`), never a licence to invent.
+**The top-ranked document in this repo** — it outranks the roadmap, `CLAUDE.md`
+P1–P6, every `GLOBAL` and every `FEATURE.md`. Read before taking an item or
+judging a PR: whatever contradicts a flow or principle here is the bug, fixed
+in that PR (or the founder amends this doc in that PR). A
+gap is a [`blocked-by-human.md`](blocked-by-human.md) decision (`GLOBAL-033`),
+never a licence to invent.
+
+## Architecture — simple and scalable
+
+The DBA loop — infer → evolve → optimize → show/apply/undo (`GLOBAL-041`) —
+runs on one design, never on patches. **Patch-on-patch**: a fix or feature that
+adds a conditional, layer, flag, table or special case on top of existing
+machinery instead of changing the machinery. Faced with one: stop, re-derive
+the simplest design that serves the whole loop, implement that, delete what it
+replaces. **Scalable**: that one design holds at 1 table and 1 000 tables,
+1 tenant and 10 k tenants — no per-scale rewrite, no per-tenant branch.
 
 ## Personas & entry points
 
@@ -34,15 +45,10 @@ decision (`GLOBAL-033`), never a licence to invent.
 | 8 | A whole product built this way — `rateme12.nlqdb.com`, every read and write through `@nlqdb/sdk`, schema inferred from its inserts | writes app code, no DDL | — |
 | 9 | nlqdb.com: one input and starter goals (`SK-ONBOARD-008`), an anonymous DB, the chat; sign-in adopts it and its history (`SK-ANON-001`) | asks, signs in for a key | `GLOBAL-025` TTFV |
 
-**Not in this flow:** no `CREATE TABLE`, model file, migration or schema step
-(`GLOBAL-041`); no wizard, plan-picker or verification wall (`SK-ONBOARD-001`),
-no advisory-only tab, no approval queue.
+**Not in this flow:** no wizard, plan-picker or verification wall
+(`SK-ONBOARD-001`), no advisory-only tab, no approval queue.
 
 ## Empty, error, and edge states
-
-Copy is one sentence — what happened, what next (`GLOBAL-012`); codes live in
-[`error-taxonomy`](features/error-taxonomy/FEATURE.md). An outage is no row: the
-router fails over (`GLOBAL-026`), recoverable failures retry (`GLOBAL-022`).
 
 | State | Trigger | Sees | Can do |
 |-------|---------|------|--------|
@@ -55,13 +61,12 @@ router fails over (`GLOBAL-026`), recoverable failures retry (`GLOBAL-022`).
 ## Done looks like
 
 - [ ] Every row above works on `nlqdb.com`, `/app`, `@nlqdb/sdk`, `nlq` and MCP inside the [`performance.md` §1](performance.md) SLOs, and a stranger gets a first answer with no account, card or config.
-- [ ] The three `GLOBAL-041` KPIs stand at their floors, with the `GLOBAL-025` onboarding, UX and performance floors holding too.
+- [ ] The `GLOBAL-041` and `GLOBAL-025` KPIs stand at their floors.
 - [ ] `rateme12.nlqdb.com` runs on zero hand-written DDL, its retro rating the inferred schema **as good as or better than** the hand-made one it never saw first (`GLOBAL-042` 2–3).
 - [ ] Every DBA change — widen, drop, rename, retype, index, engine move — is previewed, versioned, undoable; dual reads agree 100 %.
 
 ## Non-goals
 
-- **Not an NL→SQL product, not a recommend-only advisor.** `/v1/ask` is how an unmodeled app addresses its data; the DBA acts, previewed and undoable (`GLOBAL-041`).
+- **Not an NL→SQL product, not a recommend-only advisor** (`GLOBAL-041`).
 - **No user-authored migrations, ever.** The engine emits every DDL statement; no file, folder or CLI verb writes one.
 - **No undo after a committed user write.** Diff-then-confirm is that action (`SK-TRUST-001`); undo belongs to DBA proposals, whose inverse is recorded first.
-- **No login wall or access gate** (`GLOBAL-007`), no paid dependency on the free path (`GLOBAL-013`) — premium is an upgrade lane, never the on-ramp.

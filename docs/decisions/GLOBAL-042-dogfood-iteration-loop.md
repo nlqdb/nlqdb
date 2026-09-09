@@ -54,10 +54,9 @@
         keys, branches, scratch code, test tenants. The repo and the
         platform look as if the iteration never ran, except for the retro.
      4. Only then start the next iteration.
-  5. **Rethinking decisions is expected.** Between iterations, a retro may
-     change or replace existing GLOBALs / SK-IDs. Do it per `P1`/`P3`:
-     edit the canonical file, write the new stance clean, never rationalise
-     around the old one — and never mid-iteration.
+  5. **Rethinking decisions is expected.** A retro or any PR may change or
+     replace existing GLOBALs / SK-IDs, per `P1`/`P3`: edit the canonical
+     file, write the new stance clean, never rationalise around the old one.
   6. **Relationship to `GLOBAL-041`.** This loop is how Phase A is driven
      and measured; KPI 1 (first-insert inference ≥ 95 %) and the phase
      gates stay as defined there.
