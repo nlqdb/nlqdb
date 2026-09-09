@@ -6,10 +6,11 @@
 // reason passes straight through with no batch built.
 
 import type { Column, Table, WidenPlan } from "@nlqdb/db/types";
-import { describe, expect, it } from "vitest";
+import { createTestTelemetry, type TestTelemetry } from "@nlqdb/otel/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { tenantRoleName } from "../tenant-role.ts";
-import type { PgTransactionStatement } from "./types.ts";
-import { buildWidenBatch } from "./widen-provision.ts";
+import type { PgClient, PgTransactionResult, PgTransactionStatement } from "./types.ts";
+import { buildWidenBatch, executeWidenBatch } from "./widen-provision.ts";
 
 const SCHEMA = "db1";
 const TENANT = "tenant-abc";
@@ -146,5 +147,116 @@ describe("buildWidenBatch", () => {
         insert: INSERT,
       }),
     ).rejects.toThrow(/unsafe schemaName/);
+  });
+});
+
+// --- executor (step 5, exec half) -----------------------------------
+
+// Minimal PgClient stub: records the single `transaction([...])` batch and,
+// when armed, throws a NeonDbError-shaped rejection (SQLSTATE on `.code`).
+type PgStub = {
+  pg: { pg: PgClient; batch: PgTransactionStatement[] | undefined };
+  setTransactionFails: (error: { code?: string; message?: string }) => void;
+};
+function makePgStub(): PgStub {
+  let batch: PgTransactionStatement[] | undefined;
+  let txFail: { code?: string; message?: string } | null = null;
+  const transaction = vi.fn(async (statements: PgTransactionStatement[]) => {
+    batch = statements;
+    if (txFail) {
+      const e: Error & { code?: string } = new Error(
+        txFail.message ?? "pg.transaction stub failure",
+      );
+      if (txFail.code) e.code = txFail.code;
+      throw e;
+    }
+    return statements.map(
+      () => ({ rows: [] as Record<string, unknown>[], rowCount: 1 }) satisfies PgTransactionResult,
+    );
+  }) as unknown as PgClient["transaction"];
+  const query = (async () => ({ rows: [], rowCount: 0 })) as unknown as PgClient["query"];
+  return {
+    pg: {
+      pg: { query, transaction },
+      get batch() {
+        return batch;
+      },
+    },
+    setTransactionFails(error) {
+      txFail = error;
+    },
+  };
+}
+
+const BATCH: PgTransactionStatement[] = [
+  { sql: "SET LOCAL statement_timeout = '30s'" },
+  { sql: "SELECT set_config('search_path', $1, true)", params: ["db1"] },
+  { sql: 'ALTER TABLE "db1"."events" ADD COLUMN "note" TEXT;' },
+  INSERT,
+];
+
+describe("executeWidenBatch", () => {
+  let telemetry: TestTelemetry;
+  beforeEach(() => {
+    telemetry = createTestTelemetry();
+  });
+  afterEach(() => {
+    telemetry.reset();
+  });
+  function txSpan() {
+    return telemetry.spanExporter.getFinishedSpans().find((s) => s.name === "db.transaction");
+  }
+
+  it("runs the exact batch in one transaction and returns ok with a result per statement", async () => {
+    const stub = makePgStub();
+    const res = await executeWidenBatch(stub.pg, BATCH);
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.results).toHaveLength(BATCH.length);
+    // The batch is handed to pg.transaction verbatim — the executor places
+    // nothing, `buildWidenBatch` already ordered it.
+    expect(stub.pg.batch).toEqual(BATCH);
+    const span = txSpan();
+    expect(span?.attributes["nlqdb.db.transaction.kind"]).toBe("widen");
+    expect(span?.attributes["db.transaction.statement_count"]).toBe(BATCH.length);
+    // No SQLSTATE attribute on success (SK-HDC-017).
+    expect(span?.attributes["db.transaction.error_sqlstate"]).toBeUndefined();
+  });
+
+  it("classifies a class-42 DDL failure as widen_ddl_failed, rolled back, error preserved", async () => {
+    const stub = makePgStub();
+    stub.setTransactionFails({ code: "42501", message: "permission denied for schema db1" });
+    const res = await executeWidenBatch(stub.pg, BATCH);
+    expect(res).toMatchObject({
+      ok: false,
+      reason: "widen_ddl_failed",
+      sqlState: "42501",
+      rolled_back: true,
+    });
+    // The raw error rides through so the orchestrator wire-in can reuse its
+    // existing classifiers for the client envelope.
+    if (!res.ok) expect(res.error).toBeInstanceOf(Error);
+    expect(txSpan()?.attributes["db.transaction.error_sqlstate"]).toBe("42501");
+  });
+
+  it("classifies a class-23 constraint failure on the INSERT as write_rejected", async () => {
+    const stub = makePgStub();
+    stub.setTransactionFails({ code: "23502", message: "null value in column violates not-null" });
+    const res = await executeWidenBatch(stub.pg, BATCH);
+    expect(res).toMatchObject({ ok: false, reason: "write_rejected", sqlState: "23502" });
+  });
+
+  it("classifies a class-22 data exception on the INSERT as write_rejected", async () => {
+    const stub = makePgStub();
+    stub.setTransactionFails({ code: "22P02", message: "invalid input syntax for type integer" });
+    const res = await executeWidenBatch(stub.pg, BATCH);
+    expect(res).toMatchObject({ ok: false, reason: "write_rejected", sqlState: "22P02" });
+  });
+
+  it("classifies a SQLSTATE-less failure as transaction_failed and records error_sqlstate=none", async () => {
+    const stub = makePgStub();
+    stub.setTransactionFails({ message: "fetch failed: TLS error" });
+    const res = await executeWidenBatch(stub.pg, BATCH);
+    expect(res).toMatchObject({ ok: false, reason: "transaction_failed", sqlState: undefined });
+    expect(txSpan()?.attributes["db.transaction.error_sqlstate"]).toBe("none");
   });
 });
