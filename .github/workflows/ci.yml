@@ -411,6 +411,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          sudo rm -f /etc/apt/sources.list.d/google-chrome*
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             binutils gnupg2 libc6-dev libcurl4-openssl-dev libedit2 \
@@ -442,8 +443,6 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: shellcheck
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y shellcheck
           shellcheck scripts/*.sh
 
   lockfile-guard:
