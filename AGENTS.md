@@ -65,14 +65,15 @@ any external dependency.
 
 ### P3. Decisions live in one place
 
-Each decision has one canonical home:
+Each decision has one canonical home — cite it, never restate it.
+`docs/END_GOAL.md` states principles directly, no ID; a decision that needs
+the five-field record takes one of two IDs:
 
 - `GLOBAL-NNN` lives in `docs/decisions/GLOBAL-NNN-<slug>.md` — the only
-  place its body text exists. The index in `docs/decisions.md` lists
-  every GLOBAL with a link to its file. Features affected by a GLOBAL list
-  it by ID + title in their `## GLOBALs governing this feature` section,
-  with optional feature-local commentary nested under the line. They don't
-  repeat the decision body. (See `docs/feature-conventions.md` §5.)
+  place its body text exists; `docs/decisions.md` indexes every GLOBAL.
+  Features affected by a GLOBAL cite it by ID + title under their
+  `## GLOBALs governing this feature` section, never the body
+  (`docs/feature-conventions.md` §5).
 - `SK-<FEATURE>-NNN` lives in that feature's `FEATURE.md` — the only
   place its body text exists.
 
@@ -82,8 +83,7 @@ When a decision changes:
 - If the change affects how a feature applies the decision, update the
   feature-local commentary in that feature's FEATURE.md.
 - New GLOBALs / SK-IDs land in their canonical home before any code
-  change that depends on them. New GLOBALs also add a row to the
-  `docs/decisions.md` index.
+  change that depends on them.
 
 ### P4. Four documentation rules
 
@@ -252,7 +252,7 @@ lint` / `format` check 0 files (exit 1) — pass explicit paths. CI is unaffecte
 ## 8. Quality gates before opening a PR
 
 1. `bun run typecheck && bun run check && bun run test` all green.
-2. Every new decision has an ID in its canonical home per `P3`; a new
+2. Every new decision is in its canonical home per `P3`; a new
    `GLOBAL` also adds a row to the `docs/decisions.md` index.
 3. `grep -rn '^### GLOBAL-' docs/features/` prints nothing — features
    reference GLOBALs by ID, bodies live only under `docs/decisions/`.

@@ -2,7 +2,7 @@
 
 Read [`GLOBAL-042`](../../docs/decisions/GLOBAL-042-dogfood-iteration-loop.md) and the current iteration brief [`001-rateme12.md`](../../docs/history/dogfood-iterations/001-rateme12.md) first; a PR body must name the §6.1 readiness row it moves or `none` (`CLAUDE.md` §8 item 7) — check the claim against the table.
 
-Criterion 1 is the user experience **measured against [`docs/END_GOAL.md`](../../docs/END_GOAL.md)**: which step of which flow does this PR move closer to its written state, and does it move any other step away? A PR that contradicts a flow there does not merge — either it is fixed, or the flow is amended in a PR whose stated purpose is the amendment (`GLOBAL-042` allows rethinking decisions between iterations, never mid-review).
+Criterion 1 is the user experience **measured against [`docs/END_GOAL.md`](../../docs/END_GOAL.md)**: which step of which flow does this PR move closer to its written state, and does it move any other step away? A PR that contradicts a flow there does not merge — fix it in the PR, or the founder amends the flow in the same PR.
 
 Your other review criteria: security (including sql injection), readability, scalability, consistency, reusability, developer experience and user experience (minimum actions for maximum value and minimum user-regretted-seconds like interruptions / spam etc), observability (non-spammy), robustness, 1-sentence judicious comments (not-spammy), docs kept in-sync, and the design-for-leverage skill.
 

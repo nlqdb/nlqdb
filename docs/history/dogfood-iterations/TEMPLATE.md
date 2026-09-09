@@ -91,7 +91,7 @@ not fix** inside the iteration.
 - **What went right.** / **What went wrong.**
 - **Numbers:** inserts attempted / landed; unseen-field writes hit / missed (KPI 1 rate); `schema_mismatch`, `confirm_expired`, `rate_limited` counts; manual steps (list each); tables and columns nlqdb created; p50/p95 insert latency as seen by the app.
 - **Post-hoc schema comparison** (read only now): nlqdb's schema vs the real one — as good / better / worse, and why, per table.
-- **Decisions to rethink** (GLOBAL / SK-IDs by ID) — edited per P1/P3 **after** this file is committed, never mid-iteration.
+- **Decisions to rethink** (GLOBAL / SK-IDs by ID) — edited per P1/P3.
 - **The one change for iteration NNN+1.**
 - **Leverage verdict** (`GLOBAL-042` §Leverage), three lines:
   `Leverage: invest | spend | spend-with-seams` ·

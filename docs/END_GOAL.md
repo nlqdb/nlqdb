@@ -11,7 +11,7 @@ labels in the flow. Shaping every row:
 **The top-ranked document in this repo** — it outranks the roadmap, `CLAUDE.md`
 P1–P6, every `GLOBAL` and every `FEATURE.md`. Read before taking an item or
 judging a PR: whatever contradicts a flow or principle here is the bug, fixed
-in that PR (or this doc is amended, in a PR whose stated purpose is that). A
+in that PR (or the founder amends this doc in that PR). A
 gap is a [`blocked-by-human.md`](blocked-by-human.md) decision (`GLOBAL-033`),
 never a licence to invent.
 

@@ -30,7 +30,7 @@ prefix (`auth` → `SK-AUTH-001`), and is stable — renames break every
 breadcrumb pointing at it, so don't.
 
 Feature docs have no "imports." If a decision applies to multiple features
-it is referenced by `GLOBAL-NNN` ID (see §5), never duplicated.
+it is referenced by ID or link (see §5), never duplicated.
 
 **Sharding (when `FEATURE.md` crosses 20 KB).** CLAUDE.md `D4` caps every
 markdown file at 20 KB. Small features keep all decisions inline in
@@ -48,14 +48,12 @@ For an example of the sharded shape, see
 
 ## 2. Decision IDs
 
-Two namespaces, both globally unique:
+`docs/END_GOAL.md` states principles directly, with no ID. A decision
+that needs the five-field record (§4) takes one of two globally unique IDs:
 
-- `GLOBAL-NNN` — cross-cutting decisions that apply to multiple features.
-  Canonical text lives in `docs/decisions/GLOBAL-NNN-<slug>.md` (one
-  file per decision) and **only there**. The index in
-  `docs/decisions.md` links to every GLOBAL by ID. Features that are
-  affected reference the GLOBAL by ID; they don't duplicate the
-  decision body. (See §5.)
+- `GLOBAL-NNN` — cross-cutting decisions. Canonical text lives in
+  `docs/decisions/GLOBAL-NNN-<slug>.md` and **only there**, indexed in
+  `docs/decisions.md` (see §5).
 - `SK-<FEATURE>-NNN` — decisions local to one feature. Canonical text lives
   in that feature's `FEATURE.md`. Numbering is per-feature, monotonic, and
   sticky — never renumber. ("SK" is a historical prefix retained for ID
