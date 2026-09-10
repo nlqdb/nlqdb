@@ -5,6 +5,7 @@ when-to-load:
   globs:
     - apps/api/src/db-registry.ts
     - apps/api/src/ask/orchestrate.ts
+    - apps/api/src/ask/extend.ts
     - apps/api/src/ask/types.ts
     - packages/db/**
   topics: [schema, schema_hash, evolution, widening, inference, fingerprint, plan-cache]
@@ -13,17 +14,17 @@ when-to-load:
 # Feature: Schema Evolution
 
 **One-liner:** The logical schema is inferred from inserts and reads and evolves in both directions (add / drop / rename / retype / index) as typed, previewed, versioned operations the engine generates — never a user-authored migration. `schema_hash` is the version.
-**Status:** partial — `schema_hash` is plumbed end-to-end (D1 → registry → orchestrator → plan-cache key) and the KPI-1 instrument is live (`SK-SCHEMA-010`, floor 0 until the path lands). `GLOBAL-041` Phase A leaves the hot path last; built so far (each pure + unit-tested, none yet wired into the orchestrator): steps 3–4 widen-DDL emitter + allow-list (`db-create/compile-write-ddl.ts`, `ask/sql-validate-ddl.ts` `AT_AddColumn`); step 2 the `WidenPlanSchema`/`AddColumnOp` contract in `@nlqdb/db` + the extend prompt (`SCHEMA_EXTEND_SYSTEM`) / `extendSchema` router op / `db-create/extend-schema.ts` gating LLM output through it; step 5 `db-create/widen-provision.ts` — `buildWidenBatch` (one owner-run `BEGIN/COMMIT` of `search_path` + widen DDL + per-created-table RLS/policy + grants + the write) and `executeWidenBatch` (runs it as one Neon transaction, SQLSTATE-classified, stopping at the commit); step 6 the D1 catch-up — `widenedSchema` derives `{schema_text, schema_hash}` (old DDL + the widen appended, `fingerprintSchema` over the result — `SK-SCHEMA-011`) and `db-registry.ts::rewriteWidenedSchema` CAS-writes it on the observed hash. Remaining (`SK-SCHEMA-008`): extend routing wire-in (1), trace parity + dogfood + E2E (7–9). Drop / rename / retype / index proposals (`SK-SCHEMA-009`) are Phase B.
-**Owners (code):** `apps/api/src/db-registry.ts`, `apps/api/src/ask/orchestrate.ts`, `apps/api/src/ask/types.ts`, `apps/api/src/ask/plan-cache.ts`, `packages/db/**`
+**Status:** partial — `schema_hash` plumbed end-to-end; KPI-1 instrument live (`SK-SCHEMA-010`, null at N=0). Phase A leaves the hot path last; built off-path: steps 3–4 compiler + allow-list; step 2 extend prompt/`extendSchema`; step 5 `buildWidenBatch` + `executeWidenBatch`; step 6 D1 CAS (`SK-SCHEMA-011`); step 1 COMPOSE `ask/extend.ts::extendOnWrite` (Zod → compile → allow-list → one tx → D1, unwired). Remaining (`SK-SCHEMA-008`): hot-path wire, trace/dogfood/E2E (7–9). Phase B: `SK-SCHEMA-009`.
+**Owners (code):** `apps/api/src/ask/extend.ts`, `apps/api/src/db-registry.ts`, `apps/api/src/ask/orchestrate.ts`, `apps/api/src/ask/types.ts`, `apps/api/src/ask/plan-cache.ts`, `packages/db/**`
 **Cross-refs:** docs/architecture.md §0.1 (on-ramp inversion bullets), §9 row "Schema mismatch" (line 936) · docs/phase-plan.md §1 (plan cache key — Phase 0 deliverable) · docs/performance.md §2.1 stage 4 / §2.2 stage 4 (hash compute budget — 1 ms p50 / 5 ms p99; folded into the parent span, no dedicated `nlqdb.ask.hash`) · [GLOBAL-004](../../decisions/GLOBAL-004-logical-schema-evolves.md) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
 ## Touchpoints — read this feature before editing
 
-- `apps/api/src/db-registry.ts` — reads `schema_hash` from D1's `databases` row.
+- `apps/api/src/ask/extend.ts` — `extendOnWrite` compose (unwired); hot-path splice still in `orchestrate.ts`.
+- `apps/api/src/db-registry.ts` — reads `schema_hash`; `rewriteWidenedSchema` CAS-writes it.
 - `apps/api/src/ask/orchestrate.ts` — guards `/v1/ask` on `db.schemaHash != null`.
 - `apps/api/src/ask/types.ts` — `DbRecord.schemaHash: string | null` and `CachedPlan.schemaHash: string`.
 - `apps/api/src/ask/plan-cache.ts` — keys cached plans by `(schemaHash, queryHash)`.
-- `packages/db/**` — the place a future widening trigger would emit `ALTER TABLE ADD COLUMN`.
 
 ## Decisions
 
