@@ -79,6 +79,29 @@ export function buildAskDeps(
     diag: makeKvDiagSink(envBindings.KV, envBindings.NODE_ENV ?? "unknown"),
     lookupPipeAdvisory: (dbId, queryHash) =>
       lookupPipeAdvisory(envBindings.DB, dbId, queryHash, Date.now()),
+    // SK-SCHEMA-008 — widen-on-write absorb (GLOBAL-041 Phase A). `extendOnWrite`
+    // and the libpg_query DDL validator (`sql-validate-ddl.ts`) are imported
+    // lazily so the WASM chain never lands on the `/v1/ask` cold-start module
+    // graph (SK-ASK-024) — the import is paid only on an actual widen, a rare
+    // first-insert event. Runs as the shared Neon OWNER (`buildPgClient`), the
+    // privilege the CREATE TABLE / ALTER need, exactly like the provisioner.
+    extendWrite: async (args) => {
+      const [{ extendOnWrite }, { validateCompiledDdl }, { buildPgClient, resolveDatabaseUrl }] =
+        await Promise.all([
+          import("./extend.ts"),
+          import("./sql-validate-ddl.ts"),
+          import("../db-create/pg-client.ts"),
+        ]);
+      return extendOnWrite(
+        {
+          llm: llm ?? getLLMRouter(),
+          pg: buildPgClient(resolveDatabaseUrl(envBindings)),
+          d1: envBindings.DB,
+          validateCompiledDdl,
+        },
+        args,
+      );
+    },
   };
 }
 
