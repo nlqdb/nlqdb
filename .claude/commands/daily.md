@@ -159,21 +159,21 @@ set, the worst **agent-movable** number). Skip dark or founder-blocked
 metrics when *choosing the lever* — still report them, but never pick a
 target no single run can move. Lever order:
 
-1. **`GLOBAL-041` KPI 1 — first-insert inference rate.** The Phase A build
-   order in `GLOBAL-041` (`kind=extend` plan → extend prompt →
-   `compile-write-ddl` → validator → one transaction → `schema_hash`
-   rewrite → trace parity → dogfood writes → E2E walk). A missing
-   instrument is a lever; so is any slice that moves KPI 1. Then KPI 2 /
-   KPI 3 (Phase B) once Phase A has measured.
-2. **Real UX-flow quality.** A stranger's actual path — land → create /
-   adopt → ask → first answer — exercised end-to-end (measured by the
-   canonical stranger walkers, row #20, and the E2E suites' pass
-   component, row #15). A flow that fails, errors intermittently, or
-   confuses is always a pullable lever, even when the walker that exposed
-   it is synthetic.
-3. **Meta levers last, and only with a written waiver:** D5 doc cleanup
-   and reconciliation are valid only after this run states, in the run
-   log, why no engine or UX-flow lever is pullable right now.
+**Usefulness first:** the DBA must act on a real database, observably.
+Walkers, GSC, blog, SEO, Show HN wait.
+
+1. **`GLOBAL-041` — the DBA acts.** Current slice is Phase A KPI 1
+   (first-insert inference): the Phase A build order (`kind=extend` plan →
+   extend prompt → `compile-write-ddl` → validator → one transaction →
+   `schema_hash` rewrite → trace parity → dogfood writes → E2E walk). Then
+   KPI 2, then **KPI 3 (optimizer yield) + the dashboard** — inspect,
+   index, before/after, one-click apply/undo. That is the moat. A missing
+   instrument is a lever; so is any slice that moves those KPIs.
+2. **A broken land→ask path** only if it blocks the DBA from acting.
+   Chromium walker / FLOW-005 / stranger-test launch fixes are not the
+   focus.
+3. **Meta last, written waiver required:** D5 doc cleanup only after this
+   run states why no DBA lever is pullable. Acquisition stays paused.
 
 **If no lever clears that bar, don't manufacture one:** record the finding
 and end the run with only the step-1 scorecard update — a null run is a
