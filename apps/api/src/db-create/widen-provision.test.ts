@@ -5,12 +5,13 @@
 // INSERT placed last with its params intact, and that a bad plan's compiler
 // reason passes straight through with no batch built.
 
+import { fingerprintSchema } from "@nlqdb/db";
 import type { Column, Table, WidenPlan } from "@nlqdb/db/types";
 import { createTestTelemetry, type TestTelemetry } from "@nlqdb/otel/test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { tenantRoleName } from "../tenant-role.ts";
 import type { PgClient, PgTransactionResult, PgTransactionStatement } from "./types.ts";
-import { buildWidenBatch, executeWidenBatch } from "./widen-provision.ts";
+import { buildWidenBatch, executeWidenBatch, widenedSchema } from "./widen-provision.ts";
 
 const SCHEMA = "db1";
 const TENANT = "tenant-abc";
@@ -258,5 +259,50 @@ describe("executeWidenBatch", () => {
     const res = await executeWidenBatch(stub.pg, BATCH);
     expect(res).toMatchObject({ ok: false, reason: "transaction_failed", sqlState: undefined });
     expect(txSpan()?.attributes["db.transaction.error_sqlstate"]).toBe("none");
+  });
+});
+
+// --- widened-schema derivation (step 6, pure half) -------------------
+
+describe("widenedSchema", () => {
+  const OLD = 'CREATE TABLE "db1"."events" (id uuid);';
+
+  it("appends the ADD COLUMN DDL and hashes the new text (fingerprintSchema rule)", () => {
+    const plan: WidenPlan = {
+      create_tables: [],
+      add_columns: [
+        {
+          table: "events",
+          column: { name: "note", type: "text", nullable: true, description: "c" },
+        },
+      ],
+    };
+    const res = widenedSchema(OLD, plan, SCHEMA);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    // The widen DDL is appended verbatim after the old text (newline-joined).
+    expect(res.schemaText).toBe(`${OLD}\nALTER TABLE "db1"."events" ADD COLUMN "note" TEXT;`);
+    // Hash is fingerprintSchema over the NEW text — the BYO-render rule.
+    expect(res.schemaHash).toBe(fingerprintSchema(res.schemaText));
+  });
+
+  it("changes the hash off the pre-widen fingerprint", () => {
+    const plan: WidenPlan = {
+      create_tables: [table("orders", [idCol], ["id"])],
+      add_columns: [],
+    };
+    const res = widenedSchema(OLD, plan, SCHEMA);
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.schemaHash).not.toBe(fingerprintSchema(OLD));
+  });
+
+  it("passes a compiler failure reason straight through with no text/hash", () => {
+    const res = widenedSchema(
+      OLD,
+      { create_tables: [table("select", [idCol], ["id"])], add_columns: [] },
+      SCHEMA,
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toBe("reserved_word");
   });
 });

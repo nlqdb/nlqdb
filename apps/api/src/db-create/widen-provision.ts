@@ -35,7 +35,7 @@
 // re-check here is defense in depth (this builder is exported and a future
 // caller might hand-build a plan).
 
-import type { WidenPlan } from "@nlqdb/db";
+import { fingerprintSchema, type WidenPlan } from "@nlqdb/db";
 import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { assertTenantRoleName, tenantRoleName } from "../tenant-role.ts";
@@ -205,6 +205,41 @@ export async function executeWidenBatch(
       span.end();
     }
   });
+}
+
+// GLOBAL-041 Phase A step 6, PURE half (SK-SCHEMA-011). Once `executeWidenBatch`
+// has committed, the DB's persisted schema must catch up so the NEXT `/v1/ask`
+// plans against the widened shape and the plan cache re-keys (old entries evict
+// by miss, SK-SCHEMA-005). This derives the two D1 values the commit implies —
+// `db-registry.ts::rewriteWidenedSchema` writes them. Pure (no D1) so the
+// derivation is unit-tested and the executor's follow-up write can never persist
+// a hash that disagrees with a test.
+//
+// `schema_text` — the old DDL with the widen's `ADD COLUMN` / `CREATE TABLE`
+// appended. `compile-write-ddl.ts` is the single deterministic widen-DDL emitter,
+// so re-compiling the plan here reproduces the EXACT statements the transaction
+// ran (never a second, divergent rendering); appended `ALTER TABLE … ADD COLUMN`
+// is valid DDL the planner prompt reads like any other statement.
+//
+// `schema_hash` — `fingerprintSchema(newSchemaText)`, the SAME rule the BYO
+// render paths already use (`schema-fingerprint.ts`: hosted-create hashes the
+// SchemaPlan JSON, BYO hashes the rendered `schema_text`). Hashing the widened
+// DDL keeps the version derivable from the one thing D1 stores — no need for the
+// original SchemaPlan, which the widen path never has — and any widen that
+// changes the DDL changes the hash, which is all `SK-SCHEMA-001` requires of it.
+export type WidenedSchemaResult =
+  | { ok: true; schemaText: string; schemaHash: string }
+  | { ok: false; reason: CompileWriteFailureReason; details?: unknown };
+
+export function widenedSchema(
+  oldSchemaText: string,
+  plan: WidenPlan,
+  schemaName: string,
+): WidenedSchemaResult {
+  const compiled = compileWriteDdl(plan, schemaName);
+  if (!compiled.ok) return compiled;
+  const schemaText = `${oldSchemaText}\n${compiled.statements.join("\n")}`;
+  return { ok: true, schemaText, schemaHash: fingerprintSchema(schemaText) };
 }
 
 // SQLSTATE class → coarse widen-exec reason. Class split follows the batch's
