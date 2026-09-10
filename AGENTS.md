@@ -27,7 +27,11 @@ up to, flow by flow, is [`docs/END_GOAL.md`](docs/END_GOAL.md) — the
 top-ranked doc: it outranks P1–P6 and every decision doc; whatever contradicts
 it is the bug, fixed in the same PR.
 
-Acquisition paused. Numbers: [`docs/scorecard.md`](docs/scorecard.md).
+Acquisition paused. Walkers, GSC, SEO, Show HN wait. The moat is the DBA
+that **optimizes for real, with observability** (`GLOBAL-041` KPI 3 +
+dashboard); Phase A (infer on write) is the current slice because the DBA
+cannot optimize a schema it cannot evolve. Numbers:
+[`docs/scorecard.md`](docs/scorecard.md).
 
 ### North-star — what every PR moves
 
