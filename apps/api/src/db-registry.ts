@@ -58,3 +58,36 @@ export async function resolveDb(
     connectionBlob: row.connection_blob,
   };
 }
+
+// GLOBAL-041 Phase A step 6, D1 half (SK-SCHEMA-011 / SK-SCHEMA-002). After a
+// widen-on-write transaction commits, persist the widened `schema_text` /
+// `schema_hash` (derived by `widen-provision.ts::widenedSchema`) on the SAME
+// single D1 write surface `resolveDb` reads from — never KV, whose eventual
+// consistency would let a plan-cache read see a hash the columns don't match.
+//
+// Compare-and-swap on the observed hash (the multi-Worker race resolution locked
+// in schema-widening FEATURE.md open questions): the `WHERE … AND schema_hash =
+// expectedHash` clause lands the widen only while the row still carries the hash
+// the caller observed. A concurrent widen that moved the hash first makes this a
+// no-op (`updated: false`); the caller re-reads and re-observes. Widening is
+// monotonic (fields only added), so a lost CAS costs at most one extra
+// observation cycle, never data loss. `updated_at` uses `unixepoch()` to match
+// the `created_at` / `updated_at` seconds convention the row was inserted with.
+export async function rewriteWidenedSchema(
+  d1: D1Database,
+  args: {
+    id: string;
+    tenantId: string;
+    expectedHash: string;
+    schemaText: string;
+    schemaHash: string;
+  },
+): Promise<{ updated: boolean }> {
+  const res = await d1
+    .prepare(
+      "UPDATE databases SET schema_hash = ?, schema_text = ?, updated_at = unixepoch() WHERE id = ? AND tenant_id = ? AND schema_hash = ?",
+    )
+    .bind(args.schemaHash, args.schemaText, args.id, args.tenantId, args.expectedHash)
+    .run();
+  return { updated: (res.meta?.changes ?? 0) > 0 };
+}
