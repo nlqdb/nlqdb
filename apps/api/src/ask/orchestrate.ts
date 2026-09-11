@@ -435,12 +435,18 @@ export async function orchestrateAsk(
   if (db.schemaText) {
     const mismatch = checkSchemaTables(planSql, db.schemaText);
     if (mismatch) {
-      // SK-SCHEMA-008 — a hosted write to an unobserved table is widen-on-write
-      // demand, not an error. Fall through so the write still passes the
-      // SK-TRUST-001 preview gate below; on the confirm hop its exec 42P01 then
-      // routes to the Defense B absorb. Gated on the wire being present (tests
-      // omit it) and a hosted schema (BYO widening is observation-only, parked).
-      const canExtend = isWriteVerb(planSql) && !!hostedSchema && !!deps.extendWrite;
+      // SK-SCHEMA-008 — a hosted INSERT into an unobserved table is
+      // widen-on-write demand, not an error. Fall through so the write still
+      // passes the SK-TRUST-001 preview gate below; on the confirm hop its exec
+      // 42P01 then routes to the Defense B absorb. Gated to INSERT — the only
+      // shape `extendOnWrite` can land (CREATE TABLE + INSERT in one tx) — the
+      // wire being present (tests omit it), and a hosted schema (BYO widening is
+      // observation-only, parked). An UPDATE/DELETE naming an unseen table can
+      // never be absorbed (no rows to modify in a table that never existed), so
+      // it keeps the schema_mismatch + extendNeeded denominator below
+      // (SK-SCHEMA-010 — "writes referencing an unseen table").
+      const canExtend =
+        writeTarget(planSql)?.verb === "INSERT" && !!hostedSchema && !!deps.extendWrite;
       if (!canExtend) {
         return {
           ok: false,
@@ -677,16 +683,18 @@ export async function orchestrateAsk(
             { onError: undefined },
           );
         }
-        // SK-SCHEMA-008 — a hosted write to an unobserved table (never an
+        // SK-SCHEMA-008 — a hosted INSERT into an unobserved table (never an
         // orphaned schema, which widen-on-write can't absorb) is the
         // first-insert case: create the shape and land the write in ONE
         // transaction, then continue to the success path (KPI-1 numerator).
         // One failed exec preceded this — the cheap Defense A pre-flight let
         // the write through so the SK-TRUST-001 preview could render first. A
         // failed absorb falls through to the schema_mismatch error below (the
-        // KPI-1 denominator, `extendNeeded`).
+        // KPI-1 denominator, `extendNeeded`). INSERT-only — the same shape gate
+        // as Defense A; `extendOnWrite` lands a CREATE TABLE + INSERT, and an
+        // UPDATE/DELETE would only widen into a phantom empty table.
         if (
-          isWriteVerb(planSql) &&
+          writeTarget(planSql)?.verb === "INSERT" &&
           d?.reason !== "schema_missing" &&
           hostedSchema &&
           deps.extendWrite

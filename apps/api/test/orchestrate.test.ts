@@ -633,6 +633,44 @@ describe("orchestrateAsk", () => {
     expect(extendWrite).not.toHaveBeenCalled();
   });
 
+  it("SK-SCHEMA-008 hot-path wire: an UPDATE to an unobserved table is NOT absorbed (INSERT-only), keeps the schema_mismatch + extendNeeded denominator", async () => {
+    // `extendOnWrite` lands a CREATE TABLE + INSERT; an UPDATE naming a table
+    // that never existed has no rows to modify, so it can never be a KPI-1
+    // numerator. The fall-through is gated to INSERT — the UPDATE keeps the
+    // Defense A schema_mismatch + extendNeeded denominator (SK-SCHEMA-010,
+    // "writes referencing an unseen table") instead of reaching the preview
+    // gate, whose pre-flight COUNT would 42P01 into a vaguer preview_unavailable
+    // and drop the write from the denominator entirely.
+    const extendWrite = stubExtendWrite({
+      ok: true,
+      result: { rows: [], rowCount: 1 },
+      schemaRewritten: true,
+      model: "m",
+      confidence: 0.9,
+    });
+    const exec = stubExec();
+    const out = await orchestrateAsk(
+      makeDeps({
+        llm: stubLLM({ plan: { sql: "UPDATE products SET name = 'widget' WHERE id = 1" } }),
+        exec,
+        extendWrite,
+      }),
+      { goal: "rename product 1 to widget", dbId: "db_1", userId: "user_1", intent: "write" },
+    );
+    expect(out).toEqual({
+      ok: false,
+      error: {
+        code: "schema_mismatch",
+        referencedTables: ["products"],
+        schemaTables: ["orders"],
+      },
+      extendNeeded: true,
+    });
+    // Neither absorbed nor pre-flighted — Defense A short-circuits before exec.
+    expect(extendWrite).not.toHaveBeenCalled();
+    expect(exec).not.toHaveBeenCalled();
+  });
+
   it("SK-ASK-016 Defense B: exec PG 42P01 → schema_mismatch, retry bails after one attempt", async () => {
     // SchemaText null bypasses Defense A so we exercise the post-exec
     // backstop. NeonDbError-shaped object: `.code = "42P01"` + message.
