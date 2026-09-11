@@ -6,6 +6,7 @@ import { makeNoopEmitter, type ProductEvent } from "@nlqdb/events";
 import type { LLMRouter } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
 import type { ConfirmStash, StashedPlan } from "../src/ask/confirm-stash.ts";
+import type { ExtendArgs, ExtendOutcome } from "../src/ask/extend.ts";
 import { type OrchestrateDeps, orchestrateAsk } from "../src/ask/orchestrate.ts";
 import { hashGoal, type PlanCache } from "../src/ask/plan-cache.ts";
 import type { CachedPlan, DbRecord, OrchestrateEvent, QueryResult } from "../src/ask/types.ts";
@@ -95,6 +96,13 @@ function stubFirstQuery(notFiredYet = false) {
     notFiredYet: vi.fn(async () => notFiredYet),
     commit: vi.fn(async () => {}),
   };
+}
+
+// SK-SCHEMA-008 — a canned widen-on-write absorb. The orchestrator wire is
+// what's under test; `extendOnWrite`'s own compose has its own unit suite
+// (`ask/extend.test.ts`), so here the stub just returns the outcome.
+function stubExtendWrite(outcome: ExtendOutcome) {
+  return vi.fn<(args: ExtendArgs) => Promise<ExtendOutcome>>(async () => outcome);
 }
 
 function makeDeps(overrides: Partial<OrchestrateDeps> = {}): OrchestrateDeps {
@@ -485,6 +493,183 @@ describe("orchestrateAsk", () => {
       }
     },
   );
+
+  it("SK-SCHEMA-008 hot-path wire: a preview-hop WRITE to an unobserved table renders confirm_required, not schema_mismatch, when the widen wire is present", async () => {
+    // stubDb.schemaText carries only `orders`; the write targets the unseen
+    // `products`. With the widen wire present, Defense A no longer short-
+    // circuits — it falls through to the SK-TRUST-001 preview gate so the user
+    // still approves the write before anything absorbs.
+    const extendWrite = stubExtendWrite({
+      ok: true,
+      result: { rows: [], rowCount: 1 },
+      schemaRewritten: true,
+      model: "extend-model",
+      confidence: 0.9,
+    });
+    const exec = stubExec();
+    const out = await orchestrateAsk(
+      makeDeps({
+        llm: stubLLM({ plan: { sql: "INSERT INTO products (name) VALUES ('widget')" } }),
+        exec,
+        extendWrite,
+      }),
+      { goal: "add a product named widget", dbId: "db_1", userId: "user_1", intent: "write" },
+    );
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.result.requires_confirm).toBe(true);
+    // Preview hop never counts (SK-SCHEMA-010 — committed hop only), and the
+    // absorb waits for the confirm hop.
+    expect(out).not.toHaveProperty("extendNeeded");
+    expect(extendWrite).not.toHaveBeenCalled();
+    // INSERT preview counts VALUES tuples — no DB round-trip.
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it("SK-SCHEMA-008 hot-path wire: a confirmed WRITE hitting exec 42P01 is absorbed inline (extendNeeded ok, the KPI-1 numerator)", async () => {
+    // schemaText null bypasses Defense A; `confirm: true` skips the preview
+    // gate so the INSERT reaches exec, Postgres raises the missing table, and
+    // the Defense B absorb widens + lands the write in one transaction.
+    const extendWrite = stubExtendWrite({
+      ok: true,
+      result: { rows: [], rowCount: 1 },
+      schemaRewritten: true,
+      model: "extend-model",
+      confidence: 0.8,
+    });
+    const exec = stubExec(
+      Object.assign(new Error('relation "products" does not exist'), { code: "42P01" }),
+    );
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const out = await orchestrateAsk(
+        makeDeps({
+          resolveDb: vi.fn(async () => stubDb({ schemaText: null })),
+          llm: stubLLM({ plan: { sql: "INSERT INTO products (name) VALUES ('widget')" } }),
+          exec,
+          extendWrite,
+        }),
+        { goal: "add a product", dbId: "db_1", userId: "user_1", intent: "write", confirm: true },
+      );
+      expect(out.ok).toBe(true);
+      if (!out.ok) return;
+      expect(out.extendNeeded).toBe(true);
+      // Narrated from the engine's own facts (SK-ASK-028), not the summarize LLM.
+      expect(out.result.summary).toBe("Inserted 1 row into products.");
+      expect(extendWrite).toHaveBeenCalledTimes(1);
+      // The absorb gets the previewed write verbatim + the hosted schema name
+      // (db_1 → "1") + the observed hash for the D1 catch-up CAS.
+      expect(extendWrite.mock.calls[0]?.[0]).toMatchObject({
+        dbId: "db_1",
+        tenantId: "user_1",
+        schemaName: "1",
+        observedHash: "schema_v1",
+        goal: "add a product",
+        writeSql: "INSERT INTO products (name) VALUES ('widget')",
+      });
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("SK-SCHEMA-008 hot-path wire: a failed absorb falls back to schema_mismatch + extendNeeded (the KPI-1 denominator)", async () => {
+    // The widen LLM couldn't design a plan: the write was never landed, so the
+    // outcome is the honest schema_mismatch error and the miss is counted.
+    const extendWrite = stubExtendWrite({ ok: false, stage: "plan", reason: "llm_failed" });
+    const exec = stubExec(
+      Object.assign(new Error('relation "products" does not exist'), { code: "42P01" }),
+    );
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const out = await orchestrateAsk(
+        makeDeps({
+          resolveDb: vi.fn(async () => stubDb({ schemaText: null })),
+          llm: stubLLM({ plan: { sql: "INSERT INTO products (name) VALUES ('widget')" } }),
+          exec,
+          extendWrite,
+        }),
+        { goal: "add a product", dbId: "db_1", userId: "user_1", intent: "write", confirm: true },
+      );
+      expect(out).toEqual({
+        ok: false,
+        error: { code: "schema_mismatch", referencedTables: [], schemaTables: [] },
+        extendNeeded: true,
+      });
+      expect(extendWrite).toHaveBeenCalledTimes(1);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("SK-SCHEMA-008 hot-path wire: a BYO write to an unobserved table is NOT absorbed (hosted-only), even with the wire present", async () => {
+    // A `connectionBlob` row is the user's own DB — widen-on-write is
+    // observation-only there (parked), so `hostedSchema` is null and Defense A
+    // keeps the legacy schema_mismatch + extendNeeded envelope.
+    const extendWrite = stubExtendWrite({
+      ok: true,
+      result: { rows: [], rowCount: 1 },
+      schemaRewritten: true,
+      model: "m",
+      confidence: 0.9,
+    });
+    const out = await orchestrateAsk(
+      makeDeps({
+        resolveDb: vi.fn(async () => stubDb({ connectionBlob: "sealed:blob" })),
+        llm: stubLLM({ plan: { sql: "INSERT INTO products (name) VALUES ('widget')" } }),
+        exec: stubExec(),
+        extendWrite,
+      }),
+      { goal: "add a product", dbId: "db_1", userId: "user_1", intent: "write" },
+    );
+    expect(out).toEqual({
+      ok: false,
+      error: {
+        code: "schema_mismatch",
+        referencedTables: ["products"],
+        schemaTables: ["orders"],
+      },
+      extendNeeded: true,
+    });
+    expect(extendWrite).not.toHaveBeenCalled();
+  });
+
+  it("SK-SCHEMA-008 hot-path wire: an UPDATE to an unobserved table is NOT absorbed (INSERT-only), keeps the schema_mismatch + extendNeeded denominator", async () => {
+    // `extendOnWrite` lands a CREATE TABLE + INSERT; an UPDATE naming a table
+    // that never existed has no rows to modify, so it can never be a KPI-1
+    // numerator. The fall-through is gated to INSERT — the UPDATE keeps the
+    // Defense A schema_mismatch + extendNeeded denominator (SK-SCHEMA-010,
+    // "writes referencing an unseen table") instead of reaching the preview
+    // gate, whose pre-flight COUNT would 42P01 into a vaguer preview_unavailable
+    // and drop the write from the denominator entirely.
+    const extendWrite = stubExtendWrite({
+      ok: true,
+      result: { rows: [], rowCount: 1 },
+      schemaRewritten: true,
+      model: "m",
+      confidence: 0.9,
+    });
+    const exec = stubExec();
+    const out = await orchestrateAsk(
+      makeDeps({
+        llm: stubLLM({ plan: { sql: "UPDATE products SET name = 'widget' WHERE id = 1" } }),
+        exec,
+        extendWrite,
+      }),
+      { goal: "rename product 1 to widget", dbId: "db_1", userId: "user_1", intent: "write" },
+    );
+    expect(out).toEqual({
+      ok: false,
+      error: {
+        code: "schema_mismatch",
+        referencedTables: ["products"],
+        schemaTables: ["orders"],
+      },
+      extendNeeded: true,
+    });
+    // Neither absorbed nor pre-flighted — Defense A short-circuits before exec.
+    expect(extendWrite).not.toHaveBeenCalled();
+    expect(exec).not.toHaveBeenCalled();
+  });
 
   it("SK-ASK-016 Defense B: exec PG 42P01 → schema_mismatch, retry bails after one attempt", async () => {
     // SchemaText null bypasses Defense A so we exercise the post-exec

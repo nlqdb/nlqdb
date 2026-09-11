@@ -14,15 +14,16 @@ when-to-load:
 # Feature: Schema Evolution
 
 **One-liner:** The logical schema is inferred from inserts and reads and evolves in both directions (add / drop / rename / retype / index) as typed, previewed, versioned operations the engine generates — never a user-authored migration. `schema_hash` is the version.
-**Status:** partial — `schema_hash` plumbed end-to-end; KPI-1 instrument live (`SK-SCHEMA-010`, null at N=0). Phase A leaves the hot path last; built off-path: steps 3–4 compiler + allow-list; step 2 extend prompt/`extendSchema`; step 5 `buildWidenBatch` + `executeWidenBatch`; step 6 D1 CAS (`SK-SCHEMA-011`); step 1 COMPOSE `ask/extend.ts::extendOnWrite` (Zod → compile → allow-list → one tx → D1, unwired). Remaining (`SK-SCHEMA-008`): hot-path wire, trace/dogfood/E2E (7–9). Phase B: `SK-SCHEMA-009`.
+**Status:** partial — `schema_hash` plumbed end-to-end; KPI-1 instrument live (`SK-SCHEMA-010`, null at N=0). Phase A steps 1–6 built AND wired: steps 3–4 compiler + allow-list; step 2 extend prompt/`extendSchema`; step 5 `buildWidenBatch` + `executeWidenBatch`; step 6 D1 CAS (`SK-SCHEMA-011`); step 1 COMPOSE `ask/extend.ts::extendOnWrite` + **hot-path wire** — `orchestrate.ts` Defense A falls through / Defense B absorbs a hosted write to an unobserved table, `buildAskDeps` lazily injects the wire (WASM off the cold-start graph, SK-ASK-024). Remaining (`SK-SCHEMA-008`): trace parity + dogfood + E2E (7–9). Phase B: `SK-SCHEMA-009`.
 **Owners (code):** `apps/api/src/ask/extend.ts`, `apps/api/src/db-registry.ts`, `apps/api/src/ask/orchestrate.ts`, `apps/api/src/ask/types.ts`, `apps/api/src/ask/plan-cache.ts`, `packages/db/**`
 **Cross-refs:** docs/architecture.md §0.1 (on-ramp inversion bullets), §9 row "Schema mismatch" (line 936) · docs/phase-plan.md §1 (plan cache key — Phase 0 deliverable) · docs/performance.md §2.1 stage 4 / §2.2 stage 4 (hash compute budget — 1 ms p50 / 5 ms p99; folded into the parent span, no dedicated `nlqdb.ask.hash`) · [GLOBAL-004](../../decisions/GLOBAL-004-logical-schema-evolves.md) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
 ## Touchpoints — read this feature before editing
 
-- `apps/api/src/ask/extend.ts` — `extendOnWrite` compose (unwired); hot-path splice still in `orchestrate.ts`.
+- `apps/api/src/ask/extend.ts` — `extendOnWrite` compose; wired from `orchestrate.ts` Defense B via the `extendWrite` dep.
 - `apps/api/src/db-registry.ts` — reads `schema_hash`; `rewriteWidenedSchema` CAS-writes it.
-- `apps/api/src/ask/orchestrate.ts` — guards `/v1/ask` on `db.schemaHash != null`.
+- `apps/api/src/ask/orchestrate.ts` — guards `/v1/ask` on `db.schemaHash != null`; Defense A/B absorb a hosted write to an unobserved table via `deps.extendWrite`.
+- `apps/api/src/ask/build-deps.ts` — wires `extendWrite` (owner `buildPgClient` + lazily-imported DDL validator; SK-ASK-024).
 - `apps/api/src/ask/types.ts` — `DbRecord.schemaHash: string | null` and `CachedPlan.schemaHash: string`.
 - `apps/api/src/ask/plan-cache.ts` — keys cached plans by `(schemaHash, queryHash)`.
 
