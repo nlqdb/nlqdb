@@ -38,6 +38,23 @@ export type CachedPlan = {
   confidence?: number;
 };
 
+// GLOBAL-041 Phase A step 7 — widen-on-write trace parity (SK-SCHEMA-008,
+// SK-TRUST-002). Set only when a hosted write to an unobserved table is
+// absorbed by widen-on-write. On the preview hop it is a heads-up — `tables`
+// names the unseen table(s) the confirm will create, `ddl` is empty (the
+// widen plan isn't designed until confirm) and `schema_rewritten` is false.
+// On the committed hop it is the record of what the engine ran: `ddl` = the
+// `CREATE TABLE` / `ADD COLUMN` statements it emitted, `schema_rewritten` =
+// whether `schema_hash` advanced (SK-SCHEMA-011). Absent on every non-extend
+// response — the common case. This is the DBA acting *observably* (GLOBAL-041
+// KPI-3 moat), mirroring how the create path already carries its DDL in
+// `trace.sql` (SK-TRUST-002).
+export type TraceWiden = {
+  tables: string[];
+  ddl: string[];
+  schema_rewritten: boolean;
+};
+
 // SK-TRUST-002 — every `/v1/ask` response carries this block. Always
 // emitted, always rendered. `plan_id` is the content-address pair
 // `${schema_hash}:${query_hash}` per GLOBAL-006 (stable across hits).
@@ -47,6 +64,7 @@ export type Trace = {
   confidence: number;
   model: string;
   cache_hit: boolean;
+  widen?: TraceWiden;
 };
 
 export type AskRequest = {

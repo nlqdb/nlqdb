@@ -505,6 +505,7 @@ describe("orchestrateAsk", () => {
       schemaRewritten: true,
       model: "extend-model",
       confidence: 0.9,
+      widenDdl: ['CREATE TABLE "1".products (id uuid, name text)'],
     });
     const exec = stubExec();
     const out = await orchestrateAsk(
@@ -518,6 +519,13 @@ describe("orchestrateAsk", () => {
     expect(out.ok).toBe(true);
     if (!out.ok) return;
     expect(out.result.requires_confirm).toBe(true);
+    // GLOBAL-041 Phase A step 7 — the preview-hop trace flags the impending
+    // widen (the unseen table the confirm will create), no DDL yet.
+    expect(out.result.trace.widen).toEqual({
+      tables: ["products"],
+      ddl: [],
+      schema_rewritten: false,
+    });
     // Preview hop never counts (SK-SCHEMA-010 — committed hop only), and the
     // absorb waits for the confirm hop.
     expect(out).not.toHaveProperty("extendNeeded");
@@ -536,6 +544,7 @@ describe("orchestrateAsk", () => {
       schemaRewritten: true,
       model: "extend-model",
       confidence: 0.8,
+      widenDdl: ['CREATE TABLE "1".products (id uuid, name text)'],
     });
     const exec = stubExec(
       Object.assign(new Error('relation "products" does not exist'), { code: "42P01" }),
@@ -554,6 +563,16 @@ describe("orchestrateAsk", () => {
       expect(out.ok).toBe(true);
       if (!out.ok) return;
       expect(out.extendNeeded).toBe(true);
+      // GLOBAL-041 Phase A step 7 — the committed-hop trace records what the
+      // engine ran: the widen DDL and that schema_hash advanced. This is the
+      // DBA acting observably (SK-TRUST-002 parity with the create path). The
+      // exec-catch (42P01) path carries no schema-diff, so `tables` is empty —
+      // the DDL is the authoritative record of the shape created.
+      expect(out.result.trace.widen).toEqual({
+        tables: [],
+        ddl: ['CREATE TABLE "1".products (id uuid, name text)'],
+        schema_rewritten: true,
+      });
       // Narrated from the engine's own facts (SK-ASK-028), not the summarize LLM.
       expect(out.result.summary).toBe("Inserted 1 row into products.");
       expect(extendWrite).toHaveBeenCalledTimes(1);
@@ -611,6 +630,7 @@ describe("orchestrateAsk", () => {
       schemaRewritten: true,
       model: "m",
       confidence: 0.9,
+      widenDdl: [],
     });
     const out = await orchestrateAsk(
       makeDeps({
@@ -647,6 +667,7 @@ describe("orchestrateAsk", () => {
       schemaRewritten: true,
       model: "m",
       confidence: 0.9,
+      widenDdl: [],
     });
     const exec = stubExec();
     const out = await orchestrateAsk(
