@@ -81,6 +81,19 @@ export type Trace = {
   confidence: number;
   model: string;
   cache_hit: boolean;
+  // GLOBAL-041 Phase A step 7 — present only when a write to an unobserved
+  // table triggered widen-on-write. On the preview hop `tables` names the
+  // unseen table(s) confirming will create (`ddl` empty); on the committed
+  // hop `ddl` is the `CREATE TABLE` / `ADD COLUMN` the engine ran and
+  // `schema_rewritten` says whether the schema version advanced. Absent on
+  // every ordinary read/write — the DBA only reports here when it acted.
+  widen?: TraceWiden;
+};
+
+export type TraceWiden = {
+  tables: string[];
+  ddl: string[];
+  schema_rewritten: boolean;
 };
 
 // Success envelope from `/v1/ask` — the query/write branch of `AskResponse`, carrying rows + `trace`.

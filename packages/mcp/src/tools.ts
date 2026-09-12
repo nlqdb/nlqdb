@@ -224,6 +224,19 @@ export const queryOutputShape = {
       model: z.string(),
       confidence: z.number(),
       cache_hit: z.boolean(),
+      // GLOBAL-041 Phase A step 7 — present only when the write widened the
+      // schema. Lets an agent SEE the DBA acting: the DDL it ran and whether
+      // the schema version advanced (SK-SCHEMA-011 / SK-TRUST-002).
+      widen: z
+        .object({
+          tables: z.array(z.string()),
+          ddl: z.array(z.string()),
+          schema_rewritten: z.boolean(),
+        })
+        .optional()
+        .describe(
+          "Set when this write created an unseen table/column (widen-on-write). tables = the new table(s); ddl = the CREATE TABLE / ADD COLUMN the engine ran; schema_rewritten = whether the schema version advanced.",
+        ),
     })
     .describe("Compiled SQL, the model that answered, and plan metadata (SK-TRUST-002)."),
   requires_confirm: z
@@ -666,12 +679,21 @@ export async function handleConnectDatabase(
   }
 }
 
-function traceOf(trace: { sql: string; model: string; confidence: number; cache_hit: boolean }) {
+function traceOf(trace: {
+  sql: string;
+  model: string;
+  confidence: number;
+  cache_hit: boolean;
+  widen?: { tables: string[]; ddl: string[]; schema_rewritten: boolean };
+}) {
   return {
     sql: trace.sql,
     model: trace.model,
     confidence: trace.confidence,
     cache_hit: trace.cache_hit,
+    // GLOBAL-041 Phase A step 7 — pass the widen record through so an agent
+    // sees the DBA acting (only present on a widen-on-write response).
+    ...(trace.widen ? { widen: trace.widen } : {}),
   };
 }
 
@@ -687,7 +709,13 @@ function diffOf(diff: AskDiff) {
 function buildQueryOutput(
   rows: Record<string, unknown>[],
   rowCount: number,
-  trace: { sql: string; model: string; confidence: number; cache_hit: boolean },
+  trace: {
+    sql: string;
+    model: string;
+    confidence: number;
+    cache_hit: boolean;
+    widen?: { tables: string[]; ddl: string[]; schema_rewritten: boolean };
+  },
 ): QueryOutput {
   return { rows, rowCount, trace: traceOf(trace) };
 }

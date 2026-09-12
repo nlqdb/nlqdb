@@ -505,6 +505,7 @@ describe("orchestrateAsk", () => {
       schemaRewritten: true,
       model: "extend-model",
       confidence: 0.9,
+      widenDdl: ['CREATE TABLE "1".products (id uuid, name text)'],
     });
     const exec = stubExec();
     const out = await orchestrateAsk(
@@ -518,6 +519,13 @@ describe("orchestrateAsk", () => {
     expect(out.ok).toBe(true);
     if (!out.ok) return;
     expect(out.result.requires_confirm).toBe(true);
+    // GLOBAL-041 Phase A step 7 — the preview-hop trace flags the impending
+    // widen (the unseen table the confirm will create), no DDL yet.
+    expect(out.result.trace.widen).toEqual({
+      tables: ["products"],
+      ddl: [],
+      schema_rewritten: false,
+    });
     // Preview hop never counts (SK-SCHEMA-010 — committed hop only), and the
     // absorb waits for the confirm hop.
     expect(out).not.toHaveProperty("extendNeeded");
@@ -536,6 +544,7 @@ describe("orchestrateAsk", () => {
       schemaRewritten: true,
       model: "extend-model",
       confidence: 0.8,
+      widenDdl: ['CREATE TABLE "1".products (id uuid, name text)'],
     });
     const exec = stubExec(
       Object.assign(new Error('relation "products" does not exist'), { code: "42P01" }),
@@ -554,6 +563,16 @@ describe("orchestrateAsk", () => {
       expect(out.ok).toBe(true);
       if (!out.ok) return;
       expect(out.extendNeeded).toBe(true);
+      // GLOBAL-041 Phase A step 7 — the committed-hop trace records what the
+      // engine ran: the widen DDL and that schema_hash advanced. This is the
+      // DBA acting observably (SK-TRUST-002 parity with the create path). The
+      // exec-catch (42P01) path carries no schema-diff, so `tables` is empty —
+      // the DDL is the authoritative record of the shape created.
+      expect(out.result.trace.widen).toEqual({
+        tables: [],
+        ddl: ['CREATE TABLE "1".products (id uuid, name text)'],
+        schema_rewritten: true,
+      });
       // Narrated from the engine's own facts (SK-ASK-028), not the summarize LLM.
       expect(out.result.summary).toBe("Inserted 1 row into products.");
       expect(extendWrite).toHaveBeenCalledTimes(1);
@@ -566,6 +585,46 @@ describe("orchestrateAsk", () => {
         observedHash: "schema_v1",
         goal: "add a product",
         writeSql: "INSERT INTO products (name) VALUES ('widget')",
+      });
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("SK-SCHEMA-008 hot-path wire: the committed-hop trace names the widened table when the stored schema exists (Defense A + Defense B)", async () => {
+    // The production confirm hop: the stored schema is present (carries only
+    // `orders`), so Defense A resolves the unseen `products` before exec fails
+    // 42P01 and Defense B absorbs it. The committed-hop trace must keep that
+    // table name (GLOBAL-041 step 7 observability), not drop it to `[]` because
+    // the exec-catch `err` carries no arrays.
+    const extendWrite = stubExtendWrite({
+      ok: true,
+      result: { rows: [], rowCount: 1 },
+      schemaRewritten: true,
+      model: "extend-model",
+      confidence: 0.8,
+      widenDdl: ['CREATE TABLE "1".products (id uuid, name text)'],
+    });
+    const exec = stubExec(
+      Object.assign(new Error('relation "products" does not exist'), { code: "42P01" }),
+    );
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const out = await orchestrateAsk(
+        makeDeps({
+          llm: stubLLM({ plan: { sql: "INSERT INTO products (name) VALUES ('widget')" } }),
+          exec,
+          extendWrite,
+        }),
+        { goal: "add a product", dbId: "db_1", userId: "user_1", intent: "write", confirm: true },
+      );
+      expect(out.ok).toBe(true);
+      if (!out.ok) return;
+      expect(out.extendNeeded).toBe(true);
+      expect(out.result.trace.widen).toEqual({
+        tables: ["products"],
+        ddl: ['CREATE TABLE "1".products (id uuid, name text)'],
+        schema_rewritten: true,
       });
     } finally {
       errorSpy.mockRestore();
@@ -611,6 +670,7 @@ describe("orchestrateAsk", () => {
       schemaRewritten: true,
       model: "m",
       confidence: 0.9,
+      widenDdl: [],
     });
     const out = await orchestrateAsk(
       makeDeps({
@@ -647,6 +707,7 @@ describe("orchestrateAsk", () => {
       schemaRewritten: true,
       model: "m",
       confidence: 0.9,
+      widenDdl: [],
     });
     const exec = stubExec();
     const out = await orchestrateAsk(

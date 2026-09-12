@@ -41,6 +41,12 @@ export type ExtendOutcome =
       schemaRewritten: boolean;
       model: string;
       confidence: number;
+      // GLOBAL-041 Phase A step 7 — the widen DDL the engine ran to absorb
+      // this write (`CREATE TABLE` / `ADD COLUMN`), so the orchestrator can
+      // surface it in the response `trace.widen` (SK-TRUST-002 parity). These
+      // are the same `compileWriteDdl` statements the batch re-compiled and
+      // executed, so they describe exactly what committed.
+      widenDdl: string[];
     }
   | {
       ok: false;
@@ -116,5 +122,5 @@ export async function extendOnWrite(deps: ExtendDeps, args: ExtendArgs): Promise
     }
   }
 
-  return { ok: true, result, schemaRewritten, model, confidence };
+  return { ok: true, result, schemaRewritten, model, confidence, widenDdl: compiled.statements };
 }

@@ -30,6 +30,11 @@ export type AskTrace = {
   confidence: number;
   model: string;
   cache_hit: boolean;
+  // GLOBAL-041 Phase A step 7 — present only when a write to an unobserved
+  // table triggered widen-on-write, so a TS embedder can read `el.trace.widen`
+  // type-safely (mirrors the SDK `Trace.widen`; `element.ts` passes it through
+  // unchanged). Absent on every ordinary read/write.
+  widen?: { tables: string[]; ddl: string[]; schema_rewritten: boolean };
 };
 
 export type AskSuccess = {

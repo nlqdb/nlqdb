@@ -125,6 +125,10 @@ describe("extendOnWrite", () => {
     expect(validateCompiledDdl).toHaveBeenCalledTimes(1);
     const statements = validateCompiledDdl.mock.calls[0]?.[0] ?? [];
     expect(statements.some((s) => /ADD COLUMN/.test(s))).toBe(true);
+    // GLOBAL-041 Phase A step 7 — the ok outcome carries the widen DDL so the
+    // orchestrator can surface it in `trace.widen` (SK-TRUST-002 parity). It is
+    // exactly the compiled statements the allow-list validated and the batch ran.
+    expect(res.widenDdl).toEqual(statements);
   });
 
   it("short-circuits at stage=plan when the extend LLM fails", async () => {

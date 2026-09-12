@@ -460,6 +460,13 @@ export async function orchestrateAsk(
           ...(isWriteVerb(planSql) ? { extendNeeded: true } : {}),
         };
       }
+      // GLOBAL-041 Phase A step 7 — trace parity, preview hop. This write will
+      // be absorbed by widen-on-write on confirm, so the preview's `trace`
+      // flags the impending schema change: the unseen table(s) the confirm
+      // will create. No DDL yet — the widen plan is designed on the absorb
+      // (Defense B). Without this, the SK-TRUST-001 preview would show only
+      // "insert a row" and hide that a table gets created (P6: no surprises).
+      traceBlock.widen = { tables: mismatch.referencedTables, ddl: [], schema_rewritten: false };
     }
   }
 
@@ -711,6 +718,23 @@ export async function orchestrateAsk(
           if (absorbed.ok) {
             result = absorbed.result;
             extended = true;
+            // GLOBAL-041 Phase A step 7 — trace parity, committed hop. Surface
+            // what the engine ran to absorb the write: the widen DDL (CREATE
+            // TABLE / ADD COLUMN) and whether `schema_hash` advanced
+            // (SK-SCHEMA-011). This is the DBA acting observably — the same
+            // window the create path gives via `trace.sql` (SK-TRUST-002).
+            traceBlock.widen = {
+              // Keep the table name(s) Defense A already resolved (present
+              // whenever the stored schema exists); the exec-catch `err` carries
+              // none on the 42P01 path, but the trace should still name what
+              // widened, not just bury it inside the DDL string.
+              tables:
+                err.referencedTables.length > 0
+                  ? err.referencedTables
+                  : (traceBlock.widen?.tables ?? []),
+              ddl: absorbed.widenDdl,
+              schema_rewritten: absorbed.schemaRewritten,
+            };
             break;
           }
         }
