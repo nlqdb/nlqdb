@@ -724,7 +724,14 @@ export async function orchestrateAsk(
             // (SK-SCHEMA-011). This is the DBA acting observably — the same
             // window the create path gives via `trace.sql` (SK-TRUST-002).
             traceBlock.widen = {
-              tables: err.referencedTables,
+              // Keep the table name(s) Defense A already resolved (present
+              // whenever the stored schema exists); the exec-catch `err` carries
+              // none on the 42P01 path, but the trace should still name what
+              // widened, not just bury it inside the DDL string.
+              tables:
+                err.referencedTables.length > 0
+                  ? err.referencedTables
+                  : (traceBlock.widen?.tables ?? []),
               ddl: absorbed.widenDdl,
               schema_rewritten: absorbed.schemaRewritten,
             };

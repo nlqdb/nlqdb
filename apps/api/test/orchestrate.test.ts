@@ -591,6 +591,46 @@ describe("orchestrateAsk", () => {
     }
   });
 
+  it("SK-SCHEMA-008 hot-path wire: the committed-hop trace names the widened table when the stored schema exists (Defense A + Defense B)", async () => {
+    // The production confirm hop: the stored schema is present (carries only
+    // `orders`), so Defense A resolves the unseen `products` before exec fails
+    // 42P01 and Defense B absorbs it. The committed-hop trace must keep that
+    // table name (GLOBAL-041 step 7 observability), not drop it to `[]` because
+    // the exec-catch `err` carries no arrays.
+    const extendWrite = stubExtendWrite({
+      ok: true,
+      result: { rows: [], rowCount: 1 },
+      schemaRewritten: true,
+      model: "extend-model",
+      confidence: 0.8,
+      widenDdl: ['CREATE TABLE "1".products (id uuid, name text)'],
+    });
+    const exec = stubExec(
+      Object.assign(new Error('relation "products" does not exist'), { code: "42P01" }),
+    );
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const out = await orchestrateAsk(
+        makeDeps({
+          llm: stubLLM({ plan: { sql: "INSERT INTO products (name) VALUES ('widget')" } }),
+          exec,
+          extendWrite,
+        }),
+        { goal: "add a product", dbId: "db_1", userId: "user_1", intent: "write", confirm: true },
+      );
+      expect(out.ok).toBe(true);
+      if (!out.ok) return;
+      expect(out.extendNeeded).toBe(true);
+      expect(out.result.trace.widen).toEqual({
+        tables: ["products"],
+        ddl: ['CREATE TABLE "1".products (id uuid, name text)'],
+        schema_rewritten: true,
+      });
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
   it("SK-SCHEMA-008 hot-path wire: a failed absorb falls back to schema_mismatch + extendNeeded (the KPI-1 denominator)", async () => {
     // The widen LLM couldn't design a plan: the write was never landed, so the
     // outcome is the honest schema_mismatch error and the miss is counted.
