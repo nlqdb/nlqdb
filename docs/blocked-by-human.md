@@ -35,16 +35,20 @@ values and criteria live. Read those only when you sit down to do the thing.
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on `GLOBAL-041` Phase A (KPI 1 live and ≥ 95 %); then only your sitting remains | 2026-06-13 |
-| 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 3 | ~10 min | Submit nlqdb to PulseMCP + mcp.directory — two manual directory submits (registry cascade never reached them); lowest-yield, payloads ready | 2026-09-01 |
-| 4 | ~10 min | Submit `nlqdb-memory` to cc-marketplace (`claudecodecommands.directory`) — cross-repo PR or web form; lowest-yield (`github`-ref), payload ready | 2026-09-04 |
+| 1 | ~5 min | **Approve / re-enable Deploy API** — prod `apps/api` is frozen at run 198; every deploy is `action_required` (never ran) since 2026-09-08, so ALL Phase A widen-on-write code (runs 199–207) is UNDEPLOYED and KPI 1 reads live 0 %. Approve the pending runs (Actions → Deploy API) or fix the repo Actions-approval setting that began gating on 09-08 | 2026-09-08 |
+| 2 | ~30 min | Fire the Show HN launch sequence — condition-gated on `GLOBAL-041` Phase A (KPI 1 live and ≥ 95 %, which needs #1 deployed first); then only your sitting remains | 2026-06-13 |
+| 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 4 | ~10 min | Submit nlqdb to PulseMCP + mcp.directory — two manual directory submits (registry cascade never reached them); lowest-yield, payloads ready | 2026-09-01 |
+| 5 | ~10 min | Submit `nlqdb-memory` to cc-marketplace (`claudecodecommands.directory`) — cross-repo PR or web form; lowest-yield (`github`-ref), payload ready | 2026-09-04 |
 
-Only #1 can move real strangers (scorecard row #2); the hosted-premium meter
+Only #2 can move real strangers (scorecard row #2); the hosted-premium meter
 went **live 2026-08-14** (`premium.live=true` in prod — the full activation,
-AI Gateway included, is done and off this queue); #2 costs money and waits per
-`docs/cost-ladder.md` unless a Team org already exists. No founder action remains on the Phase A path itself — it is agent work
-(rule 4 / GLOBAL-033: never park an agent-performable action on the founder).
+AI Gateway included, is done and off this queue); #3 costs money and waits per
+`docs/cost-ladder.md` unless a Team org already exists. The Phase A engine build is agent work and is DONE in code (runs 197–207) — but
+run 208 found it is UNDEPLOYED: the one remaining Phase A founder action is #1
+above (approve Deploy API). Deploying prod (D1-migrate-then-`wrangler deploy`,
+outward-facing) is a genuine operator action an autonomous headless run must not
+self-approve — the one Phase A step that is legitimately founder territory.
 (Resolved 2026-08-05, same sitting — Era 6: the "Become AI" five locks →
 `SK-EKP-001..005` and the two-axis business model (since archived under `GLOBAL-041`), the goal-pack build order locked
 (niche-quality lens → `pack-candidates.md` header), the Anthropic
@@ -62,7 +66,29 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
 
 ## Human actions (clicks, secrets, legal) — ranked, work top-down
 
-1. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
+1. **⏱ ~5 min · Deploy API frozen since 2026-09-08 — Approve / re-enable the
+   API deploy.** Production `apps/api` is serving the run-198 build (2026-09-07).
+   Every `Deploy API` workflow run since run 199 (2026-09-08) has conclusion
+   `action_required` — it is waiting for approval and never executes; the last
+   successful deploy was run_number 618. Effect: all Phase A widen-on-write code
+   (runs 199–207, merged to `main`) is UNDEPLOYED, so `/v1/ask` widen-on-write
+   does not fire in prod and the weekly-focus **KPI 1 reads live 0 %** (run 208
+   probed it directly). This gates every downstream item, Show HN included. Fix:
+   open **Actions → Deploy API**, approve the pending run(s) (or use
+   `workflow_dispatch` to re-run the latest `main`); if runs keep landing
+   `action_required`, flip the repo/org **Actions approval setting** that began
+   requiring approval on 09-08 (Settings → Actions → General → "Require approval
+   for …") back to auto-run for `main` pushes. Then confirm prod is current with
+   `wrangler versions list` and re-probe: a `/v1/ask` insert of a new field
+   should return `trace.widen`. **This is the single highest-yield action in the
+   queue** — it turns 8 daily-runs of merged engine work from dark to live.
+   **Same gate hits the other prod-deploy workflows:** `Deploy MCP server` is
+   `action_required` since ~09-01 (last success 08-30) and `Deploy events-worker`
+   since 09-03 — approve/re-enable **all three** in the same sitting, not just
+   API (`Deploy web` + `Deploy — Canary` still auto-run, so the marketing site is
+   current; only the worker-backed prod surfaces are frozen).
+
+2. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **condition-gated on
    `GLOBAL-041` Phase A** (widen-on-write live, KPI 1 first-insert inference
    rate measured and ≥ 95 %; criteria, never calendar dates — agents drive
@@ -79,7 +105,7 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    before real proof of value** (reaffirmed 07-28): the prior dogfood gate is
    retired with the archived bet; Phase A is the gate now.
 
-2. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -109,7 +135,7 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-3. **⏱ ~10 min · since 2026-09-01 — Submit nlqdb to PulseMCP + mcp.directory**
+4. **⏱ ~10 min · since 2026-09-01 — Submit nlqdb to PulseMCP + mcp.directory**
    (reach R-05; ledger rows #5 + #23). Both are MCP directories the
    official-registry publish (row #3, 07-22) was expected to reach by crawl;
    re-checked live 2026-09-01, **both still show 0 results ~40 days later**, so
@@ -131,12 +157,12 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
      email to claim the listing (so yield carries `mcpdir`, not the inherited
      `mcp-registry` key). On submit, flip ledger row #23 to **in-flight**.
 
-4. **⏱ ~10 min · since 2026-09-04 — Submit `nlqdb-memory` to cc-marketplace**
+5. **⏱ ~10 min · since 2026-09-04 — Submit `nlqdb-memory` to cc-marketplace**
    (reach R-09 venue #6; ledger row #27). A 688★ community Claude Code
    plugin/command directory fronted by `claudecodecommands.directory` — passes
    the trust bar `skillsclaude.org` failed (real footprint, named maintainer).
    Lowest yield in this queue (repo-linked → `github`-ref, no utm key); do it
-   only when #1–#3 are parked. Two paths, either works: the
+   only when #1–#4 are parked. Two paths, either works: the
    **cross-repo GitHub PR** to [`ananddtyagi/cc-marketplace`](https://github.com/ananddtyagi/cc-marketplace)
    per its `PLUGIN_SCHEMA.md` (also openable by a repo-unscoped agent — this
    session is `nlqdb/nlqdb`-only), or the account-walled
