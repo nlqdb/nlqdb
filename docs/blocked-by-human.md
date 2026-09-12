@@ -41,9 +41,9 @@ values and criteria live. Read those only when you sit down to do the thing.
 | 4 | ~10 min | Submit nlqdb to PulseMCP + mcp.directory — two manual directory submits (registry cascade never reached them); lowest-yield, payloads ready | 2026-09-01 |
 | 5 | ~10 min | Submit `nlqdb-memory` to cc-marketplace (`claudecodecommands.directory`) — cross-repo PR or web form; lowest-yield (`github`-ref), payload ready | 2026-09-04 |
 
-Only #1 can move real strangers (scorecard row #2); the hosted-premium meter
+Only #2 can move real strangers (scorecard row #2); the hosted-premium meter
 went **live 2026-08-14** (`premium.live=true` in prod — the full activation,
-AI Gateway included, is done and off this queue); #2 costs money and waits per
+AI Gateway included, is done and off this queue); #3 costs money and waits per
 `docs/cost-ladder.md` unless a Team org already exists. The Phase A engine build is agent work and is DONE in code (runs 197–207) — but
 run 208 found it is UNDEPLOYED: the one remaining Phase A founder action is #1
 above (approve Deploy API). Deploying prod (D1-migrate-then-`wrangler deploy`,
@@ -82,6 +82,11 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    `wrangler versions list` and re-probe: a `/v1/ask` insert of a new field
    should return `trace.widen`. **This is the single highest-yield action in the
    queue** — it turns 8 daily-runs of merged engine work from dark to live.
+   **Same gate hits the other prod-deploy workflows:** `Deploy MCP server` is
+   `action_required` since ~09-01 (last success 08-30) and `Deploy events-worker`
+   since 09-03 — approve/re-enable **all three** in the same sitting, not just
+   API (`Deploy web` + `Deploy — Canary` still auto-run, so the marketing site is
+   current; only the worker-backed prod surfaces are frozen).
 
 2. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
    ready since 07-19 — Fire the launch sequence** — **condition-gated on
@@ -157,7 +162,7 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    plugin/command directory fronted by `claudecodecommands.directory` — passes
    the trust bar `skillsclaude.org` failed (real footprint, named maintainer).
    Lowest yield in this queue (repo-linked → `github`-ref, no utm key); do it
-   only when #1–#3 are parked. Two paths, either works: the
+   only when #1–#4 are parked. Two paths, either works: the
    **cross-repo GitHub PR** to [`ananddtyagi/cc-marketplace`](https://github.com/ananddtyagi/cc-marketplace)
    per its `PLUGIN_SCHEMA.md` (also openable by a repo-unscoped agent — this
    session is `nlqdb/nlqdb`-only), or the account-walled
