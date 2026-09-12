@@ -566,10 +566,11 @@ describe("orchestrateAsk", () => {
       // GLOBAL-041 Phase A step 7 — the committed-hop trace records what the
       // engine ran: the widen DDL and that schema_hash advanced. This is the
       // DBA acting observably (SK-TRUST-002 parity with the create path). The
-      // exec-catch (42P01) path carries no schema-diff, so `tables` is empty —
-      // the DDL is the authoritative record of the shape created.
+      // exec-catch (42P01) path carries no schema-diff and Defense A never ran
+      // (schemaText null), so `tables` falls back to the write plan's own
+      // target — the engine still names what it widened, not just the DDL.
       expect(out.result.trace.widen).toEqual({
-        tables: [],
+        tables: ["products"],
         ddl: ['CREATE TABLE "1".products (id uuid, name text)'],
         schema_rewritten: true,
       });
@@ -625,6 +626,53 @@ describe("orchestrateAsk", () => {
         tables: ["products"],
         ddl: ['CREATE TABLE "1".products (id uuid, name text)'],
         schema_rewritten: true,
+      });
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("SK-SCHEMA-008 hot-path wire: a confirmed INSERT hitting exec 42703 (unseen column) is absorbed inline", async () => {
+    // The common first-insert case: the table exists (stored schema carries
+    // `orders`) but the write names a field it lacks (`total`). Defense A finds
+    // no missing *table*, so it falls through; exec raises 42703; the
+    // exec-catch classifies it (classifyColumnMissing) and Defense B absorbs it
+    // with an ADD COLUMN, exactly as the 42P01 table case does with CREATE
+    // TABLE. This is the field half of KPI 1, previously mislabeled db_unreachable.
+    const extendWrite = stubExtendWrite({
+      ok: true,
+      result: { rows: [], rowCount: 1 },
+      schemaRewritten: true,
+      model: "extend-model",
+      confidence: 0.8,
+      widenDdl: ['ALTER TABLE "1".orders ADD COLUMN total numeric NULL'],
+    });
+    const exec = stubExec(
+      Object.assign(new Error('column "total" does not exist'), { code: "42703" }),
+    );
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const out = await orchestrateAsk(
+        makeDeps({
+          llm: stubLLM({ plan: { sql: "INSERT INTO orders (id, total) VALUES (1, 5.5)" } }),
+          exec,
+          extendWrite,
+        }),
+        { goal: "add an order with a total", dbId: "db_1", userId: "user_1", intent: "write", confirm: true },
+      );
+      expect(out.ok).toBe(true);
+      if (!out.ok) return;
+      // KPI-1 numerator + observable trace naming the widened table (from the
+      // write plan — the exec-catch err carries no arrays for the column case).
+      expect(out.extendNeeded).toBe(true);
+      expect(out.result.trace.widen).toEqual({
+        tables: ["orders"],
+        ddl: ['ALTER TABLE "1".orders ADD COLUMN total numeric NULL'],
+        schema_rewritten: true,
+      });
+      expect(extendWrite).toHaveBeenCalledTimes(1);
+      expect(extendWrite.mock.calls[0]?.[0]).toMatchObject({
+        writeSql: "INSERT INTO orders (id, total) VALUES (1, 5.5)",
       });
     } finally {
       errorSpy.mockRestore();

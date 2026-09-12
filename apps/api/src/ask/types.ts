@@ -284,7 +284,12 @@ export class DbConfigError extends Error {
 // `reason` is the classifier's verdict even when Neon drops `.code` and
 // `pgCode` falls back to `msg_match` (SK-ASK-019).
 export type SchemaMismatchDiag = {
-  reason: "schema_missing" | "table_missing";
+  // `column_missing` (SK-SCHEMA-008) is widen-on-write demand on an INSERT
+  // that names a field the observed schema lacks — the first-insert case for
+  // an *existing* table, the sibling of `table_missing` for a new one. Both
+  // route to the Defense B absorb; `schema_missing` (orphaned tenant schema)
+  // never does.
+  reason: "schema_missing" | "table_missing" | "column_missing";
   pgCode: string;
   pgMessage: string;
 };
