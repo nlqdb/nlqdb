@@ -7,9 +7,20 @@
 
 import type { LLMRouter, PlanRequest, PlanResponse } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
+import type { ExtendArgs, ExtendOutcome } from "./extend.ts";
 import type { OrchestrateDeps } from "./orchestrate.ts";
 import { orchestrateAsk } from "./orchestrate.ts";
 import type { AskRequest, DbRecord, QueryResult } from "./types.ts";
+
+// recordSchemaMismatch (via classifyColumnMissing) logs a structured line by
+// design (SK-ASK-023); silence it so the widen-routing tests read clean.
+vi.spyOn(console, "error").mockImplementation(() => {});
+
+function pgError(message: string, code: string): Error & { code: string } {
+  const err = new Error(message) as Error & { code: string };
+  err.code = code;
+  return err;
+}
 
 const DB: DbRecord = {
   id: "db_members1",
@@ -99,6 +110,90 @@ describe("orchestrateAsk — write-intent enforcement (SK-ASK-009)", () => {
       req({ intent: "write" }),
     );
     expect(plan.mock.calls[0]?.[0]?.intent).toBe("write");
+  });
+});
+
+describe("orchestrateAsk — widen-on-write, missing-column absorb (SK-SCHEMA-008)", () => {
+  // An INSERT naming a field the observed schema lacks (`members` has no
+  // `age`) fails exec with 42703. That is first-insert demand for an existing
+  // table — the sibling of the missing-table (42P01) case — so it must route
+  // to the Defense B absorb, not surface as `db_unreachable`.
+  const AGE_INSERT = "INSERT INTO members (name, age) VALUES ('drogo', 30)";
+
+  it("routes an INSERT's 42703 to extendWrite and lands the row (KPI-1 numerator)", async () => {
+    const plan = vi.fn(async () => planOf(AGE_INSERT));
+    // First (and only) exec attempt throws undefined_column; the absorb path
+    // owns the retry decision (Nonrecoverable → no replay).
+    const exec = vi.fn(async () => {
+      throw pgError('column "age" does not exist', "42703");
+    });
+    const extendWrite = vi.fn<(a: ExtendArgs) => Promise<ExtendOutcome>>(async () => ({
+      ok: true,
+      result: { rows: [], rowCount: 1 },
+      schemaRewritten: true,
+      model: "test",
+      confidence: 1,
+      widenDdl: ["ALTER TABLE members ADD COLUMN age INTEGER NULL"],
+    }));
+    const d = { ...deps(plan, exec), extendWrite };
+
+    const out = await orchestrateAsk(d, req({ intent: "write", confirm: true }));
+
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(extendWrite).toHaveBeenCalledTimes(1);
+    expect(exec).toHaveBeenCalledTimes(1);
+    // KPI-1 numerator flag rides the committed hop.
+    expect(out.extendNeeded).toBe(true);
+    // The DBA acted observably — trace names the widened table + the DDL it ran.
+    expect(out.result.trace.widen).toEqual({
+      tables: ["members"],
+      ddl: ["ALTER TABLE members ADD COLUMN age INTEGER NULL"],
+      schema_rewritten: true,
+    });
+  });
+
+  it("surfaces schema_mismatch + extendNeeded when the absorb fails (KPI-1 denominator)", async () => {
+    const plan = vi.fn(async () => planOf(AGE_INSERT));
+    const exec = vi.fn(async () => {
+      throw pgError('column "age" does not exist', "42703");
+    });
+    const extendWrite = vi.fn<(a: ExtendArgs) => Promise<ExtendOutcome>>(async () => ({
+      ok: false,
+      stage: "plan",
+      reason: "plan_invalid",
+    }));
+    const d = { ...deps(plan, exec), extendWrite };
+
+    const out = await orchestrateAsk(d, req({ intent: "write", confirm: true }));
+
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.error.code).toBe("schema_mismatch");
+    expect(out.extendNeeded).toBe(true);
+  });
+
+  it("does NOT absorb a read's 42703 — it re-plans (extendWrite untouched)", async () => {
+    // A SELECT naming a missing column is a planning miss, not widen demand:
+    // it must take the SK-ASK-022 execution-guided repair, never the absorb.
+    const plan = vi
+      .fn<(r: PlanRequest) => Promise<PlanResponse>>()
+      .mockResolvedValueOnce(planOf("SELECT age FROM members"))
+      .mockResolvedValueOnce(planOf("SELECT id FROM members"));
+    const exec = vi
+      .fn<(sql: string) => Promise<QueryResult>>()
+      .mockRejectedValueOnce(pgError('column "age" does not exist', "42703"))
+      .mockResolvedValueOnce({ rows: [{ id: 1 }], rowCount: 1 });
+    const extendWrite = vi.fn<(a: ExtendArgs) => Promise<ExtendOutcome>>();
+    const d = { ...deps(plan, exec), extendWrite };
+
+    const out = await orchestrateAsk(d, req({ goal: "member ages", intent: "query" }));
+
+    expect(out.ok).toBe(true);
+    expect(extendWrite).not.toHaveBeenCalled();
+    // Re-planned once with the PG error fed back (SK-ASK-022).
+    expect(plan).toHaveBeenCalledTimes(2);
+    expect(plan.mock.calls[1]?.[0]?.previousAttempt?.error).toMatch(/column .* does not exist/i);
   });
 });
 
