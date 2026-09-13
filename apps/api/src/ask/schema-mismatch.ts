@@ -8,6 +8,9 @@ import { type SchemaMismatchDiag, SchemaMismatchError } from "./types.ts";
 
 const TABLE_MISSING_MSG = /relation .* does not exist/i;
 const SCHEMA_MISSING_MSG = /schema .* does not exist/i;
+// Kept disjoint from TABLE_MISSING_MSG ("relation …") so a missing table
+// never misroutes into the column-widen path.
+const COLUMN_MISSING_MSG = /column .* does not exist/i;
 
 export type SchemaMismatchContext = {
   dbId: string;
@@ -41,6 +44,37 @@ export function classifySchemaError(
   return new Nonrecoverable(
     "schema_mismatch",
     new SchemaMismatchError([], [], { reason, pgCode, pgMessage: msg.slice(0, 500) }),
+  );
+}
+
+// SK-SCHEMA-008 — an INSERT that references a column the observed schema
+// lacks (`42703` undefined_column, or the message fallback for Neon HTTP
+// responses that drop `.code`) is widen-on-write demand for an *existing*
+// table — the sibling of `classifySchemaError`'s missing-*table* case. Return
+// a `Nonrecoverable` wrapping a `column_missing` `SchemaMismatchError` so the
+// orchestrator's outer catch routes it to the same Defense B absorb the 42P01
+// path uses (add the field, land the row, in one transaction). The caller
+// gates this to writes: a *read* naming a missing column re-plans instead
+// (`isReplannableExecError`), which is why this must run only after that gate.
+// Records the same structured span + log line as the missing-table path so
+// the cohort stays greppable where preview/e2e logs vanish (SK-ASK-023).
+export function classifyColumnMissing(
+  err: unknown,
+  ctx: SchemaMismatchContext,
+): Nonrecoverable | null {
+  const code = (err as { code?: string }).code;
+  const msg = err instanceof Error ? err.message : String(err);
+  const isColumnMissing = code === "42703" || COLUMN_MISSING_MSG.test(msg);
+  if (!isColumnMissing) return null;
+  const pgCode = code === "42703" ? code : "msg_match";
+  recordSchemaMismatch({ ...ctx, reason: "column_missing", pgCode, pgMessage: msg });
+  return new Nonrecoverable(
+    "schema_mismatch",
+    new SchemaMismatchError([], [], {
+      reason: "column_missing",
+      pgCode,
+      pgMessage: msg.slice(0, 500),
+    }),
   );
 }
 

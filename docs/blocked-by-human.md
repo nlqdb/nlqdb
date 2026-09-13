@@ -35,7 +35,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~5 min | **Approve / re-enable Deploy API** — prod `apps/api` is frozen at run 198; every deploy is `action_required` (never ran) since 2026-09-08, so ALL Phase A widen-on-write code (runs 199–207) is UNDEPLOYED and KPI 1 reads live 0 %. Approve the pending runs (Actions → Deploy API) or fix the repo Actions-approval setting that began gating on 09-08 | 2026-09-08 |
+| 1 | ~5 min | **Approve / re-enable Deploy API** — prod `apps/api` is frozen at run 198; every deploy is `action_required` (never ran) since 2026-09-08, so ALL Phase A widen-on-write code (runs 199–209, now incl. the unseen-column routing) is UNDEPLOYED and KPI 1 reads live 0 %. Approve the pending runs (Actions → Deploy API) or fix the repo Actions-approval setting that began gating on 09-08 | 2026-09-08 |
 | 2 | ~30 min | Fire the Show HN launch sequence — condition-gated on `GLOBAL-041` Phase A (KPI 1 live and ≥ 95 %, which needs #1 deployed first); then only your sitting remains | 2026-06-13 |
 | 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 | 4 | ~10 min | Submit nlqdb to PulseMCP + mcp.directory — two manual directory submits (registry cascade never reached them); lowest-yield, payloads ready | 2026-09-01 |
@@ -44,9 +44,10 @@ values and criteria live. Read those only when you sit down to do the thing.
 Only #2 can move real strangers (scorecard row #2); the hosted-premium meter
 went **live 2026-08-14** (`premium.live=true` in prod — the full activation,
 AI Gateway included, is done and off this queue); #3 costs money and waits per
-`docs/cost-ladder.md` unless a Team org already exists. The Phase A engine build is agent work and is DONE in code (runs 197–207) — but
-run 208 found it is UNDEPLOYED: the one remaining Phase A founder action is #1
-above (approve Deploy API). Deploying prod (D1-migrate-then-`wrangler deploy`,
+`docs/cost-ladder.md` unless a Team org already exists. The Phase A engine build is agent work and is DONE in code (runs 197–209, incl.
+both first-insert shapes — new table and new field) — but it is UNDEPLOYED
+(run 208 finding): the one remaining Phase A founder action is #1 above
+(approve Deploy API). Deploying prod (D1-migrate-then-`wrangler deploy`,
 outward-facing) is a genuine operator action an autonomous headless run must not
 self-approve — the one Phase A step that is legitimately founder territory.
 (Resolved 2026-08-05, same sitting — Era 6: the "Become AI" five locks →

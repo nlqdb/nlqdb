@@ -37,7 +37,11 @@ import { referencesQualifiedTable, schemaRelativeSql } from "./plan-normalize.ts
 import type { RateLimiter } from "./rate-limit.ts";
 import { extractTables, type RecentTablesStore, tablesFromSchemaText } from "./recent-tables.ts";
 import { Nonrecoverable, type RetryReason, withStageRetry } from "./retry.ts";
-import { classifySchemaError, recordExecUnreachable } from "./schema-mismatch.ts";
+import {
+  classifyColumnMissing,
+  classifySchemaError,
+  recordExecUnreachable,
+} from "./schema-mismatch.ts";
 import { validateSql } from "./sql-validate.ts";
 import { shouldSummarize } from "./summarize-gate.ts";
 import {
@@ -128,15 +132,16 @@ export type OrchestrateOutcome =
       // emit is wrapped in `ctx.waitUntil`; this keeps doc and code in
       // agreement). The promise itself never throws (`SK-EVENTS-003`).
       pendingAskCompleted: Promise<void>;
-      // SK-SCHEMA-010 — a write to an unobserved table the engine absorbed
-      // inline (KPI-1 numerator); nothing sets it until Phase A `kind=extend`.
+      // SK-SCHEMA-010 — a write to an unobserved table (42P01) or column
+      // (42703) the engine absorbed inline (KPI-1 numerator).
       extendNeeded?: boolean;
     }
   | {
       ok: false;
       error: AskError;
-      // SK-SCHEMA-010 — a write to an unobserved table that was rejected
-      // (KPI-1 denominator, bumped as `asks_extend_failed` in `index.ts`).
+      // SK-SCHEMA-010 — a write to an unobserved table (42P01) or column
+      // (42703) that was rejected (KPI-1 denominator, bumped as
+      // `asks_extend_failed` in `index.ts`).
       extendNeeded?: boolean;
     };
 
@@ -615,6 +620,25 @@ export async function orchestrateAsk(
             if (classifyDataException(err)) {
               throw new Nonrecoverable("exec_invalid_value", err);
             }
+            // SK-SCHEMA-008 — a hosted INSERT that names a column the observed
+            // schema lacks (`42703`) is widen-on-write demand, not a re-plan:
+            // add the field + land the row via the Defense B absorb below
+            // (the missing-*column* sibling of the 42P01 missing-*table* path
+            // handled by `classifySchemaError`). INSERT-only, mirroring both
+            // Defenses — `extendOnWrite` lands an ADD COLUMN + INSERT; a read's
+            // missing column still re-plans (next branch), and an UPDATE/DELETE
+            // keeps its existing handling. Must run before the replannable
+            // branch so a write's 42703 routes to absorb, not the read repair.
+            if (writeTarget(planSql)?.verb === "INSERT") {
+              const columnMissing = classifyColumnMissing(err, {
+                dbId: req.dbId,
+                goal: req.goal,
+                planSql,
+                cacheHit,
+                planModel,
+              });
+              if (columnMissing) throw columnMissing;
+            }
             // SK-ASK-022 — deterministic-but-fixable: bail the transient
             // retry on every pass (replaying the identical SQL can't
             // succeed). The outer catch decides whether to re-plan, and
@@ -690,16 +714,19 @@ export async function orchestrateAsk(
             { onError: undefined },
           );
         }
-        // SK-SCHEMA-008 — a hosted INSERT into an unobserved table (never an
+        // SK-SCHEMA-008 — a hosted INSERT into an unobserved table (42P01) or
+        // naming an unobserved column on an existing table (42703; never an
         // orphaned schema, which widen-on-write can't absorb) is the
-        // first-insert case: create the shape and land the write in ONE
-        // transaction, then continue to the success path (KPI-1 numerator).
-        // One failed exec preceded this — the cheap Defense A pre-flight let
-        // the write through so the SK-TRUST-001 preview could render first. A
-        // failed absorb falls through to the schema_mismatch error below (the
-        // KPI-1 denominator, `extendNeeded`). INSERT-only — the same shape gate
-        // as Defense A; `extendOnWrite` lands a CREATE TABLE + INSERT, and an
-        // UPDATE/DELETE would only widen into a phantom empty table.
+        // first-insert case: create the shape / add the field and land the
+        // write in ONE transaction, then continue to the success path (KPI-1
+        // numerator). One failed exec preceded this — the cheap Defense A
+        // pre-flight let the missing-table write through so the SK-TRUST-001
+        // preview could render first (the missing-column case has no pre-flight
+        // and reaches here straight from exec). A failed absorb falls through to
+        // the schema_mismatch error below (the KPI-1 denominator,
+        // `extendNeeded`). INSERT-only — the same shape gate as Defense A;
+        // `extendOnWrite` lands a CREATE TABLE / ADD COLUMN + INSERT, and an
+        // UPDATE/DELETE would only widen into a phantom empty table / column.
         if (
           writeTarget(planSql)?.verb === "INSERT" &&
           d?.reason !== "schema_missing" &&
@@ -724,14 +751,17 @@ export async function orchestrateAsk(
             // (SK-SCHEMA-011). This is the DBA acting observably — the same
             // window the create path gives via `trace.sql` (SK-TRUST-002).
             traceBlock.widen = {
-              // Keep the table name(s) Defense A already resolved (present
-              // whenever the stored schema exists); the exec-catch `err` carries
-              // none on the 42P01 path, but the trace should still name what
-              // widened, not just bury it inside the DDL string.
+              // Name what widened rather than burying it in the DDL string.
+              // Defense A resolves the table(s) for the missing-table case
+              // (present whenever the stored schema exists); the exec-catch
+              // `err` carries none on the 42P01 / 42703 paths, so fall back to
+              // the write plan's own target table — the ADD COLUMN's table for
+              // the column-widen case, where Defense A never fired.
               tables:
                 err.referencedTables.length > 0
                   ? err.referencedTables
-                  : (traceBlock.widen?.tables ?? []),
+                  : (traceBlock.widen?.tables ??
+                    (writeTarget(planSql)?.table ? [writeTarget(planSql)?.table as string] : [])),
               ddl: absorbed.widenDdl,
               schema_rewritten: absorbed.schemaRewritten,
             };
