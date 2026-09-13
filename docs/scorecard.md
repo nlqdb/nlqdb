@@ -10,12 +10,18 @@ run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 Phase 2 exits on Phase A alone; acquisition paused; BIRD/Spider = regression
 alarm only; premium tier stays. Retired rows dropped below.
 
-**Weekly focus (2026-09-04 →, founder-set with `GLOBAL-041`):** **Phase A
-widen-on-write — first-insert inference rate** (KPI 1, floor ≥ 95 % on the
-Phase A dogfood workload: `/daily`'s own writes through `@nlqdb/sdk`, first
-200 unseen-field inserts in a 14-day window). **Measured LIVE 0 % (run 208)**
-— the real blocker is the UNDEPLOYED build (Deploy API `action_required` since
-2026-09-08), not a dogfood-DB session-create. Build order: `GLOBAL-041`.
+**Weekly focus (2026-09-13 →, `/weekly` re-pointed; keeps the founder's
+2026-09-04 KPI-1/Phase-A frame):** **Phase A KPI 1 — first-insert inference
+rate measured AGENT-SIDE**, `asks_extend_ok / (ok + failed)` over a
+representative dogfood first-insert shape set (new table · new column ·
+type-varied · jsonb · auth-shaped) run on a live Neon branch (the run-206
+extend-walk harness), toward ≥ 95 %. **Why this and not more widen code:** the
+LIVE prod rate is 0 % and **deploy-blocked** (Deploy API `action_required`
+since 2026-09-08 — `blocked-by-human` #1, founder-held ⇒ not agent-movable),
+and run 209 just closed the last known code gap (unseen column). So per the
+check-2 remedy, the agent-movable lever is *instrumenting the number*, not more
+volume: turn the binary 3/3 walk into a measured $0 rate the loop can drive to
+95 % while the deploy waits. Live prod KPI 1 stays reported at 0 %.
 
 **Worst number today (run 208, 2026-09-12) — WEEKLY-FOCUS KPI 1 measured LIVE for the first time = 0 % (all misses).** This run probed production `/v1/ask` with the env `sk_mcp_` key (SK-HDC-021 lets it act) and found widen-on-write does NOT fire: a write to an unobserved TABLE returns `schema_mismatch` (`canExtend` false → `asks_extend_failed`++), and a write carrying an unobserved FIELD is silently dropped (relational table) or absorbed into an existing jsonb column (catch-all) — no `trace.widen`, no `asks_extend_ok`. **ROOT CAUSE (GitHub + live-probe, both confirmed): production `apps/api` is FROZEN at run 198 (2026-09-07).** Deploy API has been `action_required` — never approved, never run — on every merge since run 199 (2026-09-08); last successful deploy = run_number 618. All widen-on-write wiring (runs 199–207) is merged to `main` but UNDEPLOYED. The prior scorecard framing (R1 green; KPI 1 blocked on a human dogfood-DB session-create) was wrong on both counts: the headless run CAN act on prod DBs (proven), and the blocker is the undeployed build, not DB-create.
 **Why this lever (rule 6 outranks all):** a stale-build deploy means prod silently serves code ~8 daily-runs behind — daily rule 6 says fixing it outranks every other lever. The agent-side fix is measure + root-cause + escalate: an autonomous headless run must NOT self-approve a prod deploy (D1-migrate-then-deploy, outward-facing, founder-gated), so the deploy-approval is now the #1 `blocked-by-human` item. **Anti-rut (rule 7):** this is not a 7th widen pull — it is the rule's own *measure-the-yield* remedy (live KPI-1 yield) and pulls a different lever (deploy/measurement, not engine code).

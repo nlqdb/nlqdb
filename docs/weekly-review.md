@@ -1,61 +1,70 @@
-# Weekly review — 2026-08-29
+# Weekly review — 2026-09-13
 
 Current-state audit of the `/daily` loop (≤ 4 KB, overwritten weekly, no
-changelog). Worst finding first. Window 2026-08-22→08-29: `/daily` runs
-183–189 plus the founder-sanctioned EK-06 grant-primitive + EK-08 launch-motion
-track (~10 PRs).
+changelog). Worst finding first. Window 2026-09-06→09-13: `/daily` runs
+198–209 (all `GLOBAL-041` Phase A widen-on-write, bar run 200's UX-flow re-walk).
 
-## Worst — the focus proxy hit target, the gate it serves stayed frozen (checks 2 + 4)
+## Worst — a full week of engine code, zero movement on the number it serves (checks 2 + 4 + 1)
 
-4 of the 6 non-null daily runs (**185–188**) climbed the memory-quality eval
-proxy: EX **43.59 % → 79.49 %**, temporal axis **2/11 → 8/11** — the 08-22 focus
-target (≥ 70 %) is comfortably **MET**, and run 188 proved the offline eval is now
-**noise-dominated at ±5 pp** (a refined trim measured −5.13 pp, inside the floor →
-reverted). Real proxy-yield — but the **dogfood gate the proxy exists to serve sat
-frozen at 2/5 all week** (scorecard row #1). The proxy outran its consumer: another
-run climbing it is volume without gate-yield. Crucially, the eval work already
-**proved** the GLOBAL-037-legal lever (declared categorical vocabulary, runs
-186/187) that the dogfood `INDEX.md` criterion-4 row still calls "no compliant
-agent-movable lever" — that doc is now stale. Fix in this PR: re-point the focus to
-**landing that proven lever in the production per-goal-pack schema layer so gate
-criterion 4 flips (2/5 → ≥ 3/5)**. Founder's 07-28 gate frame untouched (P1).
+**8 of 9 non-null runs (199–207, 209 — all but run 200 = ~89 %)** pulled one
+lever: Phase A widen-on-write. Every one merged to `main`. Yet the live KPI 1
+it exists to move is **0 %** — root cause (run 208, verified this audit against
+the Actions API): **production `apps/api` is frozen at run 198**. Deploy API's
+last success is run_number 618 (2026-09-07); every run since (619+, run 199 on)
+is `action_required` and never executed. So a week of engine work is **inert
+until a founder deploy approval** — `blocked-by-human` #1, now **5 days** old.
+Per the check-2 rule, volume-without-a-moved-number means next week is *not*
+more widen code but **instrumenting the number** — hence the re-pointed focus:
+an agent-side KPI-1 rate on the run-206 extend-walk harness, movable at $0
+while the deploy waits (run 209 already closed the last code gap, unseen column).
 
-## Monoculture — 4/6 runs on one offline lever; org itself is diversified (check 2)
+## Trend — code up sharply, deployed prod flat; no regression alarm (check 1)
 
-memory-quality (185–188) = **67 %** of non-null daily runs; the other two (183/189)
-were the row-#7 CTR lever. Unlike last week's *yieldless* distribution breadth, this
-monoculture had real proxy-yield (verified below) — the problem is the proxy is
-maxed and its downstream gate is frozen, which the focus re-point fixes. The org at
-large is healthily diversified: the ~10-PR EK-06/EK-08 grant + launch-motion track
-is the real center of gravity, so this is a `/daily`-loop finding, not an org one.
+No `GLOBAL-025` alert delta tripped. Engine *code* advanced hard (Phase A
+steps 1–7, 9 built + executor-walked, run 206 3/3; run 209 added the
+unseen-column path) but the *deployed* engine is 8 runs stale, so the honest
+engine trend is "code up, prod flat." BIRD 0.5382 (47 d) / Spider 0.2222
+(54 d) stale but **dark, not regressed** — no alarm. Onboarding/UX/perf flat:
+strangers 0 (launch-gated, row #2), FLOW-005 6/6 carried.
 
-## Trend — memory-quality up sharply; engine floor stale; no GLOBAL-025 regression (check 1)
+## Delta integrity — 5 sampled, all genuine (check 5)
 
-No `GLOBAL-025` alert threshold tripped. Engine (memory axis) **clearly up** (43 → 79 %).
-Funnel edged up: GSC **9 c / 827 impr / pos 23.1** vs last week's 7 / 675 / 25.1 (row
-#7). UX green (FLOW-005 6/6, carried). BIRD **0.5382** (33 d) / Spider **0.2222** (40 d)
-still below the 0.60 floor and **stale** — dark, but #1041's planner re-head now makes a
-fresh re-measure a valid engine lever (rows #8/#9). Strangers **0** (row #2, launch-gated).
+Verified the load-bearing run-208 deploy-freeze claim directly (Actions API:
+618 last success, 619+ all `action_required` since 09-08 — exact). Spot-checked
+run 207 (`trace.widen` in SDK + `ask/types.ts`), run 206 (`widen-walk.integration.test.ts`
+present), run 205 (`extendWrite`/`extendNeeded` in `orchestrate.ts`), run 196
+(`asks_extend_ok/failed` counters). No fabricated delta.
 
-## Delta integrity — sampled 4 memory + 1 CTR run, all verify (check 5)
+## Inert output + dark metrics — the loop self-corrected (checks 3 + 4)
 
-Strong. Every memory-quality delta carries a real GHA A/B link in
-`progress/quality-score-verification-log.md`: run 186 41.03 → 61.54 %
-([32919866678] → [32920213591]), run 187 61.54 → 74.36 % ([…] → [33029888855]),
-run 188 baseline 79.49 % ([33132370698]) with the −5.13 pp trim reverted. Run 189's
-CTR edit is present in `apps/web/src/data/solve.ts` (55-char `metaTitle`, completed
-`metaDescription` on `count-consecutive-days-streak-in-sql`). No fabricated delta.
+The 8 merged widen runs are the inert output (nothing consumes them while prod
+is frozen), but run 208 correctly stopped adding volume, measured the yield
+(live 0 %), and escalated the deploy to `blocked-by-human` #1 with a
+days-blocked count — the loop self-correcting, not a new inert report. Other
+dark rows (BIRD/Spider stale; strangers launch-gated; opencheck money-gated,
+rule 4) each carry a named root blocker.
 
-## Inert output — none new in the loop (check 3)
+## Prompt drift — `daily.md` clean, no fix (check 6)
 
-Distribution queue **drained** (0 unpublished drafts); dev.to drip self-throttling
-(15 variants remain, 1/run). `blocked-by-human.md` head (Show HN, **77 d** idle since
-06-13) is gate-blocked, not inert — root named and ranked. The one emerging inert
-risk *is* the maxed eval proxy above; the focus re-point retires it before it loops.
+All decision IDs (GLOBAL-025/026/033/038/041/042, SK-*) resolve to canonical
+files and all cited paths exist. No dangling refs, dead rules, or
+contradictions — no `daily.md` edit this week.
 
-## Prompt drift — `daily.md` clean, no fix needed (check 6)
+## Public roadmap — two markers understated reality, fixed (check 7)
 
-All `daily.md` decision IDs (GLOBAL-025/026/033/038, SK-*) resolve to canonical
-files; all cited paths exist; last week's `lint → check` gate fix holds (rules 6 +
-step 4). No dangling references, dead rules, or contradictions found — no `daily.md`
-edit this week.
+`README.md § Roadmap` "Now — Phase A" marked `kind=extend` and Extend-diff/trace
+as ◯ **planned**, but both are merged-but-undeployed / partially shipped
+(`trace.widen` live on SDK/MCP/elements). Fixed ◯ → ~ this PR, noting the
+undeployed live-0 % state — honest, not a phantom ✓ (the ✓ KPI-counters line is
+genuinely shipped; the instrument deployed at run 196, pre-freeze).
+
+## Free-model roster — complete + current, one bump to verify (check 8)
+
+Planner chain, best-first: **groq-qwen** (`qwen/qwen3.8-27b`) → **gemini**
+(`gemini-2.5-flash`) → **cerebras** (`gpt-oss-120b`) → **groq**
+(`gpt-oss-120b`/`20b`) → **workers-ai** (`llama-3.3-70b`) → **openrouter**
+(`:free`) → **mistral-large**. All keys present. Web-research (P2) confirms the
+picks — Groq free = gpt-oss + Qwen3.8; Kimi/DeepSeek correctly *not* depended on
+(both left Groq's free list). One candidate bump: sources cite a newer free
+Gemini flash than our 2.5-flash — the daily loop (SK-LLM) should verify it
+against live `/v1/models` and apply; key exists, so no human bullet.

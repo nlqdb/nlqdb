@@ -175,9 +175,12 @@ The first insert creates the shape; later inserts and reads evolve it. KPI:
 first-insert inference rate ≥ 95 % at Phase A exit on the dogfood workload.
 Build order in [`GLOBAL-041`](./docs/decisions/GLOBAL-041-autonomous-dba.md).
 
-- ◯ `kind=extend` typed plan — a write naming an unseen table or field widens
+- ~ `kind=extend` typed plan — a write naming an unseen table or field widens
   the schema in the same transaction as the insert, never a `schema_mismatch`
-- ◯ Extend diff + trace on every surface (SDK · CLI · MCP · `<nlq-data>`)
+  (built + executor-walked for the unseen-table and unseen-column cases; merged
+  to `main`, awaiting a prod deploy — live rate still 0 %)
+- ~ Extend diff + trace on every surface — `trace.widen` live on SDK · MCP ·
+  `<nlq-data>`; CLI/web render pending
 - ✓ KPI counters `asks_extend_ok` / `asks_extend_failed` on the `/v1/ask` write path
   (`SK-SCHEMA-010`; the rate reads on `/app/admin`)
 - ◯ Phase B — `pg_stat_*` + `EXPLAIN` collection → typed proposals (index /
