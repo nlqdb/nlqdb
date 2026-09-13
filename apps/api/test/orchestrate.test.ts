@@ -658,7 +658,13 @@ describe("orchestrateAsk", () => {
           exec,
           extendWrite,
         }),
-        { goal: "add an order with a total", dbId: "db_1", userId: "user_1", intent: "write", confirm: true },
+        {
+          goal: "add an order with a total",
+          dbId: "db_1",
+          userId: "user_1",
+          intent: "write",
+          confirm: true,
+        },
       );
       expect(out.ok).toBe(true);
       if (!out.ok) return;
