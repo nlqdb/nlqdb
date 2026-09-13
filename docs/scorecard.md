@@ -18,7 +18,7 @@ type-varied · jsonb · auth-shaped) run on a live Neon branch (the run-206
 extend-walk harness), toward ≥ 95 %. **Why this and not more widen code:** the
 LIVE prod rate is 0 % and **deploy-blocked** (Deploy API `action_required`
 since 2026-09-08 — `blocked-by-human` #1, founder-held ⇒ not agent-movable),
-and run 209 just closed the last known code gap (unseen column). So per the
+and run 209 (in review) closes the last known code gap (unseen column). So per the
 check-2 remedy, the agent-movable lever is *instrumenting the number*, not more
 volume: turn the binary 3/3 walk into a measured $0 rate the loop can drive to
 95 % while the deploy waits. Live prod KPI 1 stays reported at 0 %.

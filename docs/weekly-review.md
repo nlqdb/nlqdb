@@ -16,12 +16,12 @@ until a founder deploy approval** — `blocked-by-human` #1, now **5 days** old.
 Per the check-2 rule, volume-without-a-moved-number means next week is *not*
 more widen code but **instrumenting the number** — hence the re-pointed focus:
 an agent-side KPI-1 rate on the run-206 extend-walk harness, movable at $0
-while the deploy waits (run 209 already closed the last code gap, unseen column).
+while the deploy waits (run 209, in review, closes the last gap: unseen column).
 
 ## Trend — code up sharply, deployed prod flat; no regression alarm (check 1)
 
 No `GLOBAL-025` alert delta tripped. Engine *code* advanced hard (Phase A
-steps 1–7, 9 built + executor-walked, run 206 3/3; run 209 added the
+steps 1–7, 9 built + executor-walked, run 206 3/3; run 209 in review adds the
 unseen-column path) but the *deployed* engine is 8 runs stale, so the honest
 engine trend is "code up, prod flat." BIRD 0.5382 (47 d) / Spider 0.2222
 (54 d) stale but **dark, not regressed** — no alarm. Onboarding/UX/perf flat:
@@ -56,7 +56,7 @@ contradictions — no `daily.md` edit this week.
 as ◯ **planned**, but both are merged-but-undeployed / partially shipped
 (`trace.widen` live on SDK/MCP/elements). Fixed ◯ → ~ this PR, noting the
 undeployed live-0 % state — honest, not a phantom ✓ (the ✓ KPI-counters line is
-genuinely shipped; the instrument deployed at run 196, pre-freeze).
+genuinely shipped, deployed run 196 pre-freeze).
 
 ## Free-model roster — complete + current, one bump to verify (check 8)
 
