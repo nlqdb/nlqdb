@@ -10,12 +10,18 @@ run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 Phase 2 exits on Phase A alone; acquisition paused; BIRD/Spider = regression
 alarm only; premium tier stays. Retired rows dropped below.
 
-**Weekly focus (2026-09-04 →, founder-set with `GLOBAL-041`):** **Phase A
-widen-on-write — first-insert inference rate** (KPI 1, floor ≥ 95 % on the
-Phase A dogfood workload: `/daily`'s own writes through `@nlqdb/sdk`, first
-200 unseen-field inserts in a 14-day window). **Measured LIVE 0 % (run 208)**
-— the real blocker is the UNDEPLOYED build (Deploy API `action_required` since
-2026-09-08), not a dogfood-DB session-create. Build order: `GLOBAL-041`.
+**Weekly focus (2026-09-13 →, `/weekly` re-pointed; keeps the founder's
+2026-09-04 KPI-1/Phase-A frame):** **Phase A KPI 1 — first-insert inference
+rate measured AGENT-SIDE**, `asks_extend_ok / (ok + failed)` over a
+representative dogfood first-insert shape set (new table · new column ·
+type-varied · jsonb · auth-shaped) run on a live Neon branch (the run-206
+extend-walk harness), toward ≥ 95 %. **Why this and not more widen code:** the
+LIVE prod rate is 0 % and **deploy-blocked** (Deploy API `action_required`
+since 2026-09-08 — `blocked-by-human` #1, founder-held ⇒ not agent-movable),
+and run 209 (now merged to main) closes the last known code gap (unseen column). So per the
+check-2 remedy, the agent-movable lever is *instrumenting the number*, not more
+volume: turn the binary 3/3 walk into a measured $0 rate the loop can drive to
+95 % while the deploy waits. Live prod KPI 1 stays reported at 0 %.
 
 **Worst number today (run 209, 2026-09-12) — WEEKLY-FOCUS KPI 1 still live 0 %, deploy-blocked (unchanged from run 208).** Prod `apps/api` remains FROZEN at run 198: Deploy API is still `action_required` (never approved/run) on every merge since run 199 (2026-09-08) — confirmed this run against GitHub Actions (runs 619–626 all `action_required`). The live 0 % cannot move until a founder approves the deploy (`blocked-by-human` #1, now **4 days** old). That blocker is human-only and queued, so per rule 8 it is not this run's lever.
 **Why this lever:** run 208 flagged (secondary finding a) that even in the *merged* code, widen-on-write routed only an unobserved **TABLE** (`42P01`) — an INSERT naming an unobserved **COLUMN** (`42703`, the *common* first-insert: a new field on an existing table) was caught by no classifier, mislabeled `db_unreachable` after 3 wasted retries, and never counted. That is a hard cap on KPI 1 even after deploy. This run closes it — a distinct, never-built engine slice that is 100 % agent-movable and does NOT depend on the deploy to be correct, only to be verified live. It is a **named direct input to KPI 1** (SK-SCHEMA-010's deferred column denominator), done in parallel with the pending human approval so KPI 1 reaches ≥ 95 % rather than being capped when the deploy lands. **Not re-attempting the deploy** (rule 8): a separate code gap, not the blocked metric. **Anti-rut (rule 7):** last 5 daily PRs = 204–207 widen + 208 measurement (not 5 identical); this is new forward code, not a re-pull.
