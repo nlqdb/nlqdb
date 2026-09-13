@@ -7,7 +7,7 @@ changelog). Worst finding first. Window 2026-09-06→09-13: `/daily` runs
 ## Worst — a full week of engine code, zero movement on the number it serves (checks 2 + 4 + 1)
 
 **8 of 9 non-null runs (199–207, 209 — all but run 200 = ~89 %)** pulled one
-lever: Phase A widen-on-write. All but run 209 merged to `main`. Yet the live KPI 1
+lever: Phase A widen-on-write. All merged to `main`. Yet the live KPI 1
 it exists to move is **0 %** — root cause (run 208, verified this audit against
 the Actions API): **production `apps/api` is frozen at run 198**. Deploy API's
 last success is run_number 618 (2026-09-07); every run since (619+, run 199 on)
@@ -16,12 +16,12 @@ until a founder deploy approval** — `blocked-by-human` #1, now **5 days** old.
 Per the check-2 rule, volume-without-a-moved-number means next week is *not*
 more widen code but **instrumenting the number** — hence the re-pointed focus:
 an agent-side KPI-1 rate on the run-206 extend-walk harness, movable at $0
-while the deploy waits (run 209, in review, closes the last gap: unseen column).
+while the deploy waits (run 209, now merged, closes the last gap: unseen column).
 
 ## Trend — code up sharply, deployed prod flat; no regression alarm (check 1)
 
 No `GLOBAL-025` alert delta tripped. Engine *code* advanced hard (Phase A
-steps 1–7, 9 built + executor-walked, run 206 3/3; run 209 in review adds the
+steps 1–7, 9 built + executor-walked, run 206 3/3; run 209 now merged adds the
 unseen-column path) but the *deployed* engine is 8 runs stale, so the honest
 engine trend is "code up, prod flat." BIRD 0.5382 (47 d) / Spider 0.2222
 (54 d) stale but **dark, not regressed** — no alarm. Onboarding/UX/perf flat:
