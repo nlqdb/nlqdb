@@ -7,7 +7,7 @@ changelog). Worst finding first. Window 2026-09-06→09-13: `/daily` runs
 ## Worst — a full week of engine code, zero movement on the number it serves (checks 2 + 4 + 1)
 
 **8 of 9 non-null runs (199–207, 209 — all but run 200 = ~89 %)** pulled one
-lever: Phase A widen-on-write. Every one merged to `main`. Yet the live KPI 1
+lever: Phase A widen-on-write. All but run 209 merged to `main`. Yet the live KPI 1
 it exists to move is **0 %** — root cause (run 208, verified this audit against
 the Actions API): **production `apps/api` is frozen at run 198**. Deploy API's
 last success is run_number 618 (2026-09-07); every run since (619+, run 199 on)
