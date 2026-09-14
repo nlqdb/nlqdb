@@ -225,7 +225,9 @@ describeKpi(
 
       const rate = ok / (ok + failed);
       // The number the weekly focus tracks — greppable in the run log.
-      console.log(
+      // `console.info` (not `log`) is the allow-listed console method
+      // (biome.json `noConsole.allow`), matching the eval runner's idiom.
+      console.info(
         [
           "",
           "=== agent-side KPI-1 (first-insert inference rate) ===",
