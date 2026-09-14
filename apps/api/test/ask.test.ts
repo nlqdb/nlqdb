@@ -144,9 +144,9 @@ describe("POST /v1/ask — principal gate", () => {
     // The short-circuit is observable via the response status code:
     // `routeAsk`-only failures land as 502 (`llm_failed`) or 409
     // (`clarify_required` / `ambiguous_db`). The create path lands
-    // as 200, 422 (`infer_failed` / `compile_failed` / `ddl_failed` /
-    // `embed_failed`), or 500 (`provision_failed` / unhandled error
-    // inside the libpg-query dynamic import). The integration test
+    // as 200, 422 (`infer_failed` / `compile_failed`), 500 (`ddl_invalid` /
+    // unhandled error inside the libpg-query dynamic import), or 502
+    // (`provision_failed` / `embed_failed`) — registry statuses. The integration test
     // env doesn't carry LLM credentials and the workerd test pool
     // can't load libpg-query's WASM, so the create path here fails
     // with a 500 from inside `runCreatePath` — but crucially NOT
