@@ -22,7 +22,7 @@ value lane is **0% live**; the approachability half is largely shipped (see the
 tracker). Stays at a deliberately very low score until the lane is enabled **and**
 live (per the founder's instruction for the scorecard row).
 **Owners (code):** `packages/llm/src/frontier/**`, `packages/llm/src/chains/frontier.ts`; wiring in `apps/api/src/ask/model-picker.ts` (gated).
-**Cross-refs:** [`llm-router/FEATURE.md`](../llm-router/FEATURE.md) (the lane sits alongside free/BYOLLM/hosted-premium, `SK-LLM-016`/`SK-LLM-017`) · [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) (LLM strategy) · [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) (engine-quality KPI: the free-vs-frontier delta) · [`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md) + `web-app` `SK-WEB-018`/`SK-WEB-019` (approachability half).
+**Cross-refs:** [`llm-router/FEATURE.md`](../llm-router/FEATURE.md) (the lane sits alongside free/BYOLLM/hosted-premium, `SK-LLM-016`/`SK-LLM-017`) · [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) (LLM strategy) · [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) (engine-quality KPI: the free-vs-frontier delta) · [`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md) + `web-app` `SK-WEB-031`/`SK-WEB-019` (approachability half).
 
 ## Relationship to the existing premium lane
 
@@ -144,7 +144,7 @@ implemented"* mirrors this and stays at a very low score until **every** row is 
 (including the frontier lane enabled **and** live in production).
 
 **Approachability — the on-ramp (this PR, mostly shipped):**
-- ✅ Two-door home (`SK-WEB-018`) — MCP-connect | question-your-ClickHouse, responsive
+- ✅ Home "ways in" band (`SK-WEB-031`; was the two-door home) — MCP-connect | question-your-warehouse
 - ✅ `/app/connect` page + `ConnectForm` (`SK-WEB-019`)
 - ✅ 7-host MCP install + click-to-reveal-fallback (`SK-WEB-016`: Cursor/VS Code deep-link, Claude Code/Codex command, Claude/Windsurf/Zed config)
 - ✅ BYO-ClickHouse HTTP exec + ClickHouse schema render (`packages/db`)

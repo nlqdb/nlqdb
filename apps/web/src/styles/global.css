@@ -232,6 +232,96 @@ h3 {
   color: var(--ink);
 }
 
+/* Content disclosure (SK-WEB-031) — the editorial surfaces behind one
+   button. The panel anchors to the nav row on narrow viewports (where
+   `.topnav` wraps and a button-anchored panel would hang off-screen) and
+   to the button itself once the row fits on one line. */
+.topnav__menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  font: inherit;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease-std);
+}
+
+.topnav__menu-btn:hover,
+.topnav__menu-btn[aria-expanded="true"],
+.topnav__menu-btn[data-current="true"] {
+  color: var(--ink);
+}
+
+.topnav__menu-btn:focus-visible {
+  outline: none;
+  border-radius: var(--r-xs);
+  box-shadow: var(--ring);
+}
+
+.topnav__chev {
+  transition: transform var(--dur-1) var(--ease-std);
+}
+
+.topnav__menu-btn[aria-expanded="true"] .topnav__chev {
+  transform: rotate(180deg);
+}
+
+.topnav__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 6px;
+  background: var(--raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-2);
+}
+
+@media (min-width: 720px) {
+  .topnav__menu {
+    position: relative;
+  }
+  .topnav__panel {
+    right: auto;
+    left: -8px;
+  }
+}
+
+.topnav__panel-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  text-decoration: none;
+  transition:
+    background var(--dur-1) var(--ease-std),
+    color var(--dur-1) var(--ease-std);
+}
+
+.topnav__panel-item:hover,
+.topnav__panel-item[aria-current="page"] {
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+
+.topnav__panel-label {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.topnav__panel-blurb {
+  font-size: var(--t-xs);
+}
+
 #topnav-signin a {
   color: var(--ink);
   padding: 7px 15px;

@@ -1,27 +1,33 @@
 ---
-// Homepage — the SK-WEB-018 two-door home in the SK-WEB-020 calm token
-// system. Tokens + shared primitives live in global.css; this page's
-// layout (hero, proof card, the two doors, trust strip) lives in
-// apps/web/src/styles/home2.css, scoped under `.home2`.
+// Homepage — SK-WEB-031 (one-input home, section rhythm) in the SK-WEB-020
+// calm token system. Tokens + shared primitives live in global.css; this
+// page's layout lives in apps/web/src/styles/home2.css, scoped `.home2`.
 //
-// Decisions preserved verbatim:
-//  - the prior bet / SK-WEB-018 — dual front door (Door A agent-memory via MCP,
-//    Door B connect-your-ClickHouse). Same two paths, same destinations.
-//  - GLOBAL-007 — no login wall before first value (Door A keeps the quiet
-//    `/app/new` link; the trust strip states it plainly).
-//  - SK-WEB-003 — runnable proof above the fold, not feature bullets (the
-//    hero proof card shows a representative answer + data + trace).
-//  - SK-WEB-005 — answer + data + trace shape echoed in the proof card.
-//  - SK-WEB-016 — the shared <McpInstall> stays the single source of truth
-//    for Door A; it inherits the calm palette via scoped token overrides.
+// Section rhythm (END_GOAL row 9 first, then the DBA loop in order):
+//   1. Hero — one promise, ONE input + starter goals (SK-ONBOARD-008), the
+//      page's single promoted CTA. Anonymous DB before any sign-in
+//      (GLOBAL-007 / SK-ANON-001). Live `/v1/ask`, never canned (SK-WEB-008).
+//   2. How it works — infer → evolve → optimize, three steps.
+//   3. Diff-then-confirm — the trust moment (SK-TRUST-001 / SK-TRUST-002).
+//   4. Surfaces — SDK · element · MCP · CLI, honest status per progress.md §0.
+//   5. Ways in — agent memory (SK-WEB-016 <McpInstall>) and BYO warehouse
+//      (SK-WEB-019 /app/connect), demoted from doors to a band.
+//   6. Under the hood — poster portal to /architecture/ (SK-WEB-021).
+//   7. Closing CTA + the facts we can measure.
+// Accent budget (SK-WEB-020): one promoted CTA per band.
 
 import AuthedHomeBanner from "../components/AuthedHomeBanner.astro";
+import CreateForm from "../components/CreateForm.tsx";
 import Footer from "../components/Footer.astro";
 import McpInstall from "../components/McpInstall.astro";
 import Topnav from "../components/Topnav.astro";
 import Base from "../layouts/Base.astro";
 import { appHref } from "../lib/app-href";
 import "../styles/home2.css";
+
+// Default to "" (same-origin) — `apps/web` is bundled into the
+// `nlqdb-api` Worker's [assets] binding (SK-AUTH-016).
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 ---
 
 <Base
@@ -36,179 +42,181 @@ import "../styles/home2.css";
     <main>
       <AuthedHomeBanner />
 
-      {/* ---- Hero: statement + honest proof (SK-WEB-003 / SK-WEB-005) ---- */}
+      {/* ---- 1. Hero: one promise, one input (END_GOAL row 9) ---- */}
       <section class="hero2" aria-labelledby="hero-title">
-        <div class="hero2__col reveal">
-          <span class="hero2__pill"><span class="dot"></span>Pre-beta · free while we build</span>
-          <h1 class="hero2__title" id="hero-title">
-            nlqdb — your <em>autonomous DBA</em>.
-          </h1>
-          <p class="hero2__say">
-            Build a real app from day one with no data modeling. nlqdb infers your schema from
-            how you use it, evolves it, and keeps it optimized — and shows you every change before
-            it lands.
+        <span class="hero2__pill"><span class="dot"></span>Pre-beta · free while we build</span>
+        <h1 class="hero2__title" id="hero-title">
+          Your autonomous DBA. <em>No data modeling.</em>
+        </h1>
+        <p class="hero2__say">
+          Write rows from day one. nlqdb infers the schema from your inserts, evolves it as your
+          app changes, keeps it fast — and shows you every change before it lands.
+        </p>
+
+        {/* The one input. Starter chips fill it, never submit (SK-ONBOARD-008);
+            the form's own title is visually hidden here because the H1 above
+            is the promise. */}
+        <div class="hero2__form">
+          <CreateForm client:load apiBase={apiBase} headingLevel="h2" />
+        </div>
+      </section>
+
+      {/* ---- 2. How it works: the DBA loop in three steps ---- */}
+      <section class="how" aria-labelledby="how-title">
+        <header class="band__head reveal">
+          <p class="eyebrow">How it works</p>
+          <h2 class="band__title" id="how-title">You write app data. The DBA does the rest.</h2>
+        </header>
+
+        <ol class="steps">
+          <li class="step reveal">
+            <span class="step__num">1</span>
+            <h3 class="step__title">Write rows, not DDL</h3>
+            <p class="step__body">
+              Describe what you're building, then insert like the tables already exist. There is
+              no <code>CREATE TABLE</code> to write on any surface.
+            </p>
+            <pre class="step__code"><code><span class="tk-c">// first write — no schema yet</span>
+add an order: 2 lattes, table 4</code></pre>
+          </li>
+          <li class="step reveal">
+            <span class="step__num">2</span>
+            <h3 class="step__title">The schema is inferred — and evolves</h3>
+            <p class="step__body">
+              A field nobody modeled? The preview names the added column and the row lands in the
+              same commit. Old queries keep answering.
+            </p>
+            <pre class="step__code"><code><span class="tk-add">+ table  orders (drink, qty, table_no)</span>
+<span class="tk-add">+ column orders.tip numeric</span> <span class="tk-c">← later</span></code></pre>
+          </li>
+          <li class="step reveal">
+            <span class="step__num">3</span>
+            <h3 class="step__title">
+              It optimizes; you click
+              <span class="badge" title="Optimizer proposals ship in the next engine phase">in progress</span>
+            </h3>
+            <p class="step__body">
+              Indexes, retypes, engine moves — each proposal previewed with its expected effect and
+              its inverse recorded first. Apply once; undo once.
+            </p>
+            <pre class="step__code"><code>proposal  index orders(created_at)
+effect    "orders today" scans less
+<span class="tk-c">[ apply ]  [ undo ]</span></code></pre>
+          </li>
+        </ol>
+      </section>
+
+      {/* ---- 3. Diff-then-confirm: the trust moment (SK-TRUST-001/-002) ---- */}
+      <section class="confirm band band--tint" aria-labelledby="confirm-title">
+        <div class="confirm__copy reveal">
+          <p class="eyebrow">Before anything changes</p>
+          <h2 class="band__title" id="confirm-title">Every write shows its diff. You confirm.</h2>
+          <p class="band__lede">
+            Writes come back as <code>requires_confirm</code> with a diff and the compiled SQL.
+            Nothing runs until you say so.
           </p>
-          <div class="hero2__actions">
-            <a class="cta" href="/auth/sign-in/?return_to=/app/connect/">Connect your warehouse &rarr;</a>
-            <a class="cta cta--ghost" href="#ways">See both ways in</a>
-          </div>
-          <p class="hero2__jump">
-            No account needed to try — <a href={appHref("/app/new/")}>just describe your data &rarr;</a>
-          </p>
+          <ul class="ticks">
+            <li>One preview, one confirm — no undo needed after a write you approved</li>
+            <li>The trace is always attached: cache · plan · validate · exec · summarize</li>
+            <li>Reads are validated against a fail-closed allow-list before they run</li>
+          </ul>
         </div>
 
-        {/* Proof: a representative reply. Answer + data + trace, the three
-            parts every nlqdb reply has. Numbers are an honest example. */}
-        <figure class="proof reveal" aria-label="Example nlqdb reply">
-          <div class="proof__ask">
-            <span class="prompt">&rsaquo;</span>
-            how many orders today, by drink
+        {/* Representative shape of the preview → confirm exchange. */}
+        <figure class="preview reveal" aria-label="Example write preview">
+          <div class="preview__ask"><span class="prompt">&rsaquo;</span>add a $2 tip to order 418</div>
+          <div class="preview__diff">
+            <span class="preview__tag">requires_confirm</span>
+            <dl class="preview__kv">
+              <dt>verb</dt><dd>UPDATE</dd>
+              <dt>table</dt><dd>orders</dd>
+              <dt>rows</dt><dd>1</dd>
+              <dt>schema</dt><dd><span class="tk-add">+ column orders.tip numeric</span></dd>
+            </dl>
+            <pre class="preview__sql"><code>UPDATE orders SET tip = 2.00 WHERE id = 418;</code></pre>
           </div>
-          <p class="proof__answer">
-            <strong>91 orders</strong> today across three drinks.
-          </p>
-          <table class="proof__table">
-            <thead>
-              <tr><th>Drink</th><th>Orders</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Latte</td><td>42</td></tr>
-              <tr><td>Cappuccino</td><td>31</td></tr>
-              <tr><td>Cold brew</td><td>18</td></tr>
-            </tbody>
-          </table>
-          <div class="proof__trace">
-            <span class="step">cache</span>&middot;
-            <span class="step">plan</span>&middot;
-            <span class="step">validate</span>&middot;
-            <span class="step">exec</span>&middot;
-            <span class="step">summarize</span>
-            <span class="ms">240 ms</span>
+          <div class="preview__actions" aria-hidden="true">
+            <span class="cta cta--ghost preview__btn">Confirm</span>
+            <span class="preview__trace">cache · plan · validate <span class="ms">waiting for you</span></span>
           </div>
-          <figcaption class="proof__cap">
-            A representative reply — every answer comes back as plain English, the data, and a
-            trace you can open.
+          <figcaption class="preview__cap">
+            A representative preview — the diff names the row effect and any column the write adds.
           </figcaption>
         </figure>
       </section>
 
-      {/* ---- Two ways to start (SK-WEB-018 dual front door) ---- */}
-      <section class="ways" id="ways" aria-labelledby="ways-title">
-        <header class="ways__head reveal">
-          <p class="ways__eyebrow">Two ways to start</p>
-          <h2 class="ways__title" id="ways-title">Pick the door that fits.</h2>
+      {/* ---- 4. Surfaces: one engine, four doors into it (progress.md §0) ---- */}
+      <section class="surfaces" aria-labelledby="surfaces-title">
+        <header class="band__head reveal">
+          <p class="eyebrow">One engine, every surface</p>
+          <h2 class="band__title" id="surfaces-title">Use it from wherever you build.</h2>
         </header>
+        <ul class="tiles">
+          <li class="tile reveal">
+            <span class="tile__kind">SDK</span>
+            <code class="tile__code">npm i @nlqdb/sdk</code>
+            <p class="tile__body">The only HTTP client — create, ask, run, stream.</p>
+            <a class="tile__link" href="/integrations/">Integrate &rarr;</a>
+          </li>
+          <li class="tile reveal">
+            <span class="tile__kind">Element</span>
+            <code class="tile__code">&lt;nlq-data goal="orders today"&gt;</code>
+            <p class="tile__body">One tag answers a question inline on any page.</p>
+            <a class="tile__link" href="/integrations/">Embed &rarr;</a>
+          </li>
+          <li class="tile reveal">
+            <span class="tile__kind">MCP</span>
+            <code class="tile__code">mcp.nlqdb.com/mcp</code>
+            <p class="tile__body">Your agent writes and queries its own database.</p>
+            <a class="tile__link" href="/agents/">For agents &rarr;</a>
+          </li>
+          <li class="tile reveal">
+            <span class="tile__kind">CLI <span class="badge">phase 2</span></span>
+            <code class="tile__code">nlq ask "orders today"</code>
+            <p class="tile__body">Same engine from the terminal; bootstrap landed.</p>
+            <a class="tile__link" href="/integrations/">Install &rarr;</a>
+          </li>
+        </ul>
+      </section>
 
+      {/* ---- 5. Ways in: agent memory + BYO warehouse (demoted doors) ---- */}
+      <section class="ways band" aria-labelledby="ways-title">
+        <header class="band__head reveal">
+          <p class="eyebrow">Also a fit if</p>
+          <h2 class="band__title" id="ways-title">Your agent needs memory, or your data already lives somewhere.</h2>
+        </header>
         <div class="ways__grid">
-          {/* Door A — agent memory. McpInstall is the source of truth. */}
-          <article class="door reveal" aria-labelledby="door-a-title">
-            <span class="door__num">A</span>
-            <h3 class="door__title" id="door-a-title">Use it as agent memory</h3>
-            <p class="door__lede">
-              Give your agent a real Postgres database to write to as it learns — typed rows,
-              queried in English. Install it in your host over MCP.
+          <article class="way reveal" aria-labelledby="way-a-title">
+            <h3 class="way__title" id="way-a-title">Use it as agent memory</h3>
+            <p class="way__lede">
+              A real Postgres your agent writes to as it learns — typed rows, queried in English,
+              installed in your host over MCP.
             </p>
-
-            <McpInstall compact={false} />
-
-            <p class="door__quiet">
-              Not building an agent?
-              <a href={appHref("/app/new/")}>just describe your data &rarr;</a>
-            </p>
+            <McpInstall compact={true} />
           </article>
-
-          {/* Door B — connect your ClickHouse. One primary CTA + security line. */}
-          <article class="door reveal" aria-labelledby="door-b-title">
-            <span class="door__num">B</span>
-            <h3 class="door__title" id="door-b-title">Question your ClickHouse</h3>
-            <p class="door__lede">
-              Point nlqdb at the warehouse you already run — ClickHouse or Postgres. It reads your
+          <article class="way reveal" aria-labelledby="way-b-title">
+            <h3 class="way__title" id="way-b-title">Question the warehouse you already run</h3>
+            <p class="way__lede">
+              Point nlqdb at your ClickHouse or Postgres with a read-only connection. It reads the
               schema; you ask in English.
             </p>
-
-            <div class="connmock" aria-hidden="true">
-              <span class="connmock__label">connection string</span>
-              <code class="connmock__field"
-                >clickhouse://reader:&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;@warehouse:9440/analytics</code
-              >
-              <span class="connmock__seal">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <rect x="4" y="11" width="16" height="9" rx="2"></rect>
-                  <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
-                </svg>
-                sealed
-              </span>
-            </div>
-
             <p class="secure">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <rect x="4" y="11" width="16" height="9" rx="2"></rect>
                 <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
               </svg>
-              <span>
-                <strong>Your connection string is sealed server-side</strong> — never stored in
-                your browser.
-              </span>
+              <span><strong>Sealed server-side</strong> — the connection string is never stored in your browser.</span>
             </p>
-
-            <div class="door__cta-row">
-              <a class="cta door__cta" href="/auth/sign-in/?return_to=/app/connect/">
-                Connect your ClickHouse &rarr;
-              </a>
-            </div>
-            <p class="door__quiet">Sign in (always free), then paste a read-only connection string.</p>
+            <a class="cta cta--ghost way__cta" href="/auth/sign-in/?return_to=/app/connect/">
+              Connect a warehouse &rarr;
+            </a>
+            <p class="way__quiet">Sign in (always free), then connect read-only.</p>
           </article>
         </div>
-
-        {/* ---- Trust strip — quiet, honest reassurances ---- */}
-        <ul class="trust reveal" aria-label="What you can count on">
-          <li class="trust__item">
-            <span class="trust__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 13l4 4L19 7"></path>
-              </svg>
-            </span>
-            <div>
-              <p class="trust__title">No login wall</p>
-              <p class="trust__body">Describe your data and get a working answer before you ever sign in.</p>
-            </div>
-          </li>
-          <li class="trust__item">
-            <span class="trust__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"></path>
-              </svg>
-            </span>
-            <div>
-              <p class="trust__title">Read-only by default</p>
-              <p class="trust__body">Connect with a read-only string; writes are previewed before they run.</p>
-            </div>
-          </li>
-          <li class="trust__item">
-            <span class="trust__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 6l8 4 8-4"></path>
-                <path d="M4 6v12l8 4 8-4V6l-8-4z"></path>
-              </svg>
-            </span>
-            <div>
-              <p class="trust__title">Every answer shows its work</p>
-              <p class="trust__body">A trace with timings sits under each reply — honest latency, no spinner-lies.</p>
-            </div>
-          </li>
-        </ul>
       </section>
 
-      {/* ---- Under the hood — a poster portal to the 3D architecture map.
-          SK-WEB-021: the map itself never ships on `/` (static-first,
-          Lighthouse, one-motion budget) — this band is a 0-JS image of the
-          real scene linking to /architecture/, so the home page pays
-          nothing and never lies about what the click delivers. */}
+      {/* ---- 6. Under the hood — poster portal to the 3D map (SK-WEB-021) ---- */}
       <section class="undermap reveal" aria-labelledby="undermap-title">
         <a class="undermap__link" href="/architecture/">
           <img
@@ -221,7 +229,7 @@ import "../styles/home2.css";
             alt="A 3D map of the nlqdb engine: three lit zones — you ask, the engine, your data — connected by flowing jade request paths."
           />
           <span class="undermap__copy">
-            <span class="undermap__eyebrow">Under the hood</span>
+            <span class="eyebrow">Under the hood</span>
             <h2 class="undermap__title" id="undermap-title">One engine, seen from above.</h2>
             <span class="undermap__lede">
               Fly through the request path — five surfaces, one engine, your data — and click
@@ -231,6 +239,22 @@ import "../styles/home2.css";
           </span>
         </a>
       </section>
+
+      {/* ---- 7. Close: one CTA + the facts we can measure ---- */}
+      <section class="close band band--accent reveal" aria-labelledby="close-title">
+        <h2 class="band__title" id="close-title">Describe what you're building.</h2>
+        <p class="band__lede">
+          One sentence gets you a working database — no account, no card, no config. Sign in
+          later to keep it and its history.
+        </p>
+        <a class="cta" href={appHref("/app/new/")}>Describe your data &rarr;</a>
+        <ul class="facts" aria-label="Measured facts">
+          <li><strong>16.4 ms</strong> p50 on cache hits <span>measured 2026-07-27</span></li>
+          <li><strong>$0</strong> free tier <span>no card, ever</span></li>
+          <li><strong>0 %</strong> markup <span>on your own LLM key</span></li>
+          <li><strong>Every write</strong> previewed <span>diff before commit</span></li>
+        </ul>
+      </section>
     </main>
 
     <Footer />
@@ -238,8 +262,8 @@ import "../styles/home2.css";
 </Base>
 
 <script>
-  // Provision the anonymous-mode token on first visit (SK-ANON-001) — no
-  // cost; useful when the visitor crosses to /app/new.
+  // Provision the anonymous-mode token on first visit (SK-ANON-001) — the
+  // hero's create call needs it, and it carries over to /app/new.
   import { getOrMintAnonToken } from "../lib/anon";
   getOrMintAnonToken();
 </script>
