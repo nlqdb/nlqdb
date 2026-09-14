@@ -2,7 +2,7 @@
 // SK-WEB-016 — One-click MCP install affordance (marketing SSR venues).
 //
 // This Astro component covers the marketing venues: `/agents` final
-// connect card, the two-door home Door A, and `/integrations` MCP-hosts
+// connect card, the home's "ways in" band (SK-WEB-031), and `/integrations` MCP-hosts
 // section. The product-side React venues (post-create CreateResultView +
 // the `/app` chat-window install popover) render the shared React mirror
 // `components/McpInstallView.tsx` instead — five venues total, all
@@ -263,7 +263,7 @@ const rowClass = compact ? "mcpinstall__row mcpinstall__row--compact" : "mcpinst
    *
    * `container-type: inline-size` so the row grid below can pick its
    * column count from the COMPONENT's own width, not the viewport's.
-   * Door A on `/` renders this inside a half-viewport card; a
+   * The home "ways in" card renders this at half-viewport width; a
    * viewport media query would jump to 4 cols at ≥1024px and overflow
    * the ~470px container, crushing the buttons into each other. */
   .mcpinstall {

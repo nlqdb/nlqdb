@@ -1,5 +1,6 @@
 // SK-WEB-019 — BYO-connect island for `/app/connect`. The product-side
-// landing for Door B ("Question your ClickHouse", SK-WEB-018). Mounted
+// landing for the home's "Question the warehouse you already run" way in
+// (SK-WEB-031). Mounted
 // behind the page's auth guard, so the cookie session is the principal.
 //
 // Secrets discipline (GLOBAL-031): the connection URL is a `type="password"`
