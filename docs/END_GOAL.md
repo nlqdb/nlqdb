@@ -48,6 +48,12 @@ replaces. **Scalable**: that one design holds at 1 table and 1 000 tables,
 **Not in this flow:** no wizard, plan-picker or verification wall
 (`SK-ONBOARD-001`), no advisory-only tab, no approval queue.
 
+**Surface feel** (`SK-WEB-031`): nlqdb.com has one primary action — the
+goal input — and reads top-down as the loop above: how it works →
+diff-then-confirm → surfaces → ways in → one closing CTA. Solve, Compare and
+Blog are secondary, grouped under one Content menu; they never compete with
+row 9.
+
 ## Empty, error, and edge states
 
 | State | Trigger | Sees | Can do |

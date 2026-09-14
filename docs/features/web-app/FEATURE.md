@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Web App
 
 **One-liner:** Marketing + product web app — onboarding, anonymous-mode default, demo dataset.
-**Status:** partial (Phase 1.5 — Phase 1 surfaces shipped; GLOBAL-024 wishlist landed via `SK-EVENTS-011`; `SK-WEB-010` bridges marketing-create Copy-snippet to the chat-side Copy snippet).
+**Status:** partial (Phase 1.5 — Phase 1 surfaces shipped; `SK-WEB-031` home IA + Content nav landed 2026-09-14).
 **Owners (code):** `apps/web/**`
 **Cross-refs:** docs/architecture.md §3.1–§3.2 (marketing + platform web app) · docs/runbook.md §10 (P1, P3, P5) · docs/phase-plan.md §2 (Phase 1 web slices)
 
@@ -33,11 +33,10 @@ when-to-load:
 
 ### SK-WEB-002 — Goal-first hero: one input, no pricing dialog, no signup wall
 
-- **Status:** Replaced in part by [`SK-WEB-017`](./decisions/SK-WEB-017-connect-first-hero.md). The no-signup-wall floor (GLOBAL-007) and the morph-to-chat behaviour are **retained**; only the "one input is THE hero" structural claim is replaced — the home hero now leads with the SK-WEB-016 `<McpInstall>` row as primary, with the goal input retained as a secondary affordance below it. `/agents` already followed that split; SK-WEB-017 extends it to `/`.
-- **Decision:** The marketing-site hero centres a single goal input — *"What are you building?"* — that morphs into a chat via View Transitions (first reply streams; the DB materializes silently). No pricing dialog, no "create your first database" button, no signup wall before first value. (SK-WEB-017 demotes the input from *primary* to *secondary* on the home hero; the no-wall floor and morph behaviour below are retained.)
+- **Decision:** The marketing-site hero centres a single goal input — *"What are you building?"* — whose submit creates the anonymous DB and renders the result in place. No pricing dialog, no "create your first database" button, no signup wall before first value. The input is the home's one primary action (`SK-WEB-031`, `END_GOAL` row 9).
 - **Core value:** Goal-first, Effortless UX, Free
 - **Why:** No persona ever woke up wanting to "create a database" (`docs/runbook.md §10`). The goal-first inversion (`docs/architecture.md §0.1`) is core; every required input before first value drops the funnel, so the no-wall floor is non-negotiable.
-- **Consequence in code:** The chat morph is in-place (View Transitions), not navigation; the input works with JS off (submits to a fallback chat URL). No dialog / modal / "are you sure" interrupts first value.
+- **Consequence in code:** The create result renders in place (`CreateForm.tsx`), not by navigation. No dialog / modal / "are you sure" interrupts first value.
 - **Alternatives rejected:**
   - Required signup with "free trial" framing — worse for activation; contradicts `GLOBAL-007`.
   - Region picker + project name on first run — `GLOBAL-020` rejects this.
@@ -47,7 +46,7 @@ when-to-load:
 - **Decision:** Above the fold on `nlqdb.com/` is either a working snippet or proof that snippets work — never feature bullets, logo grids, or "trusted by" strips.
 - **Core value:** Honest latency, Creative, Goal-first
 - **Why:** "The contrast IS the message" — every snippet is the entire backend. Marketing copy that we can't back up with a working snippet is a smell. Working snippets above the fold also do double duty for AEO/GEO (LLM crawlers cite working examples preferentially) and for our own conversion data (which surface visitors copy first is leading signal for framework-wrapper investment).
-- **Consequence in code:** Under the `SK-WEB-018` two-door home the proof is Door A's `<McpInstall>` row plus the real-`/v1/ask` demo (`SK-WEB-008`) — live, never canned. The tabbed snippet panel (`CodePanel.astro`, one snippet per surface from [`snippets.ts`](../../../apps/web/src/data/snippets.ts), copy → `home.snippet_copied`) is currently **unmounted** from `/`; its status matrix stays synced to [`progress.md §0`](../../progress.md) against a remount, and unshipped surfaces always carry an honest phase badge — no fake working claims.
+- **Consequence in code:** Under the `SK-WEB-031` home the proof is the hero's live `<CreateForm>` (real `/v1/ask`, `SK-WEB-008` — never canned) and, one scroll down, the `requires_confirm` preview figure; unshipped surfaces (CLI, optimizer proposals) carry an honest phase badge sourced from [`progress.md §0`](../../progress.md) — no fake working claims. The tabbed snippet panel (`CodePanel.astro`) stays unmounted from `/`.
 
 ### SK-WEB-004 — Demo endpoint `POST /v1/demo/ask`: no auth, canned fixtures, server-owned
 
@@ -109,35 +108,30 @@ When `GET /v1/billing/status` reports `cancelAtPeriodEnd`, the `/pricing` curren
 
 ### SK-WEB-015 — Three-beat homepage + quiet-brutalism token system
 
-**Status:** replaced — the three-beat IA on `/` by [`SK-WEB-018`](./decisions/SK-WEB-018-two-door-home.md) (two-door home), and the quiet-brutalism **token system by [`SK-WEB-020`](./decisions/SK-WEB-020-calm-token-system.md)** (the calm system), site-wide.
+**Status:** replaced — the three-beat IA on `/` by [`SK-WEB-031`](./decisions/SK-WEB-031-one-input-home.md), and the quiet-brutalism **token system by [`SK-WEB-020`](./decisions/SK-WEB-020-calm-token-system.md)** (the calm system), site-wide.
 
-**Body:** [`decisions/SK-WEB-015-three-beat-quiet-brutalism.md`](./decisions/SK-WEB-015-three-beat-quiet-brutalism.md) (replaced; see SK-WEB-018 / SK-WEB-020).
+**Body:** [`decisions/SK-WEB-015-three-beat-quiet-brutalism.md`](./decisions/SK-WEB-015-three-beat-quiet-brutalism.md) (replaced; see SK-WEB-031 / SK-WEB-020).
 
 ### SK-WEB-016 — One-click MCP install affordance: shared `<McpInstall>` at five venues, deep-link where supported
 
 **Body:** [`decisions/SK-WEB-016-mcp-install-affordance.md`](./decisions/SK-WEB-016-mcp-install-affordance.md).
-A shared MCP-install surface (host descriptors in `lib/mcp-install.ts`) renders per-host buttons — deep-link, command, or paste-ready JSON — at five venues: Door A of the two-door home, the `/agents` hero, post-create `CreateResultView`, `/integrations`, and the `/app` chat window. `McpInstall.astro` (marketing) and the shared React `McpInstallView` keep those venues from drifting; `pk_live_REPLACE_ME` + a sign-in nudge on anon surfaces (`SK-ANON-012`/`SK-WEB-010`), and `SK-WEB-002` keeps install off the homepage hero.
+A shared MCP-install surface (host descriptors in `lib/mcp-install.ts`) renders per-host buttons — deep-link, command, or paste-ready JSON — at five venues: the home's *ways in* band (`SK-WEB-031`), the `/agents` hero, post-create `CreateResultView`, `/integrations`, and the `/app` chat window. `McpInstall.astro` (marketing) and the shared React `McpInstallView` keep those venues from drifting; `pk_live_REPLACE_ME` + a sign-in nudge on anon surfaces (`SK-ANON-012`/`SK-WEB-010`), and `SK-WEB-002` keeps install off the homepage hero.
 
 ### SK-WEB-017 — Connect-first hero on the agent-memory home; goal input retained as secondary
 
-**Status:** replaced in part by [`SK-WEB-018`](./decisions/SK-WEB-018-two-door-home.md) — the connect-first vertical hero on `/` is replaced by the two-door chooser; SK-WEB-017's `<McpInstall>`-primacy is **absorbed into Door A**.
+**Status:** replaced by [`SK-WEB-031`](./decisions/SK-WEB-031-one-input-home.md) — the goal input is the home's primary action again; `<McpInstall>` lives in the *ways in* band.
 
 **Body:** [`decisions/SK-WEB-017-connect-first-hero.md`](./decisions/SK-WEB-017-connect-first-hero.md).
-
-### SK-WEB-018 — Two-door home: agent-memory door + question-your-ClickHouse door
-
-**Body:** [`decisions/SK-WEB-018-two-door-home.md`](./decisions/SK-WEB-018-two-door-home.md).
-The home (`/`) becomes a responsive two-door chooser (side-by-side wide, stacked narrow): **Door A** "Use as agent memory" (the SK-WEB-016 `<McpInstall>` host row, click→reveal-fallback-in-place, plus a quiet *"or just describe your data →"* link to `/app/new`) and **Door B** "Question your ClickHouse" (CTA → sign-in → `/app/connect`). Replaces the SK-WEB-015 / SK-WEB-017 three-beat-on-`/` IA (now rendered in the SK-WEB-020 calm token system; SK-WEB-017's McpInstall primacy absorbed into Door A); the literal expression of the prior bet's dual front door; GLOBAL-007 preserved via the `/app/new` link.
 
 ### SK-WEB-019 — `/app/connect`: auth-guarded BYO-connect page + `ConnectForm.tsx`
 
 **Body:** [`decisions/SK-WEB-019-connect-page.md`](./decisions/SK-WEB-019-connect-page.md).
-`/app/connect` is auth-guarded (anon → `/auth/sign-in?return_to=/app/connect`) and mounts `ConnectForm.tsx`: an engine select, a `type="password"` connection URL **never persisted** client-side, `POST /v1/db/connect` → schema preview → "Question it now →". Door B's product landing (`SK-WEB-018`); backend [`SK-DBCONN-001`](../byo-connect/FEATURE.md). Also reached from the `/app` `LeftRail` engine chips that deep-link `?engine=` — one connect page, no second flow (`GLOBAL-017`).
+`/app/connect` is auth-guarded (anon → `/auth/sign-in?return_to=/app/connect`) and mounts `ConnectForm.tsx`: an engine select, a `type="password"` connection URL **never persisted** client-side, `POST /v1/db/connect` → schema preview → "Question it now →". The home's warehouse way-in lands here (`SK-WEB-031`); backend [`SK-DBCONN-001`](../byo-connect/FEATURE.md). Also reached from the `/app` `LeftRail` engine chips that deep-link `?engine=` — one connect page, no second flow (`GLOBAL-017`).
 
 ### SK-WEB-020 — Calm token system (replaces SK-WEB-015's quiet-brutalism tokens)
 
 **Body:** [`decisions/SK-WEB-020-calm-token-system.md`](./decisions/SK-WEB-020-calm-token-system.md).
-`global.css` re-based to a **calm** system site-wide (details in the Body); retains SK-WEB-015's one-accent/one-motion budget + SK-WEB-018 IA / GLOBAL-007 / SK-WEB-003 invariants.
+`global.css` re-based to a **calm** system site-wide (details in the Body); retains SK-WEB-015's one-accent/one-motion budget + GLOBAL-007 / SK-WEB-003 invariants.
 
 ### SK-WEB-021 — `/architecture`: interactive 3D system map on its own route, never on `/`
 
@@ -184,6 +178,16 @@ Static agent-discovery surfaces — `/.well-known/api-catalog` (RFC 9727, advert
 **Body:** [`decisions/SK-WEB-029-app-cookie-consent-gate.md`](./decisions/SK-WEB-029-app-cookie-consent-gate.md).
 The two non-essential `/app` cookies are consent-gated (ePrivacy Art 5(3)): PostHog by a first-party prompt (`lib/consent.ts` + `ConsentBanner.astro`; `AppAnalytics.astro` wraps its load in `whenConsentGranted`), Tawk chat by Tawk's native Consent Form (dashboard toggle — keeps the bubble visible, blocks cookies until in-widget accept). Session cookie never gated; marketing stays banner-free (`GLOBAL-034`).
 
+### SK-WEB-030 — OAuth-first `/app/connect`: engine-scoped, one CTA at a time
+
+**Body:** [`decisions/SK-WEB-030-oauth-first-connect-page.md`](./decisions/SK-WEB-030-oauth-first-connect-page.md).
+Postgres shows a Supabase-OAuth checkbox (on by default) whose sole CTA is "Connect Supabase →"; unchecked, or ClickHouse, shows the SK-WEB-019 paste form. Never more than one CTA visible.
+
+### SK-WEB-031 — One-input home with a fixed section rhythm; content pages are secondary nav
+
+**Body:** [`decisions/SK-WEB-031-one-input-home.md`](./decisions/SK-WEB-031-one-input-home.md).
+`/` = one primary action (the anonymous goal input + starter goals, `END_GOAL` row 9) then how-it-works → diff-then-confirm → surfaces → ways in (agent memory, BYO warehouse) → under the hood → one closing CTA; one promoted CTA per band. Top nav is Agents · Pricing · Docs · **Content ▾** · Sign in — Solve / Compare / Blog / Manifesto live only inside the Content disclosure. Replaces the two-door home (former `SK-WEB-018`).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
@@ -206,12 +210,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Sharing a query result by link — Parked until the P1 share slice** (`GLOBAL-033`, reuse): renders the existing plan-cache entry (`GLOBAL-006`) read-only — no new store/auth, so it is wiring.
 - **CSV upload — Parked until Phase 2** (`GLOBAL-033`); P3 per `docs/runbook.md §10`.
 
-## Happy path walkthroughs
-
-The marketing site (`nlqdb.com`) and the platform web app
-(`nlqdb.com/app`) are themselves the demo — the user-facing flow is what
-they will see when they visit. The canonical "first 22 seconds" copy and
-the post-sign-in adoption flow live in
-[`docs/research/personas.md` §P1 (Maya, the Solo Builder)](../../research/personas.md);
-internal contracts those flows depend on are the `SK-WEB-*` and
-[`SK-ONBOARD-*`](../onboarding/FEATURE.md) decisions.
+The canonical first-visit copy lives in
+[`docs/research/personas.md` §P1](../../research/personas.md); the flow
+itself is [`END_GOAL.md`](../../END_GOAL.md) row 9.

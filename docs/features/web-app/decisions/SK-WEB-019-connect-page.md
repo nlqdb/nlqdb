@@ -6,8 +6,8 @@
   auth-guard, `type="password"`, and never-persist-client-side invariants below are
   **retained** and now govern the paste form.
 
-The product-side landing for Door B of the two-door home
-([`SK-WEB-018`](./SK-WEB-018-two-door-home.md)); the backend it posts to is
+The product-side landing for the home's *question your warehouse* way in
+([`SK-WEB-031`](./SK-WEB-031-one-input-home.md)); the backend it posts to is
 [`SK-DBCONN-001`](../../byo-connect/FEATURE.md) (`POST /v1/db/connect`).
 
 - **Decision:** `apps/web/src/pages/app/connect.astro` is an **auth-guarded**
