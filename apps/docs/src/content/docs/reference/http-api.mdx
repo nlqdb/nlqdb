@@ -95,7 +95,11 @@ retryable and which need a human. `code` is the discriminant the SDK exposes as
 | `invalid_preset` | 400 | The schema preset doesn't exist (`body.params.allowed`). | No | Use a supported preset. |
 | `preset_disabled` | 400 | That preset isn't enabled on this deployment. | No | Create without a preset, or ask the operator to enable it. |
 | `preset_engine_conflict` | 400 | The preset doesn't run on the requested engine. | No | Drop the engine override, or pick a compatible preset. |
-| `provision_failed` | 502 | nlqdb couldn't finish creating the database. | Yes | Retry; nothing was left half-created. |
+| `provision_failed` | 502 | nlqdb couldn't finish creating the database. | Yes | Retry; `params.rolled_back` says whether anything was left behind. |
+| `infer_failed` | 422 | The create goal was too vague (`params.reason: ambiguous_goal`) or the model's schema plan failed validation (`plan_invalid`). | No | Describe what you want to build in concrete terms. |
+| `compile_failed` | 422 | The plan for that goal couldn't be turned into a valid schema. | No | Rephrase the goal naming the things you want to track. |
+| `ddl_invalid` | 500 | nlqdb produced a schema for that goal it wouldn't run (its own bug). | No | Try a different wording; if it persists, report it. |
+| `embed_failed` | 502 | The database was created (`params.dbId`), but its search seed didn't build. | Yes | Query it anyway; search warms up on its own. |
 | `oauth_not_configured` | 503 | This deployment can't connect that provider by OAuth. | No | Connect with a connection URL instead. |
 | `pick_expired` | 410 | The connection choice expired before it was confirmed. | No | Start the connection again. |
 | `unknown_error` | 5xx | A 5xx with no parseable envelope. | Yes | Retry; if persistent, report it. |
