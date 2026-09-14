@@ -36,7 +36,17 @@ export async function extendSchema(
   let model: string;
   let confidence: number;
   try {
-    const resp = await deps.llm.extendSchema({ goal: args.goal, schema: args.schema });
+    const resp = await deps.llm.extendSchema({
+      goal: args.goal,
+      schema: args.schema,
+      // GLOBAL-041 Phase A — let the router fail over to the next provider when
+      // the head planner returns a WidenPlanSchema-invalid plan (qwen does this
+      // intermittently; gemini designs the same shape validly — run-210
+      // finding). This predicate ONLY gates provider fallthrough; the
+      // authoritative Zod parse below is unchanged and remains the security gate
+      // (SK-HDC-003 layer 1).
+      validate: (plan) => WidenPlanSchema.safeParse(plan).success,
+    });
     candidate = resp.plan;
     model = resp.model;
     confidence = resp.confidence;

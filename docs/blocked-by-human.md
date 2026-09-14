@@ -35,7 +35,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~5 min | **Approve / re-enable Deploy API** — prod `apps/api` is frozen at run 198; every deploy is `action_required` (never ran) since 2026-09-08, so ALL Phase A widen-on-write code (runs 199–209, now incl. the unseen-column routing) is UNDEPLOYED and KPI 1 reads live 0 %. Approve the pending runs (Actions → Deploy API) or fix the repo Actions-approval setting that began gating on 09-08 | 2026-09-08 |
+| 1 | ~5 min | **Approve / re-enable Deploy API** — prod `apps/api` is frozen at run 198; every deploy is `action_required` (never ran) since 2026-09-08, so ALL Phase A widen-on-write code (runs 199–211, incl. unseen-column routing + provider-fallthrough that scores 100 % agent-side) is UNDEPLOYED and KPI 1 reads live 0 %. Approve the pending runs (Actions → Deploy API) or fix the repo Actions-approval setting that began gating on 09-08 | 2026-09-08 |
 | 2 | ~30 min | Fire the Show HN launch sequence — condition-gated on `GLOBAL-041` Phase A (KPI 1 live and ≥ 95 %, which needs #1 deployed first); then only your sitting remains | 2026-06-13 |
 | 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 | 4 | ~10 min | Submit nlqdb to PulseMCP + mcp.directory — two manual directory submits (registry cascade never reached them); lowest-yield, payloads ready | 2026-09-01 |
@@ -72,9 +72,10 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    Every `Deploy API` workflow run since run 199 (2026-09-08) has conclusion
    `action_required` — it is waiting for approval and never executes; the last
    successful deploy was run_number 618. Effect: all Phase A widen-on-write code
-   (runs 199–207, merged to `main`) is UNDEPLOYED, so `/v1/ask` widen-on-write
+   (runs 199–211, merged to `main`) is UNDEPLOYED, so `/v1/ask` widen-on-write
    does not fire in prod and the weekly-focus **KPI 1 reads live 0 %** (run 208
-   probed it directly). This gates every downstream item, Show HN included. Fix:
+   probed it directly) — even though the same path now scores 100 % agent-side
+   (run 211). This gates every downstream item, Show HN included. Fix:
    open **Actions → Deploy API**, approve the pending run(s) (or use
    `workflow_dispatch` to re-run the latest `main`); if runs keep landing
    `action_required`, flip the repo/org **Actions approval setting** that began
