@@ -733,15 +733,37 @@ export async function orchestrateAsk(
           hostedSchema &&
           deps.extendWrite
         ) {
-          const absorbed = await deps.extendWrite({
-            dbId: db.id,
-            tenantId: db.tenantId,
-            schemaName: hostedSchema,
-            schemaText: db.schemaText ?? "",
-            observedHash: schemaHash,
-            goal: req.goal,
-            writeSql: planSql,
-          });
+          // The absorb is a best-effort recovery layered on top of an exec
+          // that already failed: a THROW from it (the lazy `import()` of the
+          // libpg_query DDL validator failing to load, a Neon socket dying
+          // mid-transaction) must land on the same `schema_mismatch` envelope
+          // as `absorbed.ok === false`, never escape as a 500 (GLOBAL-033;
+          // the 2026-09-15 `self.location.href` incident).
+          let absorbed: ExtendOutcome;
+          try {
+            absorbed = await deps.extendWrite({
+              dbId: db.id,
+              tenantId: db.tenantId,
+              schemaName: hostedSchema,
+              schemaText: db.schemaText ?? "",
+              observedHash: schemaHash,
+              goal: req.goal,
+              writeSql: planSql,
+            });
+          } catch (absorbErr) {
+            absorbed = {
+              ok: false,
+              stage: "plan",
+              reason: absorbErr instanceof Error ? absorbErr.message : String(absorbErr),
+            };
+            console.error(
+              JSON.stringify({
+                msg: "widen_absorb_threw",
+                dbId: db.id,
+                reason: absorbed.reason,
+              }),
+            );
+          }
           if (absorbed.ok) {
             result = absorbed.result;
             extended = true;

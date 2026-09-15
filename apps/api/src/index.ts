@@ -938,15 +938,6 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       });
     };
 
-    // libpg-query WASM init guard — needs `__filename` / `__dirname`
-    // to be defined on the global object before the dynamic import.
-    // See header of `apps/api/src/ask/sql-validate-ddl.ts`.
-    const ensureLibpgWasmGlobals = (): void => {
-      const g = globalThis as unknown as { __filename?: string; __dirname?: string };
-      if (typeof g.__filename === "undefined") g.__filename = "worker";
-      if (typeof g.__dirname === "undefined") g.__dirname = "/";
-    };
-
     // Format a `DbCreateResult` as the JSON response from `runCreatePath`.
     const formatCreateJsonResponse = (
       result: import("./db-create/types.ts").DbCreateResult,
@@ -994,20 +985,11 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       const gateResp = await peekAnonCreateGate();
       if (gateResp) return gateResp;
 
-      // Dynamic import defers libpg-query's WASM initialization to
-      // the first create request — see commit 1a body for the
-      // rationale.
+      // Dynamic import defers libpg-query's WASM initialization to the
+      // first create request. Making that import safe on Workers is
+      // `ask/libpg-query-worker.ts`'s own job — see its header; no call
+      // site sets up globals for it.
       //
-      // libpg-query@17.x ships an Emscripten-generated WASM loader
-      // whose `ENVIRONMENT_IS_NODE` branch calls `fs.readFileSync`
-      // on a path derived from `__dirname`. Cloudflare Workers'
-      // `nodejs_compat` provides `process.versions.node` (triggering
-      // that branch) but its `fs` polyfill can't read arbitrary
-      // paths. The `__filename` / `__dirname` polyfills below steer
-      // the Emscripten heuristic, but `sql-validate-ddl.ts` now
-      // gracefully degrades if loadModule() still fails — see that
-      // file's header comment for the full story.
-      ensureLibpgWasmGlobals();
       // `test/ask.test.ts SK-ANON-013` is `.skip`'d — this dynamic
       // import hangs in the workerd vitest-pool after prior /v1/ask
       // requests; root cause is in build-deps' static-import chain
@@ -3272,9 +3254,6 @@ async function handlePackAdvance(c: Context<AppEnv>, mode: "advance" | "retry") 
             span.setAttribute("nlqdb.pack.import.outcome", "preset_disabled");
             return fail(c, "preset_disabled");
           }
-          const g = globalThis as unknown as { __filename?: string; __dirname?: string };
-          if (typeof g.__filename === "undefined") g.__filename = "worker";
-          if (typeof g.__dirname === "undefined") g.__dirname = "/";
           const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
           const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
           const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env, (p) =>
@@ -4113,13 +4092,6 @@ app.post("/v1/databases", requirePrincipal, async (c) => {
       return c.json({ ...prior, replayed: true }, 201);
     }
 
-    // Same WASM polyfill as the /v1/ask runCreatePath — see that
-    // block's comment for the full rationale. `sql-validate-ddl.ts`
-    // gracefully degrades if loadModule() still fails on Workers.
-    const g = globalThis as unknown as { __filename?: string; __dirname?: string };
-    if (typeof g.__filename === "undefined") g.__filename = "worker";
-    if (typeof g.__dirname === "undefined") g.__dirname = "/";
-
     const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
     const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
 
@@ -4285,13 +4257,6 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
         return c.json({ dbId: prior, name: name ?? null, engine, replayed: true }, 201);
       }
     }
-
-    // Same WASM polyfill dodge as the create/delete handlers — the
-    // dynamic import path can transitively pull `sql-validate-ddl.ts`'s
-    // top-level `loadModule()`.
-    const g = globalThis as unknown as { __filename?: string; __dirname?: string };
-    if (typeof g.__filename === "undefined") g.__filename = "worker";
-    if (typeof g.__dirname === "undefined") g.__dirname = "/";
 
     const { buildConnectByoDeps } = await import("./db-connect/build-deps.ts");
     const { connectByoDb } = await import("./db-connect/connect.ts");
