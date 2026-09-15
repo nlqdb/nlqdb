@@ -16,6 +16,13 @@ describe("verifyTurnstile", () => {
     expect(out).toEqual({ ok: false, reason: "unconfigured" });
   });
 
+  it("returns unconfigured when the secret is blank (preview `--var TURNSTILE_SECRET:`)", async () => {
+    // SK-ANON-009: PR previews override the inherited prod secret with an
+    // empty --var, so an empty string must fail open exactly like `undefined`.
+    const out = await verifyTurnstile("token", "", "1.2.3.4");
+    expect(out).toEqual({ ok: false, reason: "unconfigured" });
+  });
+
   it("returns invalid when the token is missing", async () => {
     const out = await verifyTurnstile(null, "secret", "1.2.3.4");
     expect(out).toEqual({ ok: false, reason: "invalid" });

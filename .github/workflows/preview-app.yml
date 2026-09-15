@@ -247,6 +247,11 @@ jobs:
           mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
           # Only pass the flag when the secret is present — an empty --var would
           # override the inherited Worker secret with a blank value.
+          # `TURNSTILE_SECRET:` below relies on exactly that: the preview web
+          # build bakes no `PUBLIC_TURNSTILE_SITE_KEY` and the `nlqdb-anon`
+          # widget doesn't allow *.workers.dev, so an inherited prod secret
+          # turns every anon hero create into an unrecoverable 428. Blank →
+          # `verifyTurnstile` sees `unconfigured` → SK-ANON-009 fail-open.
           extra=()
           if [ -n "${TAWK_TO_API_KEY:-}" ]; then
             extra+=(--var "TAWK_TO_API_KEY:${TAWK_TO_API_KEY}")
@@ -261,6 +266,7 @@ jobs:
             --var "MAGIC_LINK_WEB_ORIGIN:${PREVIEW_BASE_URL}" \
             --var "DATABASE_URL:${DATABASE_URL}" \
             --var "BETTER_AUTH_SECRET:${BETTER_AUTH_SECRET}" \
+            --var "TURNSTILE_SECRET:" \
             ${extra[@]+"${extra[@]}"}
 
       - name: Extract preview URL
