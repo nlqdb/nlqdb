@@ -37,7 +37,7 @@ the `POST /v1/db/connect` route handler in `apps/api/src/index.ts`,
 introspection, `SK-DB-015` schema render) · [`multi-engine-adapter/FEATURE.md`](../multi-engine-adapter/FEATURE.md)
 (`SK-MULTIENG-005` BYO ClickHouse, `SK-MULTIENG-006` URL parser,
 `SK-MULTIENG-007` introspection) · [`web-app/FEATURE.md`](../web-app/FEATURE.md)
-(`SK-WEB-019` `/app/connect` page, `SK-WEB-018` Door B) · GLOBALs below.
+(`SK-WEB-019` `/app/connect` page, `SK-WEB-031` home way-in) · GLOBALs below.
 
 ## Touchpoints — read this feature doc before editing
 

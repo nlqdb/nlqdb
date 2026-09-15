@@ -120,7 +120,7 @@ Canonical: **`nlqdb.com`** (`.ai` is held defensively and 301s to `.com`).
 
 Canonical: `web-app/FEATURE.md` (`SK-WEB-001..007`). Cloudflare Pages, Lighthouse 100/100/100/100.
 
-Above the fold: the `GLOBAL-041` headline over the `SK-WEB-018` two-door hero (MCP-connect door; question-your-ClickHouse door) plus the real-`/v1/ask` demo (`SK-WEB-008`) — layout and the `SK-WEB-020` calm token system are canonical in `web-app/FEATURE.md`. No stock photos, no cookie banner.
+Above the fold: the `GLOBAL-041` headline over ONE goal input with starter goals (`SK-WEB-031`; the live anonymous `/v1/ask`, `SK-WEB-008`); then how-it-works → diff-then-confirm → surfaces → ways in → close. Layout and the `SK-WEB-020` calm token system are canonical in `web-app/FEATURE.md`. No stock photos, no cookie banner.
 
 Surfaces promised on the home page live in [`progress.md §0`](./progress.md#0-surface-status-matrix--single-source-of-truth) — the canonical status table, mirrored into [`apps/web/src/components/CodePanel.astro`](../apps/web/src/components/CodePanel.astro). When a status flips, edit progress.md §0 first; this prose intentionally does not duplicate the table (per `AGENTS.md` P3).
 

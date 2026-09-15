@@ -1,11 +1,18 @@
 ---
-// Top navigation. One reveal mechanic — the auth-aware swap:
-// `/api/auth/get-session` probe runs on every page load; when it
-// resolves authed, the "Sign in" link is hidden and the "Open chat"
-// link + an avatar button take its place; the avatar opens a dropdown
-// with API keys / Billing / Sign out.
+// Top navigation — lean by design (SK-WEB-031): the product routes stay
+// top-level (Agents · Pricing · Docs); the editorial surfaces (Solve ·
+// Compare · Blog · Manifesto) collapse behind one "Content" disclosure so
+// the row routes a stranger to the product first. Both disclosures on
+// this row (Content, and the authed avatar menu) share one APG
+// disclosure implementation below: a toggle button revealing plain links
+// — not `role="menu"` (that role obliges arrow-key focus management;
+// links + Tab already work). Escape, outside-click and tab-away close.
 //
-// Marketing-side caveat (`SK-WEB-009`): probe returns null on
+// Auth-aware swap: `/api/auth/get-session` probes on every page load;
+// when it resolves authed, "Sign in" hides and "Open chat" + an avatar
+// button take its place (API keys / Billing / Sign out behind the avatar).
+//
+// Marketing-side caveat (`SK-WEB-009`): the probe returns null on
 // `nlqdb.com` because the session cookie is host-only on
 // `app.nlqdb.com` — authed visitors see the "Sign in" link.
 import { appHref } from "../lib/app-href";
@@ -24,68 +31,79 @@ interface Props {
 }
 const { current } = Astro.props;
 const inChat = current === "chat";
+
+// The Content group. Crawlable as plain `<a>`s in the HTML even while the
+// panel is `hidden` — the SEO posture of `/solve`, `/vs`, `/blog`
+// (SK-WEB-023) does not depend on the links being visible.
+const CONTENT = [
+  { key: "solve", href: "/solve/", label: "Solve", blurb: "One data question, one guide" },
+  { key: "vs", href: "/vs/", label: "Compare", blurb: "Honest side-by-sides" },
+  { key: "blog", href: "/blog/", label: "Blog", blurb: "Engineering notes" },
+  { key: "manifesto", href: "/manifesto/", label: "Manifesto", blurb: "Why an autonomous DBA" },
+] as const;
+const inContent = CONTENT.some((c) => c.key === current);
 ---
 
 <header class="topnav">
   <a class="topnav__brand" href="/">nlqdb</a>
   <nav class="topnav__links" aria-label="Primary">
-    <a
-      href="/manifesto/"
-      aria-current={current === "manifesto" ? "page" : undefined}
-    >
-      Manifesto
-    </a>
-    <a
-      href="/agents/"
-      aria-current={current === "agents" ? "page" : undefined}
-    >
-      Agents
-    </a>
-    <a
-      href="/vs/"
-      aria-current={current === "vs" ? "page" : undefined}
-    >
-      Compare
-    </a>
-    <a
-      href="/solve/"
-      aria-current={current === "solve" ? "page" : undefined}
-    >
-      Solve
-    </a>
-    <a
-      href="/blog/"
-      aria-current={current === "blog" ? "page" : undefined}
-    >
-      Blog
-    </a>
-    <a
-      href="/pricing/"
-      aria-current={current === "pricing" ? "page" : undefined}
-    >
-      Pricing
-    </a>
-    <a href="mailto:hello@nlqdb.com">Contact</a>
+    <a href="/agents/" aria-current={current === "agents" ? "page" : undefined}>Agents</a>
+    <a href="/pricing/" aria-current={current === "pricing" ? "page" : undefined}>Pricing</a>
+    <a href="https://docs.nlqdb.com/">Docs</a>
+
+    <div class="topnav__menu" data-disclosure>
+      <button
+        type="button"
+        class="topnav__menu-btn"
+        aria-expanded="false"
+        aria-controls="topnav-content-panel"
+        data-current={inContent ? "true" : undefined}
+        data-disclosure-btn
+      >
+        Content
+        <svg
+          class="topnav__chev"
+          viewBox="0 0 12 12"
+          width="11"
+          height="11"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M2 4l4 4 4-4"></path>
+        </svg>
+      </button>
+      <div id="topnav-content-panel" class="topnav__panel" data-disclosure-panel hidden>
+        {CONTENT.map((c) => (
+          <a
+            class="topnav__panel-item"
+            href={c.href}
+            aria-current={current === c.key ? "page" : undefined}
+          >
+            <span class="topnav__panel-label">{c.label}</span>
+            <span class="topnav__panel-blurb">{c.blurb}</span>
+          </a>
+        ))}
+      </div>
+    </div>
 
     {/* Sign-in link — suppressed once the auth probe resolves authed. */}
     <span id="topnav-signin">
       <a href="/auth/sign-in/">Sign in</a>
     </span>
 
-    {/* Authed slot — hidden by default; revealed only after the
-        probe resolves authed. Replaces the sign-in link. "Open chat"
-        stays a top-level one-click link — it's the primary product
-        action, never buried behind a second click — while the account
-        chores (API keys / Billing / Sign out) collapse behind one
-        avatar button so the row stays compact on narrow viewports.
-        The "Open chat" link is suppressed when the visitor is already
-        inside the chat (current === "chat") — no reason to offer a
-        jump to the page they're on. */}
+    {/* Authed slot — hidden by default; revealed only after the probe
+        resolves authed. "Open chat" stays a top-level one-click link (the
+        primary product action); the account chores collapse behind the
+        avatar. Suppressed inside the chat itself (current === "chat"). */}
     <span id="topnav-authed" class="topnav__authed" hidden>
       {!inChat && (
         <a href={appHref("/app/")} class="topnav__chat-link">Open chat &rarr;</a>
       )}
-      <div class="topnav__avatar-wrap">
+      <div class="topnav__avatar-wrap" data-disclosure>
         <button
           type="button"
           id="topnav-avatar-btn"
@@ -93,10 +111,11 @@ const inChat = current === "chat";
           aria-expanded="false"
           aria-controls="topnav-avatar-panel"
           aria-label="Account menu"
+          data-disclosure-btn
         >
           <span id="topnav-avatar-initial" aria-hidden="true">·</span>
         </button>
-        <div id="topnav-avatar-panel" class="topnav__avatar-panel" hidden>
+        <div id="topnav-avatar-panel" class="topnav__avatar-panel" data-disclosure-panel hidden>
           <a
             href={appHref("/app/keys/")}
             class="topnav__avatar-item"
@@ -134,67 +153,99 @@ const inChat = current === "chat";
   // a direct cross-origin href here would strand that localStorage
   // state on `nlqdb.com`.
 
-  // ---- Auth-aware swap ---------------------------------------------
-  const signinSlot = document.getElementById("topnav-signin");
-  const authed = document.getElementById("topnav-authed");
-  const signoutBtn = document.getElementById("topnav-signout");
-  const avatarBtn = document.getElementById("topnav-avatar-btn");
-  const avatarInitial = document.getElementById("topnav-avatar-initial");
-  const avatarPanel = document.getElementById("topnav-avatar-panel");
+  // ---- Disclosures (Content menu + avatar menu) ----------------------
+  // One implementation for both. Click toggles; Escape closes and refocuses
+  // the button when focus was inside; outside-click and tab-away close.
+  // ArrowDown on the button opens and focuses the first item; Arrow keys
+  // move between items; Escape from an item returns to the button. Pointer
+  // hover opens/closes too (hover-capable devices only) so the Content menu
+  // behaves like the dropdowns visitors expect on a marketing site.
+  const hoverCapable = window.matchMedia("(hover: hover)").matches;
 
-  if (signoutBtn) {
-    // All sign-out triggers funnel through /auth/sign-out (SK-AUTH-019).
-    signoutBtn.addEventListener("click", () => {
-      window.location.assign("/auth/sign-out/");
+  function armDisclosure(wrap: HTMLElement) {
+    const btn = wrap.querySelector<HTMLElement>("[data-disclosure-btn]");
+    const panel = wrap.querySelector<HTMLElement>("[data-disclosure-panel]");
+    if (!btn || !panel) return;
+    const items = () => Array.from(panel.querySelectorAll<HTMLElement>("a, button"));
+
+    // A mouse click arrives after pointerenter already opened the panel;
+    // toggling would slam it shut on the very click meant to open it.
+    let openedByHover = false;
+    const set = (open: boolean) => {
+      panel.hidden = !open;
+      btn.setAttribute("aria-expanded", String(open));
+      if (!open) openedByHover = false;
+    };
+    const close = (refocus = false) => {
+      if (panel.hidden) return;
+      set(false);
+      if (refocus) btn.focus();
+    };
+
+    btn.addEventListener("click", () => {
+      if (panel.hidden) set(true);
+      else if (openedByHover) openedByHover = false;
+      else set(false);
     });
-  }
-
-  // ---- Avatar dropdown -----------------------------------------------
-  // APG disclosure pattern — a toggle button revealing plain links —
-  // not `role="menu"` (that role obliges arrow-key focus management;
-  // links + Tab already work). Escape, outside-click, and tab-away
-  // all close it.
-  function closeAvatarPanel() {
-    if (!avatarPanel || !avatarBtn) return;
-    avatarPanel.hidden = true;
-    avatarBtn.setAttribute("aria-expanded", "false");
-  }
-
-  if (avatarBtn && avatarPanel) {
-    const avatarWrap = avatarBtn.parentElement;
-    avatarBtn.addEventListener("click", () => {
-      const opening = avatarPanel.hidden;
-      avatarPanel.hidden = !opening;
-      avatarBtn.setAttribute("aria-expanded", String(opening));
+    btn.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowDown") return;
+      event.preventDefault();
+      set(true);
+      items()[0]?.focus();
+    });
+    panel.addEventListener("keydown", (event) => {
+      const list = items();
+      const i = list.indexOf(document.activeElement as HTMLElement);
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const step = event.key === "ArrowDown" ? 1 : -1;
+        list[(i + step + list.length) % list.length]?.focus();
+      }
     });
     document.addEventListener("click", (event) => {
-      if (avatarPanel.hidden) return;
-      const target = event.target as Node;
-      if (avatarBtn.contains(target) || avatarPanel.contains(target)) return;
-      closeAvatarPanel();
+      if (panel.hidden || wrap.contains(event.target as Node)) return;
+      close();
     });
     document.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape" || avatarPanel.hidden) return;
-      const refocus = avatarWrap?.contains(document.activeElement) ?? false;
-      closeAvatarPanel();
-      if (refocus) avatarBtn.focus();
+      if (event.key !== "Escape" || panel.hidden) return;
+      close(wrap.contains(document.activeElement));
     });
     // Tab-away: close once focus lands outside the wrap. Null
     // relatedTarget (plain clicks) is left to the outside-click
     // listener — closing here too would hide the panel between
     // mousedown and click in Safari and swallow item activation.
-    avatarWrap?.addEventListener("focusout", (event) => {
+    wrap.addEventListener("focusout", (event) => {
       const next = event.relatedTarget as Node | null;
-      if (avatarPanel.hidden || !next || avatarWrap.contains(next)) return;
-      closeAvatarPanel();
+      if (panel.hidden || !next || wrap.contains(next)) return;
+      close();
     });
+    if (hoverCapable) {
+      wrap.addEventListener("pointerenter", (event) => {
+        if (event.pointerType !== "mouse" || !panel.hidden) return;
+        set(true);
+        openedByHover = true;
+      });
+      wrap.addEventListener("pointerleave", (event) => {
+        if (event.pointerType === "mouse") close();
+      });
+    }
   }
 
+  document.querySelectorAll<HTMLElement>("[data-disclosure]").forEach(armDisclosure);
+
+  // ---- Sign out --------------------------------------------------------
+  // All sign-out triggers funnel through /auth/sign-out (SK-AUTH-019).
+  document.getElementById("topnav-signout")?.addEventListener("click", () => {
+    window.location.assign("/auth/sign-out/");
+  });
+
+  // ---- Auth-aware swap -------------------------------------------------
   void (async () => {
     const user = await fetchSession();
     if (!user) return;
-    if (authed) authed.hidden = false;
-    if (signinSlot) signinSlot.setAttribute("hidden", "");
+    document.getElementById("topnav-authed")?.removeAttribute("hidden");
+    document.getElementById("topnav-signin")?.setAttribute("hidden", "");
+    const avatarInitial = document.getElementById("topnav-avatar-initial");
     if (avatarInitial) {
       const source = user.name?.trim() || user.email?.trim() || "";
       // Code-point split — `source[0]` would render half a surrogate pair.
