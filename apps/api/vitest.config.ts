@@ -85,6 +85,7 @@ export default defineConfig(async () => {
               "src/db-connect/**/*.test.ts",
               "src/db-create/**/*.test.ts",
               "src/ask/sql-validate-ddl.test.ts",
+              "src/ask/libpg-query-worker.test.ts",
               "src/grant-status.test.ts",
               "src/grant-role.test.ts",
               "src/grant-provision.test.ts",

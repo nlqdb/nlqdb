@@ -9,10 +9,11 @@
 // (`user:<id>` / `anon:<hash>`).
 //
 // Parser choice: this module sits on the eager `/v1/ask` startup graph
-// (`buildAskDeps` is statically imported by `index.ts`). `libpg-query`
-// requires `__filename` / `__dirname` polyfills set by the route handler
-// before its WASM loader runs, so wiring it eagerly here would break
-// worker startup. `sql-validate.ts` already uses `node-sql-parser` on
+// (`buildAskDeps` is statically imported by `index.ts`). `libpg-query`'s
+// WASM loader is deferred behind a dynamic import (`libpg-query-worker.ts`,
+// which self-guards the `__filename` / `__dirname` globals it needs on
+// Workers), so wiring it eagerly here would pull WASM onto the cold-start
+// path. `sql-validate.ts` already uses `node-sql-parser` on
 // the same path; reusing it keeps cold-start cheap and makes this
 // module pure JS (no WASM in the dep graph).
 
