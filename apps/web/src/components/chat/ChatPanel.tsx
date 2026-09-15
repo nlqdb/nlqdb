@@ -121,6 +121,9 @@ type ReplyState =
       kind: "error";
       message: string;
       code?: string;
+      // `params.reason` of an `infer_failed` envelope — the nudge fires on
+      // `plan_invalid` (model's miss), not `ambiguous_goal` (the goal's).
+      reason?: string;
       referencedTables?: string[];
       model?: string;
     };
@@ -553,6 +556,7 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
             kind: "error",
             message: messageFor(err),
             code: err instanceof NlqdbApiError ? err.code : undefined,
+            reason: err instanceof NlqdbApiError ? err.body?.reason : undefined,
             referencedTables: err instanceof NlqdbApiError ? err.body?.referencedTables : undefined,
             // SK-LLM-051 — the model an `llm_failed` envelope attempted, so the
             // free-model nudge can name it even when the plan failed before any

@@ -15,6 +15,11 @@ export const LOW_CONFIDENCE_THRESHOLD = 0.7;
 //   `invalid_value`  — generated SQL whose values didn't fit their columns
 //                      (a bad cast / range — SQLSTATE class 22, SK-ASK-030): a
 //                      planning-quality miss a frontier model typically avoids.
+//   `compile_failed` — the create-path plan named duplicate / dangling
+//                      identifiers our compiler refused (hosted-db-create).
+//   `infer_failed`   — only with `params.reason: plan_invalid`: the model's
+//                      schema plan failed Zod. `ambiguous_goal` is the goal's
+//                      fault, not the model's, and stays excluded.
 // (`schema_mismatch` is handled separately — see below.) Rate-limit / auth /
 // network / db-reachability failures, and write *outcome* codes (`write_no_rows`,
 // `write_constraint` — the data/intent, not the plan), are NOT the model's
@@ -23,7 +28,12 @@ export const LOW_CONFIDENCE_THRESHOLD = 0.7;
 // `clarify_required` guided turn (help, not a struggle to upsell over), and the
 // sub-floor *ok-path* struggle below still catches the confident-but-shaky
 // answer that actually ran — the case where "switch models" is honest advice.
-const MODEL_QUALITY_ERROR_CODES = new Set(["llm_failed", "sql_rejected", "invalid_value"]);
+const MODEL_QUALITY_ERROR_CODES = new Set([
+  "llm_failed",
+  "sql_rejected",
+  "invalid_value",
+  "compile_failed",
+]);
 
 // A cache-hit whose originating model we never recorded stores this placeholder
 // (orchestrate.ts). It's not a real model id, so we never name it on the nudge.
@@ -35,7 +45,13 @@ const UNKNOWN_MODEL = "cached";
 // `trace.model` carries the model that produced a plan before a later failure.
 export type StruggleInput = {
   state:
-    | { kind: "error"; code?: string; referencedTables?: string[]; model?: string }
+    | {
+        kind: "error";
+        code?: string;
+        reason?: string;
+        referencedTables?: string[];
+        model?: string;
+      }
     | { kind: "ok"; ok: { trace?: { confidence?: number } | null } }
     | { kind: string };
   trace?: { confidence?: number; model?: string } | null;
@@ -43,8 +59,9 @@ export type StruggleInput = {
 
 export function freeChainStruggled(reply: StruggleInput): boolean {
   if (reply.state.kind === "error") {
-    const err = reply.state as { code?: string; referencedTables?: string[] };
+    const err = reply.state as { code?: string; reason?: string; referencedTables?: string[] };
     if (err.code !== undefined && MODEL_QUALITY_ERROR_CODES.has(err.code)) return true;
+    if (err.code === "infer_failed") return err.reason === "plan_invalid";
     // `schema_mismatch` (SK-ASK-016) converges two paths behind one wire code:
     // the pre-flight hallucination (non-empty `referencedTables` — the model
     // invented a relation, a model-quality failure the nudge fires on) and the

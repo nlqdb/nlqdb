@@ -79,16 +79,23 @@ describe("postAskCreate", () => {
     expect(captured?.headers?.get("authorization")).toMatch(/^Bearer anon_/);
   });
 
-  // The API reports an unusable goal as `422 infer_failed` (index.ts
-  // formatCreateJsonResponse). A vague hero goal ("test", "stuff")
-  // trips `ambiguous_goal`; a plan that fails validation trips
+  // The API reports an unusable goal as `422 infer_failed` (registry
+  // envelope, SK-ERR-001). A vague hero goal ("test", "stuff") trips
+  // `params.reason: ambiguous_goal`; a plan that fails validation trips
   // `plan_invalid`. Both must surface `goal_unclear` — the actionable
   // "describe what you want to build" copy — NOT the misleading
   // "try again" of `server_error` (retrying the same goal fails again).
   for (const reason of ["ambiguous_goal", "plan_invalid"] as const) {
     test(`maps 422 infer_failed/${reason} to goal_unclear`, async () => {
+      const error = {
+        code: "infer_failed",
+        message: "x.",
+        action: "y.",
+        retryable: false,
+        params: { reason },
+      };
       mockFetch(
-        new Response(JSON.stringify({ error: { kind: "infer_failed", reason } }), {
+        new Response(JSON.stringify({ error }), {
           status: 422,
           headers: { "content-type": "application/json" },
         }),
@@ -99,9 +106,9 @@ describe("postAskCreate", () => {
     });
   }
 
-  test("leaves other 422 kinds (transient/internal) as server_error", async () => {
+  test("leaves other 422 codes (transient/internal) as server_error", async () => {
     mockFetch(
-      new Response(JSON.stringify({ error: { kind: "compile_failed" } }), {
+      new Response(JSON.stringify({ error: { code: "compile_failed" } }), {
         status: 422,
         headers: { "content-type": "application/json" },
       }),

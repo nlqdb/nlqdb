@@ -442,7 +442,14 @@ export type ApiErrorCode =
   | "invalid_preset"
   | "preset_disabled"
   | "preset_engine_conflict"
+  // hosted-db-create pipeline layers: plan inference (422, `params.reason`
+  // ∈ ambiguous_goal | plan_invalid), DDL compile (422), DDL validation (500),
+  // provisioning (502, `params.rolled_back`), table-card seed (502, `params.dbId`).
+  | "infer_failed"
+  | "compile_failed"
+  | "ddl_invalid"
   | "provision_failed"
+  | "embed_failed"
   | "create_requires_session"
   // Anonymous-session adoption + bearer parsing.
   | "invalid_bearer"

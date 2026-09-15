@@ -105,6 +105,7 @@ import { makeChatStore } from "./chat/store.ts";
 import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/list.ts";
 import { BYO_SECRET_REF_SENTINEL } from "./db-connect/constants.ts";
 import { AGENT_MEMORY_V1_VERSION, type MemoryPreset } from "./db-create/presets/agent-memory-v1.ts";
+import { createWireError } from "./db-create/wire-error.ts";
 import { memoResolveDb, resolveDb } from "./db-registry.ts";
 import { notify } from "./email-notify.ts";
 import {
@@ -950,11 +951,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     const formatCreateJsonResponse = (
       result: import("./db-create/types.ts").DbCreateResult,
     ): Response => {
-      if (!result.ok) {
-        // infer/compile/ddl/embed_failed → 422; provision_failed → 500.
-        const statusCode = result.error.kind === "provision_failed" ? 500 : 422;
-        return c.json({ error: result.error }, statusCode);
-      }
+      if (!result.ok) return errorResponse(c, createWireError(result.error));
       return c.json({
         kind: "create" as const,
         db: result.dbId,
@@ -4149,8 +4146,7 @@ app.post("/v1/databases", requirePrincipal, async (c) => {
       if (!result.ok) {
         span.setAttribute("nlqdb.databases.create.outcome", result.error.kind);
         span.end();
-        const statusCode = result.error.kind === "provision_failed" ? 500 : 422;
-        return c.json({ error: result.error }, statusCode);
+        return errorResponse(c, createWireError(result.error));
       }
       span.setAttribute("nlqdb.databases.create.db_id", result.dbId);
       span.setAttribute("nlqdb.databases.create.engine", result.engine);

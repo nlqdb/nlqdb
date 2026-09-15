@@ -15,7 +15,7 @@ import {
 function errorReply(
   code?: string,
   referencedTables?: string[],
-  extra?: { model?: string; traceModel?: string },
+  extra?: { model?: string; traceModel?: string; reason?: string },
 ): StruggleInput {
   return {
     state: {
@@ -23,6 +23,7 @@ function errorReply(
       code,
       referencedTables,
       ...(extra?.model ? { model: extra.model } : {}),
+      ...(extra?.reason ? { reason: extra.reason } : {}),
     },
     ...(extra?.traceModel ? { trace: { model: extra.traceModel } } : {}),
   };
@@ -36,6 +37,20 @@ function okReply(confidence?: number, traceConfidence?: number): StruggleInput {
 }
 
 describe("freeChainStruggled — error path", () => {
+  // Create-path failures (hosted-db-create): a plan our compiler refused or a
+  // plan that failed Zod is the free model's miss; a goal too vague to plan
+  // from is the user's, so "switch models" would be misleading there.
+  test("fires on create-path model-quality failures, not on a vague goal", () => {
+    expect(freeChainStruggled(errorReply("compile_failed"))).toBe(true);
+    expect(
+      freeChainStruggled(errorReply("infer_failed", undefined, { reason: "plan_invalid" })),
+    ).toBe(true);
+    expect(
+      freeChainStruggled(errorReply("infer_failed", undefined, { reason: "ambiguous_goal" })),
+    ).toBe(false);
+    expect(freeChainStruggled(errorReply("infer_failed"))).toBe(false);
+  });
+
   test("fires on model-quality codes", () => {
     expect(freeChainStruggled(errorReply("llm_failed"))).toBe(true);
     expect(freeChainStruggled(errorReply("sql_rejected"))).toBe(true);

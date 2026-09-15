@@ -674,12 +674,54 @@ export const REGISTRY = {
     message: () => "That preset doesn't run on the engine you asked for.",
     action: () => "Drop the engine override, or pick a preset that supports it.",
   }),
+  // ── `/v1/ask kind=create` typed-plan pipeline (hosted-db-create). The LLM
+  // emits a plan, our compiler emits DDL, a validator re-parses it, then the
+  // provisioner runs it. One code per layer that can refuse.
+  infer_failed: defineError({
+    httpStatus: 422,
+    recoverability: "clarify",
+    params: z.object({
+      reason: z.enum(["ambiguous_goal", "plan_invalid"]).optional().catch(undefined),
+    }),
+    message: (p) =>
+      p.reason === "plan_invalid"
+        ? "The model's schema plan for that goal didn't pass validation."
+        : "That goal was too vague to design a database from.",
+    action: () =>
+      "Describe what you want to build, e.g. 'a messages database' or 'an orders tracker'.",
+  }),
+  compile_failed: defineError({
+    httpStatus: 422,
+    recoverability: "clarify",
+    params: NONE,
+    message: () => "The plan for that goal couldn't be turned into a valid schema.",
+    action: () => "Rephrase the goal naming the things you want to track, then try again.",
+  }),
+  // Our own compiler emitted DDL the validator refused — nlqdb's bug, not the user's.
+  ddl_invalid: defineError({
+    httpStatus: 500,
+    recoverability: "operator",
+    params: NONE,
+    message: () => "nlqdb produced a schema for that goal it wouldn't run.",
+    action: () => `Try a different wording; if it persists, ${SUPPORT}.`,
+  }),
   provision_failed: defineError({
     httpStatus: 502,
     recoverability: "transient",
-    params: NONE,
+    params: z.object({ rolled_back: z.boolean().optional().catch(undefined) }),
     message: () => "nlqdb couldn't finish creating that database.",
-    action: () => "Try again in a moment; nothing was left half-created.",
+    action: (p) =>
+      p.rolled_back === false
+        ? "Try again in a moment; if a half-created database shows up in your list, delete it."
+        : "Try again in a moment; nothing was left half-created.",
+  }),
+  // The database is committed and queryable; only the table-card search seed failed.
+  embed_failed: defineError({
+    httpStatus: 502,
+    recoverability: "transient",
+    params: z.object({ dbId: slug(80) }),
+    message: () => "Your database was created, but its search index didn't build.",
+    action: () => "Ask it a question anyway; search warms up on its own.",
   }),
   create_requires_session: defineError({
     httpStatus: 403,
