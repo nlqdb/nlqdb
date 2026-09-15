@@ -28,6 +28,21 @@ interface EmscriptenModule {
 
 let mod: EmscriptenModule | null = null;
 
+// Self-guard the Emscripten factory's environment BEFORE it runs. The
+// libpg-query@17.x loader takes the `ENVIRONMENT_IS_NODE` path on Workers
+// (`nodejs_compat` defines `process.versions.node`) and, with `__filename` /
+// `__dirname` undefined, dereferences `.href` on an undefined script URL —
+// crashing module init with `TypeError: Cannot read properties of undefined
+// (reading 'href')`. Defining these globals steers the loader onto the path
+// that reads them instead. This lives in the WASM wrapper (not each route
+// handler) so EVERY importer — create, connect, memory-import AND the
+// widen-on-write extend path — is protected at the source: the extend path
+// forgetting this guard is exactly what 500'd live KPI-1 (`GLOBAL-041` Phase
+// A). Idempotent, so a handler that already set them is unaffected.
+const wasmGlobals = globalThis as unknown as { __filename?: string; __dirname?: string };
+if (typeof wasmGlobals.__filename === "undefined") wasmGlobals.__filename = "worker";
+if (typeof wasmGlobals.__dirname === "undefined") wasmGlobals.__dirname = "/";
+
 const initPromise = (
   PgQueryEmscripten as (opts: Record<string, unknown>) => Promise<EmscriptenModule>
 )({
