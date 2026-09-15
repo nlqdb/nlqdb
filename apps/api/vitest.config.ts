@@ -181,6 +181,7 @@ export default defineConfig(async () => {
               "test/db-connect.test.ts",
               "test/ask-dispatch.test.ts",
               "test/exec-acl-heal.test.ts",
+              "test/libpg-query-workerd.test.ts",
               "test/first10.test.ts",
               "test/run.test.ts",
               "test/admin-metrics.test.ts",

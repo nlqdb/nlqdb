@@ -49,17 +49,18 @@ import { loadModule, parseSync } from "./libpg-query-worker.js";
 // libpg_query is a WASM build; the module loader is async-only.
 // Top-level await keeps the public API (parseSync) synchronous —
 // any importer of this module just inherits the one-time init wait.
-// Bundle-weight note (GLOBAL-013): this module is only on the create
-// path. `/v1/ask` cold-start chunk pulls `sql-validate.ts`
-// (node-sql-parser, read/write); it does NOT pull this file. Verified
-// by the import graph at commit time.
+// Bundle-weight note (GLOBAL-013): this module is never statically
+// imported from the `/v1/ask` cold-start graph. That graph pulls
+// `sql-validate.ts` (node-sql-parser, read/write); the two paths that
+// need this file — the create path and widen-on-write (SK-SCHEMA-008)
+// — reach it through a dynamic `import()` and pay the WASM init only
+// when they fire.
 //
-// Race against a 2 s timeout so a stuck `WebAssembly.instantiate`
-// (observed under the workerd vitest pool, where deferred WASM init
-// occasionally never resolves) surfaces a fail-fast rejection instead
-// of hanging the dynamic import of every transitive caller. The
-// downstream orchestrator catches the rejection and returns 422
-// `compile_failed` per `SK-HDC-006`.
+// A failed init rejects this module, so every dynamic `import()` of it
+// rejects too. Both call sites treat that as a normal failure of the
+// step they were running (create → 422 `compile_failed` per
+// SK-HDC-006; widen-on-write → the `schema_mismatch` fall-through in
+// `ask/orchestrate.ts`) — never an uncaught 500.
 await loadModule();
 
 export type DdlValidationResult =
