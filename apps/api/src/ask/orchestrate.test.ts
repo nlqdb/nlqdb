@@ -7,6 +7,7 @@
 
 import type { LLMRouter, PlanRequest, PlanResponse } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
+import type { ConfirmStash, StashedPlan } from "./confirm-stash.ts";
 import type { ExtendArgs, ExtendOutcome } from "./extend.ts";
 import type { OrchestrateDeps } from "./orchestrate.ts";
 import { orchestrateAsk } from "./orchestrate.ts";
@@ -218,6 +219,146 @@ describe("orchestrateAsk — widen-on-write, missing-column absorb (SK-SCHEMA-00
     // Re-planned once with the PG error fed back (SK-ASK-022).
     expect(plan).toHaveBeenCalledTimes(2);
     expect(plan.mock.calls[1]?.[0]?.previousAttempt?.error).toMatch(/column .* does not exist/i);
+  });
+});
+
+// GLOBAL-041 Phase A — the production shape of a first insert: the preview hop
+// stashes the write (SK-TRUST-005) and the confirm hop runs THAT statement,
+// hits `42P01`, and must route to the Defense B absorb. The suites above drive
+// `confirm: true` with no stash wired, so they never exercised the two-hop flow
+// the SDK / MCP / web actually send — the 2026-09-15 prod repro (200 preview,
+// then a bare 409 `schema_mismatch` on confirm with nothing logged) lived in
+// exactly that gap.
+describe("orchestrateAsk — widen-on-write across the preview → confirm hops (SK-SCHEMA-008)", () => {
+  const POOL_DB: DbRecord = {
+    id: "db_pool_x",
+    tenantId: "user_1",
+    engine: "postgres",
+    connectionSecretRef: "ref",
+    schemaHash: "hash1",
+    schemaText: 'CREATE TABLE "pool" (id INTEGER, name TEXT);',
+    connectionBlob: null,
+  };
+  const NEW_TABLE_INSERT = `INSERT INTO "pool_incident" ("pool_id", "severity") VALUES (1, 'low')`;
+
+  // In-memory `ConfirmStash` — the real KV one is pure storage (confirm-stash.ts).
+  function memStash(): ConfirmStash {
+    const entries = new Map<string, StashedPlan>();
+    const key = (t: string, d: string, q: string) => `${t}:${d}:${q}`;
+    return {
+      async lookup(t, d, q) {
+        return entries.get(key(t, d, q)) ?? null;
+      },
+      async write(t, d, q, plan) {
+        entries.set(key(t, d, q), plan);
+      },
+      async delete(t, d, q) {
+        entries.delete(key(t, d, q));
+      },
+    };
+  }
+
+  function poolDeps(extendWrite: (a: ExtendArgs) => Promise<ExtendOutcome>): OrchestrateDeps {
+    const plan = vi.fn(async () => planOf(NEW_TABLE_INSERT));
+    const exec = vi.fn(async () => {
+      throw pgError('relation "pool_incident" does not exist', "42P01");
+    });
+    return {
+      ...deps(plan, exec),
+      resolveDb: async () => POOL_DB,
+      confirmStash: memStash(),
+      extendWrite: vi.fn(extendWrite),
+    };
+  }
+
+  const poolReq = (over: Partial<AskRequest> = {}): AskRequest => ({
+    goal: "insert into pool_incident (pool_id, severity) values (1, 'low')",
+    dbId: "db_pool_x",
+    userId: "user_1",
+    intent: "write",
+    ...over,
+  });
+
+  it("absorbs on the confirm hop that runs the stashed preview", async () => {
+    const d = poolDeps(async () => ({
+      ok: true,
+      result: { rows: [], rowCount: 1 },
+      schemaRewritten: true,
+      model: "test",
+      confidence: 1,
+      widenDdl: ['CREATE TABLE "pool_incident" ("id" INTEGER, "pool_id" INTEGER);'],
+    }));
+
+    const preview = await orchestrateAsk(d, poolReq());
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+    expect(preview.result.requires_confirm).toBe(true);
+    // The preview already warns that a table will be created (P6 — no surprise).
+    expect(preview.result.trace.widen?.tables).toEqual(["pool_incident"]);
+
+    const committed = await orchestrateAsk(d, poolReq({ confirm: true }));
+    expect(committed.ok).toBe(true);
+    if (!committed.ok) return;
+    expect(d.extendWrite).toHaveBeenCalledTimes(1);
+    // The absorb runs the statement the user approved, not a re-plan.
+    expect(d.extendWrite).toHaveBeenCalledWith(
+      expect.objectContaining({ writeSql: NEW_TABLE_INSERT, schemaName: "pool_x" }),
+    );
+    expect(committed.extendNeeded).toBe(true);
+    expect(committed.result.trace.widen?.schema_rewritten).toBe(true);
+  });
+
+  it("makes a DECLINED absorb observable — structured log + a reason on the envelope", async () => {
+    // The prod failure mode: the absorb RAN and said no, and neither the
+    // operator (no log line) nor the caller (a bare `schema_mismatch`) could
+    // tell that from a write the Defense B gate skipped entirely.
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const d = poolDeps(async () => ({ ok: false, stage: "exec", reason: "widen_ddl_failed" }));
+
+    await orchestrateAsk(d, poolReq());
+    error.mockClear();
+    const committed = await orchestrateAsk(d, poolReq({ confirm: true }));
+
+    expect(d.extendWrite).toHaveBeenCalledTimes(1);
+    expect(committed.ok).toBe(false);
+    if (committed.ok) return;
+    expect(committed.error).toMatchObject({
+      code: "schema_mismatch",
+      widen: { stage: "exec", reason: "widen_ddl_failed" },
+    });
+    expect(committed.extendNeeded).toBe(true);
+    const logged = error.mock.calls
+      .map((c) => String(c[0]))
+      .find((line) => line.includes("widen_absorb_failed"));
+    expect(logged).toBeDefined();
+    expect(JSON.parse(logged as string)).toMatchObject({
+      event: "widen_absorb_failed",
+      db_id: "db_pool_x",
+      stage: "exec",
+      reason: "widen_ddl_failed",
+    });
+  });
+
+  it("reports a THROWING absorb as stage=threw, with the raw message logged, never on the wire", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const d = poolDeps(async () => {
+      throw new TypeError("Cannot read properties of undefined (reading 'href')");
+    });
+
+    await orchestrateAsk(d, poolReq());
+    error.mockClear();
+    const committed = await orchestrateAsk(d, poolReq({ confirm: true }));
+
+    expect(committed.ok).toBe(false);
+    if (committed.ok) return;
+    expect(committed.error).toMatchObject({
+      code: "schema_mismatch",
+      widen: { stage: "threw", reason: "absorb_threw" },
+    });
+    const logged = error.mock.calls
+      .map((c) => String(c[0]))
+      .find((line) => line.includes("widen_absorb_failed"));
+    expect(JSON.parse(logged as string).detail).toContain("href");
   });
 });
 

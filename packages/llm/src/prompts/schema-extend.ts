@@ -56,6 +56,13 @@ export const SCHEMA_EXTEND_SYSTEM = [
   "  numeric, a count is integer, an id is uuid or text, a flag is boolean).",
   "- Emit at least one op. Never use a Postgres reserved word (select, table,",
   "  user, order, group, ...) as an identifier.",
+  // The statement is the contract: it runs in the SAME transaction as this
+  // plan's DDL, so a table or column it names that the plan omits (or spells
+  // differently) rolls the whole absorb back.
+  "- When the write statement is given, the plan MUST make that exact",
+  "  statement runnable: every table and column it names must exist after the",
+  "  plan is applied, spelled exactly as the statement spells it. Add nothing",
+  "  the statement and schema don't need, except a primary key for a new table.",
 ].join("\n");
 
 export function buildSchemaExtendUser(req: ExtendSchemaRequest): string {
@@ -64,5 +71,8 @@ export function buildSchemaExtendUser(req: ExtendSchemaRequest): string {
     req.schema.trim(),
     "",
     `Write goal: ${req.goal.trim()}`,
+    ...(req.writeSql
+      ? ["", `Write statement (must run after your plan):`, req.writeSql.trim()]
+      : []),
   ].join("\n");
 }

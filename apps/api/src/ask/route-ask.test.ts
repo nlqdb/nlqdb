@@ -340,3 +340,62 @@ describe("routeAsk — LLM call", () => {
     expect(out.targetDbId).toBeNull();
   });
 });
+
+// SK-ASK-014 + SK-SCHEMA-008 — the first-insert front door. The classifier's
+// "unknown table → create" rule fires on any goal naming a table the schema
+// lacks, so with a DB pinned an ordinary first insert came back as the
+// create/query clarify (prod, 2026-09-15) and widen-on-write was unreachable
+// unless the caller set `forceQuery` — which no SDK / MCP / CLI write path does.
+describe("routeAsk — a write-shaped goal against a pinned DB (SK-ASK-014)", () => {
+  const DBS = [{ id: "db_pool", slug: "swimming-pool-management" }];
+  const createOut: RouteResponse = {
+    kind: "create",
+    targetDbId: null,
+    referencedTables: [],
+    confidence: 0.9,
+    reason: "the goal names a table no database has",
+  };
+
+  async function routePinned(goal: string, pinnedDbId?: string) {
+    const route = vi.fn(async (_r: RouteRequest) => createOut);
+    const out = await routeAsk(
+      { llm: llmStub({ route }) },
+      { goal, dbs: DBS, recentTables: [], ...(pinnedDbId ? { pinnedDbId } : {}) },
+    );
+    return out;
+  }
+
+  it("routes an INSERT-shaped goal naming an unseen table to the pinned DB as a write", async () => {
+    const out = await routePinned(
+      "insert into pool_incident (pool_id, severity) values (1, 'low')",
+      "db_pool",
+    );
+    expect(out.kind).toBe("write");
+    expect(out.targetDbId).toBe("db_pool");
+    expect(out.reason).toBe("pinned_write");
+  });
+
+  it('routes the natural phrasing ("add a row to the <unseen> table") the same way', async () => {
+    const out = await routePinned(
+      "add a row to the pool_incident table with severity low",
+      "db_pool",
+    );
+    expect(out.kind).toBe("write");
+    expect(out.reason).toBe("pinned_write");
+  });
+
+  it("keeps kind=create with no pin — a write-shaped goal and no DB is still a create", async () => {
+    const out = await routePinned("insert into pool_incident (pool_id) values (1)");
+    expect(out.kind).toBe("create");
+  });
+
+  it("keeps the SK-ASK-014 clarify when the goal asks for a database, not a row", async () => {
+    const out = await routePinned("add a database for tracking pool incidents", "db_pool");
+    expect(out.kind).toBe("create");
+  });
+
+  it("keeps the SK-ASK-014 clarify for a non-write create goal against the pin", async () => {
+    const out = await routePinned("a table to track pool incidents", "db_pool");
+    expect(out.kind).toBe("create");
+  });
+});

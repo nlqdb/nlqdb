@@ -697,6 +697,9 @@ export async function orchestrateAsk(
         // e2e failure from a genuine wrong-table plan) vanishes exactly where
         // e2e runs. Persist it where it survives. Only the exec-catch path
         // carries `err.diag`; the pre-flight path leaves it undefined.
+        // SK-SCHEMA-008 — set when the absorb RAN and declined, so the
+        // `schema_mismatch` returned below can say the DBA tried and why.
+        let widenDeclined: { stage: string; reason: string } | undefined;
         const d = err.diag;
         if (d && deps.diag) {
           const diag = deps.diag;
@@ -740,6 +743,9 @@ export async function orchestrateAsk(
           // as `absorbed.ok === false`, never escape as a 500 (GLOBAL-033;
           // the 2026-09-15 `self.location.href` incident).
           let absorbed: ExtendOutcome;
+          // Only ever the raw text of a THROWN absorb — it can carry provider
+          // or driver detail, so it stays in the log and never on the wire.
+          let absorbDetail: string | undefined;
           try {
             absorbed = await deps.extendWrite({
               dbId: db.id,
@@ -751,18 +757,8 @@ export async function orchestrateAsk(
               writeSql: planSql,
             });
           } catch (absorbErr) {
-            absorbed = {
-              ok: false,
-              stage: "plan",
-              reason: absorbErr instanceof Error ? absorbErr.message : String(absorbErr),
-            };
-            console.error(
-              JSON.stringify({
-                msg: "widen_absorb_threw",
-                dbId: db.id,
-                reason: absorbed.reason,
-              }),
-            );
+            absorbDetail = absorbErr instanceof Error ? absorbErr.message : String(absorbErr);
+            absorbed = { ok: false, stage: "threw", reason: "absorb_threw" };
           }
           if (absorbed.ok) {
             result = absorbed.result;
@@ -789,6 +785,30 @@ export async function orchestrateAsk(
             };
             break;
           }
+          // SK-SCHEMA-008 — a DECLINED absorb must never look like one that
+          // was never attempted. Without this the user got a bare
+          // `schema_mismatch` and the operator got no line at all, so the
+          // 2026-09-15 prod repro (a hosted first insert that reached the
+          // absorb and was refused) could not be told apart from a write the
+          // gate above skipped. One structured line + span attributes for the
+          // operator; the bounded `(stage, reason)` rides the envelope below
+          // so an agent on the public surface can read it too (GLOBAL-042).
+          widenDeclined = { stage: absorbed.stage, reason: absorbed.reason };
+          const absorbSpan = trace.getActiveSpan();
+          absorbSpan?.setAttribute("nlqdb.ask.widen.stage", absorbed.stage);
+          absorbSpan?.setAttribute("nlqdb.ask.widen.reason", absorbed.reason);
+          console.error(
+            JSON.stringify({
+              event: "widen_absorb_failed",
+              db_id: db.id,
+              stage: absorbed.stage,
+              reason: absorbed.reason,
+              sql_state: absorbed.sqlState ?? null,
+              goal: req.goal.slice(0, 500),
+              sql: planSql.slice(0, 500),
+              ...(absorbDetail ? { detail: absorbDetail.slice(0, 500) } : {}),
+            }),
+          );
         }
         return {
           ok: false,
@@ -796,6 +816,7 @@ export async function orchestrateAsk(
             code: "schema_mismatch",
             referencedTables: err.referencedTables,
             schemaTables: err.schemaTables,
+            ...(widenDeclined ? { widen: widenDeclined } : {}),
           },
           // SK-SCHEMA-010 — an orphaned tenant schema (3F000, code or
           // message-matched) is a control-plane fault widen-on-write can't

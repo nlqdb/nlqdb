@@ -703,9 +703,17 @@ describe("orchestrateAsk", () => {
         }),
         { goal: "add a product", dbId: "db_1", userId: "user_1", intent: "write", confirm: true },
       );
+      // The envelope says the DBA TRIED and what stopped it — a bare
+      // `schema_mismatch` here reads identically to a write the Defense B gate
+      // never routed to the absorb at all (SK-SCHEMA-008).
       expect(out).toEqual({
         ok: false,
-        error: { code: "schema_mismatch", referencedTables: [], schemaTables: [] },
+        error: {
+          code: "schema_mismatch",
+          referencedTables: [],
+          schemaTables: [],
+          widen: { stage: "plan", reason: "llm_failed" },
+        },
         extendNeeded: true,
       });
       expect(extendWrite).toHaveBeenCalledTimes(1);

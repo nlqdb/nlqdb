@@ -226,7 +226,16 @@ export type AskError =
   // exec backstop catches the cases pre-flight misses. HTTP 409 — the
   // goal was valid but aimed at the wrong DB; the surface can offer
   // "create a fresh DB instead" without dead-ending on a generic 502.
-  | { code: "schema_mismatch"; referencedTables: string[]; schemaTables: string[] }
+  // `widen` is set only when widen-on-write (SK-SCHEMA-008) RAN against this
+  // write and declined — the honest difference between "the DBA never tried"
+  // and "the DBA tried and this is what stopped it" (GLOBAL-042: an agent on
+  // the public surface has no other window). Bounded slugs only.
+  | {
+      code: "schema_mismatch";
+      referencedTables: string[];
+      schemaTables: string[];
+      widen?: { stage: string; reason: string };
+    }
   // SK-TRUST-006 — a write that affects nothing is never a successful
   // empty read. `phase: "preview"` means the pre-flight count proved the
   // write would touch 0 rows, so it was never offered for approval;

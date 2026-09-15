@@ -105,11 +105,10 @@ signal and a retry can't double-emit.
 
 ### SK-ASK-014 — `routeAsk` runs on every `/v1/ask`, even when `dbId` is pinned
 
-- **Decision:** `routeAsk` runs on every `/v1/ask` regardless of `dbId` pin. `kind=create + pinned` → `409 clarify_required` with `pinned_db:{id,slug}` (surface offers "create new / query *<slug>*?" instead of the cryptic `sql_rejected` the allowlist emits on a `CREATE TABLE`). `kind=create + no pin` → create; `kind=query|write + pinned` → pin honoured. Refines SK-ASK-009. Per SK-ANON-013, anon principals without a pinned `dbId` short-circuit ahead of this.
-- **Core value:** Effortless UX, Goal-first, Bullet-proof
-- **Why:** "new table" against a pinned DB dead-ends — the allowlist rejects it. Classify-every-send turns that into a typed forward action.
-- **Consequence in code:** the routeAsk prelude runs unconditionally (not just when `dbId` is absent); a new `clarify_required` AskError drives the `ChatPanel` "Create new database" chip, which re-sends without `dbId`.
-- **Alternatives rejected:** Silent pin override on `kind=create` — surprises. Convert only post-allowlist — burns a planner-tier hop first. Typed-plan extend pipeline — right long-term answer; Open.
+**Body:** [`decisions/SK-ASK-014-route-every-ask.md`](./decisions/SK-ASK-014-route-every-ask.md).
+`kind=create + pinned` clarifies — except a **row write**, which routes to the
+pin as `kind=write` so a first insert reaches widen-on-write (`SK-SCHEMA-008`)
+instead of a clarify no SDK/CLI/MCP write path can answer.
 
 ### SK-ASK-015 — Plan cache writes are gated on successful exec
 

@@ -50,7 +50,12 @@ export type ExtendOutcome =
     }
   | {
       ok: false;
-      stage: "plan" | "compile" | "exec";
+      // `threw` is the orchestrator's wrapper for an absorb that rejected
+      // rather than returning (a lazy WASM import failing, a socket dying) —
+      // this function itself only ever returns the three pipeline stages.
+      stage: "plan" | "compile" | "exec" | "threw";
+      // A bounded slug (`llm_failed`, `empty_plan`, `write_rejected`, …), never
+      // a provider or driver message: it rides the `schema_mismatch` envelope.
       reason: string;
       sqlState?: string | undefined;
       error?: unknown;
@@ -59,7 +64,7 @@ export type ExtendOutcome =
 export async function extendOnWrite(deps: ExtendDeps, args: ExtendArgs): Promise<ExtendOutcome> {
   const designed = await extendSchema(
     { llm: deps.llm },
-    { goal: args.goal, schema: args.schemaText },
+    { goal: args.goal, schema: args.schemaText, writeSql: args.writeSql },
   );
   if (!designed.ok) return { ok: false, stage: "plan", reason: designed.reason };
   const { plan, model, confidence } = designed;

@@ -95,6 +95,9 @@ export type ExtendSchemaArgs = {
   // The DB's current observed schema (the orchestrator's `db.schemaText`),
   // handed to the LLM as ground truth to extend, never re-design.
   schema: string;
+  // The validated write statement the plan must make runnable (they commit in
+  // one transaction, so a shape it cannot use rolls the absorb back).
+  writeSql?: string;
 };
 
 export type ExtendFailureReason = "llm_failed" | "plan_invalid";

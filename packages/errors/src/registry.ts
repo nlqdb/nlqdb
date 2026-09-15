@@ -154,18 +154,29 @@ export const REGISTRY = {
     action: () => "Try again in a moment.",
   }),
   // SK-ASK-016 — the plan named a relation the target DB doesn't have.
+  // SK-SCHEMA-008 — `widen` is present only when widen-on-write tried to
+  // absorb the write and declined; it turns "you named a table we don't have"
+  // into "we tried to add it and here is what stopped us" (GLOBAL-011: never
+  // imply we did nothing when we did). Bounded slugs, capped — the raw
+  // provider / driver text stays in the log.
   schema_mismatch: defineError({
     httpStatus: 409,
     recoverability: "clarify",
-    params: z.object({ referencedTables: tableList, schemaTables: tableList }),
+    params: z.object({
+      referencedTables: tableList,
+      schemaTables: tableList,
+      widen: z.object({ stage: z.string().max(20), reason: z.string().max(60) }).optional(),
+    }),
     message: (p) =>
       p.referencedTables.length > 0
         ? `This database has no ${p.referencedTables.join(", ")} ${p.referencedTables.length === 1 ? "table" : "tables"}.`
         : "That query names a table this database doesn't have.",
     action: (p) =>
-      p.schemaTables.length > 0
-        ? `Ask about one of its tables instead: ${p.schemaTables.slice(0, 5).join(", ")}${p.schemaTables.length > 5 ? ` (+${p.schemaTables.length - 5} more)` : ""}.`
-        : "Rephrase using a table this database has, or create a new database for it.",
+      p.widen
+        ? `nlqdb tried to add the missing shape and stopped at ${p.widen.stage} (${p.widen.reason}) — send the write again, or name the fields more precisely.`
+        : p.schemaTables.length > 0
+          ? `Ask about one of its tables instead: ${p.schemaTables.slice(0, 5).join(", ")}${p.schemaTables.length > 5 ? ` (+${p.schemaTables.length - 5} more)` : ""}.`
+          : "Rephrase using a table this database has, or create a new database for it.",
   }),
   // SK-ASK-030 — Postgres SQLSTATE class 23. Deterministic: the write is
   // wrong, not the connection. Retrying replays it, which is exactly the

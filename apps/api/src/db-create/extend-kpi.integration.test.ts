@@ -26,6 +26,7 @@
 //
 // Skill cross-ref: docs/features/schema-widening/FEATURE.md SK-SCHEMA-010.
 
+import type { WidenPlan } from "@nlqdb/db";
 import {
   createCerebrasProvider,
   createGeminiProvider,
@@ -91,6 +92,15 @@ const SHAPES: Shape[] = [
     writeSql: `INSERT INTO "ratings" ("id", "metadata") VALUES ('11111111-1111-1111-1111-111111111111', '{"device":"ios","locale":"en-US"}')`,
   },
   {
+    // The 2026-09-15 prod shape: the goal names the fields in prose, so a
+    // designer working from the goal alone picks its own column names
+    // ("pool_id") while the statement names others ("pool_name").
+    name: "prose-named-fields",
+    schemaText: `CREATE TABLE "${SCHEMA_NAME}"."pool" ("id" integer PRIMARY KEY, "name" text);`,
+    goal: "insert a maintenance_log entry: pool_name = Main Pool, task = chlorine check",
+    writeSql: `INSERT INTO "maintenance_log" ("pool_name", "task") VALUES ('Main Pool', 'chlorine check')`,
+  },
+  {
     name: "auth-shaped",
     schemaText: `CREATE TABLE "${SCHEMA_NAME}"."ratings" ("id" uuid PRIMARY KEY);`,
     goal: "Register a new account: an email address, a bcrypt password hash, and the timestamp they signed up.",
@@ -141,13 +151,37 @@ function buildFreeRouter(): LLMRouter | null {
   });
 }
 
+// Columns the write statement names that neither the observed schema nor the
+// widen plan provides. Deliberately crude (the INSERT column list + a name
+// scan over schema and plan) — it only has to catch the design/statement
+// disagreement the one-transaction absorb turns into a rollback.
+function columnsNotAdmitted(shape: Shape, plan: WidenPlan): string[] {
+  const columnList = /insert\s+into\s+"?[\w.]+"?\s*\(([^)]*)\)/i.exec(shape.writeSql)?.[1];
+  if (!columnList) return [];
+  const known = new Set<string>();
+  for (const m of shape.schemaText.matchAll(/"(\w+)"/g)) known.add(m[1] as string);
+  for (const t of plan.create_tables) for (const c of t.columns) known.add(c.name);
+  for (const a of plan.add_columns) known.add(a.column.name);
+  return columnList
+    .split(",")
+    .map((c) => c.trim().replace(/"/g, ""))
+    .filter((c) => c.length > 0 && !known.has(c));
+}
+
 // One shape through the agent-side path. Returns the KPI-1 verdict + the stage
 // it stopped at (for the logged breakdown).
 async function walkShape(
   llm: LLMRouter,
   shape: Shape,
 ): Promise<{ ok: boolean; stage: string; detail: string; model?: string; confidence?: number }> {
-  const designed = await extendSchema({ llm }, { goal: shape.goal, schema: shape.schemaText });
+  // The statement rides into the design step exactly as `extendOnWrite` sends
+  // it: the widen DDL and this INSERT share one transaction, so a plan that
+  // doesn't admit the statement rolls the absorb back (measured miss, not a
+  // design the harness should score as a hit).
+  const designed = await extendSchema(
+    { llm },
+    { goal: shape.goal, schema: shape.schemaText, writeSql: shape.writeSql },
+  );
   if (!designed.ok) return { ok: false, stage: "plan", detail: designed.reason };
 
   const compiled = compileWriteDdl(designed.plan, SCHEMA_NAME);
@@ -183,6 +217,21 @@ async function walkShape(
       ok: false,
       stage: "build",
       detail: batch.reason,
+      model: designed.model,
+      confidence: designed.confidence,
+    };
+  }
+
+  // The batch is only a hit if the statement can actually RUN after it: every
+  // column the INSERT names must exist in the widened shape. A plan that
+  // renames a field ("pool_id" for a write naming "pool_name") builds a valid
+  // batch and then rolls back at COMMIT — scoring it ok would hide the miss.
+  const missing = columnsNotAdmitted(shape, designed.plan);
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      stage: "admit",
+      detail: `write names ${missing.join(", ")} — not in the widened shape`,
       model: designed.model,
       confidence: designed.confidence,
     };

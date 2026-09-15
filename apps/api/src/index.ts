@@ -1389,6 +1389,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
             goal: parsed.body.goal,
             dbs: candidates,
             recentTables,
+            // SK-ASK-014 — the pin is classifier input, not just a target: a
+            // write-shaped goal against it is a write even when the goal names
+            // a table the schema has never seen (widen-on-write demand).
+            ...(parsed.body.dbId ? { pinnedDbId: parsed.body.dbId } : {}),
           },
         ),
       );

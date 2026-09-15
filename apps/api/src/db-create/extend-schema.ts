@@ -39,6 +39,7 @@ export async function extendSchema(
     const resp = await deps.llm.extendSchema({
       goal: args.goal,
       schema: args.schema,
+      ...(args.writeSql ? { writeSql: args.writeSql } : {}),
       // GLOBAL-041 Phase A — let the router fail over to the next provider when
       // the head planner returns a WidenPlanSchema-invalid plan (qwen does this
       // intermittently; gemini designs the same shape validly — run-210

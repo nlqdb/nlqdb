@@ -20,6 +20,9 @@
 //   4. LLM `route` call            → confidence ≥ ROUTE_CONFIDENCE_FLOOR
 //                                    or 409 candidate_dbs at the
 //                                    handler.
+//   5. LLM said `create` + a pin   → a row-write goal is a write against the
+//                                    pin (widen-on-write demand, SK-ASK-014);
+//                                    anything else keeps the create clarify.
 
 import type { RouteResponse as LLMRouteResponse, LLMRouter, RouteRecentTable } from "@nlqdb/llm";
 import type { RecentTable } from "./recent-tables.ts";
@@ -30,6 +33,11 @@ export type RouteAskInput = {
   goal: string;
   dbs: DbCandidate[];
   recentTables: RecentTable[];
+  // The DB the caller pinned on this ask, when it pinned one. Classification
+  // input, not just a target: with a pin, a write-shaped goal naming a table
+  // the schema lacks is widen demand, not a new-database request
+  // (`pinned_write` below).
+  pinnedDbId?: string;
 };
 
 export type RouteAskKind = "create" | "query" | "write";
@@ -39,6 +47,9 @@ export type RouteAskReason =
   | "slug_match"
   | "llm"
   | "llm_picked_unknown_id"
+  // SK-ASK-014 — a write-shaped goal against a pinned DB, which the LLM read
+  // as `create` only because the table it names does not exist yet.
+  | "pinned_write"
   // SK-ASK-032 — the caller resolved a create/query clarify by confirming
   // "query this pinned DB". routeAsk is skipped entirely; this labels the
   // synthesized query route so the loop-break is visible in telemetry.
@@ -125,6 +136,32 @@ export async function routeAsk(deps: RouteAskDeps, input: RouteAskInput): Promis
     llmOut.targetDbId === null || input.dbs.some((d) => d.id === llmOut.targetDbId);
   const validatedDbId = llmDbIdValid ? llmOut.targetDbId : null;
   const referencedTables = Array.isArray(llmOut.referencedTables) ? llmOut.referencedTables : [];
+
+  // SK-ASK-014 + SK-SCHEMA-008 — with a DB pinned, a write-shaped goal is a
+  // write against THAT DB even when the classifier says `create`. The prompt
+  // rule the classifier applies is "unknown table → create", and a table the
+  // pinned schema has never seen is exactly what a first insert names: the
+  // engine absorbs it (widen-on-write) and the preview names the table it will
+  // create, so the clarify was asking the user to resolve something the engine
+  // now resolves itself (END_GOAL "unseen field" — a diff, not an error). Kept
+  // narrow: only a row-write verb, and never when the goal says "database",
+  // so "create a schema for X" / "add a database for X" still clarify
+  // (SK-ASK-014's real case, which widen-on-write cannot absorb — it needs a
+  // row to infer from).
+  if (
+    llmOut.kind === "create" &&
+    input.pinnedDbId &&
+    pickVerbKind(input.goal) === "write" &&
+    !/\bdatabases?\b/i.test(input.goal)
+  ) {
+    return {
+      kind: "write",
+      targetDbId: input.pinnedDbId,
+      referencedTables,
+      confidence: 1,
+      reason: "pinned_write",
+    };
+  }
 
   // If the slug fast-path matched, override the LLM's dbId pick with
   // the deterministic slug match (confidence 1, reason "slug_match").

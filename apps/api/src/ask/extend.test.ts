@@ -30,8 +30,10 @@ const RAW_PLAN = {
   ],
 };
 
+type ExtendCall = { goal: string; schema: string; writeSql?: string };
+
 function makeLlm(
-  impl: (req: { goal: string; schema: string }) => Promise<{
+  impl: (req: ExtendCall) => Promise<{
     plan: Record<string, unknown>;
     model: string;
     confidence: number;
@@ -129,6 +131,19 @@ describe("extendOnWrite", () => {
     // orchestrator can surface it in `trace.widen` (SK-TRUST-002 parity). It is
     // exactly the compiled statements the allow-list validated and the batch ran.
     expect(res.widenDdl).toEqual(statements);
+  });
+
+  it("hands the designer the write statement it has to admit, not just the goal", async () => {
+    // The widen DDL and this INSERT commit in one transaction (SK-SCHEMA-008),
+    // so a plan designed from the goal alone can name columns the statement
+    // doesn't ("pool_name" vs "pool_id") and roll the whole absorb back.
+    const seen: ExtendCall[] = [];
+    const llm = makeLlm(async (req) => {
+      seen.push(req);
+      return { plan: RAW_PLAN, model: "m", confidence: 1 };
+    });
+    await extendOnWrite(deps({ llm }), ARGS);
+    expect(seen[0]?.writeSql).toBe(ARGS.writeSql);
   });
 
   it("short-circuits at stage=plan when the extend LLM fails", async () => {

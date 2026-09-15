@@ -11,6 +11,7 @@
 // referencedTables, confidence, reason}` as strict JSON.
 
 import { describe, expect, it } from "vitest";
+import { buildSchemaExtendUser, SCHEMA_EXTEND_SYSTEM } from "../src/prompts/schema-extend.ts";
 import {
   buildEngineClassifyUser,
   buildPlanUser,
@@ -370,5 +371,31 @@ describe("buildRouteUser", () => {
     expect(out).not.toContain('"id":"db25"');
     expect(out).toContain('"table":"t99"');
     expect(out).not.toContain('"table":"t100"');
+  });
+});
+
+// GLOBAL-041 Phase A — the widen designer is given the statement it has to
+// admit, not only the goal. The widen DDL and the INSERT commit in ONE
+// transaction, so a plan whose columns don't match the statement's (a free
+// model designing `maintenance_log(pool_id)` for an INSERT naming `pool_name`,
+// measured on the free chain 2026-09-15) rolls the entire absorb back.
+describe("schema-extend prompt (SK-SCHEMA-008)", () => {
+  it("carries the write statement and binds the plan to it", () => {
+    const user = buildSchemaExtendUser({
+      goal: "log a pool incident",
+      schema: 'CREATE TABLE "pool" (id INTEGER);',
+      writeSql: `INSERT INTO "pool_incident" ("pool_id", "severity") VALUES (1, 'low')`,
+    });
+    expect(user).toContain("pool_incident");
+    expect(user).toContain("severity");
+    expect(SCHEMA_EXTEND_SYSTEM).toMatch(/statement runnable/);
+  });
+
+  it("omits the statement section when the caller has none", () => {
+    const user = buildSchemaExtendUser({
+      goal: "log a pool incident",
+      schema: 'CREATE TABLE "pool" (id INTEGER);',
+    });
+    expect(user).not.toContain("Write statement");
   });
 });

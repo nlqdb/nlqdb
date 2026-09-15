@@ -169,6 +169,13 @@ export type SchemaInferResponse = {
 export type ExtendSchemaRequest = {
   goal: string;
   schema: string;
+  // The already-validated write statement the widen has to admit. The goal
+  // alone leaves the target implicit — a model that has to guess it designs a
+  // shape the write cannot use (`maintenance_log(pool_id)` for an INSERT that
+  // names `pool_name`), and the widen + INSERT share one transaction, so that
+  // guess rolls the whole absorb back. Optional: a caller with no statement in
+  // hand still gets the goal-only prompt.
+  writeSql?: string;
   validate?: (plan: Record<string, unknown>) => boolean;
 };
 export type ExtendSchemaResponse = {
