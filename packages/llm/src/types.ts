@@ -156,7 +156,21 @@ export type SchemaInferResponse = {
 // parsed JSON object wrapped in `{plan}` for shape uniformity; validation
 // against the canonical `WidenPlanSchema` (`packages/db/src/types.ts`) lives
 // at the call site, keeping `@nlqdb/llm` free of an `@nlqdb/db` dependency.
-export type ExtendSchemaRequest = { goal: string; schema: string };
+// GLOBAL-041 Phase A — `validate` is an optional caller predicate over the
+// parsed plan. When present and it returns false, the provider throws a
+// `parse` ProviderError so the router FAILS OVER to the next provider instead
+// of returning a JSON-parseable-but-semantically-invalid plan. The WidenPlan
+// invariants (nullable, no DEFAULT, non-empty) live in `@nlqdb/db`'s
+// `WidenPlanSchema` at the call site (SK-SCHEMA-008); passing the predicate
+// (not the schema) keeps `@nlqdb/llm` free of an `@nlqdb/db` dependency. Without
+// it, a head planner that intermittently emits an invalid WidenPlan (qwen)
+// dead-ends the extend even when a later provider (gemini) would design a valid
+// one for the same shape — the run-210 finding.
+export type ExtendSchemaRequest = {
+  goal: string;
+  schema: string;
+  validate?: (plan: Record<string, unknown>) => boolean;
+};
 export type ExtendSchemaResponse = {
   plan: Record<string, unknown>;
   model: string;

@@ -1,5 +1,9 @@
 # Weekly review — 2026-09-13
 
+> **Update 2026-09-14:** the deploy freeze diagnosed below is **RESOLVED** — the
+> founder cleared the Actions gate; prod is current at run 210, widen-on-write
+> live (`founder-actions-log.md` Era 15). 09-13 findings kept as the audit.
+
 Current-state audit of the `/daily` loop (≤ 4 KB, overwritten weekly, no
 changelog). Worst finding first. Window 2026-09-06→09-13: `/daily` runs
 198–209 (all `GLOBAL-041` Phase A widen-on-write, bar run 200's UX-flow re-walk).
@@ -30,10 +34,9 @@ strangers 0 (launch-gated, row #2), FLOW-005 6/6 carried.
 ## Delta integrity — 5 sampled, all genuine (check 5)
 
 Verified the load-bearing run-208 deploy-freeze claim directly (Actions API:
-618 last success, 619+ all `action_required` since 09-08 — exact). Spot-checked
-run 207 (`trace.widen` in SDK + `ask/types.ts`), run 206 (`widen-walk.integration.test.ts`
-present), run 205 (`extendWrite`/`extendNeeded` in `orchestrate.ts`), run 196
-(`asks_extend_ok/failed` counters). No fabricated delta.
+618 last success, 619+ all `action_required` since 09-08). Spot-checked run 207
+(`trace.widen` in SDK), run 206 (`widen-walk.integration.test.ts`), run 205
+(`extendWrite`/`extendNeeded`), run 196 (counters). No fabricated delta.
 
 ## Inert output + dark metrics — the loop self-corrected (checks 3 + 4)
 
@@ -53,10 +56,8 @@ contradictions — no `daily.md` edit this week.
 ## Public roadmap — two markers understated reality, fixed (check 7)
 
 `README.md § Roadmap` "Now — Phase A" marked `kind=extend` and Extend-diff/trace
-as ◯ **planned**, but both are merged-but-undeployed / partially shipped
-(`trace.widen` live on SDK/MCP/elements). Fixed ◯ → ~ this PR, noting the
-undeployed live-0 % state — honest, not a phantom ✓ (the ✓ KPI-counters line is
-genuinely shipped, deployed run 196 pre-freeze).
+as ◯ **planned**, but both are merged / partially shipped (`trace.widen` live on
+SDK/MCP/elements). Fixed ◯ → ~ this PR — honest, not a phantom ✓.
 
 ## Free-model roster — complete + current, one bump to verify (check 8)
 
@@ -65,6 +66,5 @@ Planner chain, best-first: **groq-qwen** (`qwen/qwen3.8-27b`) → **gemini**
 (`gpt-oss-120b`/`20b`) → **workers-ai** (`llama-3.3-70b`) → **openrouter**
 (`:free`) → **mistral-large**. All keys present. Web-research (P2) confirms the
 picks — Groq free = gpt-oss + Qwen3.8; Kimi/DeepSeek correctly *not* depended on
-(both left Groq's free list). One candidate bump: sources cite a newer free
-Gemini flash than our 2.5-flash — the daily loop (SK-LLM) should verify it
-against live `/v1/models` and apply; key exists, so no human bullet.
+(both left Groq's free list). One candidate bump: a newer free Gemini flash than
+2.5-flash — the daily loop should verify against live `/v1/models` and apply.

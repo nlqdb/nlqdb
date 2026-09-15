@@ -20,16 +20,17 @@ import {
   ROUTE_SYSTEM,
   SUMMARIZE_SYSTEM,
 } from "../prompts.ts";
-import type {
-  CallOpts,
-  EngineClassifyResponse,
-  ExtendSchemaResponse,
-  LLMOperation,
-  PlanResponse,
-  Provider,
-  ProviderName,
-  RouteResponse,
-  SchemaInferResponse,
+import {
+  type CallOpts,
+  type EngineClassifyResponse,
+  type ExtendSchemaResponse,
+  type LLMOperation,
+  type PlanResponse,
+  type Provider,
+  ProviderError,
+  type ProviderName,
+  type RouteResponse,
+  type SchemaInferResponse,
 } from "../types.ts";
 import { parseJsonResponse } from "./_shared.ts";
 import type { ChatMessage } from "./openai-compatible.ts";
@@ -146,6 +147,16 @@ export function createChatProvider(impl: ChatProviderImpl): Provider {
         opts,
       });
       const parsed = parseJsonResponse<Record<string, unknown>>(raw);
+      // GLOBAL-041 Phase A — semantic-validity failover. A plan that parses as
+      // JSON but fails the caller's WidenPlan predicate is a per-request bad
+      // output, not a provider-health failure: throw `parse` (the same class as
+      // an unparseable body) so the router falls through to the next provider
+      // rather than dead-ending on the head planner's occasional invalid plan.
+      // The db-create caller re-runs the canonical Zod parse as its security
+      // gate (SK-HDC-003 layer 1) — this predicate only decides fallthrough.
+      if (req.validate && !req.validate(parsed)) {
+        throw new ProviderError("extend plan failed caller validation", "parse");
+      }
       return { plan: parsed, model, confidence: 1.0 } satisfies ExtendSchemaResponse;
     },
     async engineClassify(req, opts = {}) {

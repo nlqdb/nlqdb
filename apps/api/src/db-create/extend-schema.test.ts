@@ -63,10 +63,17 @@ describe("extendSchema", () => {
     expect(res.confidence).toBe(1.0);
     expect(res.plan.add_columns[0]?.table).toBe("orders");
     expect(res.plan.create_tables[0]?.name).toBe("customers");
-    expect(extendSchemaMock).toHaveBeenCalledWith({
-      goal: "add order total 5.50",
-      schema: SCHEMA,
-    });
+    expect(extendSchemaMock).toHaveBeenCalledWith(
+      expect.objectContaining({ goal: "add order total 5.50", schema: SCHEMA }),
+    );
+    // The module injects a WidenPlanSchema-backed predicate so the router can
+    // fail over to the next provider on a semantically-invalid plan (GLOBAL-041
+    // Phase A, run-211). It gates provider fallthrough only — validation of the
+    // returned plan stays the module's own Zod parse.
+    const req = extendSchemaMock.mock.calls[0]?.[0] as { validate?: (p: unknown) => boolean };
+    expect(typeof req.validate).toBe("function");
+    expect(req.validate?.(VALID_PLAN)).toBe(true);
+    expect(req.validate?.({ add_columns: [], create_tables: [] })).toBe(false);
   });
 
   it("defaults an omitted `nullable` to true (widen columns are always nullable)", async () => {
