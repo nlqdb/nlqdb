@@ -47,6 +47,7 @@ export type AskBody = {
   engine?: Engine;
   confirm?: boolean;
   forceQuery?: boolean;
+  forceExtend?: boolean;
   model?: ModelPreset;
   source?: AskSource;
   agentId?: string;
@@ -140,6 +141,7 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
     engine?: unknown;
     confirm?: unknown;
     forceQuery?: unknown;
+    forceExtend?: unknown;
     model?: unknown;
     source?: unknown;
     agentId?: unknown;
@@ -175,6 +177,14 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
   // `true` (from the create/query clarify chip) forces the query route.
   if (raw.body.forceQuery === true) {
     body.forceQuery = true;
+  }
+  // SK-ASK-014 follow-up (a) — the SK-ASK-032 sibling: an explicit `true`
+  // (from the create/query clarify's "Add it to <slug>" affordance) routes a
+  // pinned-DB write the classifier read as `create` into the widen-on-write
+  // path (GLOBAL-041 Phase A). Truthy-only so a malformed client can't widen
+  // a schema by accident.
+  if (raw.body.forceExtend === true) {
+    body.forceExtend = true;
   }
   // SK-PREMIUM-014 — preset knob. An empty string is treated as omitted
   // (same client convenience as dbId); unknown strings reject.

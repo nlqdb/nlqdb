@@ -50,7 +50,7 @@ when-to-load:
 
 - **Decision:** The post-exec LLM summarization step (`llm.summarize`) is skipped when (a) the client opted out of prose (`Accept: application/json`, or an `agent_memory_v1` knowledge DB per GLOBAL-037) **or** (b) the result set is **empty** (0 rows). Every non-empty human-surface result is still summarized.
 - **Core value:** Bullet-proof, Honest, Free
-- **Why:** An empty result is the one input where narration can only fabricate — with no rows to describe, the model invents global claims ("there are no members in the system") or speculates about actions the pipeline never took ("a record would need to be created"). Skipping it is a correctness fix, not just a cost one. Non-empty results keep prose because the summary *is* the chat voice; the SK-LLM anti-fabrication directives bound what it may assert, and `buildSummarizeUser` already caps the prompt at 50 rows so the token cost is bounded. (Earlier revisions gated on a 5-row threshold for latency; that silently dropped useful small-table prose while masking — not fixing — the empty-set hallucination, so the rule is now correctness-anchored.)
+- **Why:** An empty result is the one input where narration can only fabricate — with no rows to describe, the model invents global claims or speculates about actions the pipeline never took — a correctness fix, not just a cost one. Non-empty results keep prose because the summary *is* the chat voice, bounded by the SK-LLM anti-fabrication directives and `buildSummarizeUser`'s 50-row cap.
 - **Consequence in code:** `shouldSummarize(rowCount, { skipSummary })` is a pure function in `ask/summarize-gate.ts`, tested in isolation. The summarize step is skipped *before* the LLM call, not inside it (no wasted token spend on a result we'd discard).
 - **Alternatives rejected:** Always summarise — narrates empty sets, the exact fabrication case. Row-count threshold (skip ≤ 5) — drops genuinely useful small-result prose and only hides the empty-set lie behind a bigger cutoff.
 
@@ -103,13 +103,13 @@ signal and a retry can't double-emit.
 - **Consequence in code:** `withStageRetry` (3 attempts) wraps `route`, `plan`, and `exec`; `PlanRequest.previousAttempt` carries `{sql?, error}` into the next plan call; `Nonrecoverable` skips retries. Each retry stamps the `nlqdb.retry.*{stage, reason}` spans. The **exec** stage additionally backs off between attempts (`300 ms × 2^(n−1)`, ≤900 ms total) so a scale-to-zero Neon compute — free-tier branches idle after ~5 min and fail the first query back — resumes before the retry lands; `plan`/`route` retry instantly (LLM failover to a sibling provider needs no wait).
 - **Alternatives rejected:** Single attempt — surfaces every transient. Unbounded — request hangs. SDK-only — server recoveries need server context. Skip validator feedback — LLM repeats the same shape. Instant exec retry — replays the cold connection before Neon resumes (the 07-06 failure).
 
-### SK-ASK-014 — `routeAsk` runs on every `/v1/ask`, even when `dbId` is pinned
+### SK-ASK-014 — a pinned `kind=create` clarifies, or widens the pinned DB with `forceExtend`
 
-- **Decision:** `routeAsk` runs on every `/v1/ask` regardless of `dbId` pin. `kind=create + pinned` → `409 clarify_required` with `pinned_db:{id,slug}` (surface offers "create new / query *<slug>*?" instead of the cryptic `sql_rejected` the allowlist emits on a `CREATE TABLE`). `kind=create + no pin` → create; `kind=query|write + pinned` → pin honoured. Refines SK-ASK-009. Per SK-ANON-013, anon principals without a pinned `dbId` short-circuit ahead of this.
+- **Decision:** `routeAsk` runs on every `/v1/ask` regardless of `dbId` pin. `kind=create + pinned` → `409 clarify_required` with `pinned_db:{id,slug}`; `kind=create + no pin` → create; `kind=query|write + pinned` → pin honoured. **GLOBAL-041 arm:** a write the classifier read as `create` (an unobserved table reads like a new-DB request) is extend demand, so a re-send with `forceExtend:true` flips the routed kind to `write`, honours the pin, and the orchestrator's widen-on-write Defense (SK-SCHEMA-008) absorbs the first insert instead of dead-ending. Opt-in — an absent flag keeps the clarify unchanged. Refines SK-ASK-009. Per SK-ANON-013, anon principals without a pinned `dbId` short-circuit ahead of this.
 - **Core value:** Effortless UX, Goal-first, Bullet-proof
-- **Why:** "new table" against a pinned DB dead-ends — the allowlist rejects it. Classify-every-send turns that into a typed forward action.
-- **Consequence in code:** the routeAsk prelude runs unconditionally (not just when `dbId` is absent); a new `clarify_required` AskError drives the `ChatPanel` "Create new database" chip, which re-sends without `dbId`.
-- **Alternatives rejected:** Silent pin override on `kind=create` — surprises. Convert only post-allowlist — burns a planner-tier hop first. Typed-plan extend pipeline — right long-term answer; Open.
+- **Why:** "new table" against a pinned DB dead-ends on the allowlist; classify-every-send turns that into a typed forward action, and `forceExtend` makes it *widen this DB* — the first-insert-inference journey GLOBAL-041 needs.
+- **Consequence in code:** `clarify_required` drives the "Create new database" chip (re-send without `dbId`) and the "Add it to *<slug>*" affordance (re-send with `forceExtend`). `index.ts` flips `routeOutput.kind` to `write` on `forceExtend + pinned`, then falls to write dispatch.
+- **Alternatives rejected:** Silent pin override on `kind=create` — surprises (`forceExtend` is the *opt-in* override). Convert only post-allowlist — burns a planner hop.
 
 ### SK-ASK-015 — Plan cache writes are gated on successful exec
 
@@ -300,7 +300,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **SK-ASK-014 follow-ups.** **Parked until** a P3 user requests it: (a) typed-plan `kind=extend` pipeline so "Add it to *<slug>*" works (route + compiler + `sql-validate-ddl.ts` widening + table-card re-embed). (b) Latency audit — confirm classify-every-send's ~150 ms p50 still fits `performance.md §2.1/§2.2` once Phase 1 traffic lands.
+- **SK-ASK-014 follow-up.** Arm (a) — the `kind=extend` routing — shipped as `forceExtend` (GLOBAL-041 Phase A); surface + CLI/MCP propagation are the GLOBAL-003 gap in `schema-widening`. Remaining: the classify-every-send latency audit (~150 ms p50 vs `performance.md §2.1/§2.2`) once Phase 1 traffic lands.
 - **OpenAPI schema for `apps/api`.** **Parked until** the docs HTTP-API page (`SK-DOCS-003` slice d) is prioritised — the SDK reference is the canonical wire shape (`GLOBAL-001`) and `docs.nlqdb.com` links there in the interim, so the generator is a nice-to-have, not a blocker.
 
 ## Happy path walkthrough

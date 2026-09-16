@@ -1421,23 +1421,40 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // kind=create dispatch.
     if (routeOutput.kind === "create") {
       if (parsed.body.dbId) {
-        // SK-ASK-014 — pinned dbId + classifier wants create. Surface
-        // a typed clarification chip rather than letting the LLM emit
-        // CREATE TABLE through the read/write path and have the
-        // allowlist reject it as the cryptic `disallowed_verb`.
+        // SK-ASK-014 — pinned dbId + classifier wants create.
         const pinned = tenantCandidates.find((d) => d.id === parsed.body.dbId);
-        span.setAttribute("nlqdb.ask.outcome", "clarify_create_with_pinned_db");
-        span.end();
-        return errorResponse(c, {
-          code: "clarify_required",
-          clarification: "create_or_query_pinned",
-          pinned_db: pinned ? { id: pinned.id, slug: pinned.slug } : null,
-          // `reason` is the user-facing sentence (rendered as the message); the
-          // router's machine slug lives on the `kind_reason` span, not the wire.
-          reason: "You've pinned a database, but that reads like a request to create a new one.",
-        });
+        // SK-ASK-014 follow-up (a) / GLOBAL-041 Phase A — a write-shaped goal
+        // the classifier read as `create` while a DB is pinned is extend
+        // demand, not a new-DB request. With `forceExtend` set (the SK-ASK-032
+        // sibling, sent by the clarify's "Add it to <slug>" affordance) flip
+        // the routed kind to `write` and fall through to the query/write
+        // dispatch below: the pin is honoured and the orchestrator's
+        // widen-on-write Defense (SK-SCHEMA-008) absorbs the first insert into
+        // the unobserved table instead of dead-ending on the create/query
+        // clarify. Opt-in — an absent flag keeps the SK-ASK-014 clarify exactly
+        // as before, so default routing is unchanged.
+        if (parsed.body.forceExtend && pinned) {
+          routeOutput.kind = "write";
+          span.setAttribute("nlqdb.ask.outcome", "forced_extend_pinned");
+        } else {
+          // Surface a typed clarification chip rather than letting the LLM emit
+          // CREATE TABLE through the read/write path and have the allowlist
+          // reject it as the cryptic `disallowed_verb`.
+          span.setAttribute("nlqdb.ask.outcome", "clarify_create_with_pinned_db");
+          span.end();
+          return errorResponse(c, {
+            code: "clarify_required",
+            clarification: "create_or_query_pinned",
+            pinned_db: pinned ? { id: pinned.id, slug: pinned.slug } : null,
+            // `reason` is the user-facing sentence (rendered as the message);
+            // the router's machine slug lives on the `kind_reason` span, not
+            // the wire.
+            reason: "You've pinned a database, but that reads like a request to create a new one.",
+          });
+        }
+      } else {
+        return runCreatePath();
       }
-      return runCreatePath();
     }
 
     // kind=query|write — honour the pin if set; otherwise run the
