@@ -186,7 +186,7 @@ Postgres shows a Supabase-OAuth checkbox (on by default) whose sole CTA is "Conn
 ### SK-WEB-031 — One-input home with a fixed section rhythm; content pages are secondary nav
 
 **Body:** [`decisions/SK-WEB-031-one-input-home.md`](./decisions/SK-WEB-031-one-input-home.md).
-`/` = one primary action (the anonymous goal input + starter goals, `END_GOAL` row 9) then how-it-works → diff-then-confirm → surfaces → ways in (agent memory, BYO warehouse) → under the hood → one closing CTA; one promoted CTA per band. Top nav is Agents · Pricing · Docs · **Content ▾** · Sign in — Solve / Compare / Blog / Manifesto live only inside the Content disclosure. Replaces the two-door home (former `SK-WEB-018`).
+`/` = one primary action (the anonymous goal input + starter goals, `END_GOAL` row 9) then how-it-works → diff-then-confirm → surfaces → ways in (agent memory, BYO warehouse) → under the hood → one closing CTA; one promoted CTA per band. Replaces the two-door home (former `SK-WEB-018`).
 
 ## GLOBALs governing this feature
 
