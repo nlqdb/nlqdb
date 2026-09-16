@@ -413,6 +413,20 @@ h3 {
   box-shadow: var(--shadow-2);
 }
 
+/* Hover bridge over the 8px gap under the nav row: a pointer crossing it
+   is over neither the button nor the panel, so `pointerleave` fires on the
+   wrap and closes the menu mid-reach. The strip is a panel descendant, so
+   the pointer stays inside the disclosure the whole way down. */
+.topnav__panel::before,
+.topnav__avatar-panel::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  right: 0;
+  left: 0;
+  height: 8px;
+}
+
 .topnav__avatar-item {
   display: block;
   width: 100%;

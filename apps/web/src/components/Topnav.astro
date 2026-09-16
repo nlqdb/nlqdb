@@ -1,8 +1,9 @@
 ---
-// Top navigation — lean by design (SK-WEB-031): the product routes stay
-// top-level (Agents · Pricing · Docs); the editorial surfaces (Solve ·
-// Compare · Blog · Manifesto) collapse behind one "Content" disclosure so
-// the row routes a stranger to the product first. Both disclosures on
+// Top navigation — lean by design (SK-WEB-031): the two conversion routes
+// stay top-level (Agents · Pricing); everything a visitor reads rather than
+// buys (Docs · Solve · Compare · Blog · Manifesto) collapses behind one
+// "Content" disclosure so the row routes a stranger to the product first.
+// Both disclosures on
 // this row (Content, and the authed avatar menu) share one APG
 // disclosure implementation below: a toggle button revealing plain links
 // — not `role="menu"` (that role obliges arrow-key focus management;
@@ -36,6 +37,7 @@ const inChat = current === "chat";
 // panel is `hidden` — the SEO posture of `/solve`, `/vs`, `/blog`
 // (SK-WEB-023) does not depend on the links being visible.
 const CONTENT = [
+  { key: "docs", href: "https://docs.nlqdb.com/", label: "Docs", blurb: "Reference and guides" },
   { key: "solve", href: "/solve/", label: "Solve", blurb: "One data question, one guide" },
   { key: "vs", href: "/vs/", label: "Compare", blurb: "Honest side-by-sides" },
   { key: "blog", href: "/blog/", label: "Blog", blurb: "Engineering notes" },
@@ -49,7 +51,6 @@ const inContent = CONTENT.some((c) => c.key === current);
   <nav class="topnav__links" aria-label="Primary">
     <a href="/agents/" aria-current={current === "agents" ? "page" : undefined}>Agents</a>
     <a href="/pricing/" aria-current={current === "pricing" ? "page" : undefined}>Pricing</a>
-    <a href="https://docs.nlqdb.com/">Docs</a>
 
     <div class="topnav__menu" data-disclosure>
       <button
