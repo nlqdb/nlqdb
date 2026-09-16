@@ -985,11 +985,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       const gateResp = await peekAnonCreateGate();
       if (gateResp) return gateResp;
 
-      // Dynamic import defers libpg-query's WASM initialization to
-      // the first create request. The `__filename` / `__dirname`
-      // globals its Emscripten loader needs on Workers are set by the
-      // wrapper module itself (`ask/libpg-query-worker.ts`), so no
-      // per-handler polyfill is needed here.
+      // Dynamic import defers libpg-query's WASM initialization to the
+      // first create request. Making that import safe on Workers is
+      // `ask/libpg-query-worker.ts`'s own job — see its header; no call
+      // site sets up globals for it.
       //
       // `test/ask.test.ts SK-ANON-013` is `.skip`'d — this dynamic
       // import hangs in the workerd vitest-pool after prior /v1/ask

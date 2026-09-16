@@ -173,6 +173,30 @@ describe("orchestrateAsk — widen-on-write, missing-column absorb (SK-SCHEMA-00
     expect(out.extendNeeded).toBe(true);
   });
 
+  it("degrades a THROWING absorb to schema_mismatch, never a 500", async () => {
+    // The 2026-09-15 incident: `extendWrite`'s lazy `import('./sql-validate-ddl.ts')`
+    // rejected (libpg-query read `self.location.href` on workerd), and because the
+    // call sat outside a try the rejection escaped `orchestrateAsk` as a 500. A
+    // best-effort absorb that throws must land on the same envelope as one that
+    // returns `ok: false` (GLOBAL-033).
+    const plan = vi.fn(async () => planOf(AGE_INSERT));
+    const exec = vi.fn(async () => {
+      throw pgError('column "age" does not exist', "42703");
+    });
+    const extendWrite = vi.fn<(a: ExtendArgs) => Promise<ExtendOutcome>>(async () => {
+      throw new TypeError("Cannot read properties of undefined (reading 'href')");
+    });
+    const d = { ...deps(plan, exec), extendWrite };
+
+    const out = await orchestrateAsk(d, req({ intent: "write", confirm: true }));
+
+    expect(extendWrite).toHaveBeenCalledTimes(1);
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.error.code).toBe("schema_mismatch");
+    expect(out.extendNeeded).toBe(true);
+  });
+
   it("does NOT absorb a read's 42703 — it re-plans (extendWrite untouched)", async () => {
     // A SELECT naming a missing column is a planning miss, not widen demand:
     // it must take the SK-ASK-022 execution-guided repair, never the absorb.

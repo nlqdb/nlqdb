@@ -52,6 +52,18 @@
   `anon-adopt-regrant.ts`, client construction now sits INSIDE the
   instrumented try — nothing on the retarget path can fail without a
   diag row. Unit-proved in `apps/api/test/exec-acl-heal.test.ts`.
+  **2026-09-15 follow-on:** the `ensureLibpgWasmGlobals()` shim this
+  decision names is gone. It had been copy-pasted into four `index.ts`
+  handlers, and widen-on-write's own lazy `import("./sql-validate-ddl.ts")`
+  (`ask/build-deps.ts`, SK-SCHEMA-008) never got a copy — so every
+  first-insert write ask 500'd with the same `self.location.href`
+  TypeError. `ask/libpg-query-worker.ts` now defines `__filename` /
+  `__dirname` itself, immediately before the Emscripten factory call it
+  owns, so no call site can forget; and `ask/orchestrate.ts` catches a
+  THROWING absorb into the `schema_mismatch` envelope rather than letting
+  it escape as a 5xx. Regressions covered by
+  `apps/api/test/libpg-query-workerd.test.ts` (workerd runtime) and the
+  throwing-absorb case in `src/ask/orchestrate.test.ts`.
 - **Alternatives rejected:**
   - **Only fix the import (no heal)** — restores the one-shot property:
     the next silent miss (any cause) is a permanent brick again, and this

@@ -1,14 +1,30 @@
 // Worker-compatible wrapper for libpg-query WASM.
 //
-// The stock libpg-query index.js calls PgQueryModule() at module scope,
-// and the Emscripten loader inside it takes the ENVIRONMENT_IS_NODE path
-// (Workers defines process.versions.node via nodejs_compat) which calls
-// fs.readFileSync to load the .wasm binary — unsupported on Workers.
+// `libpg-query/wasm/libpg-query.js` is an Emscripten loader that picks its
+// host environment when the factory is CALLED, and neither branch fits
+// workerd out of the box:
 //
-// This wrapper imports the Emscripten factory and the WASM binary
-// separately. Wrangler's esbuild plugin handles the .wasm import,
-// making it available as a WebAssembly.Module at runtime. We pass it
-// via the instantiateWasm hook, bypassing the filesystem read entirely.
+//   if (typeof __filename != "undefined") { _scriptName = __filename }
+//   else if (ENVIRONMENT_IS_WORKER)       { _scriptName = self.location.href }
+//   ...
+//   if (ENVIRONMENT_IS_NODE) { fs = require("fs"); scriptDirectory = __dirname + "/" }
+//
+// workerd defines `WorkerGlobalScope` but has no `location`, so without
+// `__filename` the `.href` read throws `TypeError: Cannot read properties of
+// undefined (reading 'href')` — the 2026-09-15 `/v1/ask` 500s. And
+// `nodejs_compat` defines `process.versions.node`, so the node branch is the
+// one that runs and it wants `__dirname`.
+//
+// Defining both globals immediately before the factory call satisfies both
+// branches. It lives HERE, not at the call sites: the same polyfill used to be
+// copy-pasted into four `index.ts` handlers, and the one path that never got a
+// copy — widen-on-write's lazy `import("./sql-validate-ddl.ts")` in
+// `ask/build-deps.ts` (SK-SCHEMA-008) — is what broke. This module owns its
+// own precondition; no caller needs to know it exists.
+//
+// The filesystem read the node branch sets up is never reached: the `.wasm`
+// import below is resolved by wrangler's esbuild plugin to a
+// `WebAssembly.Module`, and `instantiateWasm` hands it straight to the loader.
 
 // @ts-expect-error — Emscripten factory; no TS declarations
 import PgQueryEmscripten from "libpg-query/wasm/libpg-query.js";
@@ -28,20 +44,9 @@ interface EmscriptenModule {
 
 let mod: EmscriptenModule | null = null;
 
-// Self-guard the Emscripten factory's environment BEFORE it runs. The
-// libpg-query@17.x loader takes the `ENVIRONMENT_IS_NODE` path on Workers
-// (`nodejs_compat` defines `process.versions.node`) and, with `__filename` /
-// `__dirname` undefined, dereferences `.href` on an undefined script URL —
-// crashing module init with `TypeError: Cannot read properties of undefined
-// (reading 'href')`. Defining these globals steers the loader onto the path
-// that reads them instead. This lives in the WASM wrapper (not each route
-// handler) so EVERY importer — create, connect, memory-import AND the
-// widen-on-write extend path — is protected at the source: the extend path
-// forgetting this guard is exactly what 500'd live KPI-1 (`GLOBAL-041` Phase
-// A). Idempotent, so a handler that already set them is unaffected.
-const wasmGlobals = globalThis as unknown as { __filename?: string; __dirname?: string };
-if (typeof wasmGlobals.__filename === "undefined") wasmGlobals.__filename = "worker";
-if (typeof wasmGlobals.__dirname === "undefined") wasmGlobals.__dirname = "/";
+const g = globalThis as { __filename?: string; __dirname?: string };
+if (typeof g.__filename === "undefined") g.__filename = "worker";
+if (typeof g.__dirname === "undefined") g.__dirname = "/";
 
 const initPromise = (
   PgQueryEmscripten as (opts: Record<string, unknown>) => Promise<EmscriptenModule>
