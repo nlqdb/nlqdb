@@ -99,10 +99,6 @@ const columns: {
 </section>
 
 <style>
-  .amm {
-    margin: 0 auto;
-    max-width: 880px;
-  }
   .amm__title {
     font-family: var(--sans);
     font-size: clamp(20px, 2.6vw, 28px);
@@ -116,6 +112,10 @@ const columns: {
   }
   .amm__table {
     width: 100%;
+    /* Below this the capability column crushes to a two-words-per-line
+       column, so hand the overflow to `.amm__scroll` and let phones swipe
+       the table instead. Inert at widths where the table already fits. */
+    min-width: 520px;
     border-collapse: collapse;
     font-size: 14px;
   }
@@ -137,8 +137,20 @@ const columns: {
   .amm__cap-head {
     text-align: left !important;
   }
+  /* Pinned while the table is swiped, so the row a glyph belongs to is
+     never off-screen — the wedge only reads if the capability does.
+     Inert above 520px, where nothing scrolls. */
+  .amm__cap-head,
+  .amm__cap {
+    position: sticky;
+    left: 0;
+    background: var(--ground);
+  }
+  /* Percentage widths, not fixed px: the columns then share the slack at
+     every width instead of the capability cell capping itself and leaving
+     a dead gutter mid-table. */
   .amm__col {
-    width: 64px;
+    width: 14%;
   }
   /* The wedge: nlqdb is the column the eye lands on. */
   .amm__col--us {
@@ -147,18 +159,21 @@ const columns: {
     border-left: 1px solid var(--accent-line);
     border-right: 1px solid var(--accent-line);
   }
+  /* Stays a real table cell — `display: flex` here made the browser wrap
+     the row in an anonymous cell, so this column's rule sat half a pixel
+     off the others and stopped short of them. The stack is on the spans. */
   .amm__cap {
     text-align: left;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    max-width: 38ch;
+    width: 44%;
   }
   .amm__cap-name {
+    display: block;
     font-weight: 500;
     color: var(--ink);
   }
   .amm__note {
+    display: block;
+    margin-top: 4px;
     color: var(--body);
     font-size: 12px;
     line-height: 1.45;

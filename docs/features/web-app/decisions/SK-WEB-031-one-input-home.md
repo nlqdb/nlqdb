@@ -15,11 +15,6 @@ again, as [`END_GOAL.md`](../../../END_GOAL.md) row 9 states.
   `/app/connect`, `SK-WEB-019`) → *under the hood* (`SK-WEB-021`) → one
   closing CTA with measured facts. Bands alternate (ground / cards / tinted
   band) under one token system (`SK-WEB-020`); one promoted CTA per band.
-  **Nav:** the top row is Agents · Pricing · Docs · **Content ▾** · Sign in;
-  the editorial surfaces — Solve, Compare, Blog, Manifesto — live only inside
-  the Content disclosure (APG disclosure button: click, hover on
-  hover-capable devices, `ArrowDown`/`Escape`, outside-click; links stay in
-  the HTML while hidden). Contact moves to the footer.
 - **Core value:** Goal-first, Effortless UX, Honest latency
 - **Why:** The two-door chooser asked a stranger to self-classify before
   any value, and the goal input — the thing `END_GOAL` row 9 and
@@ -45,8 +40,6 @@ again, as [`END_GOAL.md`](../../../END_GOAL.md) row 9 states.
 - **Alternatives rejected:**
   - **Keep the two doors, add the input as a third.** Three equal actions
     is no primary action; the doors survive demoted, one band down.
-  - **Top-level "Resources" mega-menu with columns.** Four links need one
-    list, not a grid; a mega-menu is chrome without content.
   - **Drop Solve/Compare/Blog from the nav entirely (footer only).** Kills
     keyboard/screen-reader discoverability from the top row for the pages
     the GLOBAL-032 walkers still cover daily.
