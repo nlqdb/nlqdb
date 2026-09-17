@@ -98,10 +98,11 @@ describe("marketingMirrorRedirect", () => {
 // even reach this front-controller; if it drifts from MARKETING_MIRROR_PREFIXES
 // a marketing route silently serves a crawlable duplicate again (the exact
 // regression that SK-WEB-026's trees-only scope risked). Derive the expected
-// array from the prefixes and assert equality, so adding a route is a one-list
-// edit the test proves complete.
+// array from the prefixes and assert equality. `/v1/*` is the deliberate
+// non-marketing exception: Worker-first prevents asset redirects from changing
+// POST semantics before Hono sees an API request.
 describe("wrangler run_worker_first stays in sync with MARKETING_MIRROR_PREFIXES", () => {
-  test("every prefix is routed through the worker, and nothing extra is", () => {
+  test("every prefix plus the API guard is routed through the worker", () => {
     const toml = readFileSync(fileURLToPath(new URL("../wrangler.toml", import.meta.url)), "utf8");
     const block = toml.match(/run_worker_first\s*=\s*\[([\s\S]*?)\]/);
     expect(block).not.toBeNull();
@@ -110,7 +111,7 @@ describe("wrangler run_worker_first stays in sync with MARKETING_MIRROR_PREFIXES
     // A prefix whose last segment has a dot is an exact file (`/llms.txt`);
     // it needs only its own entry. Every other prefix is a path tree and
     // needs both the bare entry and the `/*` glob.
-    const expected = new Set<string>();
+    const expected = new Set<string>(["/v1/*"]);
     for (const p of MARKETING_MIRROR_PREFIXES) {
       const isFile = p.slice(p.lastIndexOf("/") + 1).includes(".");
       expected.add(p);
