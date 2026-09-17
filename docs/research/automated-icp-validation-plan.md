@@ -655,16 +655,15 @@ Successful Show-HN drops 10k–50k visitors in 24h
 ([Markepear's HN guide](https://www.markepear.dev/blog/dev-tool-hacker-news-launch)).
 §1.1 stranger-test exists so the funnel survives that spike.
 
-### 3.4 Waitlist as an intent-signal surface
+### 3.4 Become AI subscriptions as an intent signal
 
-With the product public there's no gate to wait behind, so the homepage
-`#waitlist` is no longer a release valve. It survives only as an optional
-intent-capture surface — a "keep me posted" sign-up whose value is the
-demand signal, not access:
+The product remains public and usable. The homepage and signed-in app offer
+an optional “Keep me posted” subscription only after explaining the Become AI
+pilot and marketplace:
 
-- Form posts to `POST /v1/waitlist`.
-- Every signup fires `feature.requested.early_access` → §2 evidence file
-  gains "intent to use", not just "pain in the wild".
+- Form posts to `POST /v1/pivot/interest`.
+- `pivot_interest` deduplicates by email and records `home` versus `app`.
+- The unique count is visible in `/app/admin` and its daily snapshots.
 
 ### 3.5 Tractor beams — examples, gallery, comparison pages
 

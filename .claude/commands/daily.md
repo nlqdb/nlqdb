@@ -78,8 +78,9 @@ content or marketplace lever; existing pages stay live.
    customer", for revenue or a $0 path.
 5. **Monetization is settled** (`GLOBAL-041`): the shipped premium tier
    stays as is; no pricing, meter or plan work for the DBA product before
-   Phase B ships. There is no access gate and no waitlist — the product is
-   open pre-beta; never reintroduce either.
+   Phase B ships. There is no access gate — the product is open pre-beta;
+   the optional Become AI update list measures interest and never controls
+   access (`GLOBAL-007`).
 6. **Red main is the run.** If `bun run typecheck && bun run check && bun run
    test` is red before you change anything, fixing it IS this run's lever.
    Same for the `deploy-*` workflows: check each one's latest run on `main`
