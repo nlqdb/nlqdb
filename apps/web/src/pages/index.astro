@@ -12,14 +12,16 @@
 //   4. Surfaces — SDK · element · MCP · CLI, honest status per progress.md §0.
 //   5. Ways in — agent memory (SK-WEB-016 <McpInstall>) and BYO warehouse
 //      (SK-WEB-019 /app/connect), demoted from doors to a band.
-//   6. Under the hood — poster portal to /architecture/ (SK-WEB-021).
-//   7. Closing CTA + the facts we can measure.
+//   6. What is next — non-gating Become AI interest capture.
+//   7. Under the hood — poster portal to /architecture/ (SK-WEB-021).
+//   8. Closing CTA + the facts we can measure.
 // Accent budget (SK-WEB-020): one promoted CTA per band.
 
 import AuthedHomeBanner from "../components/AuthedHomeBanner.astro";
 import CreateForm from "../components/CreateForm.tsx";
 import Footer from "../components/Footer.astro";
 import McpInstall from "../components/McpInstall.astro";
+import PivotInterestForm from "../components/PivotInterestForm.astro";
 import Topnav from "../components/Topnav.astro";
 import Base from "../layouts/Base.astro";
 import { appHref } from "../lib/app-href";
@@ -216,7 +218,34 @@ effect    "orders today" scans less
         </div>
       </section>
 
-      {/* ---- 6. Under the hood — poster portal to the 3D map (SK-WEB-021) ---- */}
+      {/* The current product stays open; this is an interest signal for the
+          next product, after visitors have seen the working engine. */}
+      <section
+        class="future band band--tint reveal"
+        id="become-ai"
+        aria-labelledby="future-title"
+      >
+        <div class="future__copy">
+          <p class="eyebrow">What we&rsquo;re building next</p>
+          <h2 class="band__title" id="future-title">
+            AI can&rsquo;t replace you if you become AI.
+          </h2>
+          <p class="band__lede">
+            Turn what you know into a structured knowledge product agents can query — and earn
+            when they use it. The first pilot is for language tutors.
+          </p>
+          <a class="future__link" href="/experts/">See how Become AI will work &rarr;</a>
+        </div>
+        <div class="future__signup">
+          <p class="future__promise">
+            Look forward to a guided expertise interview, a knowledge base you can inspect and
+            correct, and marketplace access you control.
+          </p>
+          <PivotInterestForm source="home" />
+        </div>
+      </section>
+
+      {/* ---- 7. Under the hood — poster portal to the 3D map (SK-WEB-021) ---- */}
       <section class="undermap reveal" aria-labelledby="undermap-title">
         <a class="undermap__link" href="/architecture/">
           <img
@@ -240,7 +269,7 @@ effect    "orders today" scans less
         </a>
       </section>
 
-      {/* ---- 7. Close: one CTA + the facts we can measure ---- */}
+      {/* ---- 8. Close: one CTA + the facts we can measure ---- */}
       <section class="close band band--accent reveal" aria-labelledby="close-title">
         <h2 class="band__title" id="close-title">Describe what you're building.</h2>
         <p class="band__lede">

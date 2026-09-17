@@ -27,6 +27,7 @@ beforeEach(async () => {
     "anon_adoptions",
     "chat_message",
     "customers",
+    "pivot_interest",
     "premium_interest",
     "gtm_snapshots",
     "databases",
@@ -163,6 +164,9 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
       .run();
 
     await env.DB.prepare(
+      "INSERT INTO pivot_interest (email_hash, email, source) VALUES ('hash1', 'reader@builders.io', 'home')",
+    ).run();
+    await env.DB.prepare(
       "INSERT INTO premium_interest (user_id, email) VALUES ('u_s1', 'maya@builders.io')",
     ).run();
     await env.DB.prepare(
@@ -253,6 +257,7 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
       { surface: "untracked", total: 1, last7d: 0 },
     ]);
 
+    expect(m.pmf.pivotInterest).toBe(1);
     expect(m.pmf.premiumInterest).toBe(1);
     expect(m.pmf.payingCustomers).toBe(1);
     expect(m.pmf.customersByStatus).toEqual({ active: 1, incomplete: 1 });

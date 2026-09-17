@@ -153,6 +153,7 @@ export type GtmMetrics = {
     dbsBySurface: Array<{ surface: string; total: number; last7d: number }>;
   };
   pmf: {
+    pivotInterest: number;
     premiumInterest: number;
     payingCustomers: number;
     customersByStatus: Record<string, number>;
@@ -278,6 +279,7 @@ export async function computeGtmMetrics(
     strangerDbs,
     adoptions,
     strangerActivity,
+    pivot,
     premium,
     customers,
     surveyRows,
@@ -357,6 +359,7 @@ export async function computeGtmMetrics(
         (SELECT MAX(d.last_queried_at) FROM databases d WHERE d.tenant_id = u.id) AS lastDbSec,
         (SELECT MAX(m.created_at) FROM chat_message m WHERE m.user_id = u.id) AS lastChatMs
       FROM user u WHERE NOT ${INTERNAL_EMAIL_SQL}`),
+    db.prepare(`SELECT COUNT(*) AS n FROM pivot_interest`),
     db.prepare(`SELECT COUNT(*) AS n FROM premium_interest`),
     db.prepare(`SELECT status, COUNT(*) AS n FROM customers GROUP BY status`),
     db.prepare(`SELECT response, COUNT(*) AS n FROM pmf_survey GROUP BY response`),
@@ -406,6 +409,7 @@ export async function computeGtmMetrics(
   const f10 = (first10?.results?.[0] ?? null) as CountsRow | null;
   const sdb = (strangerDbs?.results?.[0] ?? null) as CountsRow | null;
   const ad = (adoptions?.results?.[0] ?? null) as CountsRow | null;
+  const piv = (pivot?.results?.[0] ?? null) as CountsRow | null;
   const pi = (premium?.results?.[0] ?? null) as CountsRow | null;
   const dev = (anonDevices?.results?.[0] ?? null) as CountsRow | null;
   const mem = (memoryDbs?.results?.[0] ?? null) as CountsRow | null;
@@ -560,6 +564,7 @@ export async function computeGtmMetrics(
       })),
     },
     pmf: {
+      pivotInterest: num(piv, "n"),
       premiumInterest: num(pi, "n"),
       payingCustomers,
       customersByStatus,
@@ -605,6 +610,7 @@ export async function writeGtmSnapshot(db: D1Database, metrics: GtmMetrics): Pro
     strangersRetained7d: metrics.retention.strangersRetained7d,
     dbsActive7d: metrics.retention.dbsActive7d,
     first10SuccessRate: metrics.activation.first10SuccessRate,
+    pivotInterest: metrics.pmf.pivotInterest,
     premiumInterest: metrics.pmf.premiumInterest,
     payingCustomers: metrics.pmf.payingCustomers,
     // SK-GTM-005 additions (additive keys — older rows simply lack them).

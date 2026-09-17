@@ -1,0 +1,189 @@
+---
+type Props = {
+  source: "home" | "app";
+  compact?: boolean;
+};
+
+const { source, compact = false } = Astro.props;
+---
+
+<div class:list={["interest-signup", { "interest-signup--compact": compact }]} data-interest-signup data-source={source}>
+  <form class="interest-signup__form" aria-label="Get Become AI updates">
+    <label class="interest-signup__email">
+      <span>Email</span>
+      <input
+        type="email"
+        name="email"
+        autocomplete="email"
+        placeholder="you@example.com"
+        maxlength="254"
+        required
+      />
+    </label>
+    <p class="interest-signup__account" hidden></p>
+    <button class="interest-signup__button" type="submit">Keep me posted</button>
+  </form>
+  <p class="interest-signup__fine">
+    Pilot and launch updates only. Unsubscribe from any email.
+  </p>
+  <p class="interest-signup__status" role="status" aria-live="polite"></p>
+</div>
+
+<script>
+  import { fetchSession } from "../lib/session";
+
+  const storageKey = "nlqdb_pivot_interest";
+  for (const root of document.querySelectorAll<HTMLElement>("[data-interest-signup]")) {
+    const form = root.querySelector<HTMLFormElement>("form");
+    const input = root.querySelector<HTMLInputElement>('input[name="email"]');
+    const account = root.querySelector<HTMLElement>(".interest-signup__account");
+    const button = root.querySelector<HTMLButtonElement>("button");
+    const status = root.querySelector<HTMLElement>(".interest-signup__status");
+    if (!form || !input || !account || !button || !status) continue;
+
+    let storedEmail: string | null = null;
+    try {
+      storedEmail = localStorage.getItem(storageKey);
+      if (storedEmail) {
+        form.hidden = true;
+        status.textContent = "You’re on the updates list ✓";
+      }
+    } catch {
+      // Storage is an enhancement; the durable signal remains in D1.
+    }
+
+    void fetchSession().then((user) => {
+      if (!user?.email) return;
+      if (storedEmail && storedEmail !== user.email.toLowerCase()) {
+        form.hidden = false;
+        status.textContent = "";
+      }
+      input.value = user.email;
+      input.required = false;
+      input.closest<HTMLElement>(".interest-signup__email")?.setAttribute("hidden", "");
+      account.textContent = `We’ll use ${user.email}`;
+      account.hidden = false;
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!input.value || !input.validity.valid) {
+        input.reportValidity();
+        return;
+      }
+      button.disabled = true;
+      button.textContent = "Saving…";
+      status.textContent = "";
+      try {
+        const response = await fetch("/v1/pivot/interest", {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: input.value, source: root.dataset["source"] }),
+        });
+        if (!response.ok) throw new Error("interest capture failed");
+        try {
+          localStorage.setItem(storageKey, input.value.trim().toLowerCase());
+        } catch {
+          // The server record is sufficient when storage is unavailable.
+        }
+        form.hidden = true;
+        status.textContent = "You’re in — we’ll email you when the pilot opens ✓";
+      } catch {
+        button.disabled = false;
+        button.textContent = "Keep me posted";
+        status.textContent = "We couldn’t save that. Please try once more.";
+      }
+    });
+  }
+</script>
+
+<style>
+  .interest-signup {
+    display: grid;
+    gap: 8px;
+  }
+
+  .interest-signup__form {
+    display: flex;
+    align-items: end;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .interest-signup__email {
+    display: grid;
+    flex: 1 1 230px;
+    gap: 6px;
+    font-size: var(--t-xs);
+    color: var(--muted);
+  }
+
+  .interest-signup__email input {
+    width: 100%;
+    padding: 11px 13px;
+    border: 1px solid var(--rule-2);
+    border-radius: var(--r-sm);
+    background: var(--ground);
+    color: var(--ink);
+    font: 14px var(--sans);
+  }
+
+  .interest-signup__email input:focus {
+    outline: none;
+    box-shadow: var(--ring);
+  }
+
+  .interest-signup__button {
+    padding: 11px 16px;
+    border: 1px solid var(--accent-line);
+    border-radius: var(--r-sm);
+    background: var(--accent-soft);
+    color: var(--ink);
+    font: 600 14px var(--sans);
+    cursor: pointer;
+  }
+
+  .interest-signup__button:hover {
+    background: var(--accent);
+    color: var(--ground);
+  }
+
+  .interest-signup__button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+
+  .interest-signup__account,
+  .interest-signup__fine,
+  .interest-signup__status {
+    margin: 0;
+    font-size: var(--t-xs);
+    line-height: 1.45;
+  }
+
+  .interest-signup__account {
+    align-self: center;
+    color: var(--body);
+  }
+
+  .interest-signup__fine {
+    color: var(--muted);
+  }
+
+  .interest-signup__status {
+    min-height: 1.45em;
+    color: var(--accent);
+  }
+
+  .interest-signup--compact .interest-signup__fine {
+    display: none;
+  }
+
+  @media (max-width: 520px) {
+    .interest-signup__form,
+    .interest-signup__button {
+      width: 100%;
+    }
+  }
+</style>

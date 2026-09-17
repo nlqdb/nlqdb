@@ -164,9 +164,11 @@ private repo per SK-EKP-003.
 - **Decision (founder, 2026-09-04):** EK is the first application built on
   the inferred-schema engine. Its build starts when Phase A widen-on-write
   (`GLOBAL-041`) ships and its KPI-1 floor is measurable; until then EK
-  ships decisions only, no code. EK adds **no criterion** to Phase A's exit
-  gate, and Phase A does not wait on EK. EK keeps its own launch motion and
-  income line (marketplace fee, SK-EKP-002).
+  ships no product code. A non-gating public-interest form may preview the
+  product and collect pilot/launch updates; it remains outside the EK
+  application and adds **no criterion** to Phase A's exit gate. Phase A does
+  not wait on EK. EK keeps its own launch motion and income line
+  (marketplace fee, SK-EKP-002).
 - **Core value:** Goal-first, Simple
 - **Why:** Building EK on the `agent_memory_v1` preset would re-introduce the
   exact modeling step the bet removes and would make EK the second app that
@@ -174,10 +176,10 @@ private repo per SK-EKP-003.
   workload that proves the engine to a stranger with a livelihood on it.
 - **Consequence in code:** A reviewer rejects EK slices that ship pack DDL, a
   versioned preset contract, or a bespoke endpoint per pack; the expert's
-  rows land through the same widen-on-write path as any app's.
+  rows land through the same widen-on-write path as any app's. Interest
+  capture may store only contact/source data and must not imply access.
 - **Alternatives rejected:** **Build EK now on the preset** — a modeled
-  schema under a "no modeling" product. · **Archive EK** — it is the only
-  planned workload with a paying counterparty.
+  schema under a "no modeling" product.
 
 ### SK-EKP-006 — One catalog: goal packs are the marketplace's free listings; niche-agent packs are marketplace instances
 
