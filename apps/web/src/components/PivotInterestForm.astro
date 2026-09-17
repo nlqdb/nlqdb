@@ -32,7 +32,7 @@ const { source, compact = false } = Astro.props;
 <script>
   import { fetchSession } from "../lib/session";
 
-  const storageKey = "nlqdb_pivot_interest";
+  const storageKey = "nlqdb:pivot-interest";
   for (const root of document.querySelectorAll<HTMLElement>("[data-interest-signup]")) {
     const form = root.querySelector<HTMLFormElement>("form");
     const input = root.querySelector<HTMLInputElement>('input[name="email"]');
