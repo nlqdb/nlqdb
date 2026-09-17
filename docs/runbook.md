@@ -46,10 +46,10 @@ re-enable via Cloudflare later).
   `nlqdb-web` Pages project and `nlqdb-coming-soon` Pages project both
   have 0 custom domains and can be deleted from the Cloudflare dashboard.
 - `www` follows the same routing as the apex.
-- **Cloudflare Email Routing ON** — catch-all → founder's personal
-  inbox (verified). Every address on `nlqdb.com` forwards, so
-  `hello@`, `contact@`, `dmarc@`, `support@`, etc. all reach the
-  founder without per-address rules.
+- **Cloudflare Email Routing ON** — catch-all → the
+  `protect-email-domain-reputation` Worker (`apps/email-router`): every
+  address reaches the founder's verified inbox, except `dmarc@` whose
+  aggregate reports stay in the Worker log.
 
 ### `nlqdb.ai`
 
@@ -60,8 +60,7 @@ re-enable via Cloudflare later).
 - **Single Redirect rule:** `All incoming requests` → dynamic
   expression `concat("https://nlqdb.com", http.request.uri)`, status
   301. Preserves path + query string.
-- **Cloudflare Email Routing ON** — catch-all → same destination as
-  `nlqdb.com` (founder's personal inbox).
+- **Cloudflare Email Routing ON** — same catch-all Worker.
 
 ---
 
