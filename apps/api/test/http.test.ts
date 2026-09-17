@@ -154,6 +154,31 @@ describe("parseAskBody — forceQuery (SK-ASK-032)", () => {
   });
 });
 
+describe("parseAskBody — forceExtend (SK-ASK-014 follow-up a)", () => {
+  it("carries forceExtend only for an explicit boolean true", async () => {
+    const out = await parseAskBody(fakeCtx({ goal: "g", dbId: "db_1", forceExtend: true }));
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("expected ok");
+    expect(out.body.forceExtend).toBe(true);
+  });
+
+  it("omits forceExtend when absent", async () => {
+    const out = await parseAskBody(fakeCtx({ goal: "g", dbId: "db_1" }));
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("expected ok");
+    expect(out.body.forceExtend).toBeUndefined();
+  });
+
+  it("treats any non-true value as omitted (a malformed client can't widen by accident)", async () => {
+    for (const forceExtend of ["true", 1, {}, "yes", false, null]) {
+      const out = await parseAskBody(fakeCtx({ goal: "g", dbId: "db_1", forceExtend }));
+      expect(out.ok).toBe(true);
+      if (!out.ok) throw new Error("expected ok");
+      expect(out.body.forceExtend).toBeUndefined();
+    }
+  });
+});
+
 describe("parseAskBody — acquisition source (SK-GTM-007)", () => {
   it("carries a valid source through, trimmed and length-capped", async () => {
     const out = await parseAskBody(

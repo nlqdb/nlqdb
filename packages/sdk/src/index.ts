@@ -44,6 +44,15 @@ export type AskRequest = {
   // this flag forces the query route so the confirmation always progresses.
   // Only honoured alongside a pinned `dbId`; a no-op otherwise.
   forceQuery?: boolean;
+  // SK-ASK-014 follow-up (a) — the `forceQuery` sibling for the other arm of
+  // the `create_or_query_pinned` clarify. When the classifier read a write to
+  // this pinned DB as `kind=create` (an unobserved table reads like "make me a
+  // database"), re-send the same goal with `forceExtend: true` to route it into
+  // the widen-on-write path (`GLOBAL-041` Phase A): the orchestrator absorbs the
+  // first insert into the new table and evolves the pinned DB's schema instead
+  // of dead-ending on the clarify. Only honoured alongside a pinned `dbId`; a
+  // no-op otherwise.
+  forceExtend?: boolean;
   // SK-PREMIUM-014 — the goal-first model preset (SK-PREMIUM-003):
   // `fast` pins the free chain, `best` demands a frontier lane (throws
   // `model_unavailable` when the account has no BYOLLM key and no paid
