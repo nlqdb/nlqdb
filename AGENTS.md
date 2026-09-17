@@ -145,6 +145,7 @@ nlqdb/
 │   ├── web/             # marketing + product web app
 │   ├── api/             # Cloudflare Workers HTTP API
 │   ├── events-worker/   # event-pipeline consumer (queue → sinks)
+│   ├── email-router/    # inbound mail (Email Routing catch-all)
 │   ├── mcp/             # hosted MCP server (mcp.nlqdb.com)
 │   ├── docs/            # user-facing docs site (docs.nlqdb.com)
 │   └── coming-soon/     # standalone landing page
