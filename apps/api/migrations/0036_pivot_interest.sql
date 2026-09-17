@@ -10,5 +10,3 @@ CREATE TABLE pivot_interest (
   source TEXT NOT NULL CHECK (source IN ('home', 'app')),
   created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
-
-CREATE INDEX idx_pivot_interest_created ON pivot_interest (created_at);

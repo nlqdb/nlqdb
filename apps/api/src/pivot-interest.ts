@@ -6,7 +6,7 @@ const MAX_EMAIL_LENGTH = 254;
 const SOURCES = new Set(["home", "app"]);
 
 export type PivotInterestResult =
-  | { status: 200; email: string }
+  | { status: 200 }
   | { status: 400; reason: "invalid_email" | "invalid_source" }
   | { status: 429 };
 
@@ -42,5 +42,5 @@ export async function recordPivotInterest(
     .bind(emailHash, email, input.userId, input.source)
     .run();
 
-  return { status: 200, email };
+  return { status: 200 };
 }
