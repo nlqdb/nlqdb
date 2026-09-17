@@ -312,6 +312,11 @@ function Metrics({ m }: { m: GtmMetrics }) {
         <h2 id="admin-h-pmf">PMF signals</h2>
         <div className="admin__tiles">
           <Tile
+            label="Become AI interest"
+            value={m.pmf.pivotInterest}
+            hint="Unique emails asking for pilot and launch updates"
+          />
+          <Tile
             label="Premium interest"
             value={m.pmf.premiumInterest}
             hint="“Count me in” clicks, deduped"
@@ -361,6 +366,7 @@ function Metrics({ m }: { m: GtmMetrics }) {
               values={trendSeries(m.trend, "anonDevicesOrganic")}
             />
             <Spark label="DBs active 7d" values={trendSeries(m.trend, "dbsActive7d")} />
+            <Spark label="Become AI interest" values={trendSeries(m.trend, "pivotInterest")} />
             <Spark label="Premium interest" values={trendSeries(m.trend, "premiumInterest")} />
           </div>
         )}
@@ -374,6 +380,7 @@ function Metrics({ m }: { m: GtmMetrics }) {
                   <th scope="col">Strangers</th>
                   <th scope="col">Activated</th>
                   <th scope="col">DBs active 7d</th>
+                  <th scope="col">Become AI interest</th>
                   <th scope="col">Premium interest</th>
                 </tr>
               </thead>
@@ -384,6 +391,7 @@ function Metrics({ m }: { m: GtmMetrics }) {
                     <td>{numCell(row["strangers"])}</td>
                     <td>{numCell(row["activatedStrangers"])}</td>
                     <td>{numCell(row["dbsActive7d"])}</td>
+                    <td>{numCell(row["pivotInterest"])}</td>
                     <td>{numCell(row["premiumInterest"])}</td>
                   </tr>
                 ))}
