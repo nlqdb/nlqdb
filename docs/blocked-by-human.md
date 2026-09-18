@@ -36,14 +36,16 @@ values and criteria live. Read those only when you sit down to do the thing.
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
 | 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on `GLOBAL-041` Phase A (KPI 1 live and ≥ 95 %); the deploy gate is cleared (2026-09-14), so this now waits only on the live KPI-1 re-measure and your sitting | 2026-06-13 |
-| 2 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 3 | ~10 min | Submit nlqdb to PulseMCP + mcp.directory — two manual directory submits (registry cascade never reached them); lowest-yield, payloads ready | 2026-09-01 |
-| 4 | ~10 min | Submit `nlqdb-memory` to cc-marketplace (`claudecodecommands.directory`) — cross-repo PR or web form; lowest-yield (`github`-ref), payload ready | 2026-09-04 |
+| 2 | ~5 min | Deploy the email-router Worker (PR #1134) + run its real-delivery walk — stops an active DMARC retry storm and two inbound-mail-loss paths on `hello@`/`security@`; dashboard-managed, so deploy + walk are owner-only | 2026-09-18 |
+| 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
+| 4 | ~10 min | Submit nlqdb to PulseMCP + mcp.directory — two manual directory submits (registry cascade never reached them); lowest-yield, payloads ready | 2026-09-01 |
+| 5 | ~10 min | Submit `nlqdb-memory` to cc-marketplace (`claudecodecommands.directory`) — cross-repo PR or web form; lowest-yield (`github`-ref), payload ready | 2026-09-04 |
 
-Only #1 can move real strangers (scorecard row #2); the hosted-premium meter
-went **live 2026-08-14** (`premium.live=true` in prod — the full activation,
-AI Gateway included, is done and off this queue); #2 costs money and waits per
-`docs/cost-ladder.md` unless a Team org already exists. The Phase A engine build is agent work and is DONE in code
+Only #1 can move real strangers (scorecard row #2); #2 is a quick,
+no-cost operator action that stops active inbound-mail loss; the hosted-premium
+meter went **live 2026-08-14** (`premium.live=true` in prod — the full
+activation, AI Gateway included, is done and off this queue); #3 costs money and
+waits per `docs/cost-ladder.md` unless a Team org already exists. The Phase A engine build is agent work and is DONE in code
 (runs 197–210, both first-insert shapes + provider-fallthrough) **and now
 DEPLOYED**: the founder cleared the GitHub Actions deploy-approval gate on
 2026-09-14 (`Deploy API`/`MCP`/`events-worker` all re-ran green;
@@ -85,7 +87,22 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
    before real proof of value** (reaffirmed 07-28): the prior dogfood gate is
    retired with the archived bet; Phase A is the gate now.
 
-2. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
+2. **⏱ ~5 min · since 2026-09-18 — Deploy the email-router Worker (PR #1134)
+   and run its real-delivery walk.** The `security@`/`hello@` inbound router is
+   **dashboard-managed**, so deploying overwrites the live script and the
+   real-delivery walk can't be run by an agent — both are owner-only. The fix
+   (parked as draft PR #1134, code correct, all 32 CI checks green) stops an
+   active DMARC-report **retry storm** and closes **two mail-loss paths**
+   (`setReject` on triple-auth-fail; the throwing `quarantine@` forward). Steps:
+   deploy `apps/email-router`, then per its `README.md` send a test to `hello@`
+   and confirm `"action":"forwarded"` in `wrangler tail` **and** arrival in the
+   destination inbox. At deploy time also make the **GLOBAL-014** call for this
+   1.8 KiB worker: accept Cloudflare-native Workers Logs as satisfying the span
+   requirement (merge as-is) **or** require the OTel span (needs a
+   `GRAFANA_OTLP_*` secret bound to the Worker — also owner-only). Once the walk
+   passes, `/daily` un-drafts and merges #1134.
+
+3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
    to the Anthropic Claude connector directory**
    (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
    Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
@@ -115,7 +132,7 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
      end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
    On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
 
-3. **⏱ ~10 min · since 2026-09-01 — Submit nlqdb to PulseMCP + mcp.directory**
+4. **⏱ ~10 min · since 2026-09-01 — Submit nlqdb to PulseMCP + mcp.directory**
    (reach R-05; ledger rows #5 + #23). Both are MCP directories the
    official-registry publish (row #3, 07-22) was expected to reach by crawl;
    re-checked live 2026-09-01, **both still show 0 results ~40 days later**, so
@@ -137,7 +154,7 @@ create for user-scoped keys, SK-PIVOT-010 as amended.)
      email to claim the listing (so yield carries `mcpdir`, not the inherited
      `mcp-registry` key). On submit, flip ledger row #23 to **in-flight**.
 
-4. **⏱ ~10 min · since 2026-09-04 — Submit `nlqdb-memory` to cc-marketplace**
+5. **⏱ ~10 min · since 2026-09-04 — Submit `nlqdb-memory` to cc-marketplace**
    (reach R-09 venue #6; ledger row #27). A 688★ community Claude Code
    plugin/command directory fronted by `claudecodecommands.directory` — passes
    the trust bar `skillsclaude.org` failed (real footprint, named maintainer).
