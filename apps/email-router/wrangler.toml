@@ -1,0 +1,18 @@
+# Renaming this Worker unbinds it from the Email Routing rules that point
+# at it, which silently stops inbound mail — keep the name in sync with
+# the catch-all rule on both zones.
+name = "protect-email-domain-reputation"
+main = "src/index.ts"
+compatibility_date = "2026-04-27"
+
+# Email-only Worker: Email Routing invokes `email()` over SMTP. There is
+# no `fetch` handler, so the workers.dev URL and per-deployment preview
+# URLs would 404 on every request — disabling them is cleaner than
+# advertising a route that cannot work.
+workers_dev = false
+preview_urls = false
+
+# The forward/report decision is only auditable through the log line the
+# handler writes, so observability is load-bearing here, not optional.
+[observability]
+enabled = true
