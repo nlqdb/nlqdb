@@ -103,13 +103,13 @@ signal and a retry can't double-emit.
 - **Consequence in code:** `withStageRetry` (3 attempts) wraps `route`, `plan`, and `exec`; `PlanRequest.previousAttempt` carries `{sql?, error}` into the next plan call; `Nonrecoverable` skips retries. Each retry stamps the `nlqdb.retry.*{stage, reason}` spans. The **exec** stage additionally backs off between attempts (`300 ms × 2^(n−1)`, ≤900 ms total) so a scale-to-zero Neon compute — free-tier branches idle after ~5 min and fail the first query back — resumes before the retry lands; `plan`/`route` retry instantly (LLM failover to a sibling provider needs no wait).
 - **Alternatives rejected:** Single attempt — surfaces every transient. Unbounded — request hangs. SDK-only — server recoveries need server context. Skip validator feedback — LLM repeats the same shape. Instant exec retry — replays the cold connection before Neon resumes (the 07-06 failure).
 
-### SK-ASK-014 — a pinned `kind=create` clarifies, or widens the pinned DB with `forceExtend`
+### SK-ASK-014 — a pinned write-verb goal widens the DB; a pinned ambiguous `kind=create` clarifies
 
-- **Decision:** `routeAsk` runs on every `/v1/ask` regardless of `dbId` pin. `kind=create + pinned` → `409 clarify_required` with `pinned_db:{id,slug}`; `kind=create + no pin` → create; `kind=query|write + pinned` → pin honoured. **GLOBAL-041 arm:** a write the classifier read as `create` (an unobserved table reads like a new-DB request) is extend demand, so a re-send with `forceExtend:true` flips the routed kind to `write`, honours the pin, and the orchestrator's widen-on-write Defense (SK-SCHEMA-008) absorbs the first insert instead of dead-ending. Opt-in — an absent flag keeps the clarify unchanged. Refines SK-ASK-009. Per SK-ANON-013, anon principals without a pinned `dbId` short-circuit ahead of this.
+- **Decision:** `routeAsk` runs on every `/v1/ask` regardless of `dbId` pin. A pinned dbId + a **write-verb** goal (`add`/`insert`/`update`/…) routes `kind=write` on the pin deterministically (no LLM) even for an unobserved table — GLOBAL-041 Phase A: the pin is explicit intent, so widen-on-write (SK-SCHEMA-008) absorbs the first insert with no clarify or user action. A pinned goal with **no** write verb that the classifier reads as `create` returns `409 clarify_required` with `pinned_db:{id,slug}` (a genuine new-DB request stays ambiguous); `kind=create + no pin` → create; `kind=query|write + pinned` → pin honoured. `forceExtend:true` still flips a clarified `create` to `write`. Refines SK-ASK-009; anon principals without a pin short-circuit ahead of this (SK-ANON-013).
 - **Core value:** Effortless UX, Goal-first, Bullet-proof
-- **Why:** "new table" against a pinned DB dead-ends on the allowlist; classify-every-send turns that into a typed forward action, and `forceExtend` makes it *widen this DB* — the first-insert-inference journey GLOBAL-041 needs.
-- **Consequence in code:** `clarify_required` drives the "Create new database" chip (re-send without `dbId`) and the "Add it to *<slug>*" affordance (re-send with `forceExtend`). `index.ts` flips `routeOutput.kind` to `write` on `forceExtend + pinned`, then falls to write dispatch.
-- **Alternatives rejected:** Silent pin override on `kind=create` — surprises (`forceExtend` is the *opt-in* override). Convert only post-allowlist — burns a planner hop.
+- **Why:** a write-verb goal against the pinned DB is unambiguously extend demand, so it widens with zero user action; `forceExtend` remains for the residual create-shaped goal to extend anyway.
+- **Consequence in code:** `route-ask.ts` returns `kind=write reason=pinned_write` on pinned + write verb; `index.ts` passes `pinnedDbId` in and flips to `write` on `forceExtend + pinned`.
+- **Alternatives rejected:** *Unconditional* pin override on `kind=create` — surprises (a create-shaped goal may want a new DB), so the override is verb-gated.
 
 ### SK-ASK-015 — Plan cache writes are gated on successful exec
 
@@ -263,9 +263,8 @@ so the recovery is a question. Fallback on any miss: plain `write_constraint`.
 Re-sending the same goal + pin re-ran the identical classifier and re-returned
 the same `create_or_query_pinned` clarify — a dead-end loop. Resolving it with
 `forceQuery: true` skips `routeAsk` and forces `kind=query` against the pin
-(`GLOBAL-040`: a clarify is a guided turn, not a dead-end). Pairs with the
-widened `SK-ASK-018`. Shipped SDK + web + CLI (`--force-query`); MCP/elements
-gap tracked in the body.
+(`GLOBAL-040`: a clarify is a guided turn, not a dead-end). Shipped SDK + web
++ CLI (`--force-query`); MCP/elements gap tracked in the body.
 
 ### SK-ASK-033 — A `confirm` with no live preview stash is refused (`confirm_expired`), never re-planned
 
@@ -300,7 +299,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **SK-ASK-014 follow-up.** Arm (a) — the `kind=extend` routing — shipped as `forceExtend` (GLOBAL-041 Phase A); surface + CLI/MCP propagation are the GLOBAL-003 gap in `schema-widening`. Remaining: the classify-every-send latency audit (~150 ms p50 vs `performance.md §2.1/§2.2`) once Phase 1 traffic lands.
+- **SK-ASK-014 follow-up.** Arm (a), extend routing, done: a pinned write-verb goal auto-widens (`pinned_write`, no clarify/flag); `forceExtend` covers the residual create-shaped case. `forceExtend` surface + CLI/MCP propagation stay the GLOBAL-003 gap in `schema-widening`. Remaining: the classify-every-send latency audit (~150 ms p50 vs `performance.md §2.1/§2.2`) once Phase 1 traffic lands.
 - **OpenAPI schema for `apps/api`.** **Parked until** the docs HTTP-API page (`SK-DOCS-003` slice d) is prioritised — the SDK reference is the canonical wire shape (`GLOBAL-001`) and `docs.nlqdb.com` links there in the interim, so the generator is a nice-to-have, not a blocker.
 
 ## Happy path walkthrough
