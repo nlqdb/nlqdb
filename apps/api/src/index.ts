@@ -1390,6 +1390,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
             goal: parsed.body.goal,
             dbs: candidates,
             recentTables,
+            // GLOBAL-041 Phase A — a write-verb goal against the pinned DB
+            // routes to write (widen-on-write absorbs an unobserved table)
+            // instead of dead-ending on the SK-ASK-014 create/query clarify.
+            pinnedDbId: parsed.body.dbId ?? null,
           },
         ),
       );

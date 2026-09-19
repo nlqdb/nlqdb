@@ -124,6 +124,81 @@ describe("routeAsk — deterministic short-circuits (no LLM)", () => {
   });
 });
 
+describe("routeAsk — pinned-DB write fast-path (GLOBAL-041 Phase A)", () => {
+  it("pinned dbId + write verb + unobserved table → kind=write, no LLM, no clarify", async () => {
+    const route = vi.fn();
+    const out = await routeAsk(
+      { llm: llmStub({ route }) },
+      {
+        // `ratings` is not in recentTables — the schema hasn't observed it,
+        // and the goal names no observed table, so step 2 misses.
+        goal: "add a rating of 5 stars",
+        dbs: [{ id: "db1", slug: "rateme12-a4f" }],
+        recentTables: [rt("db1", "restaurants")],
+        pinnedDbId: "db1",
+      },
+    );
+    expect(out).toEqual({
+      kind: "write",
+      targetDbId: "db1",
+      referencedTables: [],
+      confidence: 1,
+      reason: "pinned_write",
+    });
+    // The whole point: the create/query clarify never fires and no LLM hop
+    // is burned — the pinned unobserved-table write auto-widens.
+    expect(route).not.toHaveBeenCalled();
+  });
+
+  it("pinned dbId with NO write verb (create-shaped goal) falls through to the LLM → clarify preserved (SK-ASK-014)", async () => {
+    const route = vi.fn(
+      async (): Promise<RouteResponse> => ({
+        kind: "create",
+        targetDbId: null,
+        referencedTables: [],
+        confidence: 0.9,
+        reason: "unknown_tables_means_create",
+      }),
+    );
+    const out = await routeAsk(
+      { llm: llmStub({ route }) },
+      {
+        goal: "a books tracker",
+        dbs: [{ id: "db1", slug: "rateme12-a4f" }],
+        recentTables: [rt("db1", "restaurants")],
+        pinnedDbId: "db1",
+      },
+    );
+    // Verb-gated: no write verb ⇒ still classified create, so index.ts keeps
+    // the SK-ASK-014 create/query clarify for a genuine new-DB request.
+    expect(out.kind).toBe("create");
+    expect(route).toHaveBeenCalledTimes(1);
+  });
+
+  it("write verb but the pinned dbId is not a candidate → no fast-path (falls through to the LLM)", async () => {
+    const route = vi.fn(
+      async (): Promise<RouteResponse> => ({
+        kind: "write",
+        targetDbId: "db1",
+        referencedTables: [],
+        confidence: 0.8,
+        reason: "ok",
+      }),
+    );
+    const out = await routeAsk(
+      { llm: llmStub({ route }) },
+      {
+        goal: "add a rating for restaurant 12",
+        dbs: [{ id: "db1", slug: "rateme12-a4f" }],
+        recentTables: [],
+        pinnedDbId: "not-a-real-db",
+      },
+    );
+    expect(out.reason).not.toBe("pinned_write");
+    expect(route).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("routeAsk — slug fast-path", () => {
   it("slug match pins targetDbId; LLM still decides kind", async () => {
     const route = vi.fn(
