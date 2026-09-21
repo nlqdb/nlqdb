@@ -66,9 +66,18 @@ const datasetJsonLd = {
   ],
   dateModified: LANDSCAPE_VERIFIED_ON,
   isAccessibleForFree: true,
+  // CC BY 4.0: this page IS the field's one citable asset — reuse with
+  // attribution is the whole point, and Google's Dataset guidelines require a
+  // `license` URL that unambiguously names a version.
+  license: "https://creativecommons.org/licenses/by/4.0/",
   citation: citationUrls,
   isBasedOn: citationUrls,
-  ...(organizationId ? { creator: { "@id": organizationId } } : {}),
+  // `creator` must be a typed Person/Organization node, not a bare `@id`
+  // reference (the Organization node itself lives homepage-only, SK-WEB-014),
+  // so inline `@type` + `name` and keep the stable `@id` for consolidation.
+  ...(organizationId
+    ? { creator: { "@type": "Organization", "@id": organizationId, name: "nlqdb" } }
+    : {}),
   distribution: {
     "@type": "DataDownload",
     encodingFormat: "text/html",
