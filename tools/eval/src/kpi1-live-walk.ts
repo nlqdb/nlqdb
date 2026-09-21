@@ -133,7 +133,13 @@ async function main(): Promise<void> {
     try {
       const res = await fetch(`${base}/v1/ask`, {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+        // `accept: application/json` skips the summary LLM hop (a routing
+        // measurement needs the `trace`, not prose) — cheaper, deterministic.
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+          authorization: `Bearer ${key}`,
+        },
         // No `forceExtend`, no `confirm` — the no-user-action path. `dbId`
         // pins the DB so a write-verb goal routes `pinned_write`.
         body: JSON.stringify({ goal: shape.goal, dbId }),
