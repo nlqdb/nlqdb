@@ -7,6 +7,7 @@ import AppAnalytics from "../../components/AppAnalytics.astro";
 import ConsentBanner from "../../components/ConsentBanner.astro";
 import ChatPanel from "../../components/chat/ChatPanel.tsx";
 import Footer from "../../components/Footer.astro";
+import PivotInterestForm from "../../components/PivotInterestForm.astro";
 import SupportChat from "../../components/SupportChat.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
@@ -22,6 +23,19 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   <div class="page page--chat" id="app-shell" data-api-base={apiBase} hidden>
     <Topnav current="chat" />
     <main class="page__main page__main--chat">
+      <aside class="pivot-banner" aria-labelledby="pivot-banner-title">
+        <div>
+          <p class="pivot-banner__eyebrow">What&rsquo;s next</p>
+          <h2 class="pivot-banner__title" id="pivot-banner-title">
+            Turn what you know into knowledge agents pay to use.
+          </h2>
+          <p class="pivot-banner__text">
+            Become AI starts with a guided interview and a knowledge base you control.
+            <a href="/experts/">See what&rsquo;s coming &rarr;</a>
+          </p>
+        </div>
+        <PivotInterestForm source="app" compact />
+      </aside>
       <!-- Empty, present-from-load role="status" region: the message text
            is injected by JS (see below), which is the announcement path
            screen readers fire on — exposing pre-filled text is unreliable. -->
@@ -204,6 +218,57 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 </style>
 
 <style>
+  .pivot-banner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.7fr);
+    align-items: center;
+    gap: 20px;
+    margin: 8px 16px;
+    padding: 16px 18px;
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    background: var(--bg-2);
+    font-family: var(--sans);
+  }
+
+  .pivot-banner__eyebrow,
+  .pivot-banner__title,
+  .pivot-banner__text {
+    margin: 0;
+  }
+
+  .pivot-banner__eyebrow {
+    color: var(--accent);
+    font: 11px var(--mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .pivot-banner__title {
+    margin-top: 4px;
+    color: var(--ink);
+    font-size: 16px;
+  }
+
+  .pivot-banner__text {
+    margin-top: 5px;
+    color: var(--body);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .pivot-banner__text a {
+    color: var(--ink);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  @media (max-width: 760px) {
+    .pivot-banner {
+      grid-template-columns: 1fr;
+    }
+  }
+
   /* The live region stays in the DOM at all times (empty → zero-height,
    * invisible); only the `--shown` modifier paints the box, so revealing
    * is a content injection the screen reader can announce. */

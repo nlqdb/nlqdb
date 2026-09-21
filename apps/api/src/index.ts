@@ -153,6 +153,7 @@ import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.t
 import { buildPackRunnerDeps, PACKS } from "./pack-runner/deps.ts";
 import { makeD1DraftStore } from "./pack-runner/draft-store.ts";
 import { advanceDraft, createDraft, importView, retryDraft } from "./pack-runner/runner.ts";
+import { recordPivotInterest } from "./pivot-interest.ts";
 import {
   getPmfSurveyStatus,
   parseSeanEllisResponse,
@@ -1389,6 +1390,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
             goal: parsed.body.goal,
             dbs: candidates,
             recentTables,
+            // GLOBAL-041 Phase A — a write-verb goal against the pinned DB
+            // routes to write (widen-on-write absorbs an unobserved table)
+            // instead of dead-ending on the SK-ASK-014 create/query clarify.
+            pinnedDbId: parsed.body.dbId ?? null,
           },
         ),
       );
@@ -2145,6 +2150,54 @@ app.post("/v1/memory/remember", requirePrincipal, async (c) => {
 // the rate-limit / abuse path from the browser.
 app.use("/v1/events/*", credentialedCors);
 app.use("/v1/billing/*", credentialedCors);
+app.use("/v1/pivot/*", credentialedCors);
+
+// Public, non-gating interest capture for the Become AI marketplace.
+// Signed-in visitors use their account email; anonymous visitors provide
+// one email field. The email hash is the natural idempotency key, so retries
+// and repeat clicks cannot inflate the founder's public-interest count.
+app.post("/v1/pivot/interest", async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.pivot.interest", async (span) => {
+    try {
+      const body = await parseJsonBody<{ email?: unknown; source?: unknown }>(c);
+      if (!body.ok) return fail(c, "invalid_body");
+
+      let userId: string | null = null;
+      let accountEmail: string | null = null;
+      try {
+        const session = await sessionResolver.getSession(c.req.raw);
+        userId = session?.user.id ?? null;
+        accountEmail = session?.user.email ?? null;
+      } catch {
+        // Session lookup is an enhancement; anonymous capture remains useful.
+      }
+
+      const result = await recordPivotInterest(c.env.DB, c.env.KV, {
+        email: accountEmail ?? body.body.email,
+        source: body.body.source,
+        userId,
+        clientIp: c.req.header("cf-connecting-ip") ?? null,
+      });
+      if (result.status === 400) return fail(c, "invalid_body");
+      if (result.status === 429) {
+        c.header("Retry-After", "60");
+        return fail(c, "rate_limited");
+      }
+
+      span.setAttribute("nlqdb.pivot.interest.authed", userId !== null);
+      span.setAttribute("nlqdb.pivot.interest.source", String(body.body.source));
+      return c.json({ received: true });
+    } catch (err) {
+      const error = err as Error;
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
 
 app.post("/v1/events/wishlist", async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");

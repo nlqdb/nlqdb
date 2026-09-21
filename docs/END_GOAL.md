@@ -50,9 +50,10 @@ replaces. **Scalable**: that one design holds at 1 table and 1 000 tables,
 
 **Surface feel** (`SK-WEB-031`): nlqdb.com has one primary action — the
 goal input — and reads top-down as the loop above: how it works →
-diff-then-confirm → surfaces → ways in → one closing CTA. Solve, Compare and
-Blog are secondary, grouped under one Content menu; they never compete with
-row 9.
+diff-then-confirm → surfaces → ways in → a non-gating preview of what is
+next → under the hood → one closing CTA.
+Solve, Compare and Blog are secondary, grouped under one Content menu; they
+never compete with row 9.
 
 ## Empty, error, and edge states
 

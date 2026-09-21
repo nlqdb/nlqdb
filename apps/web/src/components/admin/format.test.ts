@@ -53,6 +53,7 @@ function metrics(overrides: Partial<GtmMetrics> = {}): GtmMetrics {
       strangersRetained7d: 1,
     },
     pmf: {
+      pivotInterest: 2,
       premiumInterest: 1,
       payingCustomers: 0,
       customersByStatus: {},

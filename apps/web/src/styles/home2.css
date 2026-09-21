@@ -582,6 +582,50 @@
   font-weight: 500;
 }
 
+/* =============================================== Become AI interest */
+.home2 .future {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(24px, 4vw, 48px);
+  align-items: center;
+}
+
+@media (min-width: 860px) {
+  .home2 .future {
+    grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+  }
+}
+
+.home2 .future__link {
+  display: inline-block;
+  margin-top: 18px;
+  color: var(--ink);
+  font-size: var(--t-small);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.home2 .future__link:hover {
+  color: var(--accent);
+}
+
+.home2 .future__signup {
+  display: grid;
+  gap: 18px;
+  padding: clamp(18px, 2.5vw, 26px);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-lg);
+  background: var(--raised);
+  box-shadow: var(--shadow-1);
+}
+
+.home2 .future__promise {
+  margin: 0;
+  color: var(--body);
+  font-size: var(--t-small);
+  line-height: 1.6;
+}
+
 /* ====================================== Under the hood — poster portal.
  * SK-WEB-021: the 3D map never ships on `/`; this is a 0-JS image of the
  * real scene linking to /architecture/. */

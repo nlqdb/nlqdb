@@ -3,8 +3,8 @@
 - **Decision:** nlqdb maintains **one canonical GTM/PMF metric set** —
   the acquisition funnel (anon creates → signups → activation →
   retention, always split **real strangers vs founder/test accounts**)
-  plus the PMF proxies (7-day-retained share, `premium_interest` count,
-  paying customers, the Sean-Ellis survey gate) — computed live from the
+  plus the PMF proxies (7-day-retained share, Become AI and premium
+  interest counts, paying customers, the Sean-Ellis survey gate) — computed live from the
   control-plane D1 by `apps/api/src/admin/gtm-metrics.ts`, served at
   admin-gated `GET /v1/admin/metrics`, trended via daily `gtm_snapshots`
   rows, and rendered at `/app/admin/`. **Admin access** = the founder's

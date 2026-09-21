@@ -69,6 +69,7 @@ describe("/v1/ask CORS preflight", () => {
       ["/v1/keys/byollm", "POST"],
       ["/v1/keys/abc123", "DELETE"],
       ["/v1/premium/interest", "POST"],
+      ["/v1/pivot/interest", "POST"],
     ] as const) {
       const res = await preflight("https://nlqdb.com", "authorization, content-type", path, method);
       expect(res.status, `${method} ${path}`).toBe(204);

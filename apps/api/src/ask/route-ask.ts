@@ -15,6 +15,12 @@
 // short-circuits dbId resolution):
 //   1. 0 dbs                       → kind=create, no LLM.
 //   2. recent-table substring hit  → kind from verb keywords, no LLM.
+//   2b. pinned dbId + write verb    → kind=write on the pin, no LLM
+//                                    (GLOBAL-041 Phase A — a write-shaped
+//                                    goal against the DB the caller pinned
+//                                    is extend demand; widen-on-write
+//                                    absorbs an unobserved table with no
+//                                    clarify and no user action).
 //   3. slug substring hit          → targetDbId pinned; LLM still
 //                                    decides kind (confidence 1).
 //   4. LLM `route` call            → confidence ≥ ROUTE_CONFIDENCE_FLOOR
@@ -30,6 +36,12 @@ export type RouteAskInput = {
   goal: string;
   dbs: DbCandidate[];
   recentTables: RecentTable[];
+  // The dbId the caller pinned on this request, if any. A write-shaped goal
+  // against a pinned DB is a write to *that* DB (GLOBAL-041 Phase A), even
+  // when it names a table the schema hasn't observed yet — the pin is
+  // explicit intent, so we route to write and let widen-on-write absorb it
+  // rather than dead-ending on the SK-ASK-014 create/query clarify.
+  pinnedDbId?: string | null;
 };
 
 export type RouteAskKind = "create" | "query" | "write";
@@ -42,7 +54,11 @@ export type RouteAskReason =
   // SK-ASK-032 — the caller resolved a create/query clarify by confirming
   // "query this pinned DB". routeAsk is skipped entirely; this labels the
   // synthesized query route so the loop-break is visible in telemetry.
-  | "forced_query";
+  | "forced_query"
+  // GLOBAL-041 Phase A — a write-verb goal against a pinned DB routed to
+  // write deterministically (no LLM, no clarify); widen-on-write absorbs
+  // an unobserved table.
+  | "pinned_write";
 
 export type RouteAskOutput = {
   kind: RouteAskKind;
@@ -104,6 +120,30 @@ export async function routeAsk(deps: RouteAskDeps, input: RouteAskInput): Promis
       referencedTables: [tableHit.table],
       confidence: 1,
       reason: "recent_table_match",
+    };
+  }
+
+  // 2b. Pinned-DB write fast-path (GLOBAL-041 Phase A). The recent-table
+  // check above already routes write-verb goals that name an *observed*
+  // table (the pinned DB's tables are seeded into recentTables per
+  // SK-ASK-018). What's left is a write-verb goal naming a table the schema
+  // hasn't observed yet: without this the LLM applies "unknown table →
+  // create" and the request dead-ends on the SK-ASK-014 create/query
+  // clarify. A pinned dbId is explicit intent to target that DB, so a
+  // write-shaped goal there is extend demand — route to write and let
+  // widen-on-write (SK-SCHEMA-008) absorb the first insert, no clarify and
+  // no user action. Verb-gated on purpose: a goal with no write verb (e.g.
+  // "an orders tracker") stays ambiguous and still reaches the clarify, so
+  // a genuine create-a-new-DB request against a pinned DB is unaffected.
+  const pinnedCandidate =
+    input.pinnedDbId != null ? input.dbs.find((d) => d.id === input.pinnedDbId) : undefined;
+  if (pinnedCandidate && pickVerbKind(input.goal) === "write") {
+    return {
+      kind: "write",
+      targetDbId: pinnedCandidate.id,
+      referencedTables: [],
+      confidence: 1,
+      reason: "pinned_write",
     };
   }
 

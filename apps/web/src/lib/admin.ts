@@ -58,6 +58,7 @@ export type GtmMetrics = {
     dbsBySurface: Array<{ surface: string; total: number; last7d: number }>;
   };
   pmf: {
+    pivotInterest: number;
     premiumInterest: number;
     payingCustomers: number;
     customersByStatus: Record<string, number>;

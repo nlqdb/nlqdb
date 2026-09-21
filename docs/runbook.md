@@ -411,10 +411,11 @@ The `nlqdb-events` queue is created/updated by
 
 Astro static site that builds to `apps/web/dist/`. Served by the
 Cloudflare Worker (`nlqdb-web`) via Workers Static Assets at `nlqdb.com`.
-Currently serves the marketing homepage + capability carousel; sign-in
-UI and chat surface are the remaining Phase 1 work (backend at
-`app.nlqdb.com` is ready). The D1 `waitlist` table was dropped in
-migration `0019_drop_waitlist.sql` (product is open; no waitlist).
+Currently serves the marketing and signed-in product surfaces. The old
+access-gating `waitlist` table was dropped in migration
+`0019_drop_waitlist.sql`; the product remains open. The separate
+`pivot_interest` table records optional Become AI pilot/launch subscriptions
+and never controls access (`GLOBAL-007`).
 
 Deploys via `.github/workflows/deploy-web.yml` on merge to main when
 `apps/web/**` or `packages/elements/**` changes. SLSA L3 build

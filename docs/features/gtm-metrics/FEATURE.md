@@ -16,7 +16,7 @@ when-to-load:
 # Feature: GTM Metrics
 
 **One-liner:** Canonical GTM/PMF metric set — admin-gated live metrics endpoint, daily snapshots, and the `/app/admin` founder dashboard.
-**Status:** implemented (2026-07-19 — endpoint + snapshots + dashboard v1; `SK-GTM-005`/`-006`/`-007` unique-people counts / Sean-Ellis survey / attribution; `SK-GTM-008` launch-gate section (built for the retired `SK-PIVOT-016` gate), 2026-07-28; `SK-GTM-009` paying-customer watchlist, 2026-08-08; `SK-GTM-010` creating-surface stamp on the DB row, 2026-08-26; `SK-GTM-011` per-surface ask counters (the counter shape `GLOBAL-041` KPI 1 reuses), 2026-09-04; external sources out of scope — see Open questions)
+**Status:** implemented (endpoint, snapshots, dashboard, unique-people counts, Sean-Ellis survey, attribution, paying-customer watchlist, per-surface ask counters, and Become AI interest; external sources remain out of scope).
 **Owners (code):** `apps/api/src/admin/**`, `apps/api/src/synthetic-ua.ts`, `apps/api/src/pmf-survey.ts`, `apps/api/migrations/0022_gtm_snapshots…0025_pmf_survey.sql` + `0027_customers_converted_at.sql`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`, `apps/web/src/lib/pmf-survey.ts`, `apps/web/src/components/chat/PmfSurveyCard.tsx`
 
 **Contribution to north-star:** Onboarding — the funnel/activation/retention numbers ARE the onboarding pillar's measurement ([`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)), now continuous; acquisition measurement is first-class ([`GLOBAL-038`](../../decisions/GLOBAL-038-gtm-pmf-instrumentation.md)). No pillar degrades: admin-only D1 reads, off every product request path.
