@@ -66,7 +66,7 @@ If DNSSEC is enabled on the domain at GoDaddy, switching NS without disabling it
 
 ### 1.4 Inbound email — Cloudflare Email Routing (free)
 
-Both zones use **Cloudflare Email Routing** (Free plan feature; included with the zone, no extra SKU) for `hello@`, `security@`, `contact@`, `abuse@`, etc. Forwards inbound to the founder's existing inbox; up to 200 addresses per zone, unlimited volume, no card.
+Both zones use **Cloudflare Email Routing** (Free plan feature; included with the zone, no extra SKU) for `hello@`, `security@`, `contact@`, `abuse@`, etc. Forwards inbound to the founder's existing inbox; up to 200 addresses per zone, unlimited volume, no card. The catch-all rule routes to the `protect-email-domain-reputation` Worker ([`apps/email-router`](../../apps/email-router/README.md)) rather than straight to the inbox.
 
 | Capability              | Email Routing                         |
 | :---------------------- | :------------------------------------ |
@@ -77,13 +77,13 @@ Both zones use **Cloudflare Email Routing** (Free plan feature; included with th
 | Catch-all               | ✅ Yes                                |
 | MX / SPF auto-setup     | ✅ Cloudflare auto-writes the records |
 
-**DKIM / DMARC:** Resend's DKIM for `nlqdb.com` is verified (DKIM TXT `resend._domainkey.nlqdb.com`, SPF on `send.nlqdb.com`, MX on `send.nlqdb.com` → `feedback-smtp.us-east-1.amazonses.com`). DMARC is not yet published — safe to add `_dmarc` TXT with `p=none` for monitoring; promote to `quarantine` once aggregate reports show ≥98% alignment.
+**DKIM / DMARC:** Resend's DKIM for `nlqdb.com` is verified (DKIM TXT `resend._domainkey.nlqdb.com`, SPF on `send.nlqdb.com`, MX on `send.nlqdb.com` → `feedback-smtp.us-east-1.amazonses.com`). DMARC is published as `v=DMARC1; p=none; rua=mailto:dmarc@nlqdb.com`; promote to `quarantine` once aggregate reports show ≥98% alignment. Because `rua` points back at our own zone, those reports arrive through Email Routing — forwarding them into Gmail trips its `4.7.28` bulk-mail rate limiter and the resulting `421` fails delivery for *all* inbound mail, so the Worker logs them instead of forwarding ([`apps/email-router`](../../apps/email-router/README.md)).
 
 **Setup sequence (per zone, once NS are flipped):**
 1. Dashboard → the zone → *Email* → *Email Routing* → *Get started*.
 2. Cloudflare writes MX + SPF records automatically.
 3. Add the destination email (founder's real inbox); Cloudflare sends a one-time verification link — click it.
-4. Create forwarding rules: `hello@` → `$FOUNDER_EMAIL`, catch-all `*@` → `$FOUNDER_EMAIL`.
+4. Create forwarding rules: `hello@` → `$FOUNDER_EMAIL`, catch-all `*@` → the `protect-email-domain-reputation` Worker.
 
 ---
 
