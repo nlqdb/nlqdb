@@ -1,11 +1,14 @@
 // Agent-side KPI-1 harness — GLOBAL-041 Phase A, first-insert inference rate
-// measured OFF the deploy-blocked prod path (weekly focus 2026-09-13). Prod
-// `/v1/ask` widen-on-write is frozen at run 198 (Deploy API `action_required`,
-// `blocked-by-human` #1), so the LIVE KPI-1 counters read 0 % for a reason no
-// engine change can move. This harness measures the same number the
-// *engine* controls — `asks_extend_ok / (ok + failed)` — over a representative
-// first-insert shape set, at $0, so the loop can drive it to ≥ 95 % while the
-// deploy waits.
+// measured off the prod path (weekly focus 2026-09-13). Widen-on-write is
+// deployed live (run 214 confirmed a `forceExtend` first-insert on prod; run
+// 215 deployed the no-flag `pinned_write` route), but the LIVE counters
+// (`asks_extend_ok` / `asks_extend_failed`, SK-SCHEMA-010) still read 0 %
+// because no no-flag write has been driven at prod yet — the daily agent
+// session cannot (its credential classifier denies the prod key), so the live
+// number is read from CI via `.github/workflows/e2e-kpi1-live.yml`. This
+// harness measures the same number the *engine* controls —
+// `asks_extend_ok / (ok + failed)` — over a representative first-insert shape
+// set, at $0, so the loop can hold it at ≥ 95 % while the live walk runs.
 //
 // What it exercises: the full agent-side extend path minus the live Postgres
 // commit — `extendSchema` (the LLM designs a `WidenPlan`, the only

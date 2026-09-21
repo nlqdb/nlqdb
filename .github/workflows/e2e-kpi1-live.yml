@@ -1,0 +1,53 @@
+# Live KPI-1 no-flag routing walk — GLOBAL-041 Phase A (first-insert inference
+# rate). The daily loop CANNOT measure this: the on-prod counters
+# (asks_extend_ok / asks_extend_failed, SK-SCHEMA-010) only move when a no-flag
+# write to an unobserved table hits prod `/v1/ask`, and the daily agent
+# session's credential classifier denies materialising the prod sk_mcp_ key
+# into an outbound call (blocked runs 211-216). This workflow is the path that
+# is not blocked — the secret crosses only the workflow boundary. It is the
+# button a founder (or a prod-permitted session) presses to read the number.
+#
+# workflow_dispatch-ONLY (SK-E2E-004): it never fires on a merge, so landing it
+# mutates nothing. The walk is preview-only + NON-DESTRUCTIVE — it sends no
+# `confirm`, executes no SQL, and leaves the dogfood schema untouched
+# (tools/eval/src/kpi1-live-walk.ts). It self-skips green when the secret is
+# absent (the memory-sync.yml pattern).
+#
+# Mandatory pre-read for `.github/workflows/**`: docs/features/ci-permissions/FEATURE.md
+
+name: E2E KPI-1 live
+
+on:
+  workflow_dispatch:
+
+# Default-deny at the root (SK-CIPERM-001); the one job reads its checkout and
+# talks to the nlqdb API over a secret — it never writes back to the repo.
+permissions: {}
+
+concurrency:
+  group: kpi1-live
+  cancel-in-progress: false
+
+jobs:
+  walk:
+    name: Live no-flag first-insert routing walk
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Walk the no-flag first-insert shapes against prod
+        working-directory: tools/eval
+        env:
+          # A self-minted sk_mcp_* MCP key (least privilege, SK-APIKEYS-015),
+          # the same secret memory-sync.yml consumes. Absent ⇒ the walk skips
+          # green with a printed reason, so this lights up as a flag flip.
+          NLQDB_API_KEY: ${{ secrets.NLQDB_API_KEY }}
+          NLQDB_API_BASE: ${{ vars.NLQDB_API_BASE }}
+          NLQDB_DOGFOOD_DB: ${{ vars.NLQDB_DOGFOOD_DB }}
+        # The script prints each verdict to the log and writes the rich
+        # markdown rate table to $GITHUB_STEP_SUMMARY itself.
+        run: bun src/kpi1-live-walk.ts
