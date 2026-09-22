@@ -12,11 +12,10 @@ alarm only; premium tier stays. Retired rows dropped below.
 
 **Weekly focus (2026-09-13 →, `/weekly` re-pointed; keeps the founder's
 2026-09-04 KPI-1/Phase-A frame):** **Phase A KPI 1 — first-insert inference
-rate**, `asks_extend_ok / (ok + failed)`, toward ≥ 95 %. Agent-side **100 %
-(5/5)** re-confirmed run 216 on the current free-tier chain. Live executor
-CONFIRMED on prod run 214 (`forceExtend`). Run 215's no-user-action routing
-(`reason=pinned_write`) is now **DEPLOYED LIVE** (Deploy API #637, sha
-`0f7780d`, 09-19).
+rate**, `asks_extend_ok / (ok + failed)`, toward ≥ 95 %. **First honest live
+reading (run 218) = 0/5:** the `pinned_write` route does not fire live
+(`WRITE_VERBS` mismatch — see below). The widen executor itself is CONFIRMED on
+prod (run 214, `forceExtend`); the gap is the no-flag route, not the executor.
 
 **Worst number today (run 218, 2026-09-22) — WEEKLY-FOCUS KPI 1 FIRST HONEST LIVE READING = 0.0 % (0/5), all `clarify_required`.** Run 217 built the live walk but it reported a false `0/5 URL is invalid`: the workflow injects `NLQDB_API_BASE: ${{ vars… }}`, so an unset repo var is an empty **string**, and `?? DEFAULT` (nullish) never fell back → invalid fetch URL. Run 218 fixed that (`resolveTarget`, treat blank as absent), re-dispatched from the branch, and the instrument reached prod (5 real LLM hops, [run 35680609148](https://github.com/nlqdb/nlqdb/actions/runs/35680609148)). Result: **every shape dead-ends on the create/query clarify, not widen** — the run-215 `pinned_write` route is NOT firing live.
 **Root cause (diagnosed, code-read):** the 5 shapes use natural insert verbs — *Record / Store / Save / Register* — but engine `WRITE_VERBS = [insert, update, delete, add, remove]` (`route-ask.ts:86`) contains none of them, so `pickVerbKind` returns `null`, the `pinned_write` fast-path (`:140`, gated `pickVerbKind===write`) never fires, and the LLM's "unknown table → create" bias hits the SK-ASK-014 clarify. The prior **"agent-side 100 % (5/5)"** was a fiction: the walk's own unit test asserted the goals "carry a write verb" with a *broader* regex (`record|store|save|register|insert|add|log`) than the engine uses — it never exercised live routing (`RUN_EXTEND_KPI` forces the write kind).
@@ -69,13 +68,13 @@ CONFIRMED on prod run 214 (`forceExtend`). Run 215's no-user-action routing
 **41 canonical `/solve` pages** + **40 `/blog` posts** + **31 `/vs` pages** live under `nlqdb.com/`
 (`SK-SOLVE-001` / `SK-BLOG-001` / `SK-CMP-001`). The registries are `apps/web/src/data/{solve,blog,competitors}.ts`.
 
-- **This run (218):** `GLOBAL-041` Phase A — **fixed the live instrument and read the first honest live KPI-1 number = 0/5.** The run-217 walk reported a false `URL is invalid` (empty-string env var + nullish `??`); `resolveTarget` now treats blank as absent, the walk reached prod, and root-caused the 0 % to the `WRITE_VERBS` verb-list mismatch. Non-engine diff; 9/9 → 12/12. See header + Last change.
+- **This run (218):** `GLOBAL-041` Phase A — **fixed the live instrument (`resolveTarget`) and read the first honest live KPI-1 = 0/5**, root-caused to the `WRITE_VERBS` mismatch. Non-engine diff; 9/9 → 12/12. See header + Last change.
 - **Run 217:** built the live-measure instrument (carried the empty-env bug fixed in run 218).
-- **Run 216:** rule-7 yield measurement — routing deployed live (Deploy API #637); agent-side KPI-1 re-confirmed 100 % (5/5). Scorecard-only.
+- **Run 216:** `pinned_write` routing deployed live (Deploy API #637). Scorecard-only.
 - **Run 215:** `GLOBAL-041` Phase A — **closed the no-user-action routing gap (§6.1 R1).** `routeAsk` takes `pinnedDbId`; a pinned write-verb goal to an unobserved table classifies `kind=write` (`reason=pinned_write`, no LLM) and widens with no clarify/flag. Verb-gated → SK-ASK-014 refined, not reversed. Unit tests +3.
 - **Run 214:** `GLOBAL-041` Phase A — **first live first-insert inference confirmed on prod** (Deploy API #635): a `forceExtend` probe landed a first-insert to unobserved `dba_run_events` (`rowCount:1`, `CREATE TABLE`, `schema_rewritten:true`, reads back). Measurement run (rule 7).
 - **Run 213:** `GLOBAL-041` Phase A — **wired `forceExtend`** (SK-ASK-014 arm a); confirmed the run-212 WASM fix live (writes land 200).
-- **Runs ≤ 212 (widen-on-write build order 196–212, `git log` for detail):** KPI-1 instrument (196) · compiler + allow-list (197–198) · extend prompt/`extendSchema` (199) · `buildWidenBatch`/`executeWidenBatch` (201–202, SK-SCHEMA-008) · D1 CAS rewrite (203, SK-SCHEMA-011) · `extendOnWrite` compose + wire (204–205) · real-PG extend walk 3/3 (206) · `trace.widen` parity (207, SK-TRUST-002) · column routing (209) · agent-side KPI-1 instrument (210) · provider-fallthrough → agent-side 80 %→100 % (211) · widen-commit 500 WASM fix (212).
+- **Runs ≤ 212:** widen-on-write build order (196–212) — see `git log` (SK-SCHEMA-008/011 executor + D1 CAS, SK-TRUST-002 `trace.widen`, column routing, agent-side instrument, WASM fix).
 
 ## Last change
 
