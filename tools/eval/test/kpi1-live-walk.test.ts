@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { classifyExtendPreview, WALK_SHAPES } from "../src/kpi1-live-walk.ts";
+import { classifyExtendPreview, resolveTarget, WALK_SHAPES } from "../src/kpi1-live-walk.ts";
 
 describe("classifyExtendPreview", () => {
   it("HIT — a preview that routed into widen-on-write names the unseen table", () => {
@@ -90,6 +90,31 @@ describe("classifyExtendPreview", () => {
       },
     };
     expect(classifyExtendPreview({ httpStatus: 200, body }).hit).toBe(false);
+  });
+});
+
+describe("resolveTarget", () => {
+  // The run-218 bug: the workflow injects `NLQDB_API_BASE: ${{ vars... }}`, so an
+  // unset repo var is an empty string, not undefined — `?? DEFAULT` did not
+  // fall back and every fetch died `URL is invalid` (false 0/5).
+  it("falls back to the prod defaults when the vars are UNSET", () => {
+    expect(resolveTarget({})).toEqual({
+      base: "https://app.nlqdb.com",
+      dbId: "db_agent_memory_v1_3a8a72",
+    });
+  });
+
+  it("falls back to the defaults when the vars are EMPTY / blank strings (the run-217 workflow shape)", () => {
+    expect(resolveTarget({ NLQDB_API_BASE: "", NLQDB_DOGFOOD_DB: "   " })).toEqual({
+      base: "https://app.nlqdb.com",
+      dbId: "db_agent_memory_v1_3a8a72",
+    });
+  });
+
+  it("honours an explicit override and strips a trailing slash from the base", () => {
+    expect(
+      resolveTarget({ NLQDB_API_BASE: "https://staging.nlqdb.com/", NLQDB_DOGFOOD_DB: "db_other" }),
+    ).toEqual({ base: "https://staging.nlqdb.com", dbId: "db_other" });
   });
 });
 

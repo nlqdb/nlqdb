@@ -114,10 +114,25 @@ const DEFAULT_BASE = "https://app.nlqdb.com";
 // The dogfood DB id (GLOBAL-042 iteration 001). Not a secret — an internal id.
 const DEFAULT_DB = "db_agent_memory_v1_3a8a72";
 
+// The workflow injects `NLQDB_API_BASE: ${{ vars.NLQDB_API_BASE }}` etc., so an
+// UNSET repo var arrives as an empty string, not `undefined`. `??` only falls
+// back on null/undefined, so `?? DEFAULT_BASE` left `base=""` and every fetch
+// died `URL is invalid` — a false 0/5 (run 218). Treat blank as absent.
+export function resolveTarget(env: NodeJS.ProcessEnv): { base: string; dbId: string } {
+  const pick = (name: string, fallback: string): string => {
+    const raw = env[name];
+    const trimmed = typeof raw === "string" ? raw.trim() : "";
+    return trimmed !== "" ? trimmed : fallback;
+  };
+  return {
+    base: pick("NLQDB_API_BASE", DEFAULT_BASE).replace(/\/$/, ""),
+    dbId: pick("NLQDB_DOGFOOD_DB", DEFAULT_DB),
+  };
+}
+
 async function main(): Promise<void> {
   const key = process.env["NLQDB_API_KEY"];
-  const base = (process.env["NLQDB_API_BASE"] ?? DEFAULT_BASE).replace(/\/$/, "");
-  const dbId = process.env["NLQDB_DOGFOOD_DB"] ?? DEFAULT_DB;
+  const { base, dbId } = resolveTarget(process.env);
 
   // Self-skip green (memory-sync.yml pattern) so the workflow lights up as a
   // key-present flip, never a red run, when the secret is absent.
