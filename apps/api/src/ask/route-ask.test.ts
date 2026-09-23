@@ -199,6 +199,112 @@ describe("routeAsk — pinned-DB write fast-path (GLOBAL-041 Phase A)", () => {
   });
 });
 
+describe("routeAsk — natural insert verbs route pinned_write (GLOBAL-041 Phase A, KPI 1)", () => {
+  // The live KPI-1 walk (tools/eval/src/kpi1-live-walk.ts WALK_SHAPES) read
+  // 0/5 on prod (run 218): the 5 dogfood shapes lead with natural insert verbs
+  // (Record/Store/Save/Register) that the engine's write-verb list excluded, so
+  // pinned_write never fired and each dead-ended on the SK-ASK-014 clarify.
+  // These cases prove the fix deterministically (the live call can't run from
+  // this session). Kept in sync with WALK_SHAPES — a new shape adds a row here.
+
+  // A pinned DB whose observed table is unrelated, so step 2 (recent-table)
+  // misses and the unobserved-table write reaches the pinned_write fast-path.
+  const pinnedInput = (goal: string) => ({
+    goal,
+    dbs: [{ id: "db1", slug: "rateme12-a4f" }],
+    recentTables: [rt("db1", "restaurants")],
+    pinnedDbId: "db1",
+  });
+
+  // The exact WALK_SHAPES goals (tools/eval/src/kpi1-live-walk.ts), plus `log`.
+  it.each([
+    [
+      "new-table",
+      "Record a rating in the ratings table: a rater gives a profile a star count from 1 to 5. Store the rating id, which profile it targets, and the star count.",
+    ],
+    [
+      "new-column-family",
+      "Store the free-text review body a rater left in the reviews table, alongside the review id and the rating it belongs to.",
+    ],
+    [
+      "type-varied",
+      "Save a leaderboard snapshot in the leaderboard_snapshots table: a snapshot id, the profile id, its average score as a decimal, and the moment it was taken as a timestamp.",
+    ],
+    [
+      "jsonb",
+      "Record a moderation event in the moderation_events table with an event id, the target profile id, and a details object holding the reason and any flags as structured JSON.",
+    ],
+    [
+      "auth-shaped",
+      "Register an app end-user in the app_users table: store a user id, their email, a hashed password, and when they signed up.",
+    ],
+    ["log", "Log a moderation event in the moderation_events table"],
+  ])("shape %s → kind=write reason=pinned_write, no LLM", async (_shape, goal) => {
+    const route = vi.fn();
+    const out = await routeAsk({ llm: llmStub({ route }) }, pinnedInput(goal));
+    expect(out.kind).toBe("write");
+    expect(out.reason).toBe("pinned_write");
+    expect(out.targetDbId).toBe("db1");
+    expect(route).not.toHaveBeenCalled();
+  });
+
+  it("a leading query verb keeps a read a read even when a soft-write verb follows", async () => {
+    // "show me the record" — `record` is a soft-write noun here; the leading
+    // `show` must win so a read against the pin doesn't misroute to write.
+    const route = vi.fn(
+      async (): Promise<RouteResponse> => ({
+        kind: "query",
+        targetDbId: "db1",
+        referencedTables: [],
+        confidence: 0.9,
+        reason: "ok",
+      }),
+    );
+    const out = await routeAsk(
+      { llm: llmStub({ route }) },
+      pinnedInput("show me the record for profile 12"),
+    );
+    // Not the deterministic pinned_write fast-path — it falls through to the LLM.
+    expect(out.reason).not.toBe("pinned_write");
+    expect(route).toHaveBeenCalledTimes(1);
+  });
+
+  it("a soft-write word used as a noun does not route write", async () => {
+    // "store" / "log" mid-goal are nouns — a read against an observed table
+    // stays a read, and a pinned read doesn't take the pinned_write fast-path.
+    const route = vi.fn(
+      async (): Promise<RouteResponse> => ({
+        kind: "query",
+        targetDbId: "db1",
+        referencedTables: [],
+        confidence: 0.9,
+        reason: "ok",
+      }),
+    );
+    const observed = await routeAsk(
+      { llm: llmStub({ route }) },
+      pinnedInput("restaurants per store"),
+    );
+    expect(observed).toMatchObject({ kind: "query", reason: "recent_table_match" });
+    const pinned = await routeAsk(
+      { llm: llmStub({ route }) },
+      pinnedInput("errors in the audit log since monday"),
+    );
+    expect(pinned.reason).not.toBe("pinned_write");
+  });
+
+  it.each([
+    "Store hours for each restaurant",
+    "Record count per restaurant",
+    "log entries for restaurants since monday",
+    "Register of restaurants by city",
+  ])("a soft-write word leading as a noun stays a read: %s", async (goal) => {
+    // No determiner after the soft verb ⇒ noun lead, not an imperative.
+    const out = await routeAsk({ llm: llmStub({ route: vi.fn() }) }, pinnedInput(goal));
+    expect(out).toMatchObject({ kind: "query", reason: "recent_table_match" });
+  });
+});
+
 describe("routeAsk — slug fast-path", () => {
   it("slug match pins targetDbId; LLM still decides kind", async () => {
     const route = vi.fn(
