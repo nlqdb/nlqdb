@@ -216,7 +216,7 @@ describe("routeAsk — natural insert verbs route pinned_write (GLOBAL-041 Phase
     pinnedDbId: "db1",
   });
 
-  // The exact WALK_SHAPES goals (tools/eval/src/kpi1-live-walk.ts).
+  // The exact WALK_SHAPES goals (tools/eval/src/kpi1-live-walk.ts), plus `log`.
   it.each([
     [
       "new-table",
@@ -291,6 +291,17 @@ describe("routeAsk — natural insert verbs route pinned_write (GLOBAL-041 Phase
       pinnedInput("errors in the audit log since monday"),
     );
     expect(pinned.reason).not.toBe("pinned_write");
+  });
+
+  it.each([
+    "Store hours for each restaurant",
+    "Record count per restaurant",
+    "log entries for restaurants since monday",
+    "Register of restaurants by city",
+  ])("a soft-write word leading as a noun stays a read: %s", async (goal) => {
+    // No determiner after the soft verb ⇒ noun lead, not an imperative.
+    const out = await routeAsk({ llm: llmStub({ route: vi.fn() }) }, pinnedInput(goal));
+    expect(out).toMatchObject({ kind: "query", reason: "recent_table_match" });
   });
 });
 

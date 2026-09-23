@@ -85,9 +85,10 @@ export const ROUTE_CONFIDENCE_FLOOR = 0.7;
 //     (a goal that says "delete"/"insert" is a write even if it also says
 //     "count").
 //   SOFT_WRITE_VERBS   — natural insert verbs that double as nouns ("orders
-//     per store", "the error log", "show me the record"), so they count only
-//     as the goal's FIRST word — the imperative "Record a rating … a star
-//     count … which profile" is a write, a noun use anywhere else is not.
+//     per store", "record count per day", "log entries"), so they count only
+//     as the goal's FIRST word AND followed by a determiner — the imperative
+//     "Record a rating … a star count … which profile" is a write; a noun
+//     lead ("Store hours …", "Record count …") or a mid-goal noun is not.
 //     GLOBAL-041 Phase A: without them a pinned no-flag insert phrased
 //     naturally dead-ended on the SK-ASK-014 clarify (live KPI-1 0/5, run 218).
 //
@@ -96,7 +97,10 @@ export const ROUTE_CONFIDENCE_FLOOR = 0.7;
 const STRONG_WRITE_VERBS = ["insert", "update", "delete", "add", "remove"] as const;
 const SOFT_WRITE_VERBS = ["record", "store", "save", "register", "log"] as const;
 const QUERY_VERBS = ["show", "count", "list", "describe", "what", "how", "which"] as const;
-const SOFT_WRITE_LEAD = new RegExp(`^\\s*(?:${SOFT_WRITE_VERBS.join("|")})\\b`);
+const SOFT_WRITE_OBJECT = ["a", "an", "the", "this", "that", "new", "another"] as const;
+const SOFT_WRITE_LEAD = new RegExp(
+  `^\\s*(?:${SOFT_WRITE_VERBS.join("|")})\\s+(?:${SOFT_WRITE_OBJECT.join("|")})\\b`,
+);
 
 // Words shorter than this are too generic to anchor a slug match
 // (e.g. "db", "id", "x"). Avoids matching "id" in "send a slack message".
