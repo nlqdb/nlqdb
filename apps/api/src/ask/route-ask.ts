@@ -78,12 +78,27 @@ export type RouteAskDeps = {
 // route handler returns `409 candidate_dbs`.
 export const ROUTE_CONFIDENCE_FLOOR = 0.7;
 
-// Verb shortlist that decides query-vs-write when a recent-table hits
-// without an LLM call. `add` and `remove` are common write synonyms
-// power users reach for; `show` / `count` / `list` / `describe` /
-// `what` / `how` / `which` cover the read shapes. Anything else is
-// ambiguous and falls through to the LLM.
-const WRITE_VERBS = ["insert", "update", "delete", "add", "remove"] as const;
+// Verb shortlist that decides query-vs-write without an LLM call, on the
+// recent-table and pinned-DB fast-paths. Two write tiers:
+//
+//   STRONG_WRITE_VERBS — unambiguous mutations; win regardless of position
+//     (a goal that says "delete"/"insert" is a write even if it also says
+//     "count"). These are the verbs power users reach for.
+//   SOFT_WRITE_VERBS   — natural insert verbs (`record`/`store`/`save`/
+//     `register`/`log`) the real workload uses that also read as nouns
+//     ("the record", "a save", "the log"), so they win only when they LEAD:
+//     the EARLIEST of a soft-write verb and a query verb decides. This keeps
+//     "Record a rating … a star count … which profile" (leads *Record*) a
+//     write, while "show me the record" (leads *show*) stays a read — an
+//     incidental later noun can no longer flip the intent. GLOBAL-041 Phase A:
+//     without these, a pinned no-flag insert phrased with a natural verb
+//     dead-ended on the SK-ASK-014 clarify (live KPI-1 = 0/5, run 218).
+//
+// `show` / `count` / `list` / `describe` / `what` / `how` / `which` cover the
+// read shapes. A goal with no verb at all is ambiguous and falls through to
+// the LLM.
+const STRONG_WRITE_VERBS = ["insert", "update", "delete", "add", "remove"] as const;
+const SOFT_WRITE_VERBS = ["record", "store", "save", "register", "log"] as const;
 const QUERY_VERBS = ["show", "count", "list", "describe", "what", "how", "which"] as const;
 
 // Words shorter than this are too generic to anchor a slug match
@@ -228,13 +243,31 @@ function tableVariants(name: string): string[] {
 
 function pickVerbKind(goal: string): RouteAskKind | null {
   const haystack = goal.toLowerCase();
-  for (const v of WRITE_VERBS) {
+  // A strong write verb is unconditional — a mutation intent stands even
+  // alongside a query word (preserves the pre-GLOBAL-041 semantics exactly).
+  for (const v of STRONG_WRITE_VERBS) {
     if (new RegExp(`\\b${v}\\b`).test(haystack)) return "write";
   }
-  for (const v of QUERY_VERBS) {
-    if (new RegExp(`\\b${v}\\b`).test(haystack)) return "query";
+  // Otherwise the earliest of a soft-write verb and a query verb wins: a
+  // leading "Record …"/"Store …" is a write, a leading "Show …"/"List …" is a
+  // read, and an incidental later noun ("…a star count…") can't flip either.
+  const soft = firstMatchIndex(haystack, SOFT_WRITE_VERBS);
+  const query = firstMatchIndex(haystack, QUERY_VERBS);
+  if (soft === null && query === null) return null;
+  if (query === null) return "write";
+  if (soft === null) return "query";
+  return soft < query ? "write" : "query";
+}
+
+// Index of the earliest word-boundary match of any verb in the list, or null
+// when none appear. Word-boundary match — `\b` is safe for the ASCII verb list.
+function firstMatchIndex(haystack: string, verbs: readonly string[]): number | null {
+  let best: number | null = null;
+  for (const v of verbs) {
+    const m = new RegExp(`\\b${v}\\b`).exec(haystack);
+    if (m && (best === null || m.index < best)) best = m.index;
   }
-  return null;
+  return best;
 }
 
 // Slug-words appearing in the goal. Words are kebab-segments of the

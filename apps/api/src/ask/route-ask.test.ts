@@ -199,6 +199,76 @@ describe("routeAsk — pinned-DB write fast-path (GLOBAL-041 Phase A)", () => {
   });
 });
 
+describe("routeAsk — natural insert verbs route pinned_write (GLOBAL-041 Phase A, KPI 1)", () => {
+  // The live KPI-1 walk (tools/eval/src/kpi1-live-walk.ts WALK_SHAPES) read
+  // 0/5 on prod (run 218): the 5 dogfood shapes lead with natural insert verbs
+  // (Record/Store/Save/Register) that the engine's write-verb list excluded, so
+  // pinned_write never fired and each dead-ended on the SK-ASK-014 clarify.
+  // These cases prove the fix deterministically (the live call can't run from
+  // this session). Kept in sync with WALK_SHAPES — a new shape adds a row here.
+
+  // A pinned DB whose observed table is unrelated, so step 2 (recent-table)
+  // misses and the unobserved-table write reaches the pinned_write fast-path.
+  const pinnedInput = (goal: string) => ({
+    goal,
+    dbs: [{ id: "db1", slug: "rateme12-a4f" }],
+    recentTables: [rt("db1", "restaurants")],
+    pinnedDbId: "db1",
+  });
+
+  it.each([
+    ["record", "Record a rating in the ratings table for a profile"],
+    ["store", "Store a review body in the reviews table"],
+    ["save", "Save a leaderboard snapshot in the leaderboard_snapshots table"],
+    ["register", "Register an app end-user in the app_users table"],
+    ["log", "Log a moderation event in the moderation_events table"],
+  ])("natural insert verb %s → kind=write reason=pinned_write, no LLM", async (_verb, goal) => {
+    const route = vi.fn();
+    const out = await routeAsk({ llm: llmStub({ route }) }, pinnedInput(goal));
+    expect(out.kind).toBe("write");
+    expect(out.reason).toBe("pinned_write");
+    expect(out.targetDbId).toBe("db1");
+    expect(route).not.toHaveBeenCalled();
+  });
+
+  it("regression: a leading insert verb wins over incidental query nouns (star count / which profile)", async () => {
+    // The exact WALK_SHAPES `new-table` goal — it contains "count" (twice) and
+    // "which", both QUERY_VERBS, as ordinary nouns/pronouns. A naive
+    // any-query-verb-wins precedence would misclassify this write as a read.
+    const route = vi.fn();
+    const out = await routeAsk(
+      { llm: llmStub({ route }) },
+      pinnedInput(
+        "Record a rating in the ratings table: a rater gives a profile a star count from 1 to 5. Store the rating id, which profile it targets, and the star count.",
+      ),
+    );
+    expect(out.kind).toBe("write");
+    expect(out.reason).toBe("pinned_write");
+    expect(route).not.toHaveBeenCalled();
+  });
+
+  it("a leading query verb keeps a read a read even when a soft-write verb follows", async () => {
+    // "show me the record" — `record` is a soft-write noun here; the leading
+    // `show` must win so a read against the pin doesn't misroute to write.
+    const route = vi.fn(
+      async (): Promise<RouteResponse> => ({
+        kind: "query",
+        targetDbId: "db1",
+        referencedTables: [],
+        confidence: 0.9,
+        reason: "ok",
+      }),
+    );
+    const out = await routeAsk(
+      { llm: llmStub({ route }) },
+      pinnedInput("show me the record for profile 12"),
+    );
+    // Not the deterministic pinned_write fast-path — it falls through to the LLM.
+    expect(out.reason).not.toBe("pinned_write");
+    expect(route).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("routeAsk — slug fast-path", () => {
   it("slug match pins targetDbId; LLM still decides kind", async () => {
     const route = vi.fn(
