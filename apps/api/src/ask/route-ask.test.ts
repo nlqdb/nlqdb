@@ -216,34 +216,35 @@ describe("routeAsk — natural insert verbs route pinned_write (GLOBAL-041 Phase
     pinnedDbId: "db1",
   });
 
+  // The exact WALK_SHAPES goals (tools/eval/src/kpi1-live-walk.ts).
   it.each([
-    ["record", "Record a rating in the ratings table for a profile"],
-    ["store", "Store a review body in the reviews table"],
-    ["save", "Save a leaderboard snapshot in the leaderboard_snapshots table"],
-    ["register", "Register an app end-user in the app_users table"],
+    [
+      "new-table",
+      "Record a rating in the ratings table: a rater gives a profile a star count from 1 to 5. Store the rating id, which profile it targets, and the star count.",
+    ],
+    [
+      "new-column-family",
+      "Store the free-text review body a rater left in the reviews table, alongside the review id and the rating it belongs to.",
+    ],
+    [
+      "type-varied",
+      "Save a leaderboard snapshot in the leaderboard_snapshots table: a snapshot id, the profile id, its average score as a decimal, and the moment it was taken as a timestamp.",
+    ],
+    [
+      "jsonb",
+      "Record a moderation event in the moderation_events table with an event id, the target profile id, and a details object holding the reason and any flags as structured JSON.",
+    ],
+    [
+      "auth-shaped",
+      "Register an app end-user in the app_users table: store a user id, their email, a hashed password, and when they signed up.",
+    ],
     ["log", "Log a moderation event in the moderation_events table"],
-  ])("natural insert verb %s → kind=write reason=pinned_write, no LLM", async (_verb, goal) => {
+  ])("shape %s → kind=write reason=pinned_write, no LLM", async (_shape, goal) => {
     const route = vi.fn();
     const out = await routeAsk({ llm: llmStub({ route }) }, pinnedInput(goal));
     expect(out.kind).toBe("write");
     expect(out.reason).toBe("pinned_write");
     expect(out.targetDbId).toBe("db1");
-    expect(route).not.toHaveBeenCalled();
-  });
-
-  it("regression: a leading insert verb wins over incidental query nouns (star count / which profile)", async () => {
-    // The exact WALK_SHAPES `new-table` goal — it contains "count" (twice) and
-    // "which", both QUERY_VERBS, as ordinary nouns/pronouns. A naive
-    // any-query-verb-wins precedence would misclassify this write as a read.
-    const route = vi.fn();
-    const out = await routeAsk(
-      { llm: llmStub({ route }) },
-      pinnedInput(
-        "Record a rating in the ratings table: a rater gives a profile a star count from 1 to 5. Store the rating id, which profile it targets, and the star count.",
-      ),
-    );
-    expect(out.kind).toBe("write");
-    expect(out.reason).toBe("pinned_write");
     expect(route).not.toHaveBeenCalled();
   });
 
@@ -266,6 +267,30 @@ describe("routeAsk — natural insert verbs route pinned_write (GLOBAL-041 Phase
     // Not the deterministic pinned_write fast-path — it falls through to the LLM.
     expect(out.reason).not.toBe("pinned_write");
     expect(route).toHaveBeenCalledTimes(1);
+  });
+
+  it("a soft-write word used as a noun does not route write", async () => {
+    // "store" / "log" mid-goal are nouns — a read against an observed table
+    // stays a read, and a pinned read doesn't take the pinned_write fast-path.
+    const route = vi.fn(
+      async (): Promise<RouteResponse> => ({
+        kind: "query",
+        targetDbId: "db1",
+        referencedTables: [],
+        confidence: 0.9,
+        reason: "ok",
+      }),
+    );
+    const observed = await routeAsk(
+      { llm: llmStub({ route }) },
+      pinnedInput("restaurants per store"),
+    );
+    expect(observed).toMatchObject({ kind: "query", reason: "recent_table_match" });
+    const pinned = await routeAsk(
+      { llm: llmStub({ route }) },
+      pinnedInput("errors in the audit log since monday"),
+    );
+    expect(pinned.reason).not.toBe("pinned_write");
   });
 });
 
