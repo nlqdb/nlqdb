@@ -1,178 +1,97 @@
-# Blocked by Human
+# Blocked by human
 
-The single file the founder reads. Per [`GLOBAL-033`](./decisions/GLOBAL-033-resolution-defaults.md),
-agents resolve value-decidable questions themselves; this file is **only** for
-what a human must do — operator actions an agent can't perform (set a prod
-secret, click through a console, prune a DB) and genuine money / strategy /
-legal bets — or a suggestion needing human approval before it can amend the
-guidelines. Keep each a very short bullet. Delete a bullet once done — an
-**operator action** first gets one line in
-[`history/founder-actions-log.md`](./history/founder-actions-log.md)
-(metadata only, never secret values), the only record that survives deletion.
+Temporary founder steps only. No **Answer** field. Delete a bullet when the
+steps are done. Reports and `/daily` list **titles** only — never paste a
+bullet. Ranked by user-yield per founder-minute; work top-down. 🔒
+decision-to-lock bullets follow
+[`GLOBAL-033`](./decisions/GLOBAL-033-resolution-defaults.md) (cap 3).
+Operator actions also get one metadata line in
+[`history/founder-actions-log.md`](./history/founder-actions-log.md) — never
+a secret value.
 
-**This is the only place agents may ask for the founder's attention** — and a
-founder *bet* enters only as a **🔒 decision-to-lock** bullet
-([`GLOBAL-033`](./decisions/GLOBAL-033-resolution-defaults.md), amended
-2026-08-04): admissible only when no codified decision — the GLOBAL-033
-ladder, the `§0` values, any `GLOBAL-*`/`SK-*` — decides the question (the
-bullet says what was checked); the conservative default is already applied so
-nothing is blocked on the founder; and the ask is to **lock a decision**
-(mint/amend the governing `GLOBAL-*`/`SK-*` from pre-drafted options), never
-to hand a one-off answer. Hard cap: **3** live 🔒 bullets.
+## Show HN launch sequence
 
-**This is a ranked queue, not a parking lot** (founder-directed 2026-07-22):
-bullets are ordered by expected user-yield per founder-minute — work top-down.
-Every bullet opens with `⏱ estimate · blocked since date`; new bullets slot in
-by rank, never append. Every `/daily` scorecard names the current top bullet
-and its age next to "worst number today" — restating it each run is
-measurement, not nagging: with 0 real strangers, the age of this queue's head
-is the company's real cycle time.
+~30 min · blocked since 2026-06-13. Gated on `GLOBAL-041` Phase A (live KPI 1
+≥ 95 %; reads 60 % at run 220 — agents drive it). Kit:
+[`research/launch-kit.md`](./research/launch-kit.md).
 
-## At a glance
+1. Pick the angle (§2). Write the Show HN post + first comment in your own
+   voice from the §3.1 fact sheet — never agent copy (the r/SQL lesson).
+2. Soft-launch lobste.rs / r/SideProject, then Show HN Tue–Thu morning.
+3. Product Hunt ≥ 1 week later (account-walled).
+4. Delete this bullet once the Show HN post is live.
 
-The whole queue, same order as the bullets below — where the exact URLs, form
-values and criteria live. Read those only when you sit down to do the thing.
+## Deploy the email-router Worker (PR #1134)
 
-| # | ⏱ | Do this | Blocked since |
-|---|---|---|---|
-| 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on `GLOBAL-041` Phase A (KPI 1 live and ≥ 95 %); live KPI 1 reads 60 % (3/5, run 220), so the gate is still red; agents drive it to ≥ 95 %, then it waits only on your sitting | 2026-06-13 |
-| 2 | ~5 min | Deploy the email-router Worker (PR #1134) + run its real-delivery walk — stops an active DMARC retry storm and two inbound-mail-loss paths on `hello@`/`security@`; dashboard-managed, so deploy + walk are owner-only | 2026-09-18 |
-| 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
-| 4 | ~10 min | Submit nlqdb to PulseMCP + mcp.directory — two manual directory submits (registry cascade never reached them); lowest-yield, payloads ready | 2026-09-01 |
-| 5 | ~10 min | Submit `nlqdb-memory` to cc-marketplace (`claudecodecommands.directory`) — cross-repo PR or web form; lowest-yield (`github`-ref), payload ready | 2026-09-04 |
+~5 min · blocked since 2026-09-18. `apps/email-router` is dashboard-managed,
+so deploying overwrites the live script and the delivery walk can't be run by
+an agent. Stops an active DMARC retry storm and two inbound-mail-loss paths.
 
-Only #1 can move real strangers (scorecard row #2); #2 is a quick,
-no-cost operator action that stops active inbound-mail loss; the hosted-premium
-meter went **live 2026-08-14** (`premium.live=true` in prod — the full
-activation, AI Gateway included, is done and off this queue); #3 costs money and
-waits per `docs/cost-ladder.md` unless a Team org already exists. The Phase A engine build is agent work and is DONE in code
-(runs 197–210, both first-insert shapes + provider-fallthrough) **and now
-DEPLOYED**: the founder cleared the GitHub Actions deploy-approval gate on
-2026-09-14 (`Deploy API`/`MCP`/`events-worker` all re-ran green;
-`founder-actions-log.md` Era 15), so prod `apps/api` is current at run 210 and
-widen-on-write is live. The one Phase A step that was legitimately founder
-territory — approving the outward-facing prod deploy — is done; the remaining
-agent step is to re-measure the LIVE KPI-1 counters in prod (next `/daily`).
-(Resolved 2026-08-05, same sitting — Era 6: the "Become AI" five locks →
-`SK-EKP-001..005` and the two-axis business model (since archived under `GLOBAL-041`), the goal-pack build order locked
-(niche-quality lens → `pack-candidates.md` header), the Anthropic
-plugin-directory submission (pending review), and Cline issue #2197
-(pending review). **Dropped, not resolved:** the skillsclaude.org paste —
-the founder's VPN security filter flagged the site, it has zero independent
-reputation footprint, and it was the queue's lowest-yield optional item;
-venue marked dropped in reach R-09, never re-queue. Earlier sittings
-in `history/founder-actions-log.md` Eras 4–5. One load-bearing note survives:
-D-02 memory-sync stays dark until the **D-04 agent run** creates the prod
-memory DB and sets the `NLQDB_MEMORY_DB` repo variable — agent work, not a
-queue bullet (founder-directed 2026-08-09: provisioning is
-product-automated). Live-tested 08-09: one 1-run API change first — preset
-create for user-scoped keys, SK-PIVOT-010 as amended.)
+1. Deploy `apps/email-router`.
+2. Per its `README.md`, send a test to `hello@` and confirm
+   `"action":"forwarded"` in `wrangler tail` **and** arrival in the inbox.
+3. Make the **GLOBAL-014** call: accept Cloudflare Workers Logs as the span
+   requirement (merge #1134 as-is), or require the OTel span (needs a
+   `GRAFANA_OTLP_*` secret bound to the Worker — also owner-only).
+4. Delete this bullet; `/daily` then un-drafts and merges #1134.
 
-## Human actions (clicks, secrets, legal) — ranked, work top-down
+## Anthropic Claude connector directory
 
-1. **⏱ ~30 min spread over a week · Show HN draft idle since 2026-06-13, kit
-   ready since 07-19 — Fire the launch sequence** — **condition-gated on
-   `GLOBAL-041` Phase A** (widen-on-write live, KPI 1 first-insert inference
-   rate measured and ≥ 95 %; criteria, never calendar dates — agents drive
-   it). When the gate is green, only this founder-only half remains, and the
-   launch demo is the product itself: a fresh app whose first insert creates
-   the schema and whose later writes evolve it, every change previewed. Per
-   [`docs/research/launch-kit.md`](./research/launch-kit.md), pick the angle
-   (§2), write the Show HN post + first comment in your own voice from the
-   §3.1 fact sheet (never agent copy — the r/SQL lesson), soft-launch
-   lobste.rs/r/SideProject first, then Show HN Tue–Thu morning, Product Hunt
-   ≥ 1 week later (account-walled). Attribution (#745) + the prod D1
-   migrations (`0022`–`0025`) are live (verified 2026-07-22): every visit is
-   attributable end-to-end. nlqdb has never launched anywhere. **No launch
-   before real proof of value** (reaffirmed 07-28): the prior dogfood gate is
-   retired with the archived bet; Phase A is the gate now.
+~20 min · blocked since 2026-07-21. Needs a **Team/Enterprise** Claude.ai org
+with Owner or Directory-management access. If reaching it means paying, it
+waits per [`cost-ladder.md`](./cost-ladder.md). Ledger row #9.
 
-2. **⏱ ~5 min · since 2026-09-18 — Deploy the email-router Worker (PR #1134)
-   and run its real-delivery walk.** The `security@`/`hello@` inbound router is
-   **dashboard-managed**, so deploying overwrites the live script and the
-   real-delivery walk can't be run by an agent — both are owner-only. The fix
-   (parked as draft PR #1134, code correct, all 32 CI checks green) stops an
-   active DMARC-report **retry storm** and closes **two mail-loss paths**
-   (`setReject` on triple-auth-fail; the throwing `quarantine@` forward). Steps:
-   deploy `apps/email-router`, then per its `README.md` send a test to `hello@`
-   and confirm `"action":"forwarded"` in `wrangler tail` **and** arrival in the
-   destination inbox. At deploy time also make the **GLOBAL-014** call for this
-   1.8 KiB worker: accept Cloudflare-native Workers Logs as satisfying the span
-   requirement (merge as-is) **or** require the OTel span (needs a
-   `GRAFANA_OTLP_*` secret bound to the Worker — also owner-only). Once the walk
-   passes, `/daily` un-drafts and merges #1134.
+1. Open <https://claude.ai/admin-settings/directory/submissions/new>, remote-MCP
+   path.
+2. Enter: server `https://mcp.nlqdb.com/mcp` (streamable HTTP, same URL for
+   every user); name `nlqdb — your autonomous DBA`; tagline
+   `Your autonomous DBA — no data modeling. One command.`; docs
+   `https://nlqdb.com/agents/?utm_source=claude-dir`; privacy
+   `https://nlqdb.com/privacy`; slug `nlqdb` (permanent); OAuth 2.0 with
+   dynamic client registration; categories Developer Tools + Data & Analytics;
+   first-party API, no health data, no sponsored content.
+3. Give reviewer credentials for a demo account seeded so `nlqdb_query`
+   returns rows — all five tools then work end-to-end.
+4. Flip ledger row #9 to **in-flight**, note the listing URL, delete this
+   bullet.
 
-3. **⏱ ~20 min + Team/Enterprise plan gate · since 2026-07-21 — Submit nlqdb
-   to the Anthropic Claude connector directory**
-   (`claude.ai/admin-settings/directory/submissions/new`; reach R-05 venue #7, ledger row #9).
-   Account-walled **and plan-gated**: the submission portal lives inside a Claude.ai org's **admin
-   settings**, so it needs a **Team or Enterprise** org (not an individual plan) plus Owner or
-   Directory-management access — a heavier gate than mcp.so/Cursor (any sign-in). If reaching it
-   would require *paying* for a plan, it waits for the first paying customer per
-   [`docs/cost-ladder.md`](./cost-ladder.md). Not a registry
-   crawler, so the row-#3 official-registry publish does **not** cascade here. Verified 2026-07-21
-   (`claude.com/docs/connectors/building/submission`). nlqdb already clears the two hard technical
-   gates the reviewer enforces: **OAuth 2.0** (`apps/mcp` runs `@cloudflare/workers-oauth-provider`
-   with dynamic client registration + `/.well-known/*`) and **tool annotations** (every tool in
-   `packages/mcp/src/server.ts` — `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe`,
-   `nlqdb_remember`, `nlqdb_connect_database` — carries a `title` + `readOnlyHint`/`destructiveHint`).
-   Open the portal (remote-MCP path) and enter:
-   - **Server URL / transport:** `https://mcp.nlqdb.com/mcp`, streamable HTTP, same URL for every user
-   - **Name (≤100):** `nlqdb — your autonomous DBA`
-   - **Tagline (≤55):** `Your autonomous DBA — no data modeling. One command.`
-   - **Description (≤2000):** `nlqdb — your autonomous DBA: a real Postgres your agent connects to over MCP and queries in plain English. The schema is inferred from what the agent writes and evolves with use; every change is previewed and one click to undo. GROUP BY, JOIN, aggregate — not just top-k recall. One command to connect.`
-   - **Categories (1–5):** Developer Tools + Data & Analytics
-   - **Documentation URL:** `https://nlqdb.com/agents/?utm_source=claude-dir` (carries the ledger key)
-   - **Privacy policy URL:** `https://nlqdb.com/privacy`
-   - **Support contact:** your support email · **Icon:** the nlqdb mark · **Slug (permanent):** `nlqdb`
-   - **Authentication:** OAuth 2.0 with dynamic client registration (supported out of the box)
-   - **Data handling:** first-party API (nlqdb's own); no health data / no sponsored content
-   - **Test & launch:** give reviewer credentials for a *populated* demo account. `MEMORY_PRESET=1`
-     shipped 2026-07-29 (#835), so a signed-in reviewer can now exercise **all five tools**
-     end-to-end, `nlqdb_remember` included — seed the demo DB so `nlqdb_query` returns rows.
-   On submit, flip ledger row #9 to **in-flight** and note the `claude.ai/.../submissions` listing URL.
+## PulseMCP + mcp.directory
 
-4. **⏱ ~10 min · since 2026-09-01 — Submit nlqdb to PulseMCP + mcp.directory**
-   (reach R-05; ledger rows #5 + #23). Both are MCP directories the
-   official-registry publish (row #3, 07-22) was expected to reach by crawl;
-   re-checked live 2026-09-01, **both still show 0 results ~40 days later**, so
-   the narrow-cascade finding holds and each needs a manual submit. Lowest yield
-   in this queue (small directories, `github`/`mcp-registry`-ref traffic, not
-   authority movers) — below the launch, do it only when the queue head is
-   parked. Payloads:
-   - **PulseMCP** — `pulsemcp.com/submit` (account-walled; 403 to anon).
-     Server URL `https://mcp.nlqdb.com/mcp` (streamable HTTP); name `nlqdb`;
-     homepage `https://nlqdb.com/agents/?utm_source=pulsemcp` (carries the
-     ledger key); description `nlqdb — your autonomous DBA: a real Postgres
-     your agent connects to over MCP and queries in plain English; the schema
-     is inferred from what it writes. One command.` On submit, flip
-     ledger row #5 to **in-flight**.
-   - **mcp.directory** — the no-account submit form at `mcp.directory/submit`
-     (a Next.js SPA, so not agent-POST-able). Required: GitHub repo URL
-     `https://github.com/nlqdb/nlqdb`; homepage
-     `https://nlqdb.com/agents/?utm_source=mcpdir`; description as above; then
-     email to claim the listing (so yield carries `mcpdir`, not the inherited
-     `mcp-registry` key). On submit, flip ledger row #23 to **in-flight**.
+~10 min · blocked since 2026-09-01. Both were expected to pick nlqdb up by
+crawl from the official registry; re-checked live, both still show 0 results.
+Lowest-yield directories — do these only when the queue head is parked.
 
-5. **⏱ ~10 min · since 2026-09-04 — Submit `nlqdb-memory` to cc-marketplace**
-   (reach R-09 venue #6; ledger row #27). A 688★ community Claude Code
-   plugin/command directory fronted by `claudecodecommands.directory` — passes
-   the trust bar `skillsclaude.org` failed (real footprint, named maintainer).
-   Lowest yield in this queue (repo-linked → `github`-ref, no utm key); do it
-   only when #1–#4 are parked. Two paths, either works: the
-   **cross-repo GitHub PR** to [`ananddtyagi/cc-marketplace`](https://github.com/ananddtyagi/cc-marketplace)
-   per its `PLUGIN_SCHEMA.md` (also openable by a repo-unscoped agent — this
-   session is `nlqdb/nlqdb`-only), or the account-walled
-   `claudecodecommands.directory/submit` form. The **exact payload** (name,
-   version, license, description, repo, utm homepage — all pinned to the shipped
-   `.claude-plugin/plugin.json`) is parked in
-   [`acquisition-channels-mechanisms.md` §Row #27](./research/acquisition-channels-mechanisms.md#row-27);
-   copy it verbatim. On submit, flip ledger row #27 to **in-flight** and note
-   the listing URL, then watch `/app/admin` for `github`-ref yield.
+1. <https://pulsemcp.com/submit> (account-walled) — server
+   `https://mcp.nlqdb.com/mcp`, name `nlqdb`, homepage
+   `https://nlqdb.com/agents/?utm_source=pulsemcp`. Flip ledger row #5 to
+   **in-flight**.
+2. <https://mcp.directory/submit> (SPA form, not agent-POST-able) — repo
+   `https://github.com/nlqdb/nlqdb`, homepage
+   `https://nlqdb.com/agents/?utm_source=mcpdir`, same description; then
+   email to claim the listing. Flip ledger row #23 to **in-flight**.
+3. Delete this bullet after both submits.
 
-(P6 was approved and merged by the founder 2026-08-04, #885 — it is binding
-in CLAUDE.md/AGENTS.md.)
+Description for both: `nlqdb — your autonomous DBA: a real Postgres your agent
+connects to over MCP and queries in plain English; the schema is inferred from
+what it writes. One command.`
 
-(The auto-merge-tier proposal was **rejected by the founder 2026-07-22**:
-review latency is handled by a separate merger agent, not by `/daily`
-self-merging; recorded in `daily.md` §4. Don't re-propose.)
+## `nlqdb-memory` → cc-marketplace
+
+~10 min · blocked since 2026-09-04. Ledger row #27. Exact payload is parked in
+[`acquisition-channels-mechanisms.md` §Row #27](./research/acquisition-channels-mechanisms.md#row-27)
+— copy it verbatim. Either path works.
+
+1. Cross-repo PR to <https://github.com/ananddtyagi/cc-marketplace> per its
+   `PLUGIN_SCHEMA.md`, **or** the account-walled
+   <https://claudecodecommands.directory/submit> form.
+2. Flip ledger row #27 to **in-flight**, note the listing URL, delete this
+   bullet.
+
+<!--
+Standing notes, not asks:
+- skillsclaude.org was dropped 2026-08-05 (VPN security flag, no reputation
+  footprint) — never re-queue.
+- The auto-merge-tier proposal was rejected 2026-07-22 — don't re-propose.
+- D-02 memory-sync stays dark until the D-04 agent run provisions the prod
+  memory DB; that is agent work, not a queue bullet.
+-->

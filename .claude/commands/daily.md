@@ -63,19 +63,16 @@ content or marketplace lever; existing pages stay live.
    the E2E extend walk. UX-flow work: the stranger-test walkers
    (`scripts/stranger-test.sh`, `scripts/flow-005-walk.sh`). Δ ≥ 0 keeps;
    Δ < 0 reverts with a one-line note in the scorecard.
-4. `docs/blocked-by-human.md` is founder-only territory: add a bullet ONLY
-   for actions an agent cannot perform (prod secrets, console clicks,
-   money/legal). Never park a *value-decidable* decision there — GLOBAL-033
-   says resolve those yourself. A true founder bet that **no codified
-   decision settles** goes in as a 🔒 **decision-to-lock** bullet
-   (GLOBAL-033: cite what was checked, pre-draft the options, conservative
-   default applied so nothing blocks). The file is a
-   **ranked queue** (expected user-yield per founder-minute): a new bullet
-   opens with `⏱ estimate · blocked since date` and slots in by rank, never
-   appends. **A fix that costs money is not a fix** (`docs/cost-ladder.md`:
-   $0/month while there are no paying customers) — never propose spend as a
-   blocker-resolution; the capability waits, as "Parked until first paying
-   customer", for revenue or a $0 path.
+4. `docs/blocked-by-human.md` is founder-only: add a bullet only for
+   actions an agent cannot perform (prod secrets, console clicks,
+   money/legal). Numbered steps with links — no **Answer** field. Delete
+   the bullet when the steps are done. Reports and the scorecard list the
+   **title** only, never the body. Never park a value-decidable decision
+   there (GLOBAL-033). A true founder bet that no codified decision settles
+   goes in as a 🔒 decision-to-lock bullet. Rank by user-yield per
+   founder-minute; a new bullet opens with `⏱ estimate · blocked since date`
+   and slots by rank. A fix that costs money is not a fix
+   (`docs/cost-ladder.md`) — never propose spend as a resolution.
 5. **Monetization is settled** (`GLOBAL-041`): the shipped premium tier
    stays as is; no pricing, meter or plan work for the DBA product before
    Phase B ships. There is no access gate — the product is open pre-beta;
@@ -139,9 +136,8 @@ table + the header lines, no changelog):
   count + oldest open-PR age.
 - **Top lines:** the weekly focus number (set by `/weekly` — don't
   overwrite it mid-week), then "worst number today" + which lane owns it,
-  then the top `blocked-by-human.md` bullet + its days-blocked — restated
-  every run until done. When any queue bullet carries a condition gate,
-  also restate its progress (n/N criteria green).
+  then the top `blocked-by-human.md` **title** + its days-blocked. When a
+  queue bullet carries a condition gate, also note progress (n/N green).
 
 **Dogfood workload (the KPI 1 instrument, `GLOBAL-041`).** Every run writes
 its **run log**, its **"Last change" delta** and any **new blocked-by-human
