@@ -12,12 +12,9 @@ alarm only; premium tier stays. Retired rows dropped below.
 
 **Weekly focus (2026-09-13 →, `/weekly` re-pointed; keeps the founder's
 2026-09-04 KPI-1/Phase-A frame):** **Phase A KPI 1 — first-insert inference
-rate**, `asks_extend_ok / (ok + failed)`, toward ≥ 95 %. Run 218's first honest
-live reading was **0/5**: the `pinned_write` route did not fire live because the
-engine's write-verb list excluded the natural insert verbs the dogfood shapes
-use. **Run 219 fixes that route** (below); the widen executor + preview trace are
-already proven (runs 214/207), so a prod deploy + live re-dispatch is the last
-step to confirm ≥ 95 %.
+rate**, `asks_extend_ok / (ok + failed)`, toward ≥ 95 %. Live reading **3/5**
+(run 220): routing and the widen executor are proven live; the remaining gap is
+the planner honouring the goal-named table (below).
 
 **Worst number today (run 220, 2026-09-24) — WEEKLY-FOCUS KPI 1 live = 60.0 % (3/5), up from 0/5; still below the ≥ 95 % floor.** The run-219 route fix is live (Deploy API on `bc2d483` green). [Walk 35948495680](https://github.com/nlqdb/nlqdb/actions/runs/35948495680) on `main`: `new-table` / `type-varied` / `auth-shaped` **HIT** (`routed_widen`); `new-column-family` + `jsonb` **MISS**. A re-walk with miss detail ([35948862712](https://github.com/nlqdb/nlqdb/actions/runs/35948862712), this branch's instrument, same prod) read the same 3/5 and names **one root cause for both misses: the planner puts the data in an existing table instead of the one the goal names.** "…in the **reviews** table" planned `INSERT INTO "facts" (agent_id, kind, content) …` and "…in the **moderation_events** table" planned `INSERT INTO dba_run_events (lever, outcome) … ::jsonb`. Both tables are observed, so nothing is left to widen. (The first walk's `jsonb` `sql_rejected` did not repeat, so it is LLM variance. The validator accepts `::jsonb`, `CAST`, and `jsonb_build_object` inserts, checked locally.)
 **This run's lever (run 220) — the live KPI-1 re-measure + miss-cause instrument.** Dispatched `e2e-kpi1-live.yml` on the deployed fix: **live KPI 1 0/5 → 3/5 (0 % → 60 %)**. Added `missDetail()` to `tools/eval/src/kpi1-live-walk.ts` so every MISS logs its rejection `reason` or its planned SQL head. Without it the walk could only say `ok_no_widen`, and this run's root cause could not be read. **Next lever (engine, §6.1 R1):** when a pinned write goal names `the <X> table` and `<X>` is unobserved, a plan whose INSERT target is a different, existing table must be treated as a validation miss. Re-prompt with "write into `<X>`" (the `expected_data_modification` retry pattern in `orchestrate.ts`) so the write widens instead of hijacking a table. The ceiling this run measured is **5/5 routed, 3/5 target-faithful**.
