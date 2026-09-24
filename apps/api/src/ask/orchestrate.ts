@@ -1175,6 +1175,7 @@ async function safeTouchRecentTables(
 // the schema has not observed, and the plan INSERTs into a different table the
 // schema already has. Null when the goal names no unseen table (or several),
 // the plan targets any goal-named table, or an unseen one (Defense A widens that).
+// Names compare by singular stem, so "the user table" is the observed `users`.
 const GOAL_NAMED_TABLE = /\bthe\s+[`"]?([a-z_][a-z0-9_]*)[`"]?\s+table\b/gi;
 // Words that qualify "the … table" without naming one ("the same table").
 const NOT_A_TABLE_NAME = new Set(
@@ -1188,19 +1189,29 @@ export function hijackedInsertTarget(
   sql: string,
   schemaText: string,
 ): { named: string; planned: string } | null {
-  const schemaSet = new Set(tablesFromSchemaText(schemaText));
-  const goalNamed = new Set(
+  const schemaStems = new Set(tablesFromSchemaText(schemaText).map(singularStem));
+  const goalNamed = new Map(
     [...goal.matchAll(GOAL_NAMED_TABLE)]
       .map((m) => (m[1] ?? "").toLowerCase())
-      .filter((t) => !NOT_A_TABLE_NAME.has(t)),
+      .filter((t) => !NOT_A_TABLE_NAME.has(t))
+      .map((t) => [singularStem(t), t] as const),
   );
-  const [named, ...rest] = [...goalNamed].filter((t) => !schemaSet.has(t));
+  const [named, ...rest] = [...goalNamed].filter(([stem]) => !schemaStems.has(stem));
   if (!named || rest.length > 0) return null;
   const target = writeTarget(sql);
   if (target?.verb !== "INSERT") return null;
   const planned = target.table.toLowerCase();
-  if (goalNamed.has(planned) || !schemaSet.has(planned)) return null;
-  return { named, planned };
+  const plannedStem = singularStem(planned);
+  if (goalNamed.has(plannedStem) || !schemaStems.has(plannedStem)) return null;
+  return { named: named[1], planned };
+}
+
+// Crude English singular ("categories"→"category", "boxes"→"box", "users"→"user").
+function singularStem(name: string): string {
+  return name
+    .replace(/ies$/, "y")
+    .replace(/(s|x|z|ch|sh)es$/, "$1")
+    .replace(/s$/, "");
 }
 
 // SK-ASK-016 Defense A — pre-flight check that every table referenced

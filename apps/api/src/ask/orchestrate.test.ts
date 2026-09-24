@@ -214,6 +214,7 @@ describe("orchestrateAsk — goal-named insert target (GLOBAL-041 Phase A, KPI 1
   it.each([
     ["targets the named table", GOAL, FAITHFUL, null],
     ["names an observed table", "Add a row to the members table for drogo", HIJACK, null],
+    ["names an observed table in the singular", "Add a row to the member table", HIJACK, null],
     ["names no table", "Add a review saying great profile", HIJACK, null],
     ["qualifies without naming", "Save the note in the same table as members", HIJACK, null],
     ["a read", GOAL, "SELECT * FROM members", null],
