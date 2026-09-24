@@ -21,19 +21,20 @@ a secret value.
 3. Product Hunt ≥ 1 week later (account-walled).
 4. Delete this bullet once the Show HN post is live.
 
-## Deploy the email-router Worker (PR #1134)
+## Deploy the email-router Worker
 
-~5 min · blocked since 2026-09-18. `apps/email-router` is dashboard-managed,
-so deploying overwrites the live script and the delivery walk can't be run by
-an agent. Stops an active DMARC retry storm and two inbound-mail-loss paths.
+~5 min · blocked since 2026-09-18. The fix is **merged** (#1134, 2026-09-21)
+but not live: `apps/email-router` is dashboard-managed with no deploy
+workflow, so `main` still runs the old script. Until it ships, the DMARC
+retry storm and two inbound-mail-loss paths stay open.
 
 1. Deploy `apps/email-router`.
 2. Per its `README.md`, send a test to `hello@` and confirm
    `"action":"forwarded"` in `wrangler tail` **and** arrival in the inbox.
 3. Make the **GLOBAL-014** call: accept Cloudflare Workers Logs as the span
-   requirement (merge #1134 as-is), or require the OTel span (needs a
-   `GRAFANA_OTLP_*` secret bound to the Worker — also owner-only).
-4. Delete this bullet; `/daily` then un-drafts and merges #1134.
+   requirement, or require the OTel span (needs a `GRAFANA_OTLP_*` secret
+   bound to the Worker — also owner-only).
+4. Delete this bullet.
 
 ## Anthropic Claude connector directory
 
