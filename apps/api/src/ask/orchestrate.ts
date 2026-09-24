@@ -36,7 +36,7 @@ import { hashGoal, type PlanCache } from "./plan-cache.ts";
 import { referencesQualifiedTable, schemaRelativeSql } from "./plan-normalize.ts";
 import type { RateLimiter } from "./rate-limit.ts";
 import { extractTables, type RecentTablesStore, tablesFromSchemaText } from "./recent-tables.ts";
-import { Nonrecoverable, type RetryReason, withStageRetry } from "./retry.ts";
+import { Nonrecoverable, RETRY_MAX_ATTEMPTS, type RetryReason, withStageRetry } from "./retry.ts";
 import {
   classifyColumnMissing,
   classifySchemaError,
@@ -360,7 +360,7 @@ export async function orchestrateAsk(
     try {
       planSql = await withStageRetry(
         "plan",
-        async (_attempt, prev) => {
+        async (attempt, prev) => {
           const plan = await deps.llm.plan({
             goal: req.goal,
             schema: planSchema,
@@ -386,6 +386,28 @@ export async function orchestrateAsk(
           // (the SK-TRUST-001 preview gate then fires on the corrected verb).
           if (req.intent === "write" && !isWriteVerb(sql)) {
             throw new PlanValidationError(sql, "expected_data_modification");
+          }
+          // GLOBAL-041 Phase A (KPI 1) — a write goal naming an unobserved
+          // table ("…in the reviews table") must land there, where widen-on-write
+          // (SK-SCHEMA-008) creates it. A plan that INSERTs into a different,
+          // existing table hijacks it and leaves nothing to widen (run 220: 2/5
+          // live misses). Re-plan with the named target; the final attempt keeps
+          // the plan as-is, so this nudge can never turn a write into a reject.
+          if (
+            req.intent === "write" &&
+            attempt < RETRY_MAX_ATTEMPTS &&
+            hostedSchema &&
+            deps.extendWrite &&
+            db.schemaText
+          ) {
+            const hijack = hijackedInsertTarget(req.goal, sql, db.schemaText);
+            if (hijack) {
+              throw new PlanValidationError(
+                sql,
+                "wrong_write_target",
+                `the goal names table "${hijack.named}" — INSERT INTO "${hijack.named}" (it is created on write), not into existing table "${hijack.planned}"`,
+              );
+            }
           }
           lastModel = plan.model;
           lastConfidence = plan.confidence;
@@ -1105,6 +1127,8 @@ class PlanValidationError extends Error {
   constructor(
     readonly sql: string,
     readonly reason: string,
+    // Extra planner-facing guidance for the retry prompt; never user copy.
+    readonly hint?: string,
   ) {
     super(`plan SQL rejected by validator: ${reason}`);
     this.name = "PlanValidationError";
@@ -1113,7 +1137,8 @@ class PlanValidationError extends Error {
 
 function prevAttemptFromError(err: Error): { sql?: string; error: string } {
   if (err instanceof PlanValidationError) {
-    return { sql: err.sql, error: `validator rejected SQL: ${err.reason}` };
+    const hint = err.hint ? ` — ${err.hint}` : "";
+    return { sql: err.sql, error: `validator rejected SQL: ${err.reason}${hint}` };
   }
   return { error: err.message };
 }
@@ -1141,6 +1166,32 @@ async function safeTouchRecentTables(
     // span already records the exception inside `store.touch`; nothing
     // for the orchestrator to do but stay quiet.
   }
+}
+
+// GLOBAL-041 Phase A — the goal names exactly one table ("the reviews table")
+// the schema has not observed, and the plan INSERTs into a different table the
+// schema already has. Null when the goal names no unseen table (or several),
+// or the plan already targets it / an unseen table (Defense A widens that).
+const GOAL_NAMED_TABLE = /\bthe\s+[`"]?([a-z_][a-z0-9_]*)[`"]?\s+table\b/gi;
+
+export function hijackedInsertTarget(
+  goal: string,
+  sql: string,
+  schemaText: string,
+): { named: string; planned: string } | null {
+  const schemaSet = new Set(tablesFromSchemaText(schemaText));
+  const unseen = new Set(
+    [...goal.matchAll(GOAL_NAMED_TABLE)]
+      .map((m) => (m[1] ?? "").toLowerCase())
+      .filter((t) => !schemaSet.has(t)),
+  );
+  const [named, ...rest] = unseen;
+  if (!named || rest.length > 0) return null;
+  const target = writeTarget(sql);
+  if (target?.verb !== "INSERT") return null;
+  const planned = target.table.toLowerCase();
+  if (planned === named || !schemaSet.has(planned)) return null;
+  return { named, planned };
 }
 
 // SK-ASK-016 Defense A — pre-flight check that every table referenced
