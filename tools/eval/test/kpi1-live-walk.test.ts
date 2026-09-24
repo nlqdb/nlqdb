@@ -1,6 +1,11 @@
 import { describe, expect, it } from "bun:test";
 
-import { classifyExtendPreview, resolveTarget, WALK_SHAPES } from "../src/kpi1-live-walk.ts";
+import {
+  classifyExtendPreview,
+  missDetail,
+  resolveTarget,
+  WALK_SHAPES,
+} from "../src/kpi1-live-walk.ts";
 
 describe("classifyExtendPreview", () => {
   it("HIT — a preview that routed into widen-on-write names the unseen table", () => {
@@ -136,5 +141,22 @@ describe("WALK_SHAPES", () => {
       "jsonb",
       "auth-shaped",
     ]);
+  });
+});
+
+describe("missDetail", () => {
+  it("names the sql_rejected reason from error.params", () => {
+    const body = { error: { code: "sql_rejected", params: { reason: "function_not_allowed" } } };
+    expect(missDetail(body)).toBe("reason=function_not_allowed");
+  });
+
+  it("shows kind + planned SQL head on a 2xx miss", () => {
+    const body = { kind: "write", trace: { sql: "INSERT INTO memories\n  (body) VALUES ('x')" } };
+    expect(missDetail(body)).toBe("kind=write sql=INSERT INTO memories (body) VALUES ('x')");
+  });
+
+  it("is empty for an unrecognised body", () => {
+    expect(missDetail(null)).toBe("");
+    expect(missDetail({ error: { code: "x" } })).toBe("");
   });
 });

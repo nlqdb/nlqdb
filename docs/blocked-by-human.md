@@ -35,7 +35,7 @@ values and criteria live. Read those only when you sit down to do the thing.
 
 | # | ⏱ | Do this | Blocked since |
 |---|---|---|---|
-| 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on `GLOBAL-041` Phase A (KPI 1 live and ≥ 95 %); the deploy gate is cleared (2026-09-14), so this now waits only on the live KPI-1 re-measure and your sitting | 2026-06-13 |
+| 1 | ~30 min | Fire the Show HN launch sequence — condition-gated on `GLOBAL-041` Phase A (KPI 1 live and ≥ 95 %); live KPI 1 reads 60 % (3/5, run 220), so the gate is still red; agents drive it to ≥ 95 %, then it waits only on your sitting | 2026-06-13 |
 | 2 | ~5 min | Deploy the email-router Worker (PR #1134) + run its real-delivery walk — stops an active DMARC retry storm and two inbound-mail-loss paths on `hello@`/`security@`; dashboard-managed, so deploy + walk are owner-only | 2026-09-18 |
 | 3 | ~20 min | Submit nlqdb to the Anthropic Claude connector directory — needs a Team/Enterprise org, so it's a money call | 2026-07-21 |
 | 4 | ~10 min | Submit nlqdb to PulseMCP + mcp.directory — two manual directory submits (registry cascade never reached them); lowest-yield, payloads ready | 2026-09-01 |

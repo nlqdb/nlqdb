@@ -67,6 +67,30 @@ export function classifyExtendPreview(r: ProbeResponse): ProbeVerdict {
   return { hit: false, reason: `error:${code ?? String(r.httpStatus)}` };
 }
 
+// What a MISS actually said, so the log names a root cause, not just a bucket
+// (run 220: "ok_no_widen" / "sql_rejected" alone could not say WHY). The
+// rejection `reason` rides at `error.params.reason` (SK-ERR-001); a 2xx miss
+// shows its `kind` and the head of the planned `trace.sql`.
+export function missDetail(body: unknown): string {
+  if (!body || typeof body !== "object") return "";
+  const b = body as Record<string, unknown>;
+  const err = b["error"];
+  if (err && typeof err === "object") {
+    const params = (err as Record<string, unknown>)["params"];
+    const reason =
+      params && typeof params === "object" ? (params as Record<string, unknown>)["reason"] : null;
+    return typeof reason === "string" ? `reason=${reason}` : "";
+  }
+  const trace = b["trace"];
+  const sql =
+    trace && typeof trace === "object" ? (trace as Record<string, unknown>)["sql"] : undefined;
+  const parts: string[] = [];
+  if (typeof b["kind"] === "string") parts.push(`kind=${b["kind"]}`);
+  if (typeof sql === "string" && sql !== "")
+    parts.push(`sql=${sql.replace(/\s+/g, " ").slice(0, 160)}`);
+  return parts.join(" ");
+}
+
 // The error envelope nests the code at `error.code` or carries it top-level
 // (mirrors the SDK's `extractError`). Best-effort — an unrecognised body
 // yields null and the walk records the HTTP status instead.
@@ -145,6 +169,7 @@ async function main(): Promise<void> {
   let ok = 0;
   for (const shape of WALK_SHAPES) {
     let verdict: ProbeVerdict;
+    let detail = "";
     try {
       const res = await fetch(`${base}/v1/ask`, {
         method: "POST",
@@ -167,12 +192,14 @@ async function main(): Promise<void> {
         parsed = null;
       }
       verdict = classifyExtendPreview({ httpStatus: res.status, body: parsed });
+      if (!verdict.hit) detail = missDetail(parsed);
     } catch (err) {
       verdict = { hit: false, reason: `network:${(err as Error).message}` };
     }
     if (verdict.hit) ok += 1;
-    lines.push(`- \`${shape.name}\`: ${verdict.hit ? "HIT" : "MISS"} (${verdict.reason})`);
-    console.info(`kpi1-live-walk ${shape.name}: ${verdict.hit ? "HIT" : "MISS"} ${verdict.reason}`);
+    const why = detail ? `${verdict.reason} ${detail}` : verdict.reason;
+    lines.push(`- \`${shape.name}\`: ${verdict.hit ? "HIT" : "MISS"} (${why})`);
+    console.info(`kpi1-live-walk ${shape.name}: ${verdict.hit ? "HIT" : "MISS"} ${why}`);
   }
 
   const total = WALK_SHAPES.length;
