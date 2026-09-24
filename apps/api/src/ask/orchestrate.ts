@@ -357,6 +357,8 @@ export async function orchestrateAsk(
     // retry loop so the trace reflects the attempt we actually used.
     let lastModel = "";
     let lastConfidence = 0;
+    // Set inside the retry callback, so typed via `as` to stop TS narrowing it to null.
+    let hijackFallback = null as { sql: string; model: string; confidence: number } | null;
     try {
       planSql = await withStageRetry(
         "plan",
@@ -387,6 +389,23 @@ export async function orchestrateAsk(
           if (req.intent === "write" && !isWriteVerb(sql)) {
             throw new PlanValidationError(sql, "expected_data_modification");
           }
+          // GLOBAL-041 Phase A (KPI 1) — a write goal naming an unobserved
+          // table ("…in the reviews table") must land there, where widen-on-write
+          // (SK-SCHEMA-008) creates it. A plan that INSERTs into a different,
+          // existing table hijacks it and leaves nothing to widen (run 220: 2/5
+          // live misses). Re-plan with the named target; if no retry yields a
+          // better plan, the first hijacked plan still runs (never a new reject).
+          if (req.intent === "write" && hostedSchema && deps.extendWrite && db.schemaText) {
+            const hijack = hijackedInsertTarget(req.goal, sql, db.schemaText);
+            if (hijack) {
+              hijackFallback ??= { sql, model: plan.model, confidence: plan.confidence };
+              throw new PlanValidationError(
+                sql,
+                "wrong_write_target",
+                `the goal names table "${hijack.named}" — INSERT INTO "${hijack.named}" (it is created on write), not into existing table "${hijack.planned}"`,
+              );
+            }
+          }
           lastModel = plan.model;
           lastConfidence = plan.confidence;
           return sql;
@@ -396,7 +415,12 @@ export async function orchestrateAsk(
       planModel = lastModel;
       planConfidence = lastConfidence;
     } catch (err) {
-      if (err instanceof PlanValidationError) {
+      // A hijack re-plan that found nothing better runs the first hijacked plan.
+      if (hijackFallback) {
+        planSql = hijackFallback.sql;
+        planModel = hijackFallback.model;
+        planConfidence = hijackFallback.confidence;
+      } else if (err instanceof PlanValidationError) {
         // SK-ASK-026 — a destructive-ambiguous reject (the "clear db"
         // family) becomes a clarify with re-sendable options instead of a
         // flat sql_rejected dead-end. Every other reason stays sql_rejected;
@@ -406,12 +430,13 @@ export async function orchestrateAsk(
           ok: false,
           error: clarify ?? { code: "sql_rejected", reason: err.reason },
         };
+      } else {
+        // SK-LLM-051 — the router's bounded cause (reason + lane + provider slug)
+        // rides the envelope so the copy can name the real problem; the provider's
+        // own message, which can carry API keys or prompt fragments, stays on the
+        // OTel span (llm.plan, SK-LLM-006).
+        return { ok: false, error: llmFailure(err, deps.lane) };
       }
-      // SK-LLM-051 — the router's bounded cause (reason + lane + provider slug)
-      // rides the envelope so the copy can name the real problem; the provider's
-      // own message, which can carry API keys or prompt fragments, stays on the
-      // OTel span (llm.plan, SK-LLM-006).
-      return { ok: false, error: llmFailure(err, deps.lane) };
     }
     cacheHit = false;
   }
@@ -1105,6 +1130,8 @@ class PlanValidationError extends Error {
   constructor(
     readonly sql: string,
     readonly reason: string,
+    // Extra planner-facing guidance for the retry prompt; never user copy.
+    readonly hint?: string,
   ) {
     super(`plan SQL rejected by validator: ${reason}`);
     this.name = "PlanValidationError";
@@ -1113,7 +1140,8 @@ class PlanValidationError extends Error {
 
 function prevAttemptFromError(err: Error): { sql?: string; error: string } {
   if (err instanceof PlanValidationError) {
-    return { sql: err.sql, error: `validator rejected SQL: ${err.reason}` };
+    const hint = err.hint ? ` — ${err.hint}` : "";
+    return { sql: err.sql, error: `validator rejected SQL: ${err.reason}${hint}` };
   }
   return { error: err.message };
 }
@@ -1141,6 +1169,47 @@ async function safeTouchRecentTables(
     // span already records the exception inside `store.touch`; nothing
     // for the orchestrator to do but stay quiet.
   }
+}
+
+// GLOBAL-041 Phase A — the goal names exactly one table ("the reviews table")
+// the schema has not observed, and the plan INSERTs into a different table the
+// schema already has. Null when the goal names no unseen table (or several),
+// the plan targets any goal-named table, or an unseen one (Defense A widens that).
+// Conservative by construction, never by word lists: only an identifier-shaped
+// name counts (snake_case or a plural — "the join table" / "the same table" do
+// not), and a name that any observed table contains or is contained by is that
+// table (`member`~`app_members`, `userProfiles`~`user_profiles`). What is left
+// is a synonym ("the users table" vs `accounts`), which re-plans onto the
+// literal name — shown as `trace.widen.tables` in the confirm preview.
+const GOAL_NAMED_TABLE = /\bthe\s+[`"]?([a-z_][a-z0-9_]*)[`"]?\s+table\b/gi;
+const IDENTIFIER_SHAPED = /_|[^su]s$/;
+
+export function hijackedInsertTarget(
+  goal: string,
+  sql: string,
+  schemaText: string,
+): { named: string; planned: string } | null {
+  const schema = tablesFromSchemaText(schemaText);
+  const observed = (t: string) => schema.some((s) => sameTable(s, t));
+  const goalNamed = [...goal.matchAll(GOAL_NAMED_TABLE)].map((m) => (m[1] ?? "").toLowerCase());
+  const [named, ...rest] = goalNamed.filter((t) => IDENTIFIER_SHAPED.test(t) && !observed(t));
+  if (!named || rest.some((t) => !sameTable(t, named))) return null;
+  const target = writeTarget(sql);
+  if (target?.verb !== "INSERT") return null;
+  const planned = target.table.toLowerCase();
+  if (goalNamed.some((t) => sameTable(t, planned)) || !observed(planned)) return null;
+  return { named, planned };
+}
+
+// Same table if one name's singular/plural form contains the other's, ignoring
+// `_`: `user`~`users`, `category`~`categories`, `member`~`app_members`.
+function sameTable(a: string, b: string): boolean {
+  const forms = (t: string) => {
+    const n = t.replace(/_/g, "");
+    return [n, n.replace(/s$/, ""), n.replace(/es$/, ""), n.replace(/ies$/, "y")];
+  };
+  const bForms = forms(b);
+  return forms(a).some((f) => bForms.some((g) => f.includes(g) || g.includes(f)));
 }
 
 // SK-ASK-016 Defense A — pre-flight check that every table referenced

@@ -9,7 +9,7 @@ import type { LLMRouter, PlanRequest, PlanResponse } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
 import type { ExtendArgs, ExtendOutcome } from "./extend.ts";
 import type { OrchestrateDeps } from "./orchestrate.ts";
-import { orchestrateAsk } from "./orchestrate.ts";
+import { hijackedInsertTarget, orchestrateAsk } from "./orchestrate.ts";
 import type { AskRequest, DbRecord, QueryResult } from "./types.ts";
 
 // recordSchemaMismatch (via classifyColumnMissing) logs a structured line by
@@ -110,6 +110,158 @@ describe("orchestrateAsk — write-intent enforcement (SK-ASK-009)", () => {
       req({ intent: "write" }),
     );
     expect(plan.mock.calls[0]?.[0]?.intent).toBe("write");
+  });
+});
+
+describe("orchestrateAsk — goal-named insert target (GLOBAL-041 Phase A, KPI 1)", () => {
+  // Run 220's two live misses: the goal named an unobserved table but the
+  // planner inserted into an existing one, leaving nothing to widen.
+  const GOAL =
+    "Store the free-text review body a rater left in the reviews table, alongside the review id and the rating it belongs to.";
+  const HIJACK = "INSERT INTO members (name) VALUES ('great profile')";
+  const FAITHFUL = "INSERT INTO reviews (review_id, body) VALUES (1, 'great profile')";
+  const extendWrite = vi.fn<(a: ExtendArgs) => Promise<ExtendOutcome>>();
+
+  it("re-plans a hijacked insert onto the named table, which then previews as a widen", async () => {
+    const plan = vi
+      .fn<(r: PlanRequest) => Promise<PlanResponse>>()
+      .mockResolvedValueOnce(planOf(HIJACK))
+      .mockResolvedValueOnce(planOf(FAITHFUL));
+    const d = { ...deps(plan, async () => EMPTY), extendWrite };
+
+    const out = await orchestrateAsk(d, req({ goal: GOAL, intent: "write" }));
+
+    expect(plan).toHaveBeenCalledTimes(2);
+    expect(plan.mock.calls[1]?.[0]?.previousAttempt?.error).toMatch(
+      /wrong_write_target — the goal names table "reviews"/,
+    );
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.result.requires_confirm).toBe(true);
+    expect(out.result.trace.widen?.tables).toEqual(["reviews"]);
+  });
+
+  it("runs the hijacked plan when no re-plan does better — never worse than no check", async () => {
+    const plan = vi.fn(async () => planOf(HIJACK));
+    const d = { ...deps(plan, async () => EMPTY), extendWrite };
+
+    const out = await orchestrateAsk(d, req({ goal: GOAL, intent: "write" }));
+
+    expect(plan).toHaveBeenCalledTimes(3);
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.result.trace.sql).toBe(HIJACK);
+  });
+
+  it("keeps the hijacked plan when every re-plan fails outright", async () => {
+    const plan = vi
+      .fn<(r: PlanRequest) => Promise<PlanResponse>>()
+      .mockResolvedValueOnce(planOf(HIJACK))
+      .mockRejectedValue(new Error("provider chain exhausted"));
+    const d = { ...deps(plan, async () => EMPTY), extendWrite };
+
+    const out = await orchestrateAsk(d, req({ goal: GOAL, intent: "write" }));
+
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.result.trace.sql).toBe(HIJACK);
+  });
+
+  it("does not fire without the widen wire (BYO / tests without extendWrite)", async () => {
+    const plan = vi.fn(async () => planOf(HIJACK));
+    await orchestrateAsk(
+      deps(plan, async () => EMPTY),
+      req({ goal: GOAL, intent: "write" }),
+    );
+    expect(plan).toHaveBeenCalledTimes(1);
+  });
+
+  // The exact run-220 miss plans (walk 35948862712) against the dogfood DB's
+  // observed tables. Each is caught; the re-plan targets the named table.
+  const DOGFOOD_SCHEMA =
+    "CREATE TABLE facts (agent_id TEXT, kind TEXT, content TEXT);\nCREATE TABLE dba_run_events (lever TEXT, outcome JSONB);";
+  it.each([
+    [
+      GOAL,
+      `INSERT INTO "facts" (agent_id, kind, content) VALUES ('r1', 'review', 'great')`,
+      "reviews",
+    ],
+    [
+      "Record a moderation event in the moderation_events table with an event id, the target profile id, and a details object holding the reason and any flags as structured JSON.",
+      `INSERT INTO dba_run_events (lever, outcome) VALUES ('moderation', '{"reason":"spam"}'::jsonb)`,
+      "moderation_events",
+    ],
+  ])("run-220 live miss re-plans onto the named table: %s", async (goal, sql, named) => {
+    const plan = vi
+      .fn<(r: PlanRequest) => Promise<PlanResponse>>()
+      .mockResolvedValueOnce(planOf(sql))
+      .mockResolvedValueOnce(planOf(`INSERT INTO ${named} (id) VALUES (1)`));
+    const base = deps(plan, async () => EMPTY);
+    const d = {
+      ...base,
+      extendWrite,
+      resolveDb: async () => ({ ...DB, schemaText: DOGFOOD_SCHEMA }),
+    };
+
+    const out = await orchestrateAsk(d, req({ goal, intent: "write" }));
+
+    expect(plan.mock.calls[1]?.[0]?.previousAttempt?.error).toMatch(/wrong_write_target/);
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.result.trace.widen?.tables).toEqual([named]);
+  });
+
+  it.each([
+    ["targets the named table", GOAL, FAITHFUL, null],
+    ["names an observed table", "Add a row to the members table for drogo", HIJACK, null],
+    ["names an observed table in the singular", "Add a row to the member table", HIJACK, null],
+    ["names no table", "Add a review saying great profile", HIJACK, null],
+    ["qualifies without naming", "Save the note in the same table as members", HIJACK, null],
+    ["qualifies with 'following'", "Add drogo to the following table: members", HIJACK, null],
+    ["a read", GOAL, "SELECT * FROM members", null],
+    [
+      "mentions an unseen table as context",
+      "Add a note to the members table saying the reviews table was archived",
+      HIJACK,
+      null,
+    ],
+    [
+      "hijacks an existing table",
+      "Record a moderation event in the moderation_events table with details",
+      "INSERT INTO members (name) VALUES ('x')",
+      { named: "moderation_events", planned: "members" },
+    ],
+  ])("hijackedInsertTarget: %s", (_label, goal, sql, expected) => {
+    expect(hijackedInsertTarget(goal, sql, DB.schemaText as string)).toEqual(expected);
+  });
+
+  it.each([
+    ["join", "member_roles"],
+    ["members", "app_members"],
+    ["userProfiles", "user_profiles"],
+    ["log", "audit_log"],
+    ["children", "child"],
+  ])("hijackedInsertTarget: the %s table is observed %s or not a name", (word, table) => {
+    const schema = `CREATE TABLE ${table} (x TEXT);`;
+    const goal = `Record a row in the ${word} table`;
+    expect(hijackedInsertTarget(goal, `INSERT INTO ${table} (x) VALUES ('v')`, schema)).toBeNull();
+  });
+
+  it.each([
+    ["purchase", "purchases"],
+    ["response", "responses"],
+    ["movie", "movies"],
+    ["status", "statuses"],
+    ["address", "addresses"],
+    ["category", "categories"],
+    ["box", "boxes"],
+  ])("hijackedInsertTarget: the %s table is the observed %s, not a hijack", (word, table) => {
+    const schema = `CREATE TABLE ${table} (x TEXT);\nCREATE TABLE members (name TEXT);`;
+    const goal = `Record a row in the ${word} table`;
+    expect(hijackedInsertTarget(goal, `INSERT INTO ${table} (x) VALUES ('v')`, schema)).toBeNull();
+    expect(
+      hijackedInsertTarget(goal, "INSERT INTO members (name) VALUES ('v')", schema),
+    ).toBeNull();
   });
 });
 
