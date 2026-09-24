@@ -36,7 +36,7 @@ import { hashGoal, type PlanCache } from "./plan-cache.ts";
 import { referencesQualifiedTable, schemaRelativeSql } from "./plan-normalize.ts";
 import type { RateLimiter } from "./rate-limit.ts";
 import { extractTables, type RecentTablesStore, tablesFromSchemaText } from "./recent-tables.ts";
-import { Nonrecoverable, RETRY_MAX_ATTEMPTS, type RetryReason, withStageRetry } from "./retry.ts";
+import { Nonrecoverable, type RetryReason, withStageRetry } from "./retry.ts";
 import {
   classifyColumnMissing,
   classifySchemaError,
@@ -357,10 +357,12 @@ export async function orchestrateAsk(
     // retry loop so the trace reflects the attempt we actually used.
     let lastModel = "";
     let lastConfidence = 0;
+    // Set inside the retry callback, so typed via `as` to stop TS narrowing it to null.
+    let hijackFallback = null as { sql: string; model: string; confidence: number } | null;
     try {
       planSql = await withStageRetry(
         "plan",
-        async (attempt, prev) => {
+        async (_attempt, prev) => {
           const plan = await deps.llm.plan({
             goal: req.goal,
             schema: planSchema,
@@ -391,17 +393,12 @@ export async function orchestrateAsk(
           // table ("…in the reviews table") must land there, where widen-on-write
           // (SK-SCHEMA-008) creates it. A plan that INSERTs into a different,
           // existing table hijacks it and leaves nothing to widen (run 220: 2/5
-          // live misses). Re-plan with the named target; the final attempt keeps
-          // the plan as-is, so this nudge can never turn a write into a reject.
-          if (
-            req.intent === "write" &&
-            attempt < RETRY_MAX_ATTEMPTS &&
-            hostedSchema &&
-            deps.extendWrite &&
-            db.schemaText
-          ) {
+          // live misses). Re-plan with the named target; if no retry yields a
+          // better plan, the first hijacked plan still runs (never a new reject).
+          if (req.intent === "write" && hostedSchema && deps.extendWrite && db.schemaText) {
             const hijack = hijackedInsertTarget(req.goal, sql, db.schemaText);
             if (hijack) {
+              hijackFallback ??= { sql, model: plan.model, confidence: plan.confidence };
               throw new PlanValidationError(
                 sql,
                 "wrong_write_target",
@@ -418,7 +415,12 @@ export async function orchestrateAsk(
       planModel = lastModel;
       planConfidence = lastConfidence;
     } catch (err) {
-      if (err instanceof PlanValidationError) {
+      // A hijack re-plan that found nothing better runs the first hijacked plan.
+      if (hijackFallback) {
+        planSql = hijackFallback.sql;
+        planModel = hijackFallback.model;
+        planConfidence = hijackFallback.confidence;
+      } else if (err instanceof PlanValidationError) {
         // SK-ASK-026 — a destructive-ambiguous reject (the "clear db"
         // family) becomes a clarify with re-sendable options instead of a
         // flat sql_rejected dead-end. Every other reason stays sql_rejected;
@@ -428,12 +430,13 @@ export async function orchestrateAsk(
           ok: false,
           error: clarify ?? { code: "sql_rejected", reason: err.reason },
         };
+      } else {
+        // SK-LLM-051 — the router's bounded cause (reason + lane + provider slug)
+        // rides the envelope so the copy can name the real problem; the provider's
+        // own message, which can carry API keys or prompt fragments, stays on the
+        // OTel span (llm.plan, SK-LLM-006).
+        return { ok: false, error: llmFailure(err, deps.lane) };
       }
-      // SK-LLM-051 — the router's bounded cause (reason + lane + provider slug)
-      // rides the envelope so the copy can name the real problem; the provider's
-      // own message, which can carry API keys or prompt fragments, stays on the
-      // OTel span (llm.plan, SK-LLM-006).
-      return { ok: false, error: llmFailure(err, deps.lane) };
     }
     cacheHit = false;
   }
@@ -1171,7 +1174,7 @@ async function safeTouchRecentTables(
 // GLOBAL-041 Phase A — the goal names exactly one table ("the reviews table")
 // the schema has not observed, and the plan INSERTs into a different table the
 // schema already has. Null when the goal names no unseen table (or several),
-// or the plan already targets it / an unseen table (Defense A widens that).
+// the plan targets any goal-named table, or an unseen one (Defense A widens that).
 const GOAL_NAMED_TABLE = /\bthe\s+[`"]?([a-z_][a-z0-9_]*)[`"]?\s+table\b/gi;
 // Words that qualify "the … table" without naming one ("the same table").
 const NOT_A_TABLE_NAME = new Set(
@@ -1186,17 +1189,17 @@ export function hijackedInsertTarget(
   schemaText: string,
 ): { named: string; planned: string } | null {
   const schemaSet = new Set(tablesFromSchemaText(schemaText));
-  const unseen = new Set(
+  const goalNamed = new Set(
     [...goal.matchAll(GOAL_NAMED_TABLE)]
       .map((m) => (m[1] ?? "").toLowerCase())
-      .filter((t) => !schemaSet.has(t) && !NOT_A_TABLE_NAME.has(t)),
+      .filter((t) => !NOT_A_TABLE_NAME.has(t)),
   );
-  const [named, ...rest] = unseen;
+  const [named, ...rest] = [...goalNamed].filter((t) => !schemaSet.has(t));
   if (!named || rest.length > 0) return null;
   const target = writeTarget(sql);
   if (target?.verb !== "INSERT") return null;
   const planned = target.table.toLowerCase();
-  if (planned === named || !schemaSet.has(planned)) return null;
+  if (goalNamed.has(planned) || !schemaSet.has(planned)) return null;
   return { named, planned };
 }
 

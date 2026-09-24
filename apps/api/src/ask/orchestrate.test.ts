@@ -141,13 +141,27 @@ describe("orchestrateAsk — goal-named insert target (GLOBAL-041 Phase A, KPI 1
     expect(out.result.trace.widen?.tables).toEqual(["reviews"]);
   });
 
-  it("keeps the last attempt's plan rather than rejecting — never worse than no check", async () => {
+  it("runs the hijacked plan when no re-plan does better — never worse than no check", async () => {
     const plan = vi.fn(async () => planOf(HIJACK));
     const d = { ...deps(plan, async () => EMPTY), extendWrite };
 
     const out = await orchestrateAsk(d, req({ goal: GOAL, intent: "write" }));
 
     expect(plan).toHaveBeenCalledTimes(3);
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.result.trace.sql).toBe(HIJACK);
+  });
+
+  it("keeps the hijacked plan when every re-plan fails outright", async () => {
+    const plan = vi
+      .fn<(r: PlanRequest) => Promise<PlanResponse>>()
+      .mockResolvedValueOnce(planOf(HIJACK))
+      .mockRejectedValue(new Error("provider chain exhausted"));
+    const d = { ...deps(plan, async () => EMPTY), extendWrite };
+
+    const out = await orchestrateAsk(d, req({ goal: GOAL, intent: "write" }));
+
     expect(out.ok).toBe(true);
     if (!out.ok) return;
     expect(out.result.trace.sql).toBe(HIJACK);
@@ -177,8 +191,24 @@ describe("orchestrateAsk — goal-named insert target (GLOBAL-041 Phase A, KPI 1
       `INSERT INTO dba_run_events (lever, outcome) VALUES ('moderation', '{"reason":"spam"}'::jsonb)`,
       "moderation_events",
     ],
-  ])("run-220 live miss is caught: %s", (goal, sql, named) => {
-    expect(hijackedInsertTarget(goal, sql, DOGFOOD_SCHEMA)?.named).toBe(named);
+  ])("run-220 live miss re-plans onto the named table: %s", async (goal, sql, named) => {
+    const plan = vi
+      .fn<(r: PlanRequest) => Promise<PlanResponse>>()
+      .mockResolvedValueOnce(planOf(sql))
+      .mockResolvedValueOnce(planOf(`INSERT INTO ${named} (id) VALUES (1)`));
+    const base = deps(plan, async () => EMPTY);
+    const d = {
+      ...base,
+      extendWrite,
+      resolveDb: async () => ({ ...DB, schemaText: DOGFOOD_SCHEMA }),
+    };
+
+    const out = await orchestrateAsk(d, req({ goal, intent: "write" }));
+
+    expect(plan.mock.calls[1]?.[0]?.previousAttempt?.error).toMatch(/wrong_write_target/);
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.result.trace.widen?.tables).toEqual([named]);
   });
 
   it.each([
@@ -187,6 +217,12 @@ describe("orchestrateAsk — goal-named insert target (GLOBAL-041 Phase A, KPI 1
     ["names no table", "Add a review saying great profile", HIJACK, null],
     ["qualifies without naming", "Save the note in the same table as members", HIJACK, null],
     ["a read", GOAL, "SELECT * FROM members", null],
+    [
+      "mentions an unseen table as context",
+      "Add a note to the members table saying the reviews table was archived",
+      HIJACK,
+      null,
+    ],
     [
       "hijacks an existing table",
       "Record a moderation event in the moderation_events table with details",
