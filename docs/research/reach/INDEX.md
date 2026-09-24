@@ -44,7 +44,8 @@ acting on it is one free command** (the per-host strings in
   in `distribution-queue.md` for the founder, never final copy
   (`docs/history/reddit-ai-voice-rejection.md`).
 - **Submissions needing a human account** (sign-in wall, OAuth, payment) →
-  exact payload + link as a bullet in `docs/blocked-by-human.md`.
+  numbered steps + links in `docs/blocked-by-human.md`. No **Answer** field.
+  Delete the bullet when done. Other docs list the title only.
 - **Every new CTA emits a GLOBAL-024 demand signal.**
 - **Every externally published URL carries its channel's `utm_source`
   key** from the canonical ledger
