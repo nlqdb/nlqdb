@@ -1173,6 +1173,12 @@ async function safeTouchRecentTables(
 // schema already has. Null when the goal names no unseen table (or several),
 // or the plan already targets it / an unseen table (Defense A widens that).
 const GOAL_NAMED_TABLE = /\bthe\s+[`"]?([a-z_][a-z0-9_]*)[`"]?\s+table\b/gi;
+// Words that qualify "the … table" without naming one ("the same table").
+const NOT_A_TABLE_NAME = new Set(
+  "same existing right correct new main current other appropriate relevant proper whole entire first last previous above".split(
+    " ",
+  ),
+);
 
 export function hijackedInsertTarget(
   goal: string,
@@ -1183,7 +1189,7 @@ export function hijackedInsertTarget(
   const unseen = new Set(
     [...goal.matchAll(GOAL_NAMED_TABLE)]
       .map((m) => (m[1] ?? "").toLowerCase())
-      .filter((t) => !schemaSet.has(t)),
+      .filter((t) => !schemaSet.has(t) && !NOT_A_TABLE_NAME.has(t)),
   );
   const [named, ...rest] = unseen;
   if (!named || rest.length > 0) return null;
