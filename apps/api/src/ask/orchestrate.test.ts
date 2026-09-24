@@ -236,6 +236,18 @@ describe("orchestrateAsk — goal-named insert target (GLOBAL-041 Phase A, KPI 1
   });
 
   it.each([
+    ["join", "member_roles"],
+    ["members", "app_members"],
+    ["userProfiles", "user_profiles"],
+    ["log", "audit_log"],
+    ["children", "child"],
+  ])("hijackedInsertTarget: the %s table is observed %s or not a name", (word, table) => {
+    const schema = `CREATE TABLE ${table} (x TEXT);`;
+    const goal = `Record a row in the ${word} table`;
+    expect(hijackedInsertTarget(goal, `INSERT INTO ${table} (x) VALUES ('v')`, schema)).toBeNull();
+  });
+
+  it.each([
     ["purchase", "purchases"],
     ["response", "responses"],
     ["movie", "movies"],
