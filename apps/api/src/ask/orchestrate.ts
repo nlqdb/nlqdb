@@ -1175,11 +1175,11 @@ async function safeTouchRecentTables(
 // the schema has not observed, and the plan INSERTs into a different table the
 // schema already has. Null when the goal names no unseen table (or several),
 // the plan targets any goal-named table, or an unseen one (Defense A widens that).
-// Names compare by singular stem, so "the user table" is the observed `users`.
+// Names match singular/plural-blind, so "the user table" is the observed `users`.
 const GOAL_NAMED_TABLE = /\bthe\s+[`"]?([a-z_][a-z0-9_]*)[`"]?\s+table\b/gi;
 // Words that qualify "the … table" without naming one ("the same table").
 const NOT_A_TABLE_NAME = new Set(
-  "same existing right correct new main current other appropriate relevant proper whole entire first last previous above".split(
+  "same existing right correct new main current other appropriate relevant proper whole entire first last previous above following given target default primary original corresponding specified matching".split(
     " ",
   ),
 );
@@ -1189,29 +1189,30 @@ export function hijackedInsertTarget(
   sql: string,
   schemaText: string,
 ): { named: string; planned: string } | null {
-  const schemaStems = new Set(tablesFromSchemaText(schemaText).map(singularStem));
-  const goalNamed = new Map(
-    [...goal.matchAll(GOAL_NAMED_TABLE)]
-      .map((m) => (m[1] ?? "").toLowerCase())
-      .filter((t) => !NOT_A_TABLE_NAME.has(t))
-      .map((t) => [singularStem(t), t] as const),
-  );
-  const [named, ...rest] = [...goalNamed].filter(([stem]) => !schemaStems.has(stem));
-  if (!named || rest.length > 0) return null;
+  const schema = tablesFromSchemaText(schemaText);
+  const observed = (t: string) => schema.some((s) => sameTable(s, t));
+  const goalNamed = [...goal.matchAll(GOAL_NAMED_TABLE)]
+    .map((m) => (m[1] ?? "").toLowerCase())
+    .filter((t) => !NOT_A_TABLE_NAME.has(t));
+  const [named, ...rest] = goalNamed.filter((t) => !observed(t));
+  if (!named || rest.some((t) => !sameTable(t, named))) return null;
   const target = writeTarget(sql);
   if (target?.verb !== "INSERT") return null;
   const planned = target.table.toLowerCase();
-  const plannedStem = singularStem(planned);
-  if (goalNamed.has(plannedStem) || !schemaStems.has(plannedStem)) return null;
-  return { named: named[1], planned };
+  if (goalNamed.some((t) => sameTable(t, planned)) || !observed(planned)) return null;
+  return { named, planned };
 }
 
-// Crude English singular ("categories"→"category", "boxes"→"box", "users"→"user").
-function singularStem(name: string): string {
-  return name
-    .replace(/ies$/, "y")
-    .replace(/(s|x|z|ch|sh)es$/, "$1")
-    .replace(/s$/, "");
+// Singular/plural-blind: `user`~`users`, `box`~`boxes`, `category`~`categories`, `purchase`~`purchases`.
+function sameTable(a: string, b: string): boolean {
+  const forms = (t: string) => [
+    t,
+    t.replace(/s$/, ""),
+    t.replace(/es$/, ""),
+    t.replace(/ies$/, "y"),
+  ];
+  const bForms = forms(b);
+  return forms(a).some((f) => bForms.includes(f));
 }
 
 // SK-ASK-016 Defense A — pre-flight check that every table referenced

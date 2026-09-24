@@ -217,6 +217,7 @@ describe("orchestrateAsk — goal-named insert target (GLOBAL-041 Phase A, KPI 1
     ["names an observed table in the singular", "Add a row to the member table", HIJACK, null],
     ["names no table", "Add a review saying great profile", HIJACK, null],
     ["qualifies without naming", "Save the note in the same table as members", HIJACK, null],
+    ["qualifies with 'following'", "Add drogo to the following table: members", HIJACK, null],
     ["a read", GOAL, "SELECT * FROM members", null],
     [
       "mentions an unseen table as context",
@@ -232,6 +233,23 @@ describe("orchestrateAsk — goal-named insert target (GLOBAL-041 Phase A, KPI 1
     ],
   ])("hijackedInsertTarget: %s", (_label, goal, sql, expected) => {
     expect(hijackedInsertTarget(goal, sql, DB.schemaText as string)).toEqual(expected);
+  });
+
+  it.each([
+    ["purchase", "purchases"],
+    ["response", "responses"],
+    ["movie", "movies"],
+    ["status", "statuses"],
+    ["address", "addresses"],
+    ["category", "categories"],
+    ["box", "boxes"],
+  ])("hijackedInsertTarget: the %s table is the observed %s, not a hijack", (word, table) => {
+    const schema = `CREATE TABLE ${table} (x TEXT);\nCREATE TABLE members (name TEXT);`;
+    const goal = `Record a row in the ${word} table`;
+    expect(hijackedInsertTarget(goal, `INSERT INTO ${table} (x) VALUES ('v')`, schema)).toBeNull();
+    expect(
+      hijackedInsertTarget(goal, "INSERT INTO members (name) VALUES ('v')", schema),
+    ).toBeNull();
   });
 });
 
