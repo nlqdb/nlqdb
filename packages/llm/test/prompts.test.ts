@@ -212,6 +212,17 @@ describe("buildPlanUser (SK-LLM-018 retry framing)", () => {
     const out = buildPlanUser({ ...baseReq, intent: "write", newTable: "app_users" });
     expect(out).toContain('New table: "app_users" is not in the Schema yet');
     expect(out).toContain('Write the goal\'s data into "app_users"');
+    // A re-plan keeps the exception instead of contradicting it.
+    const retry = buildPlanUser({
+      ...baseReq,
+      intent: "write",
+      newTable: "app_users",
+      previousAttempt: {
+        sql: "INSERT INTO entities (kind) VALUES ('u')",
+        error: "wrong_write_target",
+      },
+    });
+    expect(retry).toContain('from the Schema above, plus the New table "app_users".');
   });
 
   it("renders the diagnostic retry block when previousAttempt is set", () => {

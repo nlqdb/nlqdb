@@ -264,7 +264,9 @@ export function buildPlanUser(req: PlanRequest): string {
         `Error: ${req.previousAttempt.error}`,
         "Re-plan to:",
         "- Answer the same Goal stated above (do not redefine the question).",
-        "- Use only tables and columns from the Schema above.",
+        req.newTable
+          ? `- Use only tables and columns from the Schema above, plus the New table "${req.newTable}".`
+          : "- Use only tables and columns from the Schema above.",
         "- Diagnose the error first, then change only what the error names — not the overall approach.",
       ]
         .filter(Boolean)
