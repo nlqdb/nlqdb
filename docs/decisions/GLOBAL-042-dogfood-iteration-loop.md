@@ -51,7 +51,8 @@
         time), the next iteration's one change, and the three-line leverage
         verdict reconciled against the diff (§Leverage below). The agent
         that makes that change is the fixer in
-        [`END_GOAL.md`](../END_GOAL.md).
+        [`END_GOAL.md`](../END_GOAL.md): the four pillars and design for
+        leverage, before any code.
      3. **Clean up everything the iteration created** — hosted DBs, API
         keys, branches, scratch code, test tenants. The repo and the
         platform look as if the iteration never ran, except for the retro.
@@ -61,9 +62,9 @@
      file, write the new stance clean, never rationalise around the old one.
   6. **Relationship to `GLOBAL-041`.** This loop drives and measures Phase A.
      KPI 1 (first-insert inference ≥ 95 %) and the phase gates stay as
-     defined there. The fixer still holds the four [`GLOBAL-025`](./GLOBAL-025-north-star.md)
-     pillars. Advancing KPI 1 leaves onboarding, UX, and performance at
-     their floors.
+     defined there. The fixer holds the four [`GLOBAL-025`](./GLOBAL-025-north-star.md)
+     pillars and designs for leverage. Advancing KPI 1 leaves onboarding,
+     UX, and performance at their floors.
 
 - **Alternatives rejected:**
   - **Keep ticking the Phase A build order** — steps can all be green while

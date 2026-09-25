@@ -76,7 +76,8 @@ Fixed rules, then the iteration's own step list.
   build never routes around a gap with an internal shortcut.
 - **Fixer.** A change to nlqdb — the previous iteration's one change, or an
   issue that blocked this build — follows the fixer rule in
-  [`END_GOAL.md`](../../END_GOAL.md). §7 reconciles that verdict.
+  [`END_GOAL.md`](../../END_GOAL.md): the four pillars and design for
+  leverage, before any code. §7 reconciles that verdict.
 
 ## 6. Readiness gate
 
