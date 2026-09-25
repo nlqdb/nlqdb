@@ -38,13 +38,14 @@ export type ProbeVerdict = { hit: boolean; reason: string };
 
 // Pure: given one preview `/v1/ask` response, is it a first-insert-inference
 // routing HIT (the no-flag write routed into widen-on-write) or a MISS?
-//   HIT  — 2xx AskOk carrying `trace.widen.tables` (the preview names the
-//          unseen table confirming would create; `ddl` is empty on preview).
+//   HIT  — 2xx AskOk whose `trace.widen.tables` includes `expectedTable` (the
+//          goal-named unseen table confirming would create; `ddl` is empty on
+//          preview). Widening some other table is `widen_wrong_table`.
 //   MISS — `kind=create` (classifier read the write as "make a database"),
 //          a 2xx write with no widen (the table was already observed, or the
 //          plan was a plain write), a `clarify_required` 409 (dead-ended on
 //          the pinned create/query clarify), or any other error envelope.
-export function classifyExtendPreview(r: ProbeResponse): ProbeVerdict {
+export function classifyExtendPreview(r: ProbeResponse, expectedTable: string): ProbeVerdict {
   const body = r.body;
   const ok = r.httpStatus >= 200 && r.httpStatus < 300;
   if (ok && body && typeof body === "object") {
@@ -58,7 +59,9 @@ export function classifyExtendPreview(r: ProbeResponse): ProbeVerdict {
     const tables =
       widen && typeof widen === "object" ? (widen as Record<string, unknown>)["tables"] : undefined;
     if (Array.isArray(tables) && tables.length > 0) {
-      return { hit: true, reason: "routed_widen" };
+      return tables.includes(expectedTable)
+        ? { hit: true, reason: "routed_widen" }
+        : { hit: false, reason: `widen_wrong_table:${tables.join(",")}` };
     }
     return { hit: false, reason: "ok_no_widen" };
   }
@@ -111,25 +114,30 @@ function extractErrorCode(body: unknown): string | null {
 // naming a table the agent-memory dogfood DB has never observed, so the
 // pinned-write route must widen rather than clarify. Preview-only, so the
 // names need no per-run salt (nothing is created).
-export const WALK_SHAPES: { name: string; goal: string }[] = [
+export const WALK_SHAPES: { name: string; table: string; goal: string }[] = [
   {
     name: "new-table",
+    table: "ratings",
     goal: "Record a rating in the ratings table: a rater gives a profile a star count from 1 to 5. Store the rating id, which profile it targets, and the star count.",
   },
   {
     name: "new-column-family",
+    table: "reviews",
     goal: "Store the free-text review body a rater left in the reviews table, alongside the review id and the rating it belongs to.",
   },
   {
     name: "type-varied",
+    table: "leaderboard_snapshots",
     goal: "Save a leaderboard snapshot in the leaderboard_snapshots table: a snapshot id, the profile id, its average score as a decimal, and the moment it was taken as a timestamp.",
   },
   {
     name: "jsonb",
+    table: "moderation_events",
     goal: "Record a moderation event in the moderation_events table with an event id, the target profile id, and a details object holding the reason and any flags as structured JSON.",
   },
   {
     name: "auth-shaped",
+    table: "app_users",
     goal: "Register an app end-user in the app_users table: store a user id, their email, a hashed password, and when they signed up.",
   },
 ];
@@ -191,7 +199,7 @@ async function main(): Promise<void> {
       } catch {
         parsed = null;
       }
-      verdict = classifyExtendPreview({ httpStatus: res.status, body: parsed });
+      verdict = classifyExtendPreview({ httpStatus: res.status, body: parsed }, shape.table);
       if (!verdict.hit) detail = missDetail(parsed);
     } catch (err) {
       verdict = { hit: false, reason: `network:${(err as Error).message}` };
