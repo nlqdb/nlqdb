@@ -49,7 +49,10 @@
         how it went, what went right, what went wrong, **concrete numbers**
         (inserts, unseen-field hits/misses, KPI 1 rate, manual steps taken,
         time), the next iteration's one change, and the three-line leverage
-        verdict (§Leverage below).
+        verdict reconciled against the diff (§Leverage below). The agent
+        that makes that change is the fixer in
+        [`END_GOAL.md`](../END_GOAL.md): the four pillars and design for
+        leverage, before any code.
      3. **Clean up everything the iteration created** — hosted DBs, API
         keys, branches, scratch code, test tenants. The repo and the
         platform look as if the iteration never ran, except for the retro.
@@ -57,9 +60,11 @@
   5. **Rethinking decisions is expected.** A retro or any PR may change or
      replace existing GLOBALs / SK-IDs, per `P1`/`P3`: edit the canonical
      file, write the new stance clean, never rationalise around the old one.
-  6. **Relationship to `GLOBAL-041`.** This loop is how Phase A is driven
-     and measured; KPI 1 (first-insert inference ≥ 95 %) and the phase
-     gates stay as defined there.
+  6. **Relationship to `GLOBAL-041`.** This loop drives and measures Phase A.
+     KPI 1 (first-insert inference ≥ 95 %) and the phase gates stay as
+     defined there. The fixer holds the four [`GLOBAL-025`](./GLOBAL-025-north-star.md)
+     pillars and designs for leverage. Advancing KPI 1 leaves onboarding,
+     UX, and performance at their floors.
 
 - **Alternatives rejected:**
   - **Keep ticking the Phase A build order** — steps can all be green while
@@ -76,7 +81,10 @@
 ## Leverage
 
 Design-for-leverage verdict for this loop, recorded 2026-09-06 after the
-discovery gate below; every iteration's retro re-states it for its own diff.
+discovery gate below. The fixer writes Category and N+1 before code
+([`END_GOAL.md`](../END_GOAL.md), the fixer); the retro reconciles the
+three lines against the diff. A verdict first written in the retro is not
+the design.
 
 ```
 Leverage: spend-with-seams

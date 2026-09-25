@@ -35,9 +35,10 @@ from the top of `docs/scorecard.md`; [`/weekly`](weekly.md) audits this loop
 once a week and sets it — the founder may override it and a founder-written
 number is never overwritten.
 
-**The company works on one thing until it measures:
+**The number under drive is
 [`GLOBAL-041`](../../docs/decisions/GLOBAL-041-autonomous-dba.md) Phase A —
 KPI 1, first-insert inference rate ≥ 95 % on the dogfood workload.**
+Onboarding, UX, and performance stay at their [`GLOBAL-025`](../../docs/decisions/GLOBAL-025-north-star.md) floors on every change.
 This loop's job is to advance the current
 [`GLOBAL-042`](../../docs/decisions/GLOBAL-042-dogfood-iteration-loop.md)
 dogfood iteration — read its brief
@@ -50,7 +51,9 @@ content or marketplace lever; existing pages stay live.
 
 1. Read `CLAUDE.md` fully first and obey P1–P6 and the §8 quality gates.
    Then [`docs/END_GOAL.md`](../../docs/END_GOAL.md) and only the docs the
-   lever touches — its §5 path-map `FEATURE.md`.
+   lever touches — its §5 path-map `FEATURE.md`. A lever that changes the
+   engine is the fixer in that doc: the four pillars and design for
+   leverage, before any code.
 2. **No change without a number.** Before touching code, name the scorecard
    number you intend to move, and its current value. If you cannot name one,
    either do D5 deletion/cleanup (docs over 20 KB, dead code, stale prose)
@@ -61,8 +64,11 @@ content or marketplace lever; existing pages stay live.
 3. **Measure → change → re-measure.** Engine work: the KPI 1 counters
    (`asks_extend_ok` / `asks_extend_failed`) over the dogfood workload, or
    the E2E extend walk. UX-flow work: the stranger-test walkers
-   (`scripts/stranger-test.sh`, `scripts/flow-005-walk.sh`). Δ ≥ 0 keeps;
-   Δ < 0 reverts with a one-line note in the scorecard.
+   (`scripts/stranger-test.sh`, `scripts/flow-005-walk.sh`). Δ ≥ 0 on the
+   number you meant to move keeps; a drop reverts with a one-line note in
+   the scorecard. Name the other pillar this diff can move. Where that
+   floor already has a reading (`GLOBAL-025`), re-measure it; a drop
+   reverts the same way.
 4. `docs/blocked-by-human.md` is founder-only: add a bullet only for
    actions an agent cannot perform (prod secrets, console clicks,
    money/legal). Numbered steps with links — no **Answer** field. Delete
