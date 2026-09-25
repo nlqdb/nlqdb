@@ -245,6 +245,11 @@ export function buildPlanUser(req: PlanRequest): string {
       "Intent: this goal modifies data — emit an INSERT, UPDATE, or DELETE, not a SELECT.",
     );
   }
+  if (req.newTable) {
+    parts.push(
+      `New table: "${req.newTable}" is not in the Schema yet — it is created when this write runs. Write the goal's data into "${req.newTable}" with the columns the goal names (the one exception to schema-only tables); do not store it in another table.`,
+    );
+  }
   if (req.previousAttempt) {
     // GLOBAL-022 + SK-LLM-018 — diagnostic-first retry framing: keep the
     // same goal, restrict to schema identifiers, change only what the
@@ -259,7 +264,9 @@ export function buildPlanUser(req: PlanRequest): string {
         `Error: ${req.previousAttempt.error}`,
         "Re-plan to:",
         "- Answer the same Goal stated above (do not redefine the question).",
-        "- Use only tables and columns from the Schema above.",
+        req.newTable
+          ? `- Use only tables and columns from the Schema above, plus the New table "${req.newTable}".`
+          : "- Use only tables and columns from the Schema above.",
         "- Diagnose the error first, then change only what the error names — not the overall approach.",
       ]
         .filter(Boolean)
