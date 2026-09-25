@@ -25,9 +25,21 @@ describe("classifyExtendPreview", () => {
         widen: { tables: ["ratings"], ddl: [], schema_rewritten: false },
       },
     };
-    expect(classifyExtendPreview({ httpStatus: 200, body })).toEqual({
+    expect(classifyExtendPreview({ httpStatus: 200, body }, "ratings")).toEqual({
       hit: true,
       reason: "routed_widen",
+    });
+  });
+
+  it("MISS — a widen of a table other than the goal-named one (the run-220 hijack class)", () => {
+    const body = {
+      status: "ok",
+      requires_confirm: true,
+      trace: { sql: "", widen: { tables: ["facts_extra"], ddl: [], schema_rewritten: false } },
+    };
+    expect(classifyExtendPreview({ httpStatus: 200, body }, "reviews")).toEqual({
+      hit: false,
+      reason: "widen_wrong_table:facts_extra",
     });
   });
 
@@ -35,7 +47,7 @@ describe("classifyExtendPreview", () => {
     const body = {
       error: { code: "clarify_required", clarification: { kind: "create_or_query_pinned" } },
     };
-    expect(classifyExtendPreview({ httpStatus: 409, body })).toEqual({
+    expect(classifyExtendPreview({ httpStatus: 409, body }, "ratings")).toEqual({
       hit: false,
       reason: "clarify_required",
     });
@@ -47,7 +59,7 @@ describe("classifyExtendPreview", () => {
       db: "db_x",
       trace: { sql: "", plan_id: "", confidence: 1, model: "m", cache_hit: false },
     };
-    expect(classifyExtendPreview({ httpStatus: 200, body })).toEqual({
+    expect(classifyExtendPreview({ httpStatus: 200, body }, "ratings")).toEqual({
       hit: false,
       reason: "classified_create",
     });
@@ -60,21 +72,23 @@ describe("classifyExtendPreview", () => {
       rowCount: 0,
       trace: { sql: "INSERT ...", plan_id: "p", confidence: 1, model: "m", cache_hit: false },
     };
-    expect(classifyExtendPreview({ httpStatus: 200, body })).toEqual({
+    expect(classifyExtendPreview({ httpStatus: 200, body }, "ratings")).toEqual({
       hit: false,
       reason: "ok_no_widen",
     });
   });
 
   it("MISS — a top-level error code envelope records the code", () => {
-    expect(classifyExtendPreview({ httpStatus: 429, body: { code: "rate_limited" } })).toEqual({
+    expect(
+      classifyExtendPreview({ httpStatus: 429, body: { code: "rate_limited" } }, "ratings"),
+    ).toEqual({
       hit: false,
       reason: "error:rate_limited",
     });
   });
 
   it("MISS — an unparseable / null body falls back to the HTTP status", () => {
-    expect(classifyExtendPreview({ httpStatus: 502, body: null })).toEqual({
+    expect(classifyExtendPreview({ httpStatus: 502, body: null }, "ratings")).toEqual({
       hit: false,
       reason: "error:502",
     });
@@ -94,7 +108,7 @@ describe("classifyExtendPreview", () => {
         widen: { tables: [], ddl: [], schema_rewritten: false },
       },
     };
-    expect(classifyExtendPreview({ httpStatus: 200, body }).hit).toBe(false);
+    expect(classifyExtendPreview({ httpStatus: 200, body }, "ratings").hit).toBe(false);
   });
 });
 
@@ -130,6 +144,12 @@ describe("WALK_SHAPES", () => {
     const writeVerb = /\b(record|store|save|register|insert|add|log)\b/i;
     for (const shape of WALK_SHAPES) {
       expect(writeVerb.test(shape.goal)).toBe(true);
+    }
+  });
+
+  it("each shape's expected table is the one its goal names", () => {
+    for (const shape of WALK_SHAPES) {
+      expect(shape.goal).toContain(`the ${shape.table} table`);
     }
   });
 
