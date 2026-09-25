@@ -51,8 +51,7 @@
         time), the next iteration's one change, and the three-line leverage
         verdict reconciled against the diff (§Leverage below). The agent
         that makes that change is the fixer in
-        [`END_GOAL.md`](../END_GOAL.md): the whole loop in mind, design for
-        leverage before any code.
+        [`END_GOAL.md`](../END_GOAL.md).
      3. **Clean up everything the iteration created** — hosted DBs, API
         keys, branches, scratch code, test tenants. The repo and the
         platform look as if the iteration never ran, except for the retro.
@@ -60,9 +59,11 @@
   5. **Rethinking decisions is expected.** A retro or any PR may change or
      replace existing GLOBALs / SK-IDs, per `P1`/`P3`: edit the canonical
      file, write the new stance clean, never rationalise around the old one.
-  6. **Relationship to `GLOBAL-041`.** This loop is how Phase A is driven
-     and measured; KPI 1 (first-insert inference ≥ 95 %) and the phase
-     gates stay as defined there.
+  6. **Relationship to `GLOBAL-041`.** This loop drives and measures Phase A.
+     KPI 1 (first-insert inference ≥ 95 %) and the phase gates stay as
+     defined there. The fixer still holds the four [`GLOBAL-025`](./GLOBAL-025-north-star.md)
+     pillars. Advancing KPI 1 leaves onboarding, UX, and performance at
+     their floors.
 
 - **Alternatives rejected:**
   - **Keep ticking the Phase A build order** — steps can all be green while
