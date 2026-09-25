@@ -207,6 +207,13 @@ describe("buildPlanUser (SK-LLM-018 retry framing)", () => {
     expect(out).not.toContain("Previous attempt");
   });
 
+  it("names a goal's new table as the one exception to schema-only tables (GLOBAL-041 Phase A)", () => {
+    expect(buildPlanUser(baseReq)).not.toContain("New table:");
+    const out = buildPlanUser({ ...baseReq, intent: "write", newTable: "app_users" });
+    expect(out).toContain('New table: "app_users" is not in the Schema yet');
+    expect(out).toContain('Write the goal\'s data into "app_users"');
+  });
+
   it("renders the diagnostic retry block when previousAttempt is set", () => {
     const out = buildPlanUser({
       ...baseReq,

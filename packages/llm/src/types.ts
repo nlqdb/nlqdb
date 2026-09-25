@@ -99,6 +99,11 @@ export type PlanRequest = {
   // instead of defaulting to a SELECT (the read-as-write silent bug). Absent
   // ⇒ read intent (the historical default); only `"write"` changes the prompt.
   intent?: "query" | "write";
+  // GLOBAL-041 Phase A (KPI 1) — the one table a write goal names that the
+  // schema lacks; widen-on-write creates it (SK-SCHEMA-008). The prompt makes
+  // it the one exception to "schema tables only", so the plan lands there
+  // instead of in a look-alike existing table. Absent ⇒ prompt unchanged.
+  newTable?: string;
   // GLOBAL-022 — when a previous plan attempt's SQL was rejected by the
   // validator (or the LLM call itself failed), the orchestrator passes
   // the prior attempt's SQL + reject reason here so the prompt can

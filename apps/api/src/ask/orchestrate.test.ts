@@ -9,7 +9,7 @@ import type { LLMRouter, PlanRequest, PlanResponse } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
 import type { ExtendArgs, ExtendOutcome } from "./extend.ts";
 import type { OrchestrateDeps } from "./orchestrate.ts";
-import { hijackedInsertTarget, orchestrateAsk } from "./orchestrate.ts";
+import { goalNamedNewTable, hijackedInsertTarget, orchestrateAsk } from "./orchestrate.ts";
 import type { AskRequest, DbRecord, QueryResult } from "./types.ts";
 
 // recordSchemaMismatch (via classifyColumnMissing) logs a structured line by
@@ -168,18 +168,43 @@ describe("orchestrateAsk — goal-named insert target (GLOBAL-041 Phase A, KPI 1
   });
 
   it("does not fire without the widen wire (BYO / tests without extendWrite)", async () => {
-    const plan = vi.fn(async () => planOf(HIJACK));
+    const plan = vi.fn<(r: PlanRequest) => Promise<PlanResponse>>(async () => planOf(HIJACK));
     await orchestrateAsk(
       deps(plan, async () => EMPTY),
       req({ goal: GOAL, intent: "write" }),
     );
     expect(plan).toHaveBeenCalledTimes(1);
+    expect(plan.mock.calls[0]?.[0]).not.toHaveProperty("newTable");
   });
 
-  // The exact run-220 miss plans (walk 35948862712) against the dogfood DB's
+  it("tells the first plan the goal-named new table, so a faithful plan needs no re-plan", async () => {
+    const plan = vi.fn<(r: PlanRequest) => Promise<PlanResponse>>(async () => planOf(FAITHFUL));
+    const d = { ...deps(plan, async () => EMPTY), extendWrite };
+
+    const out = await orchestrateAsk(d, req({ goal: GOAL, intent: "write" }));
+
+    expect(plan).toHaveBeenCalledTimes(1);
+    expect(plan.mock.calls[0]?.[0]?.newTable).toBe("reviews");
+    expect(out.ok && out.result.trace.widen?.tables).toEqual(["reviews"]);
+  });
+
+  it.each([
+    ["the one unseen table", GOAL, "reviews"],
+    [
+      "no hint when an observed table is also named",
+      "Add a note to the members table saying the reviews table was archived",
+      null,
+    ],
+    ["no hint for an observed table", "Add a row to the members table for drogo", null],
+    ["no hint without a named table", "Add a review saying great profile", null],
+  ])("goalNamedNewTable: %s", (_label, goal, expected) => {
+    expect(goalNamedNewTable(goal, DB.schemaText as string)).toBe(expected);
+  });
+
+  // The exact live miss plans (run 220 walk 35948862712, run 222 walk 36115263508) against the dogfood DB's
   // observed tables. Each is caught; the re-plan targets the named table.
   const DOGFOOD_SCHEMA =
-    "CREATE TABLE facts (agent_id TEXT, kind TEXT, content TEXT);\nCREATE TABLE dba_run_events (lever TEXT, outcome JSONB);";
+    "CREATE TABLE facts (agent_id TEXT, kind TEXT, content TEXT);\nCREATE TABLE dba_run_events (lever TEXT, outcome JSONB);\nCREATE TABLE entities (agent_id TEXT, kind TEXT, canonical_name TEXT);";
   it.each([
     [
       GOAL,
@@ -191,7 +216,13 @@ describe("orchestrateAsk — goal-named insert target (GLOBAL-041 Phase A, KPI 1
       `INSERT INTO dba_run_events (lever, outcome) VALUES ('moderation', '{"reason":"spam"}'::jsonb)`,
       "moderation_events",
     ],
-  ])("run-220 live miss re-plans onto the named table: %s", async (goal, sql, named) => {
+    // Run 222 (walk 36115263508): the end-user landed in the preset's `entities`.
+    [
+      "Register an app end-user in the app_users table: store a user id, their email, a hashed password, and when they signed up.",
+      `INSERT INTO "entities" (agent_id, kind, canonical_name) VALUES ('u1', 'app_user', 'a@b.c')`,
+      "app_users",
+    ],
+  ])("live miss re-plans onto the named table: %s", async (goal, sql, named) => {
     const plan = vi
       .fn<(r: PlanRequest) => Promise<PlanResponse>>()
       .mockResolvedValueOnce(planOf(sql))
@@ -205,6 +236,7 @@ describe("orchestrateAsk — goal-named insert target (GLOBAL-041 Phase A, KPI 1
 
     const out = await orchestrateAsk(d, req({ goal, intent: "write" }));
 
+    expect(plan.mock.calls[0]?.[0]?.newTable).toBe(named);
     expect(plan.mock.calls[1]?.[0]?.previousAttempt?.error).toMatch(/wrong_write_target/);
     expect(out.ok).toBe(true);
     if (!out.ok) return;

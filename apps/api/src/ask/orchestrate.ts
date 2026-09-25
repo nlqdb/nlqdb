@@ -359,6 +359,10 @@ export async function orchestrateAsk(
     let lastConfidence = 0;
     // Set inside the retry callback, so typed via `as` to stop TS narrowing it to null.
     let hijackFallback = null as { sql: string; model: string; confidence: number } | null;
+    // The widen-on-write wire (hosted DB + extendWrite) is what can create a goal-named table.
+    const widenSchema =
+      req.intent === "write" && hostedSchema && deps.extendWrite ? db.schemaText : null;
+    const newTable = widenSchema ? goalNamedNewTable(req.goal, widenSchema) : null;
     try {
       planSql = await withStageRetry(
         "plan",
@@ -368,6 +372,7 @@ export async function orchestrateAsk(
             schema: planSchema,
             dialect: "postgres",
             ...(req.intent ? { intent: req.intent } : {}),
+            ...(newTable ? { newTable } : {}),
             ...(prev ? { previousAttempt: prevAttemptFromError(prev) } : {}),
           });
           // SK-ASK-025 — normalise to schema-relative form BEFORE validate so
@@ -395,8 +400,8 @@ export async function orchestrateAsk(
           // existing table hijacks it and leaves nothing to widen (run 220: 2/5
           // live misses). Re-plan with the named target; if no retry yields a
           // better plan, the first hijacked plan still runs (never a new reject).
-          if (req.intent === "write" && hostedSchema && deps.extendWrite && db.schemaText) {
-            const hijack = hijackedInsertTarget(req.goal, sql, db.schemaText);
+          if (widenSchema) {
+            const hijack = hijackedInsertTarget(req.goal, sql, widenSchema);
             if (hijack) {
               hijackFallback ??= { sql, model: plan.model, confidence: plan.confidence };
               throw new PlanValidationError(
@@ -1184,16 +1189,32 @@ async function safeTouchRecentTables(
 const GOAL_NAMED_TABLE = /\bthe\s+[`"]?([a-z_][a-z0-9_]*)[`"]?\s+table\b/gi;
 const IDENTIFIER_SHAPED = /_|[^su]s$/;
 
+function readGoalTables(goal: string, schemaText: string) {
+  const schema = tablesFromSchemaText(schemaText);
+  const observed = (t: string) => schema.some((s) => sameTable(s, t));
+  const goalNamed = [...goal.matchAll(GOAL_NAMED_TABLE)].map((m) => (m[1] ?? "").toLowerCase());
+  const [named, ...rest] = goalNamed.filter((t) => IDENTIFIER_SHAPED.test(t) && !observed(t));
+  const unseen = named && !rest.some((t) => !sameTable(t, named)) ? named : null;
+  return { observed, goalNamed, unseen };
+}
+
+// The one unseen table a write goal names, told to the planner up front so the
+// first plan lands there (run 222: `app_users` → the preset's `entities` on the
+// first plan, and the re-plan below needs a second live LLM call). Stricter than
+// the hijack check: a goal that also names an observed table ("add a note to the
+// members table saying the reviews table was archived") gets no hint.
+export function goalNamedNewTable(goal: string, schemaText: string): string | null {
+  const { observed, goalNamed, unseen } = readGoalTables(goal, schemaText);
+  return unseen && !goalNamed.some(observed) ? unseen : null;
+}
+
 export function hijackedInsertTarget(
   goal: string,
   sql: string,
   schemaText: string,
 ): { named: string; planned: string } | null {
-  const schema = tablesFromSchemaText(schemaText);
-  const observed = (t: string) => schema.some((s) => sameTable(s, t));
-  const goalNamed = [...goal.matchAll(GOAL_NAMED_TABLE)].map((m) => (m[1] ?? "").toLowerCase());
-  const [named, ...rest] = goalNamed.filter((t) => IDENTIFIER_SHAPED.test(t) && !observed(t));
-  if (!named || rest.some((t) => !sameTable(t, named))) return null;
+  const { observed, goalNamed, unseen: named } = readGoalTables(goal, schemaText);
+  if (!named) return null;
   const target = writeTarget(sql);
   if (target?.verb !== "INSERT") return null;
   const planned = target.table.toLowerCase();
