@@ -6,8 +6,11 @@ copying [`TEMPLATE.md`](./TEMPLATE.md) (the shared mechanics — quarantine,
 token handling, code-location rules, retro fields, cleanup checklist — live
 only there). Each retro states how it went, what went right, what went
 wrong, the concrete numbers (inserts, unseen-field hits/misses, KPI 1 rate,
-manual steps, time), the one change for the next iteration and the leverage
-verdict. Written before cleanup; cleanup before the next iteration starts.
+manual steps, time), and the one change for the next iteration. The agent
+that makes that change is the fixer in [`END_GOAL.md`](../../END_GOAL.md):
+the whole loop in mind, design for leverage before code. The retro
+reconciles the leverage verdict against the diff. Written before cleanup;
+cleanup before the next iteration starts.
 
 | # | Iteration | Date | Outcome |
 |---|-----------|------|---------|

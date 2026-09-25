@@ -74,6 +74,10 @@ Fixed rules, then the iteration's own step list.
   `tests/e2e/<slug>/`, founder uses the production URL once. Every
   `schema_mismatch` / `confirm_expired` / `rate_limited` is a §7 number; the
   build never routes around a gap with an internal shortcut.
+- **Fixer.** A change to nlqdb — the previous iteration's one change, or an
+  issue that blocked this build — follows the fixer rule in
+  [`END_GOAL.md`](../../END_GOAL.md): the whole loop in mind, design for
+  leverage before code. §7 reconciles that verdict.
 
 ## 6. Readiness gate
 
@@ -93,7 +97,9 @@ not fix** inside the iteration.
 - **Post-hoc schema comparison** (read only now): nlqdb's schema vs the real one — as good / better / worse, and why, per table.
 - **Decisions to rethink** (GLOBAL / SK-IDs by ID) — edited per P1/P3.
 - **The one change for iteration NNN+1.**
-- **Leverage verdict** (`GLOBAL-042` §Leverage), three lines:
+- **Leverage verdict** (`GLOBAL-042` §Leverage), three lines. Category and
+  N+1 were written before the change ([`END_GOAL.md`](../../END_GOAL.md),
+  the fixer). These lines reconcile them against the diff:
   `Leverage: invest | spend | spend-with-seams` ·
   `N+1: <what the next iteration costs; the artifact it touches>` ·
   `Category: <name; instance count + where>`. Every manual step in

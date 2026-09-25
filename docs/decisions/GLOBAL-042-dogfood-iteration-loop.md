@@ -49,7 +49,10 @@
         how it went, what went right, what went wrong, **concrete numbers**
         (inserts, unseen-field hits/misses, KPI 1 rate, manual steps taken,
         time), the next iteration's one change, and the three-line leverage
-        verdict (§Leverage below).
+        verdict reconciled against the diff (§Leverage below). The agent
+        that makes that change is the fixer in
+        [`END_GOAL.md`](../END_GOAL.md): the whole loop in mind, design for
+        leverage before any code.
      3. **Clean up everything the iteration created** — hosted DBs, API
         keys, branches, scratch code, test tenants. The repo and the
         platform look as if the iteration never ran, except for the retro.
@@ -76,7 +79,10 @@
 ## Leverage
 
 Design-for-leverage verdict for this loop, recorded 2026-09-06 after the
-discovery gate below; every iteration's retro re-states it for its own diff.
+discovery gate below. The fixer writes Category and N+1 before code
+([`END_GOAL.md`](../END_GOAL.md), the fixer); the retro reconciles the
+three lines against the diff. A verdict first written in the retro is not
+the design.
 
 ```
 Leverage: spend-with-seams

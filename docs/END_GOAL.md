@@ -29,6 +29,7 @@ replaces. **Scalable**: that one design holds at 1 table and 1 000 tables,
 
 - **Solo builder** ([P1](research/personas.md)) — enters at `npm i @nlqdb/sdk`, not a migration file. Wins: production traffic, no `CREATE TABLE`.
 - **The building agent** (`GLOBAL-042`) — builds on public surfaces only, first [rateme12](history/dogfood-iterations/001-rateme12.md). Wins: the inferred schema beats the hand-made one.
+- **The fixer** — any agent that changes nlqdb so a build on it can proceed, including `/daily` and the next dogfood iteration's one change. Before it designs, it re-reads this doc and holds the whole loop. It designs for leverage: what already exists, which category this issue is an instance of, what the next one of that kind will cost, then the simplest change to the machinery the loop already runs on. Category and N+1 are written before code; the three-line verdict is reconciled against the diff. A fix that only covers the symptom in front of it is the patch-on-patch defined above.
 - **Operator of a live DB** — the same person weeks on, at `/app/dba`. Wins: a click applies a proposal and p95 drops, a click undoes it.
 
 ## The happy path

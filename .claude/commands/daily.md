@@ -50,7 +50,9 @@ content or marketplace lever; existing pages stay live.
 
 1. Read `CLAUDE.md` fully first and obey P1–P6 and the §8 quality gates.
    Then [`docs/END_GOAL.md`](../../docs/END_GOAL.md) and only the docs the
-   lever touches — its §5 path-map `FEATURE.md`.
+   lever touches — its §5 path-map `FEATURE.md`. A lever that changes the
+   engine is the fixer in that doc: hold the whole loop, and design for
+   leverage before any code.
 2. **No change without a number.** Before touching code, name the scorecard
    number you intend to move, and its current value. If you cannot name one,
    either do D5 deletion/cleanup (docs over 20 KB, dead code, stale prose)
