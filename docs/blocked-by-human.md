@@ -11,9 +11,9 @@ a secret value.
 
 ## Show HN launch sequence
 
-~30 min · blocked since 2026-06-13. Gated on `GLOBAL-041` Phase A (live KPI 1
-≥ 95 %; the live walk reads 85 % (17/20, run 222) and the formal 200-insert
-sample is 0/200 — agents drive it). Kit:
+~30 min · blocked since 2026-06-13. Gated on the `GLOBAL-041` Phase A exit
+(≥ 190/200 real first-inserts; the formal sample is 0/200 — agents drive it;
+the preview walk's 10/10 does not open it). Kit:
 [`research/launch-kit.md`](./research/launch-kit.md).
 
 1. Pick the angle (§2). Write the Show HN post + first comment in your own
