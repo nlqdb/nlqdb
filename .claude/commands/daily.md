@@ -152,8 +152,9 @@ markdown. Write the record as the run produced it; never pre-model a field
 so the write succeeds. A write that lands with a field the schema had not
 seen is a KPI 1 hit; one that errors or needs a manual step is a miss —
 record it in the scorecard the same run. The DB id and the window's start
-date live in the scorecard header. Until the extend path exists (Phase A
-item 1), every such write is a miss and the instrument reads honestly at 0 %.
+date live in the scorecard header. The extend path is live; the prod key
+crosses only the CI boundary, so these writes go through a CI job — until
+that job exists, building it is lever candidate #1 and the window stays shut.
 
 ### 2 — One lever, measured
 

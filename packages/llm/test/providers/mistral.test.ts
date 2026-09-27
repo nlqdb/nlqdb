@@ -21,16 +21,16 @@ describe("createMistralProvider", () => {
     expect(res.sql).toBe("SELECT 1");
   });
 
-  it("model() defaults the planner tier to mistral-large-latest", () => {
+  it("model() defaults the planner tier to codestral-latest", () => {
     const provider = createMistralProvider({ apiKey });
-    expect(provider.model("plan")).toBe("mistral-large-latest");
-    expect(provider.model("schema_infer")).toBe("mistral-large-latest");
+    expect(provider.model("plan")).toBe("codestral-latest");
+    expect(provider.model("schema_infer")).toBe("codestral-latest");
   });
 
   it("custom models override the defaults per operation", () => {
-    const provider = createMistralProvider({ apiKey, models: { plan: "codestral-latest" } });
-    expect(provider.model("plan")).toBe("codestral-latest");
-    expect(provider.model("schema_infer")).toBe("mistral-large-latest");
+    const provider = createMistralProvider({ apiKey, models: { plan: "mistral-medium-latest" } });
+    expect(provider.model("plan")).toBe("mistral-medium-latest");
+    expect(provider.model("schema_infer")).toBe("codestral-latest");
   });
 
   it("baseUrl override targets the AI Gateway path", async () => {

@@ -10,12 +10,13 @@ run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 Phase 2 exits on Phase A alone; acquisition paused; BIRD/Spider = regression
 alarm only; premium tier stays. Retired rows dropped below.
 
-**Weekly focus (2026-09-13 →, `/weekly` re-pointed; keeps the founder's
-2026-09-04 KPI-1/Phase-A frame):** **Phase A KPI 1 — first-insert inference
-rate**, `asks_extend_ok / (ok + failed)`, toward ≥ 95 %. The live preview
-walk (a routing proxy, not the committed-write counters) reads **10/10 (100 %)**
-(run 224, two strict walks on deployed `de56f37`), above the floor. The KPI
-itself is unread: the formal sample is 0/200 real first-inserts (window not open).
+**Weekly focus (2026-09-27 →, `/weekly`; keeps the founder's 2026-09-04
+KPI-1/Phase-A frame):** **confirmed unseen-field writes landed in the
+dogfood DB per day through a CI job — today 0, target ≥ 15/day** (the input
+that opens and fills the formal Phase A sample, 0/200). Why: the preview walk
+is saturated at 10/10 (three independent CI runs on `de56f37`), so more
+routing work cannot move KPI 1; nothing commits writes, so the formal KPI
+stays unread.
 
 **Worst number today (run 224, 2026-09-26) — E2E manual-suite freshness (#15) = 0.00** (last success 09-08, 18 d ago). The **formal KPI-1 sample (0/200, window not open)** is now the gap on the weekly focus: the preview walk reads 10/10.
 **This run's lever (run 224) — live KPI-1 re-measure on the deployed run-223 first-plan fix, §6.1 R1.** `Deploy API` shipped `de56f37` green, so this run dispatched `e2e-kpi1-live.yml` twice ([36212596504](https://github.com/nlqdb/nlqdb/actions/runs/36212596504), [36212675584](https://github.com/nlqdb/nlqdb/actions/runs/36212675584)): **5/5 each, `auth-shaped` included** (run 222 missed it into `entities`). **Measured: strict live walk 7/10 → 10/10** (same goal-named-table HIT check on both sides), and no `auth_denied` misses showed this time. **Next lever:** open the formal Phase A sample. That needs a CI-boundary confirmed-write workload with ≥ 15 fresh unseen-field writes a day, counting `asks_extend_ok/failed` toward n/200; the preview walk never commits, so it cannot fill the window.

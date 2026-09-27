@@ -131,7 +131,7 @@ when-to-load:
 
 ### SK-LLM-028 — Mistral is the strict-$0 planner-tier capacity backstop at the chain tail
 
-**Body:** [`decisions/SK-LLM-028-mistral-capacity-backstop.md`](./decisions/SK-LLM-028-mistral-capacity-backstop.md). Appends **Mistral** (`mistral-large-latest`, card-free) behind OpenRouter on `plan` / `schema_infer` — an independent free-tier RPM pool; tail-only ⇒ additive.
+**Body:** [`decisions/SK-LLM-028-mistral-capacity-backstop.md`](./decisions/SK-LLM-028-mistral-capacity-backstop.md). Appends **Mistral** (`codestral-latest`, card-free) behind OpenRouter on `plan` / `schema_infer` — an independent free-tier RPM pool; tail-only ⇒ additive.
 
 ### SK-LLM-030 — Rate-limit-aware failover + cooldown (a 429 honors the server's Retry-After window)
 
