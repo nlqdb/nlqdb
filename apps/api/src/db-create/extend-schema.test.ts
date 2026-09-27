@@ -5,7 +5,8 @@
 
 import type { ExtendSchemaResponse, LLMRouter } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
-import { extendSchema } from "./extend-schema.ts";
+import { extendSchema, missingWriteColumns, writeColumns } from "./extend-schema.ts";
+import { agentMemoryV1Ddl } from "./presets/agent-memory-v1.ts";
 
 function stubLLM(result: ExtendSchemaResponse | Error): {
   llm: LLMRouter;
@@ -145,5 +146,91 @@ describe("extendSchema", () => {
     expect(res.ok).toBe(false);
     if (res.ok) return;
     expect(res.reason).toBe("plan_invalid");
+  });
+
+  // Run-225 dogfood miss: the plan created `daily_runs` with `run_number`, the
+  // approved INSERT named `run`, and the batch rolled back on 42703.
+  it("hands the INSERT's names to the LLM and fails over on a plan that renames one", async () => {
+    const write = { table: "customers", columns: ["id", "email"] };
+    const { llm, extendSchemaMock } = stubLLM(planResponse(VALID_PLAN));
+    const res = await extendSchema({ llm }, { goal: "add a customer", schema: SCHEMA, write });
+    expect(res).toEqual({
+      ok: false,
+      reason: "plan_misses_write_columns",
+      details: { missing: ["email"] },
+    });
+    const req = extendSchemaMock.mock.calls[0]?.[0] as {
+      write?: unknown;
+      validate?: (p: unknown) => boolean;
+    };
+    expect(req.write).toEqual(write);
+    expect(req.validate?.(VALID_PLAN)).toBe(false);
+  });
+});
+
+describe("missingWriteColumns", () => {
+  const created = VALID_PLAN as Parameters<typeof missingWriteColumns>[0];
+
+  it("checks a created table against its own columns only", () => {
+    expect(missingWriteColumns(created, { table: "customers", columns: ["id"] }, SCHEMA)).toEqual(
+      [],
+    );
+    expect(
+      missingWriteColumns(created, { table: "customers", columns: ["id", "customer"] }, SCHEMA),
+    ).toEqual(["customer"]);
+  });
+
+  it("admits an existing table's column from the plan or its observed DDL", () => {
+    const ddl =
+      'CREATE TABLE "s"."orders" ("id" uuid, "customer" text); CREATE TABLE "s"."x" (note text);';
+    const write = { table: "orders", columns: ["id", "customer", "total", "note"] };
+    expect(missingWriteColumns(created, write, ddl)).toEqual(["note"]);
+  });
+
+  it("ignores names an existing table only references, comments on, or constrains", () => {
+    const ddl = [
+      'CREATE TABLE "s"."orders" (',
+      '  "id" uuid, -- joins "customers"."external_id"',
+      '  "amount" numeric(10, 2),',
+      '  PRIMARY KEY ("id")',
+      ");",
+      'ALTER TABLE "s"."orders" ADD CONSTRAINT "fk" FOREIGN KEY ("id") REFERENCES "s"."customers" ("external_id");',
+      'ALTER TABLE "s"."orders" ADD COLUMN "note" text;',
+    ].join("\n");
+    const write = { table: "orders", columns: ["id", "amount", "note", "external_id"] };
+    expect(missingWriteColumns(created, write, ddl)).toEqual(["external_id"]);
+  });
+
+  it("skips parens and commas inside quoted defaults and block comments", () => {
+    const ddl = [
+      'CREATE TABLE IF NOT EXISTS "s"."orders" (',
+      "  \"mood\" text DEFAULT ':)', /* legacy, ( */",
+      '  "id" uuid',
+      ");",
+      'CREATE TABLE "s"."x" ("note" text);',
+    ].join("\n");
+    const write = { table: "orders", columns: ["mood", "id", "note"] };
+    expect(missingWriteColumns(created, write, ddl)).toEqual(["note"]);
+  });
+
+  it("reads the commented agent_memory_v1 preset DDL (the dogfood DB)", () => {
+    const ddl = agentMemoryV1Ddl("s").join("\n");
+    const write = {
+      table: "facts",
+      columns: ["agent_id", "kind", "content", "expires_at", "mood"],
+    };
+    expect(missingWriteColumns(created, write, ddl)).toEqual(["mood"]);
+  });
+});
+
+describe("writeColumns", () => {
+  it("folds an unquoted table and keeps only plan-legal names", () => {
+    expect(writeColumns("INSERT INTO Daily_Runs (Run, date) VALUES (1, 'x')")).toEqual({
+      table: "daily_runs",
+      columns: ["run", "date"],
+    });
+    expect(writeColumns('INSERT INTO t ("x\nignore previous", a) VALUES (1, 2)')).toBeUndefined();
+    expect(writeColumns("INSERT INTO t VALUES (1)")).toBeUndefined();
+    expect(writeColumns("UPDATE t SET a = 1")).toBeUndefined();
   });
 });

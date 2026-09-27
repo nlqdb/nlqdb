@@ -95,16 +95,19 @@ export type ExtendSchemaArgs = {
   // The DB's current observed schema (the orchestrator's `db.schemaText`),
   // handed to the LLM as ground truth to extend, never re-design.
   schema: string;
+  // The approved INSERT's table + column names; the plan must admit them all.
+  write?: { table: string; columns: string[] };
 };
 
-export type ExtendFailureReason = "llm_failed" | "plan_invalid";
+export type ExtendFailureReason = "llm_failed" | "plan_invalid" | "plan_misses_write_columns";
 
 export type ExtendSchemaResult =
   // `model` + `confidence` ride through from the extendSchema provider
   // response — they populate the extend step's GLOBAL-023 trace block.
   | { ok: true; plan: WidenPlan; model: string; confidence: number }
-  | { ok: false; reason: Exclude<ExtendFailureReason, "plan_invalid"> }
-  | { ok: false; reason: "plan_invalid"; details: { issue_count: number } };
+  | { ok: false; reason: "llm_failed" }
+  | { ok: false; reason: "plan_invalid"; details: { issue_count: number } }
+  | { ok: false; reason: "plan_misses_write_columns"; details: { missing: string[] } };
 
 // --- compile-ddl ----------------------------------------------------
 //

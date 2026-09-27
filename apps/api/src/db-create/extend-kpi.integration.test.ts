@@ -43,7 +43,8 @@ import {
 import { describe, expect, it } from "vitest";
 import { validateCompiledDdl } from "../ask/sql-validate-ddl.ts";
 import { compileWriteDdl } from "./compile-write-ddl.ts";
-import { extendSchema } from "./extend-schema.ts";
+import { extendSchema, writeColumns } from "./extend-schema.ts";
+import { agentMemoryV1Ddl } from "./presets/agent-memory-v1.ts";
 import { buildWidenBatch } from "./widen-provision.ts";
 
 const RUN = process.env["RUN_EXTEND_KPI"];
@@ -99,6 +100,15 @@ const SHAPES: Shape[] = [
     goal: "Register a new account: an email address, a bcrypt password hash, and the timestamp they signed up.",
     writeSql: `INSERT INTO "accounts" ("id", "email", "password_hash", "created_at") VALUES ('11111111-1111-1111-1111-111111111111', 'a@b.com', '$2b$10$abcdefghijklmnopqrstuv', now())`,
   },
+  // The first real dogfood write (run 225, `dogfood-write.ts`): the run record
+  // into a new `daily_runs` table on the agent_memory_v1 dogfood DB. Prod
+  // missed it with `schema_mismatch` on confirm.
+  {
+    name: "dogfood-run",
+    schemaText: agentMemoryV1Ddl(SCHEMA_NAME).join("\n"),
+    goal: 'Log this daily run in the daily_runs table: run 225, date 2026-09-27, headline "Built the Phase A dogfood writer: writers feeding the formal KPI-1 sample 0 → 1.", details "Runs 211–224 could not write the run record: the session never holds the prod key. New `dogfood-write.yml` runs `tools/eval/src/dogfood-write.ts` and writes this entry through `@nlqdb/sdk` as a `daily_runs` row."',
+    writeSql: `INSERT INTO "daily_runs" ("run", "date", "headline", "details") VALUES (225, '2026-09-27', 'Built the Phase A dogfood writer', 'Runs 211–224 could not write the run record.')`,
+  },
 ];
 
 // Build the free-tier planner chain exactly as prod (`apps/api/src/llm-router.ts`)
@@ -150,7 +160,11 @@ async function walkShape(
   llm: LLMRouter,
   shape: Shape,
 ): Promise<{ ok: boolean; stage: string; detail: string; model?: string; confidence?: number }> {
-  const designed = await extendSchema({ llm }, { goal: shape.goal, schema: shape.schemaText });
+  const write = writeColumns(shape.writeSql);
+  const designed = await extendSchema(
+    { llm },
+    { goal: shape.goal, schema: shape.schemaText, ...(write ? { write } : {}) },
+  );
   if (!designed.ok) return { ok: false, stage: "plan", detail: designed.reason };
 
   const compiled = compileWriteDdl(designed.plan, SCHEMA_NAME);

@@ -7,6 +7,7 @@
 // per-request bad plan into a fall-through, not a total failure.
 
 import { describe, expect, it } from "vitest";
+import { buildSchemaExtendUser } from "../src/prompts/schema-extend.ts";
 import type { ChatCallArgs } from "../src/providers/_chat-provider.ts";
 import { createChatProvider } from "../src/providers/_chat-provider.ts";
 import { createLLMRouter } from "../src/router.ts";
@@ -100,5 +101,15 @@ describe("extendSchema provider fallthrough on invalid plan (GLOBAL-041 Phase A)
     }
     // Sanity: ProviderError is the thrown type on the head leg.
     expect(new ProviderError("x", "parse").reason).toBe("parse");
+  });
+});
+
+describe("buildSchemaExtendUser — the write's INSERT names (run-225 dogfood miss)", () => {
+  it("names the INSERT's table + columns, and only when given", () => {
+    const base = { goal: "log a run", schema: "CREATE TABLE t (id int);" };
+    expect(buildSchemaExtendUser(base)).not.toContain("INSERT");
+    expect(
+      buildSchemaExtendUser({ ...base, write: { table: "daily_runs", columns: ["run", "date"] } }),
+    ).toContain("The write's INSERT (names are fixed): table daily_runs, columns run, date");
   });
 });

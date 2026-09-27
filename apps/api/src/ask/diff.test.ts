@@ -204,6 +204,7 @@ describe("writeTarget", () => {
     expect(writeTarget("INSERT INTO orders (id) VALUES (1)")).toEqual({
       verb: "INSERT",
       table: "orders",
+      columns: ["id"],
     });
     expect(writeTarget("DELETE FROM orders WHERE id = 1")).toEqual({
       verb: "DELETE",
@@ -212,6 +213,14 @@ describe("writeTarget", () => {
     expect(
       writeTarget("WITH x AS (UPDATE orders SET a = 1 WHERE id = 1 RETURNING id) SELECT * FROM x"),
     ).toEqual({ verb: "UPDATE", table: "orders" });
+  });
+
+  it("folds an INSERT's unquoted columns to lowercase and keeps quoted ones", () => {
+    expect(writeTarget(`INSERT INTO "s"."runs" (Run, "Date") VALUES (1, 'x')`)?.columns).toEqual([
+      "run",
+      "Date",
+    ]);
+    expect(writeTarget("INSERT INTO runs VALUES (1)")).toEqual({ verb: "INSERT", table: "runs" });
   });
 
   it("returns null for a read or unparseable SQL", () => {
