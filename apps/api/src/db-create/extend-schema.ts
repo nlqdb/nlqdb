@@ -130,9 +130,9 @@ export function missingWriteColumns(
 
 // Columns `table` defines in the observed DDL: its CREATE TABLE column
 // definitions plus `ALTER TABLE … ADD [COLUMN]`. Constraint lines, FK
-// `REFERENCES` targets and `--` comments name columns it may not have.
+// `REFERENCES` targets and comments name columns it may not have.
 function observedColumns(schemaText: string, table: string): Set<string> {
-  const ddl = schemaText.replace(/--[^\n]*/g, "");
+  const ddl = schemaText.replace(/--[^\n]*|\/\*[\s\S]*?\*\//g, " ");
   const ref = `(?:"?\\w+"?\\.)?"?${escapeRe(table)}"?`;
   const cols = new Set<string>();
   const add = (def: string) => {
@@ -141,10 +141,11 @@ function observedColumns(schemaText: string, table: string): Set<string> {
     else if (m?.[2] && !CONSTRAINT_HEADS.has(m[2].toLowerCase())) cols.add(m[2].toLowerCase());
   };
   const create = new RegExp(
-    `\\bCREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?${ref}\\s*\\(([^;]*)\\)`,
+    `\\bCREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?${ref}\\s*\\(`,
     "gi",
   );
-  for (const m of ddl.matchAll(create)) for (const def of topLevelDefs(m[1] ?? "")) add(def);
+  for (const m of ddl.matchAll(create))
+    for (const def of topLevelDefs(ddl, m.index + m[0].length)) add(def);
   const alter = new RegExp(
     `\\bALTER\\s+TABLE\\s+(?:ONLY\\s+)?${ref}\\s+ADD\\s+(?:COLUMN\\s+)?(?:IF\\s+NOT\\s+EXISTS\\s+)?([^;]*)`,
     "gi",
@@ -163,23 +164,27 @@ const CONSTRAINT_HEADS = new Set([
   "like",
 ]);
 
-// A CREATE TABLE body split on its depth-0 commas (not those inside a type's
-// or CHECK's parentheses).
-function topLevelDefs(body: string): string[] {
+// The CREATE TABLE body opening at `from`, split on its depth-0 commas and
+// ended by its closing paren; quoted text (`DEFAULT ')'`, `"a,b"`) is skipped.
+function topLevelDefs(ddl: string, from: number): string[] {
   const defs: string[] = [];
   let depth = 0;
-  let start = 0;
-  for (let i = 0; i < body.length; i++) {
-    const ch = body[i];
-    if (ch === "(") depth++;
-    else if (ch === ")") depth--;
+  let start = from;
+  let i = from;
+  for (; i < ddl.length; i++) {
+    const ch = ddl[i];
+    if (ch === "'" || ch === '"') {
+      const close = ddl.indexOf(ch, i + 1);
+      if (close < 0) break;
+      i = close;
+    } else if (ch === "(") depth++;
+    else if (ch === ")" && depth-- === 0) break;
     else if (ch === "," && depth === 0) {
-      defs.push(body.slice(start, i));
+      defs.push(ddl.slice(start, i));
       start = i + 1;
     }
   }
-  defs.push(body.slice(start));
-  return defs;
+  return [...defs, ddl.slice(start, i)];
 }
 
 function escapeRe(s: string): string {

@@ -201,6 +201,18 @@ describe("missingWriteColumns", () => {
     expect(missingWriteColumns(created, write, ddl)).toEqual(["external_id"]);
   });
 
+  it("skips parens and commas inside quoted defaults and block comments", () => {
+    const ddl = [
+      'CREATE TABLE IF NOT EXISTS "s"."orders" (',
+      "  \"mood\" text DEFAULT ':)', /* legacy, ( */",
+      '  "id" uuid',
+      ");",
+      'CREATE TABLE "s"."x" ("note" text);',
+    ].join("\n");
+    const write = { table: "orders", columns: ["mood", "id", "note"] };
+    expect(missingWriteColumns(created, write, ddl)).toEqual(["note"]);
+  });
+
   it("reads the commented agent_memory_v1 preset DDL (the dogfood DB)", () => {
     const ddl = agentMemoryV1Ddl("s").join("\n");
     const write = {
