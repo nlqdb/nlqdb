@@ -10,15 +10,17 @@ run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 Phase 2 exits on Phase A alone; acquisition paused; BIRD/Spider = regression
 alarm only; premium tier stays. Retired rows dropped below.
 
-**Weekly focus (2026-09-13 →, `/weekly` re-pointed; keeps the founder's
-2026-09-04 KPI-1/Phase-A frame):** **Phase A KPI 1 — first-insert inference
-rate**, `asks_extend_ok / (ok + failed)`, toward ≥ 95 %. The live preview
-walk (a routing proxy, not the committed-write counters) reads **10/10 (100 %)**
-(run 224, two strict walks on deployed `de56f37`), above the floor. The KPI
-itself is unread: the formal sample is 0/200 real first-inserts (window not open).
+**Weekly focus (2026-09-27 →, `/weekly`; keeps the founder's 2026-09-04
+KPI-1/Phase-A frame):** **`/daily` runs whose own outputs (run log,
+scorecard deltas, blocked items) land in the dogfood DB through a CI job —
+today 0/day, target every run** (the `GLOBAL-041` workload that opens the
+formal Phase A sample, 0/200; never a generated stream — `GLOBAL-041`
+rejects a synthetic workload). Why: the preview walk is saturated at 10/10
+(three independent CI runs on `de56f37`), so more routing work cannot move
+KPI 1; nothing commits writes, so the formal KPI stays unread.
 
-**Worst number today (run 225, 2026-09-27) — E2E manual-suite freshness (#15) = 0.00** (last success 09-08, 19 d ago). On the weekly focus the gap is the **formal KPI-1 sample (0/200, window not open)**; this run ships its writer.
-**This run's lever (run 225) — build the Phase A dogfood writer (`GLOBAL-041` build-order step 8, §6.1 R1 → the formal KPI-1 sample).** New `dogfood-write.yml` runs on every merge that touches this scorecard. It writes the `## Last change` record below into the dogfood DB as a new `daily_runs` row through `@nlqdb/sdk` (preview → `confirm`, no field pre-modeled) and logs KPI-1 HIT / MISS / not-in-sample. **Measured:** writers feeding the formal sample **0 → 1**. Parser + goal checked on this file: the run-224 record parses to a 1064-char goal (cap 2000). The first real write fires on this PR's merge and opens the 14-day window. **Next lever:** read that run's verdict; if it is a MISS, root-cause it.
+**Worst number today (run 225, 2026-09-27) — E2E manual-suite freshness (#15) = 0.00** (last success 09-08, 19 d ago). On the weekly focus (runs whose own outputs land in the dogfood DB through CI, 0/day) this run ships the writer for the run record; scorecard deltas + blocked items are not written yet.
+**This run's lever (run 225) — build the Phase A dogfood writer (`GLOBAL-041` build-order step 8, §6.1 R1 → the formal KPI-1 sample).** New `dogfood-write.yml` runs on every merge that touches this scorecard. It writes the `## Last change` record below into the dogfood DB as a new `daily_runs` row through `@nlqdb/sdk` (preview → `confirm`, no field pre-modeled) and logs KPI-1 HIT / MISS / not-in-sample. **Measured:** writers feeding the formal sample **0 → 1**. Parser + goal checked on this file: the run-225 record parses to a 1081-char goal (cap 2000). The first real write fires on this PR's merge and opens the 14-day window. **Next lever:** read that run's verdict; if it is a MISS, root-cause it.
 **Dogfood workload (KPI-1 instrument):** the run record no longer depends on the session. `dogfood-write.yml` writes `## Last change` to `db_agent_memory_v1_3a8a72` at the CI boundary on merge; its step summary is the per-run KPI-1 verdict. The session still never holds the prod key.
 **Top `blocked-by-human` bullet (still #1):** Fire the **Show HN launch** (106 d), gated on the formal Phase A exit (≥ 190/200 over the dogfood window): **0/200, window not open**, so the gate stays red. The preview walk's 10/10 does not count toward it. Queue **depth 5**, head age 106 d.
 **Dark (rule 8, reported not pulled):** engine **#8 BIRD 0.5382** (61 d) / **#9 Spider 0.2222** (68 d, async multi-window resume); rows **#2/#4/#5** stranger-dependent (N=0 until launch); row **#15** opencheck lane (remedy costs money ⇒ rule 4).
@@ -78,7 +80,7 @@ itself is unread: the formal sample is 0/200 real first-inserts (window not open
 
 ## Last change
 
-**2026-09-27 (run 225)** — **Built the Phase A dogfood writer: writers feeding the formal KPI-1 sample 0 → 1.** Runs 211–224 could not write the run record: the session never holds the prod key. New `dogfood-write.yml` (push to `main` touching `docs/scorecard.md`, plus dispatch) runs `tools/eval/src/dogfood-write.ts`. It parses this `## Last change` entry and writes it through `@nlqdb/sdk` as a `daily_runs` row (preview → `confirm: true`, no field pre-modeled). It classifies the write: HIT = landed with a widen and a `schema_hash` rewrite; MISS = any error, create-routing, a write aimed at another table, or no commit; not in sample = all fields already seen. A push that leaves the record unchanged skips, so there are no double writes. **Number moved:** writers into the `GLOBAL-041` sample 0 → 1. This merge fires the first real write, which opens the 14-day window. **GLOBAL-025 engine-quality** advanced (the KPI-1 formal sample becomes measurable). No KPI degrades; no engine code changed.
+**2026-09-27 (run 225)** — **Built the Phase A dogfood writer: writers feeding the formal KPI-1 sample 0 → 1.** Runs 211–224 could not write the run record: the session never holds the prod key. New `dogfood-write.yml` (push to `main` touching `docs/scorecard.md`, plus dispatch) runs `tools/eval/src/dogfood-write.ts`. It parses this `## Last change` entry and writes it through `@nlqdb/sdk` as a `daily_runs` row (preview → `confirm: true`, no field pre-modeled). It classifies the write: HIT = landed with a widen and a `schema_hash` rewrite; MISS = any error, create-routing, a non-insert plan or one aimed at another table, or no commit; not in sample = all fields already seen. A push that leaves the record unchanged skips, so there are no double writes. **Number moved:** writers into the `GLOBAL-041` sample 0 → 1. This merge fires the first real write, which opens the 14-day window. **GLOBAL-025 engine-quality** advanced (the KPI-1 formal sample becomes measurable). No KPI degrades; no engine code changed.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_

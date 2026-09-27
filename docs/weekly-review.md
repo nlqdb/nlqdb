@@ -1,70 +1,75 @@
-# Weekly review — 2026-09-13
+# Weekly review — 2026-09-27
 
-> **Update 2026-09-14:** the deploy freeze diagnosed below is **RESOLVED** — the
-> founder cleared the Actions gate; prod is current at run 210, widen-on-write
-> live (`founder-actions-log.md` Era 15). 09-13 findings kept as the audit.
+Current-state audit of `/daily` (≤ 4 KB, overwritten weekly). Window
+09-20→09-27: runs 216–224 (#1137–#1148), all `GLOBAL-041` Phase A KPI 1.
 
-Current-state audit of the `/daily` loop (≤ 4 KB, overwritten weekly, no
-changelog). Worst finding first. Window 2026-09-06→09-13: `/daily` runs
-198–209 (all `GLOBAL-041` Phase A widen-on-write, bar run 200's UX-flow re-walk).
+## Worst: the direct LLM tail was dead, found only by probing (check 8)
 
-## Worst — a full week of engine code, zero movement on the number it serves (checks 2 + 4 + 1)
+`SK-LLM-047` needs a non-gateway leg in every chain (the 08-14 outage).
+Live probes on 09-27 with the shared keys: **Cerebras returns 402
+`payment_required`** for `gpt-oss-120b` and `qwen-3.8-27b` (its free tier
+became a card-gated trial). **`mistral-large-latest` returns 403
+`tier_not_allowed`** and is gone from `/v1/models`. Both direct legs were
+down, so one AI-Gateway fault could take out every op. Fixed here:
+`SK-LLM-028` now uses `codestral-latest`, which answered a JOIN+HAVING prompt
+correctly in 1.2 s. Mistral medium/small returned 429 on every probe.
+Cerebras stays dead: re-enabling it costs money, which `cost-ladder.md`
+forbids. Pruning it from the chains (`SK-LLM-023/047/054`) is an
+agent-fixable daily lever.
 
-**8 of 9 non-null runs (199–207, 209 — all but run 200 = ~89 %)** pulled one
-lever: Phase A widen-on-write. All merged to `main`. Yet the live KPI 1
-it exists to move is **0 %** — root cause (run 208, verified this audit against
-the Actions API): **production `apps/api` is frozen at run 198**. Deploy API's
-last success is run_number 618 (2026-09-07); every run since (619+, run 199 on)
-is `action_required` and never executed. So a week of engine work is **inert
-until a founder deploy approval** — `blocked-by-human` #1, now **5 days** old.
-Per the check-2 rule, volume-without-a-moved-number means next week is *not*
-more widen code but **instrumenting the number** — hence the re-pointed focus:
-an agent-side KPI-1 rate on the run-206 extend-walk harness, movable at $0
-while the deploy waits (run 209, now merged, closes the last gap: unseen column).
+## Monoculture + inert output: 9/9 runs on one proxy (checks 2 + 3)
 
-## Trend — code up sharply, deployed prod flat; no regression alarm (check 1)
+Every run pulled KPI-1 routing. The proxy did move, and genuinely: the live
+walk went 0/5 → 10/10. But it is now saturated, and it is preview-only. The
+formal sample is still **0/200**, because no run commits a dogfood write:
+`daily.md` step 1 required one every run, and every run since 211 skipped
+it (the prod key crosses only CI). §6.1 **R2/R3 stay red** and got no
+runs. The real run-log workload may yield fewer than 200 unseen-field inserts
+in 14 days; padding it with a generated stream is the synthetic workload
+`GLOBAL-041` rejects, so the window reads whatever n the real writes give
+(parked until the window opens, `GLOBAL-033`). **Focus → CI job committing
+each run's own outputs, runs landed/day.**
 
-No `GLOBAL-025` alert delta tripped. Engine *code* advanced hard (Phase A
-steps 1–7, 9 built + executor-walked, run 206 3/3; run 209 now merged adds the
-unseen-column path) but the *deployed* engine is 8 runs stale, so the honest
-engine trend is "code up, prod flat." BIRD 0.5382 (47 d) / Spider 0.2222
-(54 d) stale but **dark, not regressed** — no alarm. Onboarding/UX/perf flat:
-strangers 0 (launch-gated, row #2), FLOW-005 6/6 carried.
+## Trend: engine up, no alarm (check 1)
 
-## Delta integrity — 5 sampled, all genuine (check 5)
+No `GLOBAL-025` alert delta tripped. Engine: live routing 0 → 100 %.
+Onboarding and UX are flat (strangers N=0, launch-gated). BIRD 0.5382 and
+Spider 0.2222 are dark, not red. E2E freshness (#15) is 0.00; its last
+success was 09-08.
 
-Verified the load-bearing run-208 deploy-freeze claim directly (Actions API:
-618 last success, 619+ all `action_required` since 09-08). Spot-checked run 207
-(`trace.widen` in SDK), run 206 (`widen-walk.integration.test.ts`), run 205
-(`extendWrite`/`extendNeeded`), run 196 (counters). No fabricated delta.
+## Dark metrics (check 4)
 
-## Inert output + dark metrics — the loop self-corrected (checks 3 + 4)
+#8/#9 (61/68 d) and #2/#4/#5 (launch-gated) name their blockers. #15 can be
+re-dispatched at $0 and is deferred correctly behind KPI 1. Queue depth is
+5; the head is Show HN (106 d), then the email-router deploy (9 d).
 
-The 8 merged widen runs are the inert output (nothing consumes them while prod
-is frozen), but run 208 correctly stopped adding volume, measured the yield
-(live 0 %), and escalated the deploy to `blocked-by-human` #1 with a
-days-blocked count — the loop self-correcting, not a new inert report. Other
-dark rows (BIRD/Spider stale; strangers launch-gated; opencheck money-gated,
-rule 4) each carry a named root blocker.
+## Delta integrity: 3 sampled, all genuine (check 5)
 
-## Prompt drift — `daily.md` clean, no fix (check 6)
+Run 224's 10/10 was re-confirmed by a third CI walk that nobody cited,
+[36230755170](https://github.com/nlqdb/nlqdb/actions/runs/36230755170), at
+5/5 on `de56f37`. The run-219 and run-223 matrices were re-run:
+`route-ask` + `orchestrate` tests, 72/72 pass. Nit: the walk labels its
+preview counts `asks_extend_ok`, the same name as the formal counter.
 
-All decision IDs (GLOBAL-025/026/033/038/041/042, SK-*) resolve to canonical
-files and all cited paths exist. No dangling refs, dead rules, or
-contradictions — no `daily.md` edit this week.
+## Prompt drift: one dead rule fixed (check 6)
 
-## Public roadmap — two markers understated reality, fixed (check 7)
+All IDs and paths in `daily.md`/`weekly.md` resolve. Dead rule: "until the
+extend path exists every write is a miss". Replaced it with the CI-boundary
+reality and the lever.
 
-`README.md § Roadmap` "Now — Phase A" marked `kind=extend` and Extend-diff/trace
-as ◯ **planned**, but both are merged / partially shipped (`trace.widen` live on
-SDK/MCP/elements). Fixed ◯ → ~ this PR — honest, not a phantom ✓.
+## Public roadmap: one stale marker fixed (check 7)
 
-## Free-model roster — complete + current, one bump to verify (check 8)
+`kind=extend` said "awaiting a prod deploy, live rate 0 %". It now reads
+"live, preview walk 10/10, formal sample not open" and stays ~.
 
-Planner chain, best-first: **groq-qwen** (`qwen/qwen3.8-27b`) → **gemini**
-(`gemini-2.5-flash`) → **cerebras** (`gpt-oss-120b`) → **groq**
-(`gpt-oss-120b`/`20b`) → **workers-ai** (`llama-3.3-70b`) → **openrouter**
-(`:free`) → **mistral-large**. All keys present. Web-research (P2) confirms the
-picks — Groq free = gpt-oss + Qwen3.8; Kimi/DeepSeek correctly *not* depended on
-(both left Groq's free list). One candidate bump: a newer free Gemini flash than
-2.5-flash — the daily loop should verify against live `/v1/models` and apply.
+## Free-model roster (check 8)
+
+Plan chain, best first: groq-qwen `qwen3.8-27b` → gemini `2.5-flash` →
+~~cerebras~~ (402) → groq `gpt-oss-120b` → workers-ai `llama-3.3-70b` →
+openrouter `nemotron-3-ultra:free` (still $0) → mistral `codestral`. I
+checked `gemini-3.8-flash` (free, stable) live: same SQL, but 3.4–7.2 s
+against 2.0–2.6 s, which is over the 2 s hedge head-start. Not swapped.
+Sources: [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing),
+[free-tier 2026](https://ianlpaterson.com/blog/free-llm-api-2026/),
+[OpenRouter free list](https://openrouter.ai/blog/tutorials/free-llm-apis-compared/),
+plus live `/v1/models` on every key.
