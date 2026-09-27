@@ -85,12 +85,23 @@ describe("classifyWrite", () => {
     });
   });
 
-  it("a write aimed at another table is a miss, never 'seen'", () => {
+  it("a write aimed at another table, or a read, is a miss, never 'seen'", () => {
     const hijack = trace(undefined, `INSERT INTO "s"."entities" (name) VALUES ('x')`);
     const commit = ok({ status: "ok", rowCount: 1, trace: hijack });
     expect(
       classifyWrite(ok({ status: "ok", requires_confirm: true, trace: hijack }), commit),
     ).toEqual({ inSample: true, hit: false, reason: "wrong_target" });
+    const read = trace(undefined, `SELECT * FROM "s"."${TABLE}"`);
+    expect(classifyWrite(ok({ status: "ok", rowCount: 1, trace: read })).reason).toBe(
+      "wrong_target",
+    );
+    const bare = trace(undefined, `insert into ${TABLE} (run) values (1)`);
+    expect(
+      classifyWrite(
+        ok({ status: "ok", requires_confirm: true, trace: bare }),
+        ok({ status: "ok", rowCount: 1, trace: bare }),
+      ).reason,
+    ).toBe("seen_fields");
     const other = trace({ tables: ["runs"], ddl: ["CREATE TABLE"], schema_rewritten: true });
     expect(
       classifyWrite(

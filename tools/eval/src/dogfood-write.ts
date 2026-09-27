@@ -67,7 +67,11 @@ function widenOf(o: WriteOutcome | undefined): {
   };
 }
 
-const TARGETS_TABLE = new RegExp(`\\b${TABLE}\\b`, "i");
+// An INSERT into the goal-named table, schema-qualified and/or quoted or not.
+const INSERTS_TABLE = new RegExp(
+  `\\binsert\\s+into\\s+(?:"?\\w+"?\\.)?"?${TABLE}"?(?![\\w"])`,
+  "i",
+);
 
 // Pure: is this write in the KPI 1 sample (it referenced an unseen table or
 // field), and did it land with no user action? An error, or a write the plan
@@ -82,8 +86,9 @@ export function classifyWrite(preview: WriteOutcome, commit?: WriteOutcome): Wri
   const post = widenOf(commit ?? preview);
   const widened = [...new Set([...pre.tables, ...post.tables])];
   if (widened.length === 0) {
-    // No widen: only a write that really targeted the goal-named table is "seen".
-    return TARGETS_TABLE.test(post.sql)
+    // No widen: only an INSERT into the goal-named table is "seen" — a read or
+    // any other statement that merely names it is a mis-route, kept as a miss.
+    return INSERTS_TABLE.test(post.sql)
       ? { inSample: false, hit: false, reason: "seen_fields" }
       : { inSample: true, hit: false, reason: "wrong_target" };
   }
