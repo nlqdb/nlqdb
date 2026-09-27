@@ -5,7 +5,7 @@
 
 import type { ExtendSchemaResponse, LLMRouter } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
-import { extendSchema } from "./extend-schema.ts";
+import { extendSchema, missingWriteColumns } from "./extend-schema.ts";
 
 function stubLLM(result: ExtendSchemaResponse | Error): {
   llm: LLMRouter;
@@ -145,5 +145,44 @@ describe("extendSchema", () => {
     expect(res.ok).toBe(false);
     if (res.ok) return;
     expect(res.reason).toBe("plan_invalid");
+  });
+
+  // Run-225 dogfood miss: the plan created `daily_runs` with `run_number`, the
+  // approved INSERT named `run`, and the batch rolled back on 42703.
+  it("hands the INSERT's names to the LLM and fails over on a plan that renames one", async () => {
+    const write = { table: "customers", columns: ["id", "email"] };
+    const { llm, extendSchemaMock } = stubLLM(planResponse(VALID_PLAN));
+    const res = await extendSchema({ llm }, { goal: "add a customer", schema: SCHEMA, write });
+    expect(res).toEqual({
+      ok: false,
+      reason: "plan_misses_write_columns",
+      details: { missing: ["email"] },
+    });
+    const req = extendSchemaMock.mock.calls[0]?.[0] as {
+      write?: unknown;
+      validate?: (p: unknown) => boolean;
+    };
+    expect(req.write).toEqual(write);
+    expect(req.validate?.(VALID_PLAN)).toBe(false);
+  });
+});
+
+describe("missingWriteColumns", () => {
+  const created = VALID_PLAN as Parameters<typeof missingWriteColumns>[0];
+
+  it("checks a created table against its own columns only", () => {
+    expect(missingWriteColumns(created, { table: "customers", columns: ["id"] }, SCHEMA)).toEqual(
+      [],
+    );
+    expect(
+      missingWriteColumns(created, { table: "customers", columns: ["id", "customer"] }, SCHEMA),
+    ).toEqual(["customer"]);
+  });
+
+  it("admits an existing table's column from the plan or its observed DDL", () => {
+    const ddl =
+      'CREATE TABLE "s"."orders" ("id" uuid, "customer" text); CREATE TABLE "s"."x" (note text);';
+    const write = { table: "orders", columns: ["id", "customer", "total", "note"] };
+    expect(missingWriteColumns(created, write, ddl)).toEqual(["note"]);
   });
 });

@@ -52,6 +52,8 @@ export const SCHEMA_EXTEND_SYSTEM = [
   "  already-populated table cannot take a NOT NULL or defaulted add.",
   "- NEVER re-create a table that already exists, and NEVER re-add a column",
   "  that already exists. Only emit the tables/columns that are missing.",
+  "- When the write's INSERT table and columns are given, use EXACTLY those",
+  "  names — never rename, prefix, or suffix them — and admit every one.",
   "- Infer each type from the value the write supplies (a money amount is",
   "  numeric, a count is integer, an id is uuid or text, a flag is boolean).",
   "- Emit at least one op. Never use a Postgres reserved word (select, table,",
@@ -64,5 +66,10 @@ export function buildSchemaExtendUser(req: ExtendSchemaRequest): string {
     req.schema.trim(),
     "",
     `Write goal: ${req.goal.trim()}`,
+    ...(req.write
+      ? [
+          `The write's INSERT (names are fixed): table ${req.write.table}, columns ${req.write.columns.join(", ")}`,
+        ]
+      : []),
   ].join("\n");
 }

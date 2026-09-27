@@ -786,11 +786,17 @@ export async function orchestrateAsk(
               stage: "plan",
               reason: absorbErr instanceof Error ? absorbErr.message : String(absorbErr),
             };
+          }
+          // A failed absorb is a KPI-1 miss; without its stage + reason the
+          // miss can't be root-caused (run 225 read only `schema_mismatch`).
+          if (!absorbed.ok) {
             console.error(
               JSON.stringify({
-                msg: "widen_absorb_threw",
+                msg: "widen_absorb_failed",
                 dbId: db.id,
+                stage: absorbed.stage,
                 reason: absorbed.reason,
+                sqlState: absorbed.sqlState,
               }),
             );
           }

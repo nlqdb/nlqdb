@@ -39,13 +39,19 @@ export async function extendSchema(
     const resp = await deps.llm.extendSchema({
       goal: args.goal,
       schema: args.schema,
+      ...(args.write ? { write: args.write } : {}),
       // GLOBAL-041 Phase A — let the router fail over to the next provider when
       // the head planner returns a WidenPlanSchema-invalid plan (qwen does this
       // intermittently; gemini designs the same shape validly — run-210
       // finding). This predicate ONLY gates provider fallthrough; the
       // authoritative Zod parse below is unchanged and remains the security gate
       // (SK-HDC-003 layer 1).
-      validate: (plan) => WidenPlanSchema.safeParse(plan).success,
+      // A plan that omits an INSERT column fails over too: its batch would
+      // roll back on 42703 (the run-225 dogfood miss).
+      validate: (plan) => {
+        const p = WidenPlanSchema.safeParse(plan);
+        return p.success && missing(p.data).length === 0;
+      },
     });
     candidate = resp.plan;
     model = resp.model;
@@ -73,5 +79,56 @@ export async function extendSchema(
     };
   }
 
+  // Defense in depth for a router that ignores `validate` (a stub, a
+  // BYOLLM lane): a doomed batch never reaches the transaction.
+  const omitted = missing(parsed.data);
+  if (omitted.length > 0) {
+    return { ok: false, reason: "plan_misses_write_columns", details: { missing: omitted } };
+  }
+
   return { ok: true, plan: parsed.data satisfies WidenPlan, model, confidence };
+
+  function missing(plan: WidenPlan): string[] {
+    return args.write ? missingWriteColumns(plan, args.write, args.schema) : [];
+  }
+}
+
+// The approved write's INSERT columns the plan fails to admit: not on the
+// table the plan creates, and — for an existing table — neither added by the
+// plan nor already in that table's observed DDL. A non-empty result is a widen
+// whose batch rolls back on the INSERT's 42703 (the run-225 dogfood
+// `schema_mismatch` miss class: a replayed plan dropped the INSERT's `run`).
+export function missingWriteColumns(
+  plan: WidenPlan,
+  write: { table: string; columns: string[] },
+  schemaText: string,
+): string[] {
+  const created = plan.create_tables.find((t) => t.name === write.table);
+  const have = new Set(
+    created
+      ? created.columns.map((c) => c.name)
+      : plan.add_columns.filter((a) => a.table === write.table).map((a) => a.column.name),
+  );
+  const observed = created ? "" : tableDdl(schemaText, write.table);
+  return write.columns.filter((c) => !have.has(c) && !namesIdent(observed, c));
+}
+
+// The CREATE / ALTER TABLE statements of `table` in the observed DDL.
+function tableDdl(schemaText: string, table: string): string {
+  const header = new RegExp(
+    `\\b(?:CREATE|ALTER)\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(?:"?\\w+"?\\.)?"?${escapeRe(table)}"?[\\s(]`,
+    "i",
+  );
+  return schemaText
+    .split(";")
+    .filter((stmt) => header.test(stmt))
+    .join(";");
+}
+
+function namesIdent(ddl: string, ident: string): boolean {
+  return new RegExp(`(^|[^\\w])${escapeRe(ident)}([^\\w]|$)`).test(ddl);
+}
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

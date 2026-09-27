@@ -139,6 +139,26 @@ describe("extendOnWrite", () => {
     expect(res).toMatchObject({ ok: false, stage: "plan", reason: "llm_failed" });
   });
 
+  it("hands the LLM the write's INSERT names and stops at stage=plan on a plan omitting one", async () => {
+    const renamed = {
+      create_tables: [],
+      add_columns: [
+        {
+          table: "events",
+          column: { name: "note_text", type: "text", nullable: true, description: "c" },
+        },
+      ],
+    };
+    const llm = makeLlm(async () => ({ plan: renamed, model: "m", confidence: 1 }));
+    const pg = makePg();
+    const res = await extendOnWrite(deps({ llm, pg: pg.pg }), ARGS);
+    expect(res).toMatchObject({ ok: false, stage: "plan", reason: "plan_misses_write_columns" });
+    expect(llm.extendSchema).toHaveBeenCalledWith(
+      expect.objectContaining({ write: { table: "events", columns: ["id", "note"] } }),
+    );
+    expect(pg.batch()).toBeUndefined();
+  });
+
   it("short-circuits at stage=plan when the LLM's plan fails the Zod gate", async () => {
     const llm = makeLlm(async () => ({ plan: { not: "a widen plan" }, model: "m", confidence: 1 }));
     const res = await extendOnWrite(deps({ llm }), ARGS);
@@ -156,7 +176,7 @@ describe("extendOnWrite", () => {
             primary_key: ["nonexistent"],
           },
         ],
-        add_columns: [],
+        add_columns: RAW_PLAN.add_columns,
       },
       model: "m",
       confidence: 1,

@@ -171,9 +171,13 @@ export type SchemaInferResponse = {
 // it, a head planner that intermittently emits an invalid WidenPlan (qwen)
 // dead-ends the extend even when a later provider (gemini) would design a valid
 // one for the same shape — the run-210 finding.
+// `write` — the approved INSERT's target table + column names (names only,
+// never values: GLOBAL-037 lane 1). The batch runs that INSERT verbatim after
+// the widen DDL, so a plan that renames a column rolls back on 42703.
 export type ExtendSchemaRequest = {
   goal: string;
   schema: string;
+  write?: { table: string; columns: string[] };
   validate?: (plan: Record<string, unknown>) => boolean;
 };
 export type ExtendSchemaResponse = {

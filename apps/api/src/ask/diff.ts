@@ -33,7 +33,13 @@ export class PreviewUnavailableError extends Error {
   }
 }
 
-export type WriteTarget = { verb: "INSERT" | "UPDATE" | "DELETE"; table: string };
+// `columns` — an INSERT's explicit column list, Postgres-folded (unquoted
+// names lowercase). Absent for UPDATE/DELETE and a column-less INSERT.
+export type WriteTarget = {
+  verb: "INSERT" | "UPDATE" | "DELETE";
+  table: string;
+  columns?: string[];
+};
 
 type AnyAst = { type?: string; [k: string]: unknown };
 
@@ -70,7 +76,24 @@ export function writeTarget(sql: string): WriteTarget | null {
   const type = stmt.type as "insert" | "update" | "delete";
   const tableRef = pickTableRef(stmt, type);
   if (!tableRef) return null;
-  return { verb: type.toUpperCase() as WriteTarget["verb"], table: tableRef.table };
+  const verb = type.toUpperCase() as WriteTarget["verb"];
+  const columns = type === "insert" ? insertColumns(stmt) : null;
+  return { verb, table: tableRef.table, ...(columns ? { columns } : {}) };
+}
+
+// node-sql-parser's PG insert AST: `columns: [{ type, value }]`, where
+// `double_quote_string` is a quoted (case-kept) identifier.
+function insertColumns(stmt: AnyAst): string[] | null {
+  const cols = stmt["columns"];
+  if (!Array.isArray(cols) || cols.length === 0) return null;
+  const names: string[] = [];
+  for (const c of cols as Array<{ type?: unknown; value?: unknown } | string>) {
+    if (typeof c === "string") names.push(c.toLowerCase());
+    else if (typeof c?.value === "string")
+      names.push(c.type === "double_quote_string" ? c.value : c.value.toLowerCase());
+    else return null;
+  }
+  return names;
 }
 
 // The write statement node — the root itself, or the data-modifying
