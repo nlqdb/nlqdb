@@ -41,10 +41,9 @@ import {
   type LLMRouter,
 } from "@nlqdb/llm";
 import { describe, expect, it } from "vitest";
-import { writeTarget } from "../ask/diff.ts";
 import { validateCompiledDdl } from "../ask/sql-validate-ddl.ts";
 import { compileWriteDdl } from "./compile-write-ddl.ts";
-import { extendSchema, missingWriteColumns } from "./extend-schema.ts";
+import { extendSchema, missingWriteColumns, writeColumns } from "./extend-schema.ts";
 import { agentMemoryV1Ddl } from "./presets/agent-memory-v1.ts";
 import { buildWidenBatch } from "./widen-provision.ts";
 
@@ -161,8 +160,7 @@ async function walkShape(
   llm: LLMRouter,
   shape: Shape,
 ): Promise<{ ok: boolean; stage: string; detail: string; model?: string; confidence?: number }> {
-  const target = writeTarget(shape.writeSql);
-  const write = target?.columns ? { table: target.table, columns: target.columns } : undefined;
+  const write = writeColumns(shape.writeSql);
   const designed = await extendSchema(
     { llm },
     { goal: shape.goal, schema: shape.schemaText, ...(write ? { write } : {}) },

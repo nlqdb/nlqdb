@@ -6,11 +6,10 @@
 
 import type { LLMRouter } from "@nlqdb/llm";
 import { compileWriteDdl } from "../db-create/compile-write-ddl.ts";
-import { extendSchema } from "../db-create/extend-schema.ts";
+import { extendSchema, writeColumns } from "../db-create/extend-schema.ts";
 import type { DdlValidationResult, PgClient } from "../db-create/types.ts";
 import { buildWidenBatch, executeWidenBatch, widenedSchema } from "../db-create/widen-provision.ts";
 import { rewriteWidenedSchema } from "../db-registry.ts";
-import { writeTarget } from "./diff.ts";
 import type { QueryResult } from "./types.ts";
 
 export type ExtendDeps = {
@@ -58,13 +57,13 @@ export type ExtendOutcome =
     };
 
 export async function extendOnWrite(deps: ExtendDeps, args: ExtendArgs): Promise<ExtendOutcome> {
-  const target = writeTarget(args.writeSql);
+  const write = writeColumns(args.writeSql);
   const designed = await extendSchema(
     { llm: deps.llm },
     {
       goal: args.goal,
       schema: args.schemaText,
-      ...(target?.columns ? { write: { table: target.table, columns: target.columns } } : {}),
+      ...(write ? { write } : {}),
     },
   );
   if (!designed.ok) return { ok: false, stage: "plan", reason: designed.reason };

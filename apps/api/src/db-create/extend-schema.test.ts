@@ -5,7 +5,7 @@
 
 import type { ExtendSchemaResponse, LLMRouter } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
-import { extendSchema, missingWriteColumns } from "./extend-schema.ts";
+import { extendSchema, missingWriteColumns, writeColumns } from "./extend-schema.ts";
 
 function stubLLM(result: ExtendSchemaResponse | Error): {
   llm: LLMRouter;
@@ -184,5 +184,17 @@ describe("missingWriteColumns", () => {
       'CREATE TABLE "s"."orders" ("id" uuid, "customer" text); CREATE TABLE "s"."x" (note text);';
     const write = { table: "orders", columns: ["id", "customer", "total", "note"] };
     expect(missingWriteColumns(created, write, ddl)).toEqual(["note"]);
+  });
+});
+
+describe("writeColumns", () => {
+  it("folds an unquoted table and keeps only plan-legal names", () => {
+    expect(writeColumns("INSERT INTO Daily_Runs (Run, date) VALUES (1, 'x')")).toEqual({
+      table: "daily_runs",
+      columns: ["run", "date"],
+    });
+    expect(writeColumns('INSERT INTO t ("x\nignore previous", a) VALUES (1, 2)')).toBeUndefined();
+    expect(writeColumns("INSERT INTO t VALUES (1)")).toBeUndefined();
+    expect(writeColumns("UPDATE t SET a = 1")).toBeUndefined();
   });
 });

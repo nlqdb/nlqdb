@@ -16,7 +16,8 @@
 // is layer 2). The extend LLM call rides the `schema_infer` router tier
 // (same one-shot structural-design budget) with the extend prompt.
 
-import { type WidenPlan, WidenPlanSchema } from "@nlqdb/db/types";
+import { IdentifierSchema, type WidenPlan, WidenPlanSchema } from "@nlqdb/db/types";
+import { writeTarget } from "../ask/diff.ts";
 // The Deps/Args/Result contract is canonical in `./types.ts` (the pipeline's
 // single source of truth) — re-exported so this module's callers keep one
 // import path, exactly as `infer-schema.ts` does.
@@ -91,6 +92,20 @@ export async function extendSchema(
   function missing(plan: WidenPlan): string[] {
     return args.write ? missingWriteColumns(plan, args.write, args.schema) : [];
   }
+}
+
+// The approved INSERT's table + columns as the widen plan must name them —
+// Postgres-folded, and only when every name is a plan-legal identifier. A
+// quoted name outside `IdentifierSchema` (mixed case, spaces, newlines) can't
+// be admitted by any plan, so it never reaches the prompt or the gate.
+export function writeColumns(writeSql: string): ExtendSchemaArgs["write"] {
+  const target = writeTarget(writeSql);
+  if (!target?.columns) return undefined;
+  const table = target.table.toLowerCase();
+  const names = [table, ...target.columns];
+  return names.every((n) => IdentifierSchema.safeParse(n).success)
+    ? { table, columns: target.columns }
+    : undefined;
 }
 
 // The approved write's INSERT columns the plan fails to admit: not on the
