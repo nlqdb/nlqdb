@@ -13,7 +13,7 @@
 // Skill cross-ref: docs/features/schema-widening/FEATURE.md SK-SCHEMA-010.
 
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
 import { type AskResponse, createClient, NlqdbApiError } from "@nlqdb/sdk";
 import { resolveTarget } from "./kpi1-live-walk.ts";
 
@@ -54,14 +54,25 @@ export type WriteOutcome = { ok: true; res: AskResponse } | { ok: false; code: s
 
 export type WriteVerdict = { inSample: boolean; hit: boolean; reason: string };
 
-function widenOf(o: WriteOutcome | undefined): { tables: string[]; rewritten: boolean } {
-  const w = o?.ok ? o.res.trace.widen : undefined;
-  return { tables: w?.tables ?? [], rewritten: w?.schema_rewritten ?? false };
+function widenOf(o: WriteOutcome | undefined): {
+  tables: string[];
+  rewritten: boolean;
+  sql: string;
+} {
+  const t = o?.ok ? o.res.trace : undefined;
+  return {
+    tables: t?.widen?.tables ?? [],
+    rewritten: t?.widen?.schema_rewritten ?? false,
+    sql: t?.sql ?? "",
+  };
 }
 
+const TARGETS_TABLE = new RegExp(`\\b${TABLE}\\b`, "i");
+
 // Pure: is this write in the KPI 1 sample (it referenced an unseen table or
-// field), and did it land with no user action? An error is counted in-sample
-// as a miss — the verdict never inflates the rate by dropping a failure.
+// field), and did it land with no user action? An error, or a write the plan
+// aimed at any table but `daily_runs`, is counted in-sample as a miss — the
+// verdict never inflates the rate by dropping a failure.
 export function classifyWrite(preview: WriteOutcome, commit?: WriteOutcome): WriteVerdict {
   if (!preview.ok) return { inSample: true, hit: false, reason: `preview_error:${preview.code}` };
   if ("kind" in preview.res) return { inSample: true, hit: false, reason: "classified_create" };
@@ -69,8 +80,15 @@ export function classifyWrite(preview: WriteOutcome, commit?: WriteOutcome): Wri
     return { inSample: true, hit: false, reason: `commit_error:${commit.code}` };
   const pre = widenOf(preview);
   const post = widenOf(commit ?? preview);
-  if (pre.tables.length === 0 && post.tables.length === 0) {
-    return { inSample: false, hit: false, reason: "seen_fields" };
+  const widened = [...new Set([...pre.tables, ...post.tables])];
+  if (widened.length === 0) {
+    // No widen: only a write that really targeted the goal-named table is "seen".
+    return TARGETS_TABLE.test(post.sql)
+      ? { inSample: false, hit: false, reason: "seen_fields" }
+      : { inSample: true, hit: false, reason: "wrong_target" };
+  }
+  if (!widened.includes(TABLE)) {
+    return { inSample: true, hit: false, reason: `widen_wrong_table:${widened.join(",")}` };
   }
   const landed = commit?.ok && "rowCount" in commit.res && commit.res.rowCount > 0;
   if (landed && post.rewritten) return { inSample: true, hit: true, reason: "landed_widened" };
@@ -129,10 +147,7 @@ async function main(): Promise<void> {
   } (${v.reason})`;
   console.info(line);
   const summaryFile = process.env["GITHUB_STEP_SUMMARY"];
-  if (summaryFile) {
-    const { appendFile } = await import("node:fs/promises");
-    await appendFile(summaryFile, `## ${line}\n`);
-  }
+  if (summaryFile) appendFileSync(summaryFile, `## ${line}\n`);
 }
 
 if (import.meta.main) {

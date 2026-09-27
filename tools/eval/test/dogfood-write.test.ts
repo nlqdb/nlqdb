@@ -4,8 +4,11 @@ import type { AskResponse } from "@nlqdb/sdk";
 import { buildGoal, classifyWrite, parseLastChange, TABLE } from "../src/dogfood-write.ts";
 
 const ok = (res: Partial<AskResponse>) => ({ ok: true as const, res: res as AskResponse });
-const trace = (widen?: { tables: string[]; ddl: string[]; schema_rewritten: boolean }) => ({
-  sql: "",
+const trace = (
+  widen?: { tables: string[]; ddl: string[]; schema_rewritten: boolean },
+  sql = `INSERT INTO "s"."${TABLE}" (run) VALUES (225)`,
+) => ({
+  sql,
   plan_id: "p",
   confidence: 1,
   model: "m",
@@ -80,6 +83,21 @@ describe("classifyWrite", () => {
       hit: false,
       reason: "seen_fields",
     });
+  });
+
+  it("a write aimed at another table is a miss, never 'seen'", () => {
+    const hijack = trace(undefined, `INSERT INTO "s"."entities" (name) VALUES ('x')`);
+    const commit = ok({ status: "ok", rowCount: 1, trace: hijack });
+    expect(
+      classifyWrite(ok({ status: "ok", requires_confirm: true, trace: hijack }), commit),
+    ).toEqual({ inSample: true, hit: false, reason: "wrong_target" });
+    const other = trace({ tables: ["runs"], ddl: ["CREATE TABLE"], schema_rewritten: true });
+    expect(
+      classifyWrite(
+        ok({ status: "ok", requires_confirm: true, trace: other }),
+        ok({ status: "ok", rowCount: 1, trace: other }),
+      ).reason,
+    ).toBe("widen_wrong_table:runs");
   });
 
   it("errors and create-routing count as misses, never drop out", () => {
