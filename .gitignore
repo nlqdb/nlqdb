@@ -15,6 +15,7 @@ node_modules/
 # Claude Code: commit shared commands, ignore local settings
 .claude/*
 !.claude/commands/
+!.claude/settings.json
 
 # Build / cache
 dist/
