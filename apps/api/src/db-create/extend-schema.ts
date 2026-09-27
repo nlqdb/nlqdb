@@ -119,29 +119,67 @@ export function missingWriteColumns(
   schemaText: string,
 ): string[] {
   const created = plan.create_tables.find((t) => t.name === write.table);
-  const have = new Set(
-    created
-      ? created.columns.map((c) => c.name)
-      : plan.add_columns.filter((a) => a.table === write.table).map((a) => a.column.name),
-  );
-  const observed = created ? "" : tableDdl(schemaText, write.table);
-  return write.columns.filter((c) => !have.has(c) && !namesIdent(observed, c));
+  const have = created
+    ? new Set(created.columns.map((c) => c.name))
+    : observedColumns(schemaText, write.table);
+  if (!created) {
+    for (const a of plan.add_columns) if (a.table === write.table) have.add(a.column.name);
+  }
+  return write.columns.filter((c) => !have.has(c));
 }
 
-// The CREATE / ALTER TABLE statements of `table` in the observed DDL.
-function tableDdl(schemaText: string, table: string): string {
-  const header = new RegExp(
-    `\\b(?:CREATE|ALTER)\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(?:"?\\w+"?\\.)?"?${escapeRe(table)}"?[\\s(]`,
-    "i",
+// Columns `table` defines in the observed DDL: its CREATE TABLE column
+// definitions plus `ALTER TABLE … ADD [COLUMN]`. Constraint lines, FK
+// `REFERENCES` targets and `--` comments name columns it may not have.
+function observedColumns(schemaText: string, table: string): Set<string> {
+  const ddl = schemaText.replace(/--[^\n]*/g, "");
+  const ref = `(?:"?\\w+"?\\.)?"?${escapeRe(table)}"?`;
+  const cols = new Set<string>();
+  const add = (def: string) => {
+    const m = /^\s*(?:"((?:[^"]|"")+)"|(\w+))/.exec(def);
+    if (m?.[1]) cols.add(m[1].replace(/""/g, '"'));
+    else if (m?.[2] && !CONSTRAINT_HEADS.has(m[2].toLowerCase())) cols.add(m[2].toLowerCase());
+  };
+  const create = new RegExp(
+    `\\bCREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?${ref}\\s*\\(([^;]*)\\)`,
+    "gi",
   );
-  return schemaText
-    .split(";")
-    .filter((stmt) => header.test(stmt))
-    .join(";");
+  for (const m of ddl.matchAll(create)) for (const def of topLevelDefs(m[1] ?? "")) add(def);
+  const alter = new RegExp(
+    `\\bALTER\\s+TABLE\\s+(?:ONLY\\s+)?${ref}\\s+ADD\\s+(?:COLUMN\\s+)?(?:IF\\s+NOT\\s+EXISTS\\s+)?([^;]*)`,
+    "gi",
+  );
+  for (const m of ddl.matchAll(alter)) add(m[1] ?? "");
+  return cols;
 }
 
-function namesIdent(ddl: string, ident: string): boolean {
-  return new RegExp(`(^|[^\\w])${escapeRe(ident)}([^\\w]|$)`).test(ddl);
+const CONSTRAINT_HEADS = new Set([
+  "constraint",
+  "primary",
+  "foreign",
+  "unique",
+  "check",
+  "exclude",
+  "like",
+]);
+
+// A CREATE TABLE body split on its depth-0 commas (not those inside a type's
+// or CHECK's parentheses).
+function topLevelDefs(body: string): string[] {
+  const defs: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
+    if (ch === "(") depth++;
+    else if (ch === ")") depth--;
+    else if (ch === "," && depth === 0) {
+      defs.push(body.slice(start, i));
+      start = i + 1;
+    }
+  }
+  defs.push(body.slice(start));
+  return defs;
 }
 
 function escapeRe(s: string): string {

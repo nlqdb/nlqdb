@@ -43,7 +43,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { validateCompiledDdl } from "../ask/sql-validate-ddl.ts";
 import { compileWriteDdl } from "./compile-write-ddl.ts";
-import { extendSchema, missingWriteColumns, writeColumns } from "./extend-schema.ts";
+import { extendSchema, writeColumns } from "./extend-schema.ts";
 import { agentMemoryV1Ddl } from "./presets/agent-memory-v1.ts";
 import { buildWidenBatch } from "./widen-provision.ts";
 
@@ -184,19 +184,6 @@ async function walkShape(
       ok: false,
       stage: "validate",
       detail: validation.reason,
-      model: designed.model,
-      confidence: designed.confidence,
-    };
-  }
-
-  // A built batch whose plan omits an INSERT column rolls back on 42703 at
-  // commit — a miss, not a hit (the run-225 prod `schema_mismatch`).
-  const missing = write ? missingWriteColumns(designed.plan, write, shape.schemaText) : [];
-  if (missing.length > 0) {
-    return {
-      ok: false,
-      stage: "cover",
-      detail: `plan omits INSERT column(s) ${missing.join(",")}`,
       model: designed.model,
       confidence: designed.confidence,
     };

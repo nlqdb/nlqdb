@@ -6,6 +6,7 @@
 import type { ExtendSchemaResponse, LLMRouter } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
 import { extendSchema, missingWriteColumns, writeColumns } from "./extend-schema.ts";
+import { agentMemoryV1Ddl } from "./presets/agent-memory-v1.ts";
 
 function stubLLM(result: ExtendSchemaResponse | Error): {
   llm: LLMRouter;
@@ -184,6 +185,29 @@ describe("missingWriteColumns", () => {
       'CREATE TABLE "s"."orders" ("id" uuid, "customer" text); CREATE TABLE "s"."x" (note text);';
     const write = { table: "orders", columns: ["id", "customer", "total", "note"] };
     expect(missingWriteColumns(created, write, ddl)).toEqual(["note"]);
+  });
+
+  it("ignores names an existing table only references, comments on, or constrains", () => {
+    const ddl = [
+      'CREATE TABLE "s"."orders" (',
+      '  "id" uuid, -- joins "customers"."external_id"',
+      '  "amount" numeric(10, 2),',
+      '  PRIMARY KEY ("id")',
+      ");",
+      'ALTER TABLE "s"."orders" ADD CONSTRAINT "fk" FOREIGN KEY ("id") REFERENCES "s"."customers" ("external_id");',
+      'ALTER TABLE "s"."orders" ADD COLUMN "note" text;',
+    ].join("\n");
+    const write = { table: "orders", columns: ["id", "amount", "note", "external_id"] };
+    expect(missingWriteColumns(created, write, ddl)).toEqual(["external_id"]);
+  });
+
+  it("reads the commented agent_memory_v1 preset DDL (the dogfood DB)", () => {
+    const ddl = agentMemoryV1Ddl("s").join("\n");
+    const write = {
+      table: "facts",
+      columns: ["agent_id", "kind", "content", "expires_at", "mood"],
+    };
+    expect(missingWriteColumns(created, write, ddl)).toEqual(["mood"]);
   });
 });
 
