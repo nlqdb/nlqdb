@@ -21,13 +21,16 @@
       "Bash(bun run --filter @nlqdb/api secrets:remote:*)",
       "Bash(uv publish:*)",
       "Bash(git push origin --delete claude/*)",
-      "Bash(gh pr merge:*)"
+      "Bash(gh pr merge:*)",
+      "Bash(bun install:*)",
+      "Bash(bun run:*)"
     ]
   },
   "autoMode": {
     "allow": [
       "$defaults",
-      "Applying this repo's committed D1 migrations to nlqdb-app and deploying the Workers named in apps/api/README.md (migrate:remote, secrets:remote, then deploy of api, docs, web, mcp, events-worker, email-router, and coming-soon) is authorized by the repo owner. uv publish, squash-merge, and deleting a merged claude/* branch are authorized."
+      "Applying this repo's committed D1 migrations to nlqdb-app and deploying the Workers named in apps/api/README.md (migrate:remote, secrets:remote, then deploy of api, docs, web, mcp, events-worker, email-router, and coming-soon) is authorized by the repo owner. uv publish, squash-merge, and deleting a merged claude/* branch are authorized.",
+      "Running the local checks (biome, typecheck, the workspace tests, and check:all, via bun install and bun run) is authorized \u2014 they are the CI gate while Actions quota is out."
     ]
   }
 }
