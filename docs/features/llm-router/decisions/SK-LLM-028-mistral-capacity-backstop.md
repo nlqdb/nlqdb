@@ -11,9 +11,11 @@ backstop — see *Why*.
   `schema_infer`). The new order is
   `[cerebras, gemini, groq, workers-ai, openrouter, mistral]`; cheap-tier
   (`route` / `engine_classify`) and `summarize` are unchanged. Model
-  **`mistral-large-latest`** (Mistral Large 3, the strongest reasoner the
-  free Experiment tier exposes; verified live against `/v1/models` for our
-  key, 2026-06). Provider `packages/llm/src/providers/mistral.ts`
+  **`codestral-latest`** — amended 2026-09-27: `mistral-large-latest` is
+  gone from our key's `/v1/models` and returns 403 `tier_not_allowed`;
+  `mistral-medium`/`small` returned 429 on every probe; Codestral answered
+  a JOIN + GROUP BY/HAVING planner prompt correctly in ~1.2 s. Provider
+  `packages/llm/src/providers/mistral.ts`
   (OpenAI-compatible, base `https://api.mistral.ai/v1`, greedy
   `temperature: 0` per `SK-LLM-024`); key `MISTRAL_API_KEY`. The eval free
   lane (`tools/eval/src/lanes.ts`) carries the identical chain so "the eval
@@ -61,11 +63,9 @@ backstop — see *Why*.
     measured Cerebras (`gpt-oss-120b`, ~o4-mini parity, ~3,000 tok/s) as
     the strongest card-free head; demoting it to add Mistral would trade
     reasoning ceiling for capacity we get for free at the tail.
-  - **`codestral-latest` at the tail instead of `mistral-large-latest`** —
-    Codestral is code-specialised, but the tail recovers *hard*
-    chain-exhaustion questions where general reasoning matters more than
-    SQL-dialect fluency; Mistral Large 3 is the stronger reasoner. Revisit
-    if the cron shows the tail's recovered rows are dialect-bound.
+  - **`mistral-medium-latest` instead of Codestral** — the stronger
+    general reasoner, but 429 on every 2026-09-27 probe while Codestral
+    answered. Switch when a live probe shows it answering.
   - **A `provider_chain_exhausted` head-retry with backoff** — re-hitting
     the same exhausted providers burns wall-clock for no new capacity; an
     independent provider is the fix, and a fresh `/v1/ask` already

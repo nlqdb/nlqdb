@@ -2,11 +2,10 @@
 // (SK-LLM-028). Sits at the chain tail behind Cerebras → Gemini → Groq →
 // Workers-AI → OpenRouter, so it only fires on the ~10% of questions
 // where every head provider is rate-limited out (the baseline's
-// `all providers in chain failed` no_sql losses). Mistral Large 3
-// (`mistral-large-latest`) on the card-free Experiment tier (verified
-// live 2026-06: no card, 1B tokens/month renewable, 500K tokens/min) —
-// an independent free-tier RPM pool that doesn't share the head chain's
-// exhausted quota. OpenAI-compatible, so it reuses `openAICompatibleChat`.
+// `all providers in chain failed` no_sql losses). Codestral
+// (`codestral-latest`) on the card-free Experiment tier — an independent
+// free-tier RPM pool that doesn't share the head chain's exhausted quota.
+// OpenAI-compatible, so it reuses `openAICompatibleChat`.
 
 import type { LLMOperation, Provider } from "../types.ts";
 import { createChatProvider } from "./_chat-provider.ts";
@@ -15,9 +14,10 @@ import { openAICompatibleChat } from "./openai-compatible.ts";
 const DEFAULT_BASE_URL = "https://api.mistral.ai/v1";
 
 // One model across all ops — the planner-tier tail (SK-LLM-028) and the
-// cheap-tier direct tail (SK-LLM-047). Mistral Large 3 is the strongest
-// card-free reasoning model the Experiment tier exposes.
-const DEFAULT_MODEL = "mistral-large-latest";
+// cheap-tier direct tail (SK-LLM-047). `mistral-large-latest` left the
+// Experiment tier (403 `tier_not_allowed`, 2026-09-27); Codestral is the
+// tier's model that still answers (SK-LLM-028).
+const DEFAULT_MODEL = "codestral-latest";
 
 const DEFAULT_MODELS: Record<LLMOperation, string> = {
   route: DEFAULT_MODEL,

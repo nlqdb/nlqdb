@@ -10,15 +10,17 @@ run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 Phase 2 exits on Phase A alone; acquisition paused; BIRD/Spider = regression
 alarm only; premium tier stays. Retired rows dropped below.
 
-**Weekly focus (2026-09-13 →, `/weekly` re-pointed; keeps the founder's
-2026-09-04 KPI-1/Phase-A frame):** **Phase A KPI 1 — first-insert inference
-rate**, `asks_extend_ok / (ok + failed)`, toward ≥ 95 %. The live preview
-walk (a routing proxy, not the committed-write counters) reads **10/10 (100 %)**
-(run 224, two strict walks on deployed `de56f37`), above the floor. The KPI
-itself is unread: the formal sample is 0/200 real first-inserts (window not open).
+**Weekly focus (2026-09-27 →, `/weekly`; keeps the founder's 2026-09-04
+KPI-1/Phase-A frame):** **`/daily` runs whose own outputs (run log,
+scorecard deltas, blocked items) land in the dogfood DB through a CI job —
+today 0/day, target every run** (the `GLOBAL-041` workload that opens the
+formal Phase A sample, 0/200; never a generated stream — `GLOBAL-041`
+rejects a synthetic workload). Why: the preview walk is saturated at 10/10
+(three independent CI runs on `de56f37`), so more routing work cannot move
+KPI 1; nothing commits writes, so the formal KPI stays unread.
 
 **Worst number today (run 224, 2026-09-26) — E2E manual-suite freshness (#15) = 0.00** (last success 09-08, 18 d ago). The **formal KPI-1 sample (0/200, window not open)** is now the gap on the weekly focus: the preview walk reads 10/10.
-**This run's lever (run 224) — live KPI-1 re-measure on the deployed run-223 first-plan fix, §6.1 R1.** `Deploy API` shipped `de56f37` green, so this run dispatched `e2e-kpi1-live.yml` twice ([36212596504](https://github.com/nlqdb/nlqdb/actions/runs/36212596504), [36212675584](https://github.com/nlqdb/nlqdb/actions/runs/36212675584)): **5/5 each, `auth-shaped` included** (run 222 missed it into `entities`). **Measured: strict live walk 7/10 → 10/10** (same goal-named-table HIT check on both sides), and no `auth_denied` misses showed this time. **Next lever:** open the formal Phase A sample. That needs a CI-boundary confirmed-write workload with ≥ 15 fresh unseen-field writes a day, counting `asks_extend_ok/failed` toward n/200; the preview walk never commits, so it cannot fill the window.
+**This run's lever (run 224) — live KPI-1 re-measure on the deployed run-223 first-plan fix, §6.1 R1.** `Deploy API` shipped `de56f37` green, so this run dispatched `e2e-kpi1-live.yml` twice ([36212596504](https://github.com/nlqdb/nlqdb/actions/runs/36212596504), [36212675584](https://github.com/nlqdb/nlqdb/actions/runs/36212675584)): **5/5 each, `auth-shaped` included** (run 222 missed it into `entities`). **Measured: strict live walk 7/10 → 10/10** (same goal-named-table HIT check on both sides), and no `auth_denied` misses showed this time. **Next lever:** open the formal Phase A sample. That needs a CI job that commits each run's own outputs through `@nlqdb/sdk`, counting `asks_extend_ok/failed` toward n/200; the preview walk never commits, so it cannot fill the window.
 **Dogfood workload (KPI-1 instrument):** run 224's run-log write to `db_agent_memory_v1_3a8a72` is **not attempted in-session**. The prod key crosses only the CI boundary (the credential classifier, runs 211–223), so the record lives in this scorecard + `git log`. This is not a KPI-1 miss. The authoritative no-flag reading is the CI walk.
 **Top `blocked-by-human` bullet (still #1):** Fire the **Show HN launch** (105 d), gated on the formal Phase A exit (≥ 190/200 over the dogfood window): **0/200, window not open**, so the gate stays red. The preview walk's 10/10 does not count toward it. Queue **depth 5**, head age 105 d.
 **Dark (rule 8, reported not pulled):** engine **#8 BIRD 0.5382** (61 d) / **#9 Spider 0.2222** (68 d, async multi-window resume); rows **#2/#4/#5** stranger-dependent (N=0 until launch); row **#15** opencheck lane (remedy costs money ⇒ rule 4).
@@ -80,7 +82,7 @@ itself is unread: the formal sample is 0/200 real first-inserts (window not open
 
 ## Last change
 
-**2026-09-26 (run 224)** — **Live KPI 1 re-measured on the deployed run-223 first-plan fix: strict walks 7/10 → 10/10.** `Deploy API` on `de56f37` was green, so this run dispatched `e2e-kpi1-live.yml` twice ([36212596504](https://github.com/nlqdb/nlqdb/actions/runs/36212596504), [36212675584](https://github.com/nlqdb/nlqdb/actions/runs/36212675584); 5/5 each, `auth-shaped` included). **Number moved:** live KPI-1 strict walk **70 % → 100 %** (Δ +30 pts, measured on prod, N=10). §6.1 R1 meets its green condition (one live walk ≥ 95 %). **Finding:** the walk is a preview-only proxy. The `GLOBAL-041` exit sample (190/200 real first-inserts in a 14-day window) is still **0/200, window not open**. **Next lever:** a CI-boundary confirmed unseen-field write workload (≥ 15/day) that opens the window. Diff: docs only (scorecard, §6.1 R1 Today, blocked-by-human gate line). **GLOBAL-025 engine-quality** advanced (headline KPI strict walk 70 % → 100 %). No KPI degrades.
+**2026-09-26 (run 224)** — **Live KPI 1 re-measured on the deployed run-223 first-plan fix: strict walks 7/10 → 10/10.** `Deploy API` on `de56f37` was green, so this run dispatched `e2e-kpi1-live.yml` twice ([36212596504](https://github.com/nlqdb/nlqdb/actions/runs/36212596504), [36212675584](https://github.com/nlqdb/nlqdb/actions/runs/36212675584); 5/5 each, `auth-shaped` included). **Number moved:** live KPI-1 strict walk **70 % → 100 %** (Δ +30 pts, measured on prod, N=10). §6.1 R1 meets its green condition (one live walk ≥ 95 %). **Finding:** the walk is a preview-only proxy. The `GLOBAL-041` exit sample (190/200 real first-inserts in a 14-day window) is still **0/200, window not open**. **Next lever:** a CI job committing each run's own outputs, which opens the window. Diff: docs only (scorecard, §6.1 R1 Today, blocked-by-human gate line). **GLOBAL-025 engine-quality** advanced (headline KPI strict walk 70 % → 100 %). No KPI degrades.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
