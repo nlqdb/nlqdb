@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@nlqdb/events": "workspace:*",
-    "@nlqdb/llm": "workspace:*"
+    "@nlqdb/llm": "workspace:*",
+    "@nlqdb/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.18.0",
