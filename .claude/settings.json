@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun run --cwd apps/api migrate:remote:*)",
+      "Bash(bun run --filter @nlqdb/api migrate:remote:*)",
+      "Bash(bun run migrate:remote:*)",
+      "Bash(bunx wrangler d1 execute nlqdb-app --remote:*)",
+      "Bash(bun run --cwd apps/api deploy:*)",
+      "Bash(bun run --filter @nlqdb/api deploy:*)",
+      "Bash(bun run --filter @nlqdb/docs deploy:*)",
+      "Bash(bun run --filter @nlqdb/web deploy:*)",
+      "Bash(bun run --filter @nlqdb/mcp-server deploy:*)",
+      "Bash(bun run --filter @nlqdb/events-worker deploy:*)",
+      "Bash(bun run --filter @nlqdb/email-router deploy:*)",
+      "Bash(bun run --filter @nlqdb/coming-soon deploy:*)",
+      "Bash(bun run deploy:*)",
+      "Bash(git push origin --delete claude/*)"
+    ]
+  },
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "Applying this repo's committed D1 migrations to nlqdb-app and deploying the Workers named in apps/api/README.md (migrate:remote, then deploy of api, docs, web, mcp, events-worker, email-router, and coming-soon) is authorized by the repo owner. Deleting a merged claude/* branch on origin is authorized."
+    ]
+  }
+}
