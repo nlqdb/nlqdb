@@ -24,10 +24,11 @@ walk went 0/5 → 10/10. But it is now saturated, and it is preview-only. The
 formal sample is still **0/200**, because no run commits a dogfood write:
 `daily.md` step 1 required one every run, and every run since 211 skipped
 it (the prod key crosses only CI). §6.1 **R2/R3 stay red** and got no
-runs. There is also an arithmetic problem: 200 unseen-field inserts in 14
-days needs about 15 a day, and one run log a day cannot supply that. This
-is a genuine tension with `GLOBAL-041`'s run-log workload, flagged here and
-not re-litigated. **Focus → CI confirmed-write job, writes/day.**
+runs. The real run-log workload may yield fewer than 200 unseen-field inserts
+in 14 days; padding it with a generated stream is the synthetic workload
+`GLOBAL-041` rejects, so the window reads whatever n the real writes give
+(parked until the window opens, `GLOBAL-033`). **Focus → CI job committing
+each run's own outputs, runs landed/day.**
 
 ## Trend: engine up, no alarm (check 1)
 

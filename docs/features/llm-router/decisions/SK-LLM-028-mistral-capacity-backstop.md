@@ -14,7 +14,8 @@ backstop — see *Why*.
   **`codestral-latest`** — amended 2026-09-27: `mistral-large-latest` is
   gone from our key's `/v1/models` and returns 403 `tier_not_allowed`;
   `mistral-medium`/`small` returned 429 on every probe; Codestral answered
-  a JOIN + GROUP BY/HAVING planner prompt correctly in ~1.2 s. Provider `packages/llm/src/providers/mistral.ts`
+  a JOIN + GROUP BY/HAVING planner prompt correctly in ~1.2 s. Provider
+  `packages/llm/src/providers/mistral.ts`
   (OpenAI-compatible, base `https://api.mistral.ai/v1`, greedy
   `temperature: 0` per `SK-LLM-024`); key `MISTRAL_API_KEY`. The eval free
   lane (`tools/eval/src/lanes.ts`) carries the identical chain so "the eval
