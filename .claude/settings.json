@@ -35,20 +35,15 @@
       "Bash(curl -sI https://docs.nlqdb.com:*)",
       "Bash(curl -s https://mcp.nlqdb.com/*)",
       "Bash(curl -s https://mcp.nlqdb.com:*)",
-      "Bash(curl -sI https://mcp.nlqdb.com:*)",
-      "Bash(bun run --cwd apps/api migrate:remote)",
-      "Bash(bun run --filter @nlqdb/api deploy)",
-      "Bash(bun run --filter @nlqdb/web deploy)",
-      "Bash(bun run --filter @nlqdb/docs deploy)",
-      "Bash(bun run --filter @nlqdb/mcp-server deploy)"
+      "Bash(curl -sI https://mcp.nlqdb.com:*)"
     ]
   },
   "autoMode": {
     "allow": [
       "$defaults",
       "Applying this repo's committed D1 migrations to nlqdb-app and deploying the Workers named in apps/api/README.md (migrate:remote, secrets:remote, then deploy of api, docs, web, mcp, events-worker, email-router, and coming-soon) is authorized by the repo owner. uv publish, squash-merge, and deleting a merged claude/* branch are authorized.",
-      "Running the local checks (biome, typecheck, the workspace tests, and check:all, via bun install and bun run) is authorized \u2014 they are the CI gate while Actions quota is out.",
-      "After a squash-merge to main, deploying with bare commands is authorized by the repo owner while GitHub Actions quota is out: `bun run --cwd apps/api migrate:remote`, then `bun run --filter @nlqdb/api deploy`, then the web, docs, and mcp-server deploys, each as its own command. Checking https://nlqdb.com, https://app.nlqdb.com, https://docs.nlqdb.com, and https://mcp.nlqdb.com with curl afterwards is authorized. A chained or piped command does not match the allow rule."
+      "Running the local checks (biome, typecheck, the workspace tests, and check:all, via bun install and bun run) is authorized.",
+      "Checking https://nlqdb.com, https://app.nlqdb.com, https://docs.nlqdb.com, and https://mcp.nlqdb.com with a bare curl is authorized. A chained or piped command does not match an allow rule."
     ]
   }
 }
