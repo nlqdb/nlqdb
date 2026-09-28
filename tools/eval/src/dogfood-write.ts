@@ -8,7 +8,8 @@
 // Why CI and not the daily session: the session's credential classifier
 // denies materialising the prod `sk_mcp_` key into an outbound call (runs
 // 211-224). `secrets.NLQDB_API_KEY` crosses only the workflow boundary, so
-// `dogfood-write.yml` runs this on every merge that touches the scorecard.
+// `dogfood-write.yml` runs this on every merge that touches the scorecard or
+// the blocked-by-human queue.
 // Unlike `kpi1-live-walk.ts` (preview-only proxy) this COMMITS: a real write
 // into the real dogfood DB is the only thing that opens the GLOBAL-041
 // 200-insert window and moves the prod `asks_extend_ok/failed` counters.
@@ -155,6 +156,23 @@ function fileAt(path: string, ref: string | null): string | null {
   }
 }
 
+// The commit this push diffs against: the push's `before` (fetched when the
+// push carried several commits and the shallow checkout lacks it), else
+// HEAD~1 — a manual dispatch, or a new branch's all-zero `before`.
+function baseRef(before: string | undefined): string {
+  if (!before || !/^[0-9a-f]{40}$/.test(before) || /^0+$/.test(before)) return "HEAD~1";
+  try {
+    execFileSync("git", ["cat-file", "-e", `${before}^{commit}`]);
+  } catch {
+    try {
+      execFileSync("git", ["fetch", "--no-tags", "--depth=1", "origin", before]);
+    } catch {
+      return "HEAD~1";
+    }
+  }
+  return before;
+}
+
 async function main(): Promise<void> {
   const apiKey = process.env["NLQDB_API_KEY"];
   if (!apiKey) {
@@ -167,12 +185,17 @@ async function main(): Promise<void> {
   // A push that left the record unchanged is not a new run, so it never
   // double-writes the record; its new blocked-by-human bullets still go in.
   // A manual dispatch always writes the record.
-  const prev = parseLastChange(fileAt("docs/scorecard.md", "HEAD~1") ?? "");
+  // An unreadable base queue writes no bullet — never the whole queue as "new".
+  const since = baseRef(process.env["DOGFOOD_BASE"]);
+  const prev = parseLastChange(fileAt("docs/scorecard.md", since) ?? "");
   const newRun = process.env["GITHUB_EVENT_NAME"] !== "push" || prev?.run !== record.run;
-  const blockedAt = (ref: string | null) => fileAt("docs/blocked-by-human.md", ref) ?? "";
+  const queueBefore = fileAt("docs/blocked-by-human.md", since);
+  const queueNow = fileAt("docs/blocked-by-human.md", null) ?? "";
+  if (queueBefore === null)
+    console.warn(`dogfood-write: no blocked queue at ${since} — skipping bullets.`);
   const writes: Write[] = [
     ...(newRun ? [{ table: TABLE, goal: buildGoal(record) }] : []),
-    ...blockedWrites(record.run, blockedAt("HEAD~1"), blockedAt(null)),
+    ...(queueBefore === null ? [] : blockedWrites(record.run, queueBefore, queueNow)),
   ];
   if (writes.length === 0) {
     console.info(`dogfood-write: run ${record.run} already written, no new bullet — skipping.`);

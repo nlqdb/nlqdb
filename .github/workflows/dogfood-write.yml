@@ -39,7 +39,8 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          # HEAD~1 tells a new run record or bullet from an unchanged one.
+          # The push's `before` commit tells a new run record or bullet from an
+          # unchanged one; the writer fetches it when the push had > 1 commit.
           fetch-depth: 2
       - uses: ./.github/actions/setup
 
@@ -49,4 +50,5 @@ jobs:
           NLQDB_API_KEY: ${{ secrets.NLQDB_API_KEY }}
           NLQDB_API_BASE: ${{ vars.NLQDB_API_BASE }}
           NLQDB_DOGFOOD_DB: ${{ vars.NLQDB_DOGFOOD_DB }}
+          DOGFOOD_BASE: ${{ github.event.before }}
         run: bun src/dogfood-write.ts
