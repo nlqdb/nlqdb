@@ -24,18 +24,10 @@
       "Bash(gh pr merge:*)",
       "Bash(bun install:*)",
       "Bash(bun run:*)",
-      "Bash(curl -s https://nlqdb.com/*)",
-      "Bash(curl -s https://nlqdb.com:*)",
-      "Bash(curl -sI https://nlqdb.com:*)",
-      "Bash(curl -s https://app.nlqdb.com/*)",
-      "Bash(curl -s https://app.nlqdb.com:*)",
-      "Bash(curl -sI https://app.nlqdb.com:*)",
-      "Bash(curl -s https://docs.nlqdb.com/*)",
-      "Bash(curl -s https://docs.nlqdb.com:*)",
-      "Bash(curl -sI https://docs.nlqdb.com:*)",
-      "Bash(curl -s https://mcp.nlqdb.com/*)",
-      "Bash(curl -s https://mcp.nlqdb.com:*)",
-      "Bash(curl -sI https://mcp.nlqdb.com:*)"
+      "WebFetch(domain:nlqdb.com)",
+      "WebFetch(domain:app.nlqdb.com)",
+      "WebFetch(domain:docs.nlqdb.com)",
+      "WebFetch(domain:mcp.nlqdb.com)"
     ]
   },
   "autoMode": {
@@ -43,7 +35,7 @@
       "$defaults",
       "Applying this repo's committed D1 migrations to nlqdb-app and deploying the Workers named in apps/api/README.md (migrate:remote, secrets:remote, then deploy of api, docs, web, mcp, events-worker, email-router, and coming-soon) is authorized by the repo owner. uv publish, squash-merge, and deleting a merged claude/* branch are authorized.",
       "Running the local checks (biome, typecheck, the workspace tests, and check:all, via bun install and bun run) is authorized.",
-      "Checking https://nlqdb.com, https://app.nlqdb.com, https://docs.nlqdb.com, and https://mcp.nlqdb.com with a bare curl is authorized. A chained or piped command does not match an allow rule."
+      "Checking https://nlqdb.com, https://app.nlqdb.com, https://docs.nlqdb.com, and https://mcp.nlqdb.com with WebFetch is authorized. A chained or piped command does not match an allow rule."
     ]
   }
 }
