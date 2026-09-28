@@ -164,21 +164,23 @@ async function main(): Promise<void> {
   const record = parseLastChange(fileAt("docs/scorecard.md", null) ?? "");
   if (!record) throw new Error("docs/scorecard.md has no parseable `## Last change` entry");
 
-  // A push that left the record unchanged is not a new run — skip, so a
-  // scorecard-only follow-up never double-writes. A manual dispatch always writes.
+  // A push that left the record unchanged is not a new run, so it never
+  // double-writes the record; its new blocked-by-human bullets still go in.
+  // A manual dispatch always writes the record.
   const prev = parseLastChange(fileAt("docs/scorecard.md", "HEAD~1") ?? "");
-  if (process.env["GITHUB_EVENT_NAME"] === "push" && prev?.run === record.run) {
-    console.info(`dogfood-write: run ${record.run} already written — skipping.`);
+  const newRun = process.env["GITHUB_EVENT_NAME"] !== "push" || prev?.run !== record.run;
+  const blockedAt = (ref: string | null) => fileAt("docs/blocked-by-human.md", ref) ?? "";
+  const writes: Write[] = [
+    ...(newRun ? [{ table: TABLE, goal: buildGoal(record) }] : []),
+    ...blockedWrites(record.run, blockedAt("HEAD~1"), blockedAt(null)),
+  ];
+  if (writes.length === 0) {
+    console.info(`dogfood-write: run ${record.run} already written, no new bullet — skipping.`);
     return;
   }
 
   const { base, dbId } = resolveTarget(process.env);
   const client = createClient({ apiKey, baseUrl: base });
-  const blockedAt = (ref: string | null) => fileAt("docs/blocked-by-human.md", ref) ?? "";
-  const writes: Write[] = [
-    { table: TABLE, goal: buildGoal(record) },
-    ...blockedWrites(record.run, blockedAt("HEAD~1"), blockedAt(null)),
-  ];
 
   // Sequential: each write plans against the schema the previous one widened.
   for (const { table, goal } of writes) {

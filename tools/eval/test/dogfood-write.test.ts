@@ -137,6 +137,24 @@ describe("classifyWrite", () => {
     ).toBe("widen_wrong_table:runs");
   });
 
+  it("scores the blocked-items table on its own name", () => {
+    const sql = `INSERT INTO "s"."${BLOCKED_TABLE}" (title) VALUES ('t')`;
+    const grown = trace(
+      { tables: [BLOCKED_TABLE], ddl: ["CREATE TABLE"], schema_rewritten: true },
+      sql,
+    );
+    const pre = ok({ status: "ok", requires_confirm: true, trace: grown });
+    expect(
+      classifyWrite(BLOCKED_TABLE, pre, ok({ status: "ok", rowCount: 1, trace: grown })),
+    ).toEqual({ inSample: true, hit: true, reason: "landed_widened" });
+    const seen = ok({ status: "ok", rowCount: 1, trace: trace(undefined, sql) });
+    expect(classifyWrite(BLOCKED_TABLE, seen, seen).reason).toBe("seen_fields");
+    // The run-record table's verdict never credits a blocked-items write.
+    expect(classifyWrite(TABLE, pre, ok({ status: "ok", rowCount: 1, trace: grown })).reason).toBe(
+      `widen_wrong_table:${BLOCKED_TABLE}`,
+    );
+  });
+
   it("errors and create-routing count as misses, never drop out", () => {
     expect(classifyWrite(TABLE, { ok: false, code: "rate_limited" })).toEqual({
       inSample: true,
