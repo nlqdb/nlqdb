@@ -167,6 +167,8 @@ function baseRef(before: string | undefined): string {
     try {
       execFileSync("git", ["fetch", "--no-tags", "--depth=1", "origin", before]);
     } catch {
+      // HEAD~1..HEAD is a subset of the push: bullets may be missed, never re-sent.
+      console.warn(`dogfood-write: cannot fetch push base ${before} — diffing against HEAD~1.`);
       return "HEAD~1";
     }
   }
