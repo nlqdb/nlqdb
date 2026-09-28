@@ -69,6 +69,12 @@ type Shape = {
   writeSql: string;
 };
 
+// The dogfood DB after run 226's first landed `daily_runs` write.
+const DOGFOOD_SCHEMA = [
+  ...agentMemoryV1Ddl(SCHEMA_NAME),
+  `CREATE TABLE "${SCHEMA_NAME}"."daily_runs" ("run" integer, "date" date, "headline" text, "details" text);`,
+].join("\n");
+
 const SHAPES: Shape[] = [
   {
     name: "new-table",
@@ -108,6 +114,25 @@ const SHAPES: Shape[] = [
     schemaText: agentMemoryV1Ddl(SCHEMA_NAME).join("\n"),
     goal: 'Log this daily run in the daily_runs table: run 225, date 2026-09-27, headline "Built the Phase A dogfood writer: writers feeding the formal KPI-1 sample 0 → 1.", details "Runs 211–224 could not write the run record: the session never holds the prod key. New `dogfood-write.yml` runs `tools/eval/src/dogfood-write.ts` and writes this entry through `@nlqdb/sdk` as a `daily_runs` row."',
     writeSql: `INSERT INTO "daily_runs" ("run", "date", "headline", "details") VALUES (225, '2026-09-27', 'Built the Phase A dogfood writer', 'Runs 211–224 could not write the run record.')`,
+  },
+  // The other two GLOBAL-041 output kinds (run 227): a scorecard row delta and
+  // a new blocked-by-human item, each into its own unseen table on the dogfood
+  // DB as it stands after the first `daily_runs` write. `dogfood-delta` misses
+  // today: every plan names the record's `row` field `row`, a word
+  // `POSTGRES_RESERVED` refuses (packages/db/src/types.ts), so each provider
+  // fails over and the design ends `llm_failed`. `dogfood-write.ts` holds the
+  // delta kind back until the grammar admits it.
+  {
+    name: "dogfood-delta",
+    schemaText: DOGFOOD_SCHEMA,
+    goal: 'Log this scorecard delta in the scorecard_deltas table: run 226, row 16, metric "Phase 2 exit gate = `GLOBAL-041` Phase A", before "**Gate RED — formal sample 0/200 (window not open).**", after "**Gate RED — formal sample 0 HIT / 1 MISS (window opened 2026-09-27, day 1/14).**".',
+    writeSql: `INSERT INTO "scorecard_deltas" ("run", "row", "metric", "before", "after") VALUES (226, '16', 'Phase 2 exit gate = GLOBAL-041 Phase A', 'Gate RED — formal sample 0/200', 'Gate RED — formal sample 0 HIT / 1 MISS')`,
+  },
+  {
+    name: "dogfood-blocked",
+    schemaText: DOGFOOD_SCHEMA,
+    goal: 'Log this blocked-by-human item in the blocked_items table: run 226, title "Deploy the email-router Worker", estimate "~5 min", blocked since 2026-09-18.',
+    writeSql: `INSERT INTO "blocked_items" ("run", "title", "estimate", "blocked_since") VALUES (226, 'Deploy the email-router Worker', '~5 min', '2026-09-18')`,
   },
 ];
 

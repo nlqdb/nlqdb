@@ -1,11 +1,15 @@
 // Phase A dogfood workload — GLOBAL-041 build-order step 8, the KPI 1
-// instrument. The daily loop's own "Last change" record goes into the hosted
-// dogfood DB through `@nlqdb/sdk`, as the run wrote it, never pre-modeled.
+// instrument. The daily loop's own outputs — its run record ("Last change")
+// and its new blocked-by-human items — go into the hosted dogfood DB through
+// `@nlqdb/sdk`, as the run wrote them, never pre-modeled. GLOBAL-041's third
+// kind, the scorecard deltas, waits on the widen grammar admitting a
+// reserved-word field (a delta names its `row`; `POSTGRES_RESERVED` refuses it).
 //
 // Why CI and not the daily session: the session's credential classifier
 // denies materialising the prod `sk_mcp_` key into an outbound call (runs
 // 211-224). `secrets.NLQDB_API_KEY` crosses only the workflow boundary, so
-// `dogfood-write.yml` runs this on every merge that touches the scorecard.
+// `dogfood-write.yml` runs this on every merge that touches the scorecard or
+// the blocked-by-human queue.
 // Unlike `kpi1-live-walk.ts` (preview-only proxy) this COMMITS: a real write
 // into the real dogfood DB is the only thing that opens the GLOBAL-041
 // 200-insert window and moves the prod `asks_extend_ok/failed` counters.
@@ -19,9 +23,13 @@ import { resolveTarget } from "./kpi1-live-walk.ts";
 
 export type RunRecord = { date: string; run: string; headline: string; details: string };
 
-// The one table the goal names. A name, not a shape: every column is left to
-// widen-on-write to infer from the values (GLOBAL-041 — never pre-model).
+// One goal-named table per output kind. Names, not shapes: every column is
+// left to widen-on-write to infer from the values (GLOBAL-041 — never pre-model).
 export const TABLE = "daily_runs";
+export const BLOCKED_TABLE = "blocked_items";
+
+// One write: the goal-named table and the NL goal that inserts the record.
+export type Write = { table: string; goal: string };
 
 // SK-ASK-010 server cap on `goal`.
 const MAX_GOAL = 2000;
@@ -41,13 +49,40 @@ export function parseLastChange(md: string): RunRecord | null {
   return { date, run, headline: flat(headline), details: flat(details) };
 }
 
+const clip = (s: string, room: number) => (s.length > room ? `${s.slice(0, room - 1)}…` : s);
+
 // Pure: the write goal, a leading insert verb + pinned DB so it routes
 // `pinned_write` (SK-ASK-014). Only `details` is shortened to fit the cap.
 export function buildGoal(r: RunRecord): string {
   const head = `Log this daily run in the ${TABLE} table: run ${r.run}, date ${r.date}, headline "${r.headline}", details "`;
-  const room = MAX_GOAL - head.length - 2;
-  const details = r.details.length > room ? `${r.details.slice(0, room - 1)}…` : r.details;
-  return `${head}${details}".`;
+  return `${head}${clip(r.details, MAX_GOAL - head.length - 2)}".`;
+}
+
+type Blocked = { title: string; estimate: string; since: string };
+
+// Pure: `docs/blocked-by-human.md` bullets — a `## Title` whose first line
+// reads `<estimate> · blocked since <date>`.
+export function parseBlocked(md: string): Blocked[] {
+  const out: Blocked[] = [];
+  for (const m of md.matchAll(/^## (.+)\n+(.+?) · blocked since (\d{4}-\d{2}-\d{2})/gm)) {
+    const [, title = "", estimate = "", since = ""] = m;
+    out.push({ title: title.trim(), estimate: estimate.trim(), since });
+  }
+  return out;
+}
+
+// Pure: one write per blocked-by-human bullet this run added.
+export function blockedWrites(run: string, before: string, after: string): Write[] {
+  const seen = new Set(parseBlocked(before).map((b) => b.title));
+  return parseBlocked(after)
+    .filter((b) => !seen.has(b.title))
+    .map((b) => ({
+      table: BLOCKED_TABLE,
+      goal: clip(
+        `Log this blocked-by-human item in the ${BLOCKED_TABLE} table: run ${run}, title "${b.title}", estimate "${b.estimate}", blocked since ${b.since}.`,
+        MAX_GOAL,
+      ),
+    }));
 }
 
 export type WriteOutcome = { ok: true; res: AskResponse } | { ok: false; code: string };
@@ -68,16 +103,18 @@ function widenOf(o: WriteOutcome | undefined): {
 }
 
 // An INSERT into the goal-named table, schema-qualified and/or quoted or not.
-const INSERTS_TABLE = new RegExp(
-  `\\binsert\\s+into\\s+(?:"?\\w+"?\\.)?"?${TABLE}"?(?![\\w"])`,
-  "i",
-);
+const insertsTable = (table: string) =>
+  new RegExp(`\\binsert\\s+into\\s+(?:"?\\w+"?\\.)?"?${table}"?(?![\\w"])`, "i");
 
 // Pure: is this write in the KPI 1 sample (it referenced an unseen table or
 // field), and did it land with no user action? An error, or a write the plan
-// aimed at any table but `daily_runs`, is counted in-sample as a miss — the
-// verdict never inflates the rate by dropping a failure.
-export function classifyWrite(preview: WriteOutcome, commit?: WriteOutcome): WriteVerdict {
+// aimed at any table but the goal-named `table`, is counted in-sample as a
+// miss — the verdict never inflates the rate by dropping a failure.
+export function classifyWrite(
+  table: string,
+  preview: WriteOutcome,
+  commit?: WriteOutcome,
+): WriteVerdict {
   if (!preview.ok) return { inSample: true, hit: false, reason: `preview_error:${preview.code}` };
   if ("kind" in preview.res) return { inSample: true, hit: false, reason: "classified_create" };
   if (commit && !commit.ok)
@@ -88,11 +125,11 @@ export function classifyWrite(preview: WriteOutcome, commit?: WriteOutcome): Wri
   if (widened.length === 0) {
     // No widen: only an INSERT into the goal-named table is "seen" — a read or
     // any other statement that merely names it is a mis-route, kept as a miss.
-    return INSERTS_TABLE.test(post.sql)
+    return insertsTable(table).test(post.sql)
       ? { inSample: false, hit: false, reason: "seen_fields" }
       : { inSample: true, hit: false, reason: "wrong_target" };
   }
-  if (!widened.includes(TABLE)) {
+  if (!widened.includes(table)) {
     return { inSample: true, hit: false, reason: `widen_wrong_table:${widened.join(",")}` };
   }
   const landed = commit?.ok && "rowCount" in commit.res && commit.res.rowCount > 0;
@@ -109,14 +146,33 @@ async function attempt(fn: () => Promise<AskResponse>): Promise<WriteOutcome> {
   }
 }
 
-function scorecardAt(ref: string | null): string | null {
+function fileAt(path: string, ref: string | null): string | null {
   try {
     return ref === null
-      ? readFileSync(new URL("../../../docs/scorecard.md", import.meta.url), "utf8")
-      : execFileSync("git", ["show", `${ref}:docs/scorecard.md`], { encoding: "utf8" });
+      ? readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8")
+      : execFileSync("git", ["show", `${ref}:${path}`], { encoding: "utf8" });
   } catch {
     return null;
   }
+}
+
+// The commit this push diffs against: the push's `before` (fetched when the
+// push carried several commits and the shallow checkout lacks it), else
+// HEAD~1 — a manual dispatch, or a new branch's all-zero `before`.
+function baseRef(before: string | undefined): string {
+  if (!before || !/^[0-9a-f]{40}$/.test(before) || /^0+$/.test(before)) return "HEAD~1";
+  try {
+    execFileSync("git", ["cat-file", "-e", `${before}^{commit}`]);
+  } catch {
+    try {
+      execFileSync("git", ["fetch", "--no-tags", "--depth=1", "origin", before]);
+    } catch {
+      // HEAD~1..HEAD is a subset of the push: bullets may be missed, never re-sent.
+      console.warn(`dogfood-write: cannot fetch push base ${before} — diffing against HEAD~1.`);
+      return "HEAD~1";
+    }
+  }
+  return before;
 }
 
 async function main(): Promise<void> {
@@ -125,34 +181,49 @@ async function main(): Promise<void> {
     console.info("dogfood-write: NLQDB_API_KEY unset — skipping (green no-op).");
     return;
   }
-  const record = parseLastChange(scorecardAt(null) ?? "");
+  const record = parseLastChange(fileAt("docs/scorecard.md", null) ?? "");
   if (!record) throw new Error("docs/scorecard.md has no parseable `## Last change` entry");
 
-  // A push that left the record unchanged is not a new run — skip, so a
-  // scorecard-only follow-up never double-writes. A manual dispatch always writes.
-  const prev = parseLastChange(scorecardAt("HEAD~1") ?? "");
-  if (process.env["GITHUB_EVENT_NAME"] === "push" && prev?.run === record.run) {
-    console.info(`dogfood-write: run ${record.run} already written — skipping.`);
+  // A push that left the record unchanged is not a new run, so it never
+  // double-writes the record; its new blocked-by-human bullets still go in.
+  // A manual dispatch always writes the record.
+  // An unreadable base queue writes no bullet — never the whole queue as "new".
+  const since = baseRef(process.env["DOGFOOD_BASE"]);
+  const prev = parseLastChange(fileAt("docs/scorecard.md", since) ?? "");
+  const newRun = process.env["GITHUB_EVENT_NAME"] !== "push" || prev?.run !== record.run;
+  const queueBefore = fileAt("docs/blocked-by-human.md", since);
+  const queueNow = fileAt("docs/blocked-by-human.md", null) ?? "";
+  if (queueBefore === null)
+    console.warn(`dogfood-write: no blocked queue at ${since} — skipping bullets.`);
+  const writes: Write[] = [
+    ...(newRun ? [{ table: TABLE, goal: buildGoal(record) }] : []),
+    ...(queueBefore === null ? [] : blockedWrites(record.run, queueBefore, queueNow)),
+  ];
+  if (writes.length === 0) {
+    console.info(`dogfood-write: run ${record.run} already written, no new bullet — skipping.`);
     return;
   }
 
   const { base, dbId } = resolveTarget(process.env);
   const client = createClient({ apiKey, baseUrl: base });
-  const goal = buildGoal(record);
-  const preview = await attempt(() => client.ask({ goal, dbId }));
-  const needsConfirm =
-    preview.ok && "requires_confirm" in preview.res && preview.res.requires_confirm;
-  const commit = needsConfirm
-    ? await attempt(() => client.ask({ goal, dbId, confirm: true }))
-    : undefined;
-  const v = classifyWrite(preview, commit);
 
-  const line = `dogfood-write run ${record.run} → ${TABLE} on ${dbId}: ${
-    v.inSample ? (v.hit ? "KPI-1 HIT" : "KPI-1 MISS") : "not in sample"
-  } (${v.reason})`;
-  console.info(line);
-  const summaryFile = process.env["GITHUB_STEP_SUMMARY"];
-  if (summaryFile) appendFileSync(summaryFile, `## ${line}\n`);
+  // Sequential: each write plans against the schema the previous one widened.
+  for (const { table, goal } of writes) {
+    const preview = await attempt(() => client.ask({ goal, dbId }));
+    const needsConfirm =
+      preview.ok && "requires_confirm" in preview.res && preview.res.requires_confirm;
+    const commit = needsConfirm
+      ? await attempt(() => client.ask({ goal, dbId, confirm: true }))
+      : undefined;
+    const v = classifyWrite(table, preview, commit);
+
+    const line = `dogfood-write run ${record.run} → ${table} on ${dbId}: ${
+      v.inSample ? (v.hit ? "KPI-1 HIT" : "KPI-1 MISS") : "not in sample"
+    } (${v.reason})`;
+    console.info(line);
+    const summaryFile = process.env["GITHUB_STEP_SUMMARY"];
+    if (summaryFile) appendFileSync(summaryFile, `## ${line}\n`);
+  }
 }
 
 if (import.meta.main) {

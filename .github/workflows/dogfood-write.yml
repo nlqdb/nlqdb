@@ -1,7 +1,8 @@
 # Phase A dogfood workload — GLOBAL-041 build-order step 8, the KPI 1
-# instrument. On every merge that touches the scorecard, write the daily run's
-# "Last change" record into the hosted dogfood DB through `@nlqdb/sdk`
-# (preview → confirm), as the run wrote it — no field pre-modeled. The write
+# instrument. On every merge that touches the scorecard or the blocked-by-human
+# queue, write the daily run's outputs — its "Last change" record and its new
+# blocked-by-human items — into the hosted dogfood DB through `@nlqdb/sdk`
+# (preview → confirm), as the run wrote them — no field pre-modeled. The write
 # moves prod `asks_extend_ok/failed` (SK-SCHEMA-010) and opens the GLOBAL-041
 # 200-insert window. CI, not the daily session: the prod key crosses only the
 # workflow boundary (tools/eval/src/dogfood-write.ts). Self-skips green when
@@ -16,6 +17,7 @@ on:
     branches: [main]
     paths:
       - "docs/scorecard.md"
+      - "docs/blocked-by-human.md"
   workflow_dispatch:
 
 # Default-deny at the root (SK-CIPERM-001); the job reads its checkout and
@@ -29,7 +31,7 @@ concurrency:
 
 jobs:
   write:
-    name: Write the run record to the dogfood DB
+    name: Write the run outputs to the dogfood DB
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -37,14 +39,16 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          # HEAD~1 tells a new run record from a scorecard-only follow-up.
+          # The push's `before` commit tells a new run record or bullet from an
+          # unchanged one; the writer fetches it when the push had > 1 commit.
           fetch-depth: 2
       - uses: ./.github/actions/setup
 
-      - name: Write the Last change record
+      - name: Write the run record and new blocked items
         working-directory: tools/eval
         env:
           NLQDB_API_KEY: ${{ secrets.NLQDB_API_KEY }}
           NLQDB_API_BASE: ${{ vars.NLQDB_API_BASE }}
           NLQDB_DOGFOOD_DB: ${{ vars.NLQDB_DOGFOOD_DB }}
+          DOGFOOD_BASE: ${{ github.event.before }}
         run: bun src/dogfood-write.ts

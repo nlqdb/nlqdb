@@ -1,7 +1,14 @@
 import { describe, expect, it } from "bun:test";
 import type { AskResponse } from "@nlqdb/sdk";
 
-import { buildGoal, classifyWrite, parseLastChange, TABLE } from "../src/dogfood-write.ts";
+import {
+  BLOCKED_TABLE,
+  blockedWrites,
+  buildGoal,
+  classifyWrite,
+  parseLastChange,
+  TABLE,
+} from "../src/dogfood-write.ts";
 
 const ok = (res: Partial<AskResponse>) => ({ ok: true as const, res: res as AskResponse });
 const trace = (
@@ -46,6 +53,22 @@ describe("buildGoal", () => {
   });
 });
 
+describe("blockedWrites", () => {
+  const q = (...titles: string[]) =>
+    titles
+      .map((t) => `## ${t}\n\n~5 min · blocked since 2026-09-18. Why.\n\n1. Step.\n`)
+      .join("\n");
+  it("one write per bullet the run added, none for kept ones", () => {
+    expect(blockedWrites("227", q("Old"), q("Old", "New"))).toEqual([
+      {
+        table: BLOCKED_TABLE,
+        goal: `Log this blocked-by-human item in the ${BLOCKED_TABLE} table: run 227, title "New", estimate "~5 min", blocked since 2026-09-18.`,
+      },
+    ]);
+    expect(blockedWrites("227", q("Old"), q("Old"))).toEqual([]);
+  });
+});
+
 describe("classifyWrite", () => {
   const widened = trace({ tables: [TABLE], ddl: [], schema_rewritten: false });
   it("HIT — preview widened, commit landed and rewrote the schema", () => {
@@ -55,7 +78,7 @@ describe("classifyWrite", () => {
       trace: trace({ tables: [TABLE], ddl: ["CREATE TABLE"], schema_rewritten: true }),
     });
     expect(
-      classifyWrite(ok({ status: "ok", requires_confirm: true, trace: widened }), commit),
+      classifyWrite(TABLE, ok({ status: "ok", requires_confirm: true, trace: widened }), commit),
     ).toEqual({
       inSample: true,
       hit: true,
@@ -70,14 +93,15 @@ describe("classifyWrite", () => {
       trace: trace({ tables: [TABLE], ddl: ["ALTER TABLE"], schema_rewritten: true }),
     });
     expect(
-      classifyWrite(ok({ status: "ok", requires_confirm: true, trace: trace() }), commit).hit,
+      classifyWrite(TABLE, ok({ status: "ok", requires_confirm: true, trace: trace() }), commit)
+        .hit,
     ).toBe(true);
   });
 
   it("not in sample — every field already seen", () => {
     const commit = ok({ status: "ok", rowCount: 1, trace: trace() });
     expect(
-      classifyWrite(ok({ status: "ok", requires_confirm: true, trace: trace() }), commit),
+      classifyWrite(TABLE, ok({ status: "ok", requires_confirm: true, trace: trace() }), commit),
     ).toEqual({
       inSample: false,
       hit: false,
@@ -89,15 +113,16 @@ describe("classifyWrite", () => {
     const hijack = trace(undefined, `INSERT INTO "s"."entities" (name) VALUES ('x')`);
     const commit = ok({ status: "ok", rowCount: 1, trace: hijack });
     expect(
-      classifyWrite(ok({ status: "ok", requires_confirm: true, trace: hijack }), commit),
+      classifyWrite(TABLE, ok({ status: "ok", requires_confirm: true, trace: hijack }), commit),
     ).toEqual({ inSample: true, hit: false, reason: "wrong_target" });
     const read = trace(undefined, `SELECT * FROM "s"."${TABLE}"`);
-    expect(classifyWrite(ok({ status: "ok", rowCount: 1, trace: read })).reason).toBe(
+    expect(classifyWrite(TABLE, ok({ status: "ok", rowCount: 1, trace: read })).reason).toBe(
       "wrong_target",
     );
     const bare = trace(undefined, `insert into ${TABLE} (run) values (1)`);
     expect(
       classifyWrite(
+        TABLE,
         ok({ status: "ok", requires_confirm: true, trace: bare }),
         ok({ status: "ok", rowCount: 1, trace: bare }),
       ).reason,
@@ -105,23 +130,44 @@ describe("classifyWrite", () => {
     const other = trace({ tables: ["runs"], ddl: ["CREATE TABLE"], schema_rewritten: true });
     expect(
       classifyWrite(
+        TABLE,
         ok({ status: "ok", requires_confirm: true, trace: other }),
         ok({ status: "ok", rowCount: 1, trace: other }),
       ).reason,
     ).toBe("widen_wrong_table:runs");
   });
 
+  it("scores the blocked-items table on its own name", () => {
+    const sql = `INSERT INTO "s"."${BLOCKED_TABLE}" (title) VALUES ('t')`;
+    const grown = trace(
+      { tables: [BLOCKED_TABLE], ddl: ["CREATE TABLE"], schema_rewritten: true },
+      sql,
+    );
+    const pre = ok({ status: "ok", requires_confirm: true, trace: grown });
+    expect(
+      classifyWrite(BLOCKED_TABLE, pre, ok({ status: "ok", rowCount: 1, trace: grown })),
+    ).toEqual({ inSample: true, hit: true, reason: "landed_widened" });
+    const seen = ok({ status: "ok", rowCount: 1, trace: trace(undefined, sql) });
+    expect(classifyWrite(BLOCKED_TABLE, seen, seen).reason).toBe("seen_fields");
+    // The run-record table's verdict never credits a blocked-items write.
+    expect(classifyWrite(TABLE, pre, ok({ status: "ok", rowCount: 1, trace: grown })).reason).toBe(
+      `widen_wrong_table:${BLOCKED_TABLE}`,
+    );
+  });
+
   it("errors and create-routing count as misses, never drop out", () => {
-    expect(classifyWrite({ ok: false, code: "rate_limited" })).toEqual({
+    expect(classifyWrite(TABLE, { ok: false, code: "rate_limited" })).toEqual({
       inSample: true,
       hit: false,
       reason: "preview_error:rate_limited",
     });
-    expect(classifyWrite(ok({ kind: "create", trace: trace() })).reason).toBe("classified_create");
+    expect(classifyWrite(TABLE, ok({ kind: "create", trace: trace() })).reason).toBe(
+      "classified_create",
+    );
     const pre = ok({ status: "ok", requires_confirm: true, trace: widened });
-    expect(classifyWrite(pre, { ok: false, code: "confirm_expired" }).reason).toBe(
+    expect(classifyWrite(TABLE, pre, { ok: false, code: "confirm_expired" }).reason).toBe(
       "commit_error:confirm_expired",
     );
-    expect(classifyWrite(pre).reason).toBe("not_committed");
+    expect(classifyWrite(TABLE, pre).reason).toBe("not_committed");
   });
 });
