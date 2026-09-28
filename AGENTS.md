@@ -251,6 +251,12 @@ bun run build                # build all packages
 bun run --filter apps/api build && wrangler deploy --dry-run --outdir=/tmp/out
 ```
 
+After a merge, deploy with bare commands, one per call, no `cd`, `&&`, or pipe:
+`bun run --cwd apps/api migrate:remote`, then `bun run --filter @nlqdb/api deploy`,
+then the web, docs, and mcp-server deploys. A chained command does not match
+`.claude/settings.json` and the auto-mode classifier blocks it. Then
+`curl -s` the live host.
+
 Inside `.claude/worktrees/<id>`, biome's `!**/.claude` ignore makes `bun run
 lint` / `format` check 0 files (exit 1) — pass explicit paths. CI is unaffected.
 
