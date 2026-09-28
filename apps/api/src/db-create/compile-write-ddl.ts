@@ -49,13 +49,12 @@ export type CompileWriteFailureReason =
   | "add_column_not_nullable"
   | "add_column_has_default";
 
-// Mirrors `compileDdl`'s per-table identifier checks (reserved words,
-// duplicate columns, PK columns present) — kept minimal and local rather
-// than routing a partial `SchemaPlan` through the create compiler.
+// Mirrors `compileDdl`'s per-table identifier checks (duplicate columns, PK
+// columns present) — kept minimal and local rather than routing a partial
+// `SchemaPlan` through the create compiler. Reserved words are NOT refused:
+// the names come from the app's own write and every one is `quoteIdent`-ed
+// (`WriteIdentifierSchema`, GLOBAL-041 Phase A).
 function validateCreateTable(table: Table): CompileWriteDdlResult | null {
-  if (checkReserved(table.name)) {
-    return { ok: false, reason: "reserved_word", details: { table: table.name } };
-  }
   const cols = new Set<string>();
   for (const col of table.columns) {
     if (cols.has(col.name)) {
@@ -63,13 +62,6 @@ function validateCreateTable(table: Table): CompileWriteDdlResult | null {
         ok: false,
         reason: "duplicate_identifier",
         details: { kind: "column", table: table.name, name: col.name },
-      };
-    }
-    if (checkReserved(col.name)) {
-      return {
-        ok: false,
-        reason: "reserved_word",
-        details: { table: table.name, column: col.name },
       };
     }
     cols.add(col.name);
@@ -87,16 +79,6 @@ function validateCreateTable(table: Table): CompileWriteDdlResult | null {
 }
 
 function validateAddColumn(op: AddColumnOp): CompileWriteDdlResult | null {
-  if (checkReserved(op.table)) {
-    return { ok: false, reason: "reserved_word", details: { table: op.table } };
-  }
-  if (checkReserved(op.column.name)) {
-    return {
-      ok: false,
-      reason: "reserved_word",
-      details: { table: op.table, column: op.column.name },
-    };
-  }
   // Widen is nullable-only: a column added to a table that already has rows
   // cannot be NOT NULL, and a DEFAULT on a widen add is a retype-class change
   // (SK-SCHEMA-009), not a silent widen. The allow-list (step 4) rejects the

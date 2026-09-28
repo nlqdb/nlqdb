@@ -127,16 +127,16 @@ describe("buildWidenBatch", () => {
   });
 
   it("passes a compiler failure reason straight through with no batch", async () => {
-    // A reserved word the Zod gate would not have caught if a caller
-    // hand-built the plan — the compiler's defense-in-depth reason wins.
+    // An empty plan the Zod gate would not have caught if a caller
+    // hand-built it — the compiler's defense-in-depth reason wins.
     const res = await buildWidenBatch({
       schemaName: SCHEMA,
       tenantId: TENANT,
-      plan: { create_tables: [table("select", [idCol], ["id"])], add_columns: [] },
+      plan: { create_tables: [], add_columns: [] },
       insert: INSERT,
     });
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.reason).toBe("reserved_word");
+    if (!res.ok) expect(res.reason).toBe("empty_plan");
   });
 
   it("rejects an unsafe schema name before compiling (SK-HDC-009)", async () => {
@@ -297,12 +297,8 @@ describe("widenedSchema", () => {
   });
 
   it("passes a compiler failure reason straight through with no text/hash", () => {
-    const res = widenedSchema(
-      OLD,
-      { create_tables: [table("select", [idCol], ["id"])], add_columns: [] },
-      SCHEMA,
-    );
+    const res = widenedSchema(OLD, { create_tables: [], add_columns: [] }, SCHEMA);
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.reason).toBe("reserved_word");
+    if (!res.ok) expect(res.reason).toBe("empty_plan");
   });
 });

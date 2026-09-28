@@ -235,16 +235,21 @@ const POSTGRES_RESERVED = new Set([
   "with",
 ]);
 
-// Lower-snake-case identifier; rejects Postgres reserved words. Used
-// for every table/column/metric/dimension/slug name in the plan.
-export const IdentifierSchema = z
+// Lower-snake-case identifier, reserved words allowed. The widen plan's
+// table/column names are dictated by the app's own write (`"row"`, `"user"`,
+// `"order"` are real app fields); every compiler quotes them, so a reserved
+// word is safe there and refusing it is a KPI-1 miss (GLOBAL-041 Phase A).
+export const WriteIdentifierSchema = z
   .string()
   .min(1)
   .max(63)
-  .regex(/^[a-z][a-z0-9_]*$/, "must match /^[a-z][a-z0-9_]*$/ (lower_snake_case)")
-  .refine((s) => !POSTGRES_RESERVED.has(s), {
-    message: "must not be a Postgres reserved word",
-  });
+  .regex(/^[a-z][a-z0-9_]*$/, "must match /^[a-z][a-z0-9_]*$/ (lower_snake_case)");
+
+// `WriteIdentifierSchema` minus Postgres reserved words. Used for every name
+// the create-path LLM picks itself (table/column/metric/dimension/slug).
+export const IdentifierSchema = WriteIdentifierSchema.refine((s) => !POSTGRES_RESERVED.has(s), {
+  message: "must not be a Postgres reserved word",
+});
 export type Identifier = z.infer<typeof IdentifierSchema>;
 
 export const ColumnTypeSchema = z.enum([
@@ -381,9 +386,17 @@ export type SchemaPlan = z.infer<typeof SchemaPlanSchema>;
 // never a silent widen). These two refinements mirror `compile-write-ddl.ts`'s
 // `validateAddColumn` and the `sql-validate-ddl.ts` allow-list, one grammar
 // across parse → compile → allow-list.
+// Widen-path column + table: the create grammar with write-dictated names.
+const WidenColumnSchema = ColumnSchema.extend({ name: WriteIdentifierSchema });
+const WidenTableSchema = TableSchema.extend({
+  name: WriteIdentifierSchema,
+  columns: z.array(WidenColumnSchema).min(1).max(50),
+  primary_key: z.array(WriteIdentifierSchema).min(1),
+});
+
 export const AddColumnOpSchema = z.object({
-  table: IdentifierSchema,
-  column: ColumnSchema.refine((c) => c.nullable !== false, {
+  table: WriteIdentifierSchema,
+  column: WidenColumnSchema.refine((c) => c.nullable !== false, {
     message: "a widen ADD COLUMN must be nullable (SK-SCHEMA-008)",
   }).refine((c) => c.default === undefined || c.default === null, {
     message: "a widen ADD COLUMN must not carry a DEFAULT (SK-SCHEMA-009 retype proposal)",
@@ -402,7 +415,7 @@ export type AddColumnOp = z.infer<typeof AddColumnOpSchema>;
 // compiler's `empty_plan` guard, lifted to parse time).
 export const WidenPlanSchema = z
   .object({
-    create_tables: z.array(TableSchema).max(20),
+    create_tables: z.array(WidenTableSchema).max(20),
     add_columns: z.array(AddColumnOpSchema).max(50),
   })
   .refine((p) => p.create_tables.length > 0 || p.add_columns.length > 0, {

@@ -56,8 +56,9 @@ export const SCHEMA_EXTEND_SYSTEM = [
   "  names — never rename, prefix, or suffix them — and admit every one.",
   "- Infer each type from the value the write supplies (a money amount is",
   "  numeric, a count is integer, an id is uuid or text, a flag is boolean).",
-  "- Emit at least one op. Never use a Postgres reserved word (select, table,",
-  "  user, order, group, ...) as an identifier.",
+  "- Emit at least one op. A name you choose yourself must not be a Postgres",
+  "  reserved word (select, table, user, order, group, ...); a name the write",
+  "  gives is kept even when it is one (it is always quoted).",
 ].join("\n");
 
 export function buildSchemaExtendUser(req: ExtendSchemaRequest): string {

@@ -106,22 +106,31 @@ describe("compileWriteDdl", () => {
     if (!res.ok) expect(res.reason).toBe("add_column_has_default");
   });
 
-  it("rejects a reserved schema / table / column name", () => {
+  it("rejects a reserved schema name", () => {
     expect(
       compileWriteDdl({ create_tables: [table("t", [idCol], ["id"])], add_columns: [] }, "select")
         .ok,
     ).toBe(false);
-    const reservedTable = compileWriteDdl(
+  });
+
+  it("admits and quotes a write-dictated reserved table / column name (GLOBAL-041 Phase A)", () => {
+    const res = compileWriteDdl(
       {
-        create_tables: [],
+        create_tables: [table("user", [idCol], ["id"])],
         add_columns: [
-          { table: "where", column: { name: "x", type: "text", nullable: true, description: "c" } },
+          {
+            table: "order",
+            column: { name: "row", type: "text", nullable: true, description: "c" },
+          },
         ],
       },
       SCHEMA,
     );
-    expect(reservedTable.ok).toBe(false);
-    if (!reservedTable.ok) expect(reservedTable.reason).toBe("reserved_word");
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.statements[0]).toContain(`CREATE TABLE "${SCHEMA}"."user"`);
+      expect(res.statements[1]).toBe(`ALTER TABLE "${SCHEMA}"."order" ADD COLUMN "row" TEXT;`);
+    }
   });
 
   it("rejects a duplicate new-table name and a duplicate column", () => {
