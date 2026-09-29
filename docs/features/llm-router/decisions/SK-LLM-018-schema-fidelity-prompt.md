@@ -4,7 +4,8 @@
   three directives beyond "use the provided schema; don't invent":
   (a) **identifiers literal + casing verbatim** — "Use only tables and
   columns that appear literally in the provided schema; preserve
-  identifier casing exactly"; (b) **`Evidence:` is authoritative** —
+  identifier casing exactly", and a reserved-word name is double-quoted
+  (widen-on-write admits write-dictated reserved words like `"user"`); (b) **`Evidence:` is authoritative** —
   when the goal carries the BIRD/Spider annotator-evidence block the
   runner already concatenates in (`tools/eval/src/runner.ts` line
   216–218), the LLM applies its formulas and column hints rather than

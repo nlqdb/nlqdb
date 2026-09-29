@@ -117,11 +117,10 @@ const SHAPES: Shape[] = [
   },
   // The other two GLOBAL-041 output kinds (run 227): a scorecard row delta and
   // a new blocked-by-human item, each into its own unseen table on the dogfood
-  // DB as it stands after the first `daily_runs` write. `dogfood-delta` misses
-  // today: every plan names the record's `row` field `row`, a word
-  // `POSTGRES_RESERVED` refuses (packages/db/src/types.ts), so each provider
-  // fails over and the design ends `llm_failed`. `dogfood-write.ts` holds the
-  // delta kind back until the grammar admits it.
+  // DB as it stands after the first `daily_runs` write. `dogfood-delta` names a
+  // `row` field — a Postgres reserved word the widen grammar admits because the
+  // write dictates it and every compiler quotes it (`WriteIdentifierSchema`,
+  // run 228; before, every provider failed over to `llm_failed`).
   {
     name: "dogfood-delta",
     schemaText: DOGFOOD_SCHEMA,

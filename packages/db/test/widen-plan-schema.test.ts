@@ -63,11 +63,20 @@ describe("WidenPlanSchema", () => {
     ).toBe(false);
   });
 
-  it("rejects a reserved-word table identifier (IdentifierSchema)", () => {
+  it("admits write-dictated reserved-word names — every compiler quotes them (GLOBAL-041 Phase A)", () => {
+    expect(
+      WidenPlanSchema.safeParse({
+        create_tables: [table("user")],
+        add_columns: [addColumn("order", "row")],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a non-lower_snake_case identifier", () => {
     expect(
       WidenPlanSchema.safeParse({
         create_tables: [],
-        add_columns: [addColumn("select", "nickname")],
+        add_columns: [addColumn("users", "Nick Name")],
       }).success,
     ).toBe(false);
   });

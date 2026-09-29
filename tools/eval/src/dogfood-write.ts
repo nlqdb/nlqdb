@@ -2,8 +2,8 @@
 // instrument. The daily loop's own outputs — its run record ("Last change")
 // and its new blocked-by-human items — go into the hosted dogfood DB through
 // `@nlqdb/sdk`, as the run wrote them, never pre-modeled. GLOBAL-041's third
-// kind, the scorecard deltas, waits on the widen grammar admitting a
-// reserved-word field (a delta names its `row`; `POSTGRES_RESERVED` refuses it).
+// kind, the scorecard deltas, waits until prod serves run 228's widen grammar,
+// which admits a delta's reserved-word `row` field (`WriteIdentifierSchema`).
 //
 // Why CI and not the daily session: the session's credential classifier
 // denies materialising the prod `sk_mcp_` key into an outbound call (runs

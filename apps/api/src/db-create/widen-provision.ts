@@ -47,8 +47,8 @@ import type { PgClient, PgTransactionResult, PgTransactionStatement } from "./ty
 export type WidenBatchResult =
   | { ok: true; statements: PgTransactionStatement[] }
   // The compiler's typed reasons pass straight through — a caller that gets
-  // an invalid plan through the Zod gate (a hand-built plan, a reserved
-  // identifier) sees the same reason `compile-write-ddl.ts` would return,
+  // an invalid plan through the Zod gate (a hand-built plan, an empty plan)
+  // sees the same reason `compile-write-ddl.ts` would return,
   // never a downstream libpg_query reject.
   | { ok: false; reason: CompileWriteFailureReason; details?: unknown };
 
