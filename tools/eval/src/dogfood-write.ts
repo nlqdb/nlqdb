@@ -219,8 +219,9 @@ async function main(): Promise<void> {
   if (!record) throw new Error("docs/scorecard.md has no parseable `## Last change` entry");
 
   // A push that left the record unchanged is not a new run, so it never
-  // double-writes the record; its new blocked-by-human bullets still go in.
-  // A manual dispatch always writes the record. Its row deltas ride with it.
+  // double-writes the record; its changed rows and new bullets still go in
+  // (both are diffs against the push base, so never re-sent by a later push).
+  // A manual dispatch always writes the record.
   // An unreadable base queue writes no bullet — never the whole queue as "new".
   const since = baseRef(process.env["DOGFOOD_BASE"]);
   const cardBefore = fileAt("docs/scorecard.md", since);
@@ -232,11 +233,11 @@ async function main(): Promise<void> {
     console.warn(`dogfood-write: no blocked queue at ${since} — skipping bullets.`);
   const writes: Write[] = [
     ...(newRun ? [{ table: TABLE, goal: buildGoal(record) }] : []),
-    ...(newRun && cardBefore !== null ? deltaWrites(record.run, cardBefore, cardNow) : []),
+    ...deltaWrites(record.run, cardBefore ?? "", cardNow),
     ...(queueBefore === null ? [] : blockedWrites(record.run, queueBefore, queueNow)),
   ];
   if (writes.length === 0) {
-    console.info(`dogfood-write: run ${record.run} already written, no new bullet — skipping.`);
+    console.info(`dogfood-write: run ${record.run} already written, nothing changed — skipping.`);
     return;
   }
 
