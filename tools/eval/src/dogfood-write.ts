@@ -221,7 +221,8 @@ async function main(): Promise<void> {
   // A push that left the record unchanged is not a new run, so it never
   // double-writes the record; its changed rows and new bullets still go in
   // (both are diffs against the push base, so never re-sent by a later push).
-  // A manual dispatch always writes the record.
+  // A manual dispatch replays the last merge: it re-sends the record and
+  // HEAD~1's deltas and bullets, so run it only to retry a failed push write.
   // An unreadable base writes no delta or bullet — never the whole file as "new".
   const since = baseRef(process.env["DOGFOOD_BASE"]);
   const cardBefore = fileAt("docs/scorecard.md", since);
