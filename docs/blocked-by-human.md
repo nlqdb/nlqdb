@@ -12,7 +12,7 @@ a secret value.
 ## Show HN launch sequence
 
 ~30 min · blocked since 2026-06-13. Gated on the `GLOBAL-041` Phase A exit
-(≥ 190/200 real first-inserts; the formal sample is 0/200 — agents drive it;
+(≥ 190/200 real first-inserts; the formal sample is 1 HIT / 1 MISS — agents drive it;
 the preview walk's 10/10 does not open it). Kit:
 [`research/launch-kit.md`](./research/launch-kit.md).
 
