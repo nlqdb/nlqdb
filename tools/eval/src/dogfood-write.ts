@@ -200,7 +200,7 @@ function baseRef(before: string | undefined): string {
     try {
       execFileSync("git", ["fetch", "--no-tags", "--depth=1", "origin", before]);
     } catch {
-      // HEAD~1..HEAD is a subset of the push: bullets may be missed, never re-sent.
+      // HEAD~1..HEAD is a subset of the push: bullets and deltas may be missed, never re-sent.
       console.warn(`dogfood-write: cannot fetch push base ${before} — diffing against HEAD~1.`);
       return "HEAD~1";
     }
@@ -222,9 +222,11 @@ async function main(): Promise<void> {
   // double-writes the record; its changed rows and new bullets still go in
   // (both are diffs against the push base, so never re-sent by a later push).
   // A manual dispatch always writes the record.
-  // An unreadable base queue writes no bullet — never the whole queue as "new".
+  // An unreadable base writes no delta or bullet — never the whole file as "new".
   const since = baseRef(process.env["DOGFOOD_BASE"]);
   const cardBefore = fileAt("docs/scorecard.md", since);
+  if (cardBefore === null)
+    console.warn(`dogfood-write: no scorecard at ${since} — skipping row deltas.`);
   const prev = parseLastChange(cardBefore ?? "");
   const newRun = process.env["GITHUB_EVENT_NAME"] !== "push" || prev?.run !== record.run;
   const queueBefore = fileAt("docs/blocked-by-human.md", since);

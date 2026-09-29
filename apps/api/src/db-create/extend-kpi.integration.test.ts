@@ -128,7 +128,7 @@ const SHAPES: Shape[] = [
     writeSql: `INSERT INTO "scorecard_deltas" ("run", "row", "metric", "before", "after") VALUES (226, '16', 'Phase 2 exit gate = GLOBAL-041 Phase A', 'Gate RED — formal sample 0/200', 'Gate RED — formal sample 0 HIT / 1 MISS')`,
   },
   // The first delta `deltaWrites` really sends (run 230's merge: row E1,
-  // verbatim, 1874 chars of markdown). Only the goal drives the plan; the
+  // a 1876-char goal, verbatim). Only the goal drives the plan; the
   // INSERT's values are shortened because `writeColumns` reads only its names.
   {
     name: "dogfood-delta-real",
