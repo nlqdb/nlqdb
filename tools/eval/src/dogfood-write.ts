@@ -1,9 +1,8 @@
 // Phase A dogfood workload — GLOBAL-041 build-order step 8, the KPI 1
-// instrument. The daily loop's own outputs — its run record ("Last change")
-// and its new blocked-by-human items — go into the hosted dogfood DB through
-// `@nlqdb/sdk`, as the run wrote them, never pre-modeled. GLOBAL-041's third
-// kind, the scorecard deltas, waits until prod serves run 228's widen grammar,
-// which admits a delta's reserved-word `row` field (`WriteIdentifierSchema`).
+// instrument. The daily loop's own outputs — its run record ("Last change"),
+// its scorecard row deltas and its new blocked-by-human items — go into the
+// hosted dogfood DB through `@nlqdb/sdk`, as the run wrote them, never
+// pre-modeled.
 //
 // Why CI and not the daily session: the session's credential classifier
 // denies materialising the prod `sk_mcp_` key into an outbound call (runs
@@ -27,6 +26,7 @@ export type RunRecord = { date: string; run: string; headline: string; details: 
 // left to widen-on-write to infer from the values (GLOBAL-041 — never pre-model).
 export const TABLE = "daily_runs";
 export const BLOCKED_TABLE = "blocked_items";
+export const DELTA_TABLE = "scorecard_deltas";
 
 // One write: the goal-named table and the NL goal that inserts the record.
 export type Write = { table: string; goal: string };
@@ -56,6 +56,39 @@ const clip = (s: string, room: number) => (s.length > room ? `${s.slice(0, room 
 export function buildGoal(r: RunRecord): string {
   const head = `Log this daily run in the ${TABLE} table: run ${r.run}, date ${r.date}, headline "${r.headline}", details "`;
   return `${head}${clip(r.details, MAX_GOAL - head.length - 2)}".`;
+}
+
+type Row = { metric: string; value: string };
+
+// Pure: the scorecard's numbered metric rows, `| # | Metric | Value | Target |`,
+// keyed by `#`. Section-header rows carry an empty `#` and are skipped.
+export function parseRows(md: string): Map<string, Row> {
+  const rows = new Map<string, Row>();
+  for (const line of md.split("\n")) {
+    const cells = line.split(/(?<!\\)\|/).map((c) => c.trim());
+    const [, id = "", metric = "", value = ""] = cells;
+    if (cells.length < 5 || !/^[A-Z]?\d+$/.test(id)) continue;
+    rows.set(id, { metric, value });
+  }
+  return rows;
+}
+
+// Pure: one write per scorecard row whose value this run changed. Before and
+// after share what room the cap leaves.
+export function deltaWrites(run: string, before: string, after: string): Write[] {
+  const prev = parseRows(before);
+  const out: Write[] = [];
+  for (const [id, { metric, value }] of parseRows(after)) {
+    const old = prev.get(id)?.value;
+    if (old === undefined || old === value) continue;
+    const head = `Log this scorecard delta in the ${DELTA_TABLE} table: run ${run}, row ${id}, metric "${metric}", before "`;
+    const room = Math.floor((MAX_GOAL - head.length - 14) / 2);
+    out.push({
+      table: DELTA_TABLE,
+      goal: `${head}${clip(old, room)}", after "${clip(value, room)}".`,
+    });
+  }
+  return out;
 }
 
 type Blocked = { title: string; estimate: string; since: string };
@@ -167,7 +200,7 @@ function baseRef(before: string | undefined): string {
     try {
       execFileSync("git", ["fetch", "--no-tags", "--depth=1", "origin", before]);
     } catch {
-      // HEAD~1..HEAD is a subset of the push: bullets may be missed, never re-sent.
+      // HEAD~1..HEAD is a subset of the push: bullets and deltas may be missed, never re-sent.
       console.warn(`dogfood-write: cannot fetch push base ${before} — diffing against HEAD~1.`);
       return "HEAD~1";
     }
@@ -181,15 +214,21 @@ async function main(): Promise<void> {
     console.info("dogfood-write: NLQDB_API_KEY unset — skipping (green no-op).");
     return;
   }
-  const record = parseLastChange(fileAt("docs/scorecard.md", null) ?? "");
+  const cardNow = fileAt("docs/scorecard.md", null) ?? "";
+  const record = parseLastChange(cardNow);
   if (!record) throw new Error("docs/scorecard.md has no parseable `## Last change` entry");
 
   // A push that left the record unchanged is not a new run, so it never
-  // double-writes the record; its new blocked-by-human bullets still go in.
-  // A manual dispatch always writes the record.
-  // An unreadable base queue writes no bullet — never the whole queue as "new".
+  // double-writes the record; its changed rows and new bullets still go in
+  // (both are diffs against the push base, so never re-sent by a later push).
+  // A manual dispatch replays the last merge: it re-sends the record and
+  // HEAD~1's deltas and bullets, so run it only to retry a failed push write.
+  // An unreadable base writes no delta or bullet — never the whole file as "new".
   const since = baseRef(process.env["DOGFOOD_BASE"]);
-  const prev = parseLastChange(fileAt("docs/scorecard.md", since) ?? "");
+  const cardBefore = fileAt("docs/scorecard.md", since);
+  if (cardBefore === null)
+    console.warn(`dogfood-write: no scorecard at ${since} — skipping row deltas.`);
+  const prev = parseLastChange(cardBefore ?? "");
   const newRun = process.env["GITHUB_EVENT_NAME"] !== "push" || prev?.run !== record.run;
   const queueBefore = fileAt("docs/blocked-by-human.md", since);
   const queueNow = fileAt("docs/blocked-by-human.md", null) ?? "";
@@ -197,10 +236,11 @@ async function main(): Promise<void> {
     console.warn(`dogfood-write: no blocked queue at ${since} — skipping bullets.`);
   const writes: Write[] = [
     ...(newRun ? [{ table: TABLE, goal: buildGoal(record) }] : []),
+    ...deltaWrites(record.run, cardBefore ?? "", cardNow),
     ...(queueBefore === null ? [] : blockedWrites(record.run, queueBefore, queueNow)),
   ];
   if (writes.length === 0) {
-    console.info(`dogfood-write: run ${record.run} already written, no new bullet — skipping.`);
+    console.info(`dogfood-write: run ${record.run} already written, nothing changed — skipping.`);
     return;
   }
 

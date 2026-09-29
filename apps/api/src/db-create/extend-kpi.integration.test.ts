@@ -127,6 +127,15 @@ const SHAPES: Shape[] = [
     goal: 'Log this scorecard delta in the scorecard_deltas table: run 226, row 16, metric "Phase 2 exit gate = `GLOBAL-041` Phase A", before "**Gate RED — formal sample 0/200 (window not open).**", after "**Gate RED — formal sample 0 HIT / 1 MISS (window opened 2026-09-27, day 1/14).**".',
     writeSql: `INSERT INTO "scorecard_deltas" ("run", "row", "metric", "before", "after") VALUES (226, '16', 'Phase 2 exit gate = GLOBAL-041 Phase A', 'Gate RED — formal sample 0/200', 'Gate RED — formal sample 0 HIT / 1 MISS')`,
   },
+  // The first delta `deltaWrites` really sends (run 230's merge: row E1,
+  // a 1876-char goal, verbatim). Only the goal drives the plan; the
+  // INSERT's values are shortened because `writeColumns` reads only its names.
+  {
+    name: "dogfood-delta-real",
+    schemaText: DOGFOOD_SCHEMA,
+    goal: 'Log this scorecard delta in the scorecard_deltas table: run 230, row E1, metric "**KPI 1 — first-insert inference rate**", before "**Live walk = 100 % (10/10), run 224** on deployed `de56f37` ([36212596504](https://github.com/nlqdb/nlqdb/actions/runs/36212596504) 5/5, [36212675584](https://github.com/nlqdb/nlqdb/actions/runs/36212675584) 5/5), both strict walks (a HIT needs the goal-named table). The strict walks were 7/10 on `091912f` (run 222, 17/20 counting the two pre-check walks); the `auth-shaped` → `entities` miss is closed by run 223\'s first-plan `newTable` hint. Preview-only over 5 fixed shapes. **Formal sample (`GLOBAL-041`): 1 HIT / 1 MISS (50 %)** — run 225 missed `commit_error:schema_mismatch`; run 226\'s fix HIT `landed_widened` on its own merge. **Agent-side harness, column-honest: 24/24 over 8 shapes × 3 (run 228)**; `dogfood-delta` (reserved-word `row`) 0/3 → 3/3. Only a write carrying an unseen table or field enters the sample. Executor + confirm proven live (run 214).", after "**Live walk = 100 % (10/10), run 224** on deployed `de56f37` ([36212596504](https://github.com/nlqdb/nlqdb/actions/runs/36212596504) 5/5, [36212675584](https://github.com/nlqdb/nlqdb/actions/runs/36212675584) 5/5), both strict walks (a HIT needs the goal-named table). The strict walks were 7/10 on `091912f` (run 222, 17/20 counting the two pre-check walks); the `auth-shaped` → `entities` miss is closed by run 223\'s first-plan `newTable` hint. Preview-only over 5 fixed shapes. **Formal sample (`GLOBAL-041`): 1 HIT / 1 MISS (50 %)** — run 225 missed `commit_error:schema_mismatch`; run 226\'s fix HIT `landed_widened` on its own merge. **Agent-side harness, column-honest: 27/27 over 9 shapes × 3 (run 230)**; production-length `dogfood-delta-real` 3/3. Only a write carrying an unseen table or field enters the sample. Executor + confirm proven live (run 214).".',
+    writeSql: `INSERT INTO "scorecard_deltas" ("run", "row", "metric", "before", "after") VALUES (230, 'E1', '**KPI 1 — first-insert inference rate**', '**Live walk = 100 % (10/10), run 224**', '**Live walk = 100 % (10/10), run 224**')`,
+  },
   {
     name: "dogfood-blocked",
     schemaText: DOGFOOD_SCHEMA,

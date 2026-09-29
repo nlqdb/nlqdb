@@ -1,12 +1,12 @@
 # Phase A dogfood workload — GLOBAL-041 build-order step 8, the KPI 1
 # instrument. On every merge that touches the scorecard or the blocked-by-human
-# queue, write the daily run's outputs — its "Last change" record and its new
-# blocked-by-human items — into the hosted dogfood DB through `@nlqdb/sdk`
-# (preview → confirm), as the run wrote them — no field pre-modeled. The write
-# moves prod `asks_extend_ok/failed` (SK-SCHEMA-010) and opens the GLOBAL-041
-# 200-insert window. CI, not the daily session: the prod key crosses only the
-# workflow boundary (tools/eval/src/dogfood-write.ts). Self-skips green when
-# the secret is absent.
+# queue, write the daily run's outputs — its "Last change" record, its scorecard
+# row deltas and its new blocked-by-human items — into the hosted dogfood DB
+# through `@nlqdb/sdk` (preview → confirm), as the run wrote them — no field
+# pre-modeled. The write moves prod `asks_extend_ok/failed` (SK-SCHEMA-010) and
+# opens the GLOBAL-041 200-insert window. CI, not the daily session: the prod
+# key crosses only the workflow boundary (tools/eval/src/dogfood-write.ts).
+# Self-skips green when the secret is absent.
 #
 # Mandatory pre-read for `.github/workflows/**`: docs/features/ci-permissions/FEATURE.md
 
@@ -44,7 +44,7 @@ jobs:
           fetch-depth: 2
       - uses: ./.github/actions/setup
 
-      - name: Write the run record and new blocked items
+      - name: Write the run record, row deltas and new blocked items
         working-directory: tools/eval
         env:
           NLQDB_API_KEY: ${{ secrets.NLQDB_API_KEY }}
