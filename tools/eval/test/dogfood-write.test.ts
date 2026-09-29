@@ -6,7 +6,10 @@ import {
   blockedWrites,
   buildGoal,
   classifyWrite,
+  DELTA_TABLE,
+  deltaWrites,
   parseLastChange,
+  parseRows,
   TABLE,
 } from "../src/dogfood-write.ts";
 
@@ -50,6 +53,31 @@ describe("buildGoal", () => {
     });
     expect(goal.startsWith(`Log this daily run in the ${TABLE} table: run 225`)).toBe(true);
     expect(goal.length).toBeLessThanOrEqual(2000);
+  });
+});
+
+describe("deltaWrites", () => {
+  const card = (e1: string, gate: string) =>
+    `| # | Metric | Value | Target |\n|---|---|---|---|\n| | **Engine** | | |\n| E1 | KPI 1 | ${e1} | ≥ 95 % |\n| 16 | Gate | ${gate} | note \\| pipe |\n`;
+  it("parses numbered rows, skips section headers, keeps escaped pipes", () => {
+    const rows = parseRows(card("a", "b"));
+    expect([...rows.keys()]).toEqual(["E1", "16"]);
+    expect(rows.get("16")).toEqual({ metric: "Gate", value: "b" });
+  });
+  it("one write per row whose value changed, none for unchanged or new rows", () => {
+    expect(deltaWrites("230", card("1/2", "RED"), card("2/3", "RED"))).toEqual([
+      {
+        table: DELTA_TABLE,
+        goal: `Log this scorecard delta in the ${DELTA_TABLE} table: run 230, row E1, metric "KPI 1", before "1/2", after "2/3".`,
+      },
+    ]);
+    expect(deltaWrites("230", card("a", "b"), card("a", "b"))).toEqual([]);
+    expect(deltaWrites("230", "", card("a", "b"))).toEqual([]);
+  });
+  it("fits the 2000-char cap with long values on both sides", () => {
+    const [w] = deltaWrites("230", card("x".repeat(3000), "b"), card("y".repeat(3000), "b"));
+    expect(w?.goal.length).toBeLessThanOrEqual(2000);
+    expect(w?.goal.endsWith('…".')).toBe(true);
   });
 });
 

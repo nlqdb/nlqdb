@@ -127,6 +127,14 @@ const SHAPES: Shape[] = [
     goal: 'Log this scorecard delta in the scorecard_deltas table: run 226, row 16, metric "Phase 2 exit gate = `GLOBAL-041` Phase A", before "**Gate RED — formal sample 0/200 (window not open).**", after "**Gate RED — formal sample 0 HIT / 1 MISS (window opened 2026-09-27, day 1/14).**".',
     writeSql: `INSERT INTO "scorecard_deltas" ("run", "row", "metric", "before", "after") VALUES (226, '16', 'Phase 2 exit gate = GLOBAL-041 Phase A', 'Gate RED — formal sample 0/200', 'Gate RED — formal sample 0 HIT / 1 MISS')`,
   },
+  // The real first delta `deltaWrites` sends (run 228's row-7 change, run 230):
+  // markdown-heavy values at production length, not the short sample above.
+  {
+    name: "dogfood-delta-real",
+    schemaText: DOGFOOD_SCHEMA,
+    goal: 'Log this scorecard delta in the scorecard_deltas table: run 228, row 7, metric "Surface yield", before "posts **40** (dev.to drip throttled this run — 1/day guard, 10 variants remain). **GSC live 09-17** (28d 08-20→09-17): **967 impr / 30 query rows, 8 clicks** (pos 21.0; bug-bounty hall-of-fame 1, plus a JS bucket-ranges query at 127 impr pos 6.3 / 0 clicks). **CTR lane exhausted (fresh-confirmed):** page-1 zero-click pages carry hand-written SERP meta — `count-rows-per-day…` (pos 7.1 / 56 impr, metaed run 183) + `count-consecutive-days` (pos 11.1 / 52 impr) — snippet no longer the lever; position/authority-gated. "Strengthen next" leader `/solve/` index is pos 34.8 / 92 impr = page 4 (content/authority-gated, not snippet). Referral (live 09-04): google 10. Wedge pages 6/6 indexed", after "posts **40**. **GSC live 09-17** (28d 08-20→09-17): **967 impr / 30 query rows, 8 clicks** (pos 21.0). CTR lane exhausted: page-1 zero-click pages already carry hand-written SERP meta; the rest is position/authority-gated (launch-gated). Paused lane (`GLOBAL-041`)". ',
+    writeSql: `INSERT INTO "scorecard_deltas" ("run", "row", "metric", "before", "after") VALUES (228, '7', 'Surface yield', 'posts **40** (dev.to drip throttled)', 'posts **40**. Paused lane')`,
+  },
   {
     name: "dogfood-blocked",
     schemaText: DOGFOOD_SCHEMA,
