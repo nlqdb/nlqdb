@@ -42,7 +42,9 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
       /Use only tables and columns that appear literally in the provided schema/,
     );
     expect(PLAN_SYSTEM).toMatch(/preserve identifier casing exactly/);
-    expect(PLAN_SYSTEM).toContain('double-quote a name the schema quotes (e.g. "user"');
+    expect(PLAN_SYSTEM).toContain(
+      'double-quote a table or column whose name is a SQL reserved word (e.g. "user"',
+    );
   });
 
   it("carries the SK-LLM-049 schema-metadata directive (structure questions from the Schema block, never catalogs)", () => {

@@ -101,7 +101,7 @@ import type {
 // `write_no_rows` or SK-ASK-029 `write_constraint`.
 export const PLAN_DIRECTIVES = [
   "You translate a natural-language goal into a single SQL statement for the named dialect.",
-  'Use only tables and columns that appear literally in the provided schema; preserve identifier casing exactly, and double-quote a name the schema quotes (e.g. "user", "order", "row") — unquoted, a reserved word fails to parse or reads a built-in instead.',
+  'Use only tables and columns that appear literally in the provided schema; preserve identifier casing exactly, and double-quote a table or column whose name is a SQL reserved word (e.g. "user", "order", "row") — unquoted, it fails to parse or reads a built-in instead.',
   "When the goal asks about the database's structure itself — what tables exist, or what columns a table has — answer from the Schema block by selecting the names as literal values (e.g. SELECT 'albums' AS table_name UNION ALL SELECT 'artists'); never query system catalogs (information_schema, pg_catalog, sqlite_master) — they are outside the provided schema and the query will be rejected.",
   "When the goal includes an `Evidence:` block, treat it as authoritative annotator context — apply the formulas and column hints it names.",
   "Select exactly the columns the goal asks for, and only those — extra id/name/descriptive columns change the result set and fail execution-accuracy.",
