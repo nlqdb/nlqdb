@@ -234,7 +234,7 @@ supported; else read manually before editing.)
 | [`docs/history/`](docs/history/) | Lessons learnt + [`founder-actions-log.md`](docs/history/founder-actions-log.md) (every human operator action) — one doc per topic. |
 | [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits, marketing, Phase 1 exit, open questions. |
 | [`docs/research/acquisition-channels.md`](docs/research/acquisition-channels.md) + [`-mechanisms.md`](docs/research/acquisition-channels-mechanisms.md) | Acquisition-channel ledger + its mechanism-notes shard. |
-| [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature (e.g. semantic-layer). Promote once decisions are firm. |
+| [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature (e.g. semantic-layer; the founder's data-moat direction). Promote once decisions are firm. |
 
 Each `FEATURE.md`'s `Status:` line is the canonical feature status.
 
