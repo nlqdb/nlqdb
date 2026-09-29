@@ -186,6 +186,33 @@ describe("validateCompiledDdl", () => {
     expect(validateCompiledDdl(compiled.statements)).toEqual({ ok: true });
   });
 
+  it("accepts compileWriteDdl output for write-dictated reserved-word names (quoted)", () => {
+    const compiled = compileWriteDdl(
+      {
+        create_tables: [
+          {
+            name: "user",
+            description: "t",
+            columns: [
+              { name: "id", type: "uuid", nullable: false, description: "pk" },
+              { name: "order", type: "text", nullable: true, description: "c" },
+            ],
+            primary_key: ["id"],
+          },
+        ],
+        add_columns: [
+          {
+            table: "group",
+            column: { name: "row", type: "text", nullable: true, description: "c" },
+          },
+        ],
+      },
+      "tenant_schema",
+    );
+    if (!compiled.ok) throw new Error(`compile failed: ${compiled.reason}`);
+    expect(validateCompiledDdl(compiled.statements)).toEqual({ ok: true });
+  });
+
   it("accepts a plain nullable ADD COLUMN", () => {
     expect(validateCompiledDdl([`ALTER TABLE "s"."orders" ADD COLUMN "coupon" TEXT;`])).toEqual({
       ok: true,

@@ -88,6 +88,9 @@ describe("validateSql", () => {
       "SELECT count(*) FROM users",
       "SELECT max(total) FROM orders",
       "SELECT now()",
+      // Quoted reserved-word names a widen admitted from the app's write.
+      'SELECT "row", "order" FROM "user" WHERE "group" = 1',
+      'INSERT INTO "user" ("order", "row") VALUES (\'a\', \'b\')',
     ])("accepts %j", (sql) => {
       expect(validateSql(sql)).toEqual({ ok: true });
     });
