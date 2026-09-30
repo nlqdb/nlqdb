@@ -723,13 +723,6 @@ export const REGISTRY = {
     message: () => "Your database was created, but its search index didn't build.",
     action: () => "Ask it a question anyway; search warms up on its own.",
   }),
-  create_requires_session: defineError({
-    httpStatus: 403,
-    recoverability: "user_config",
-    params: NONE,
-    message: () => "Creating a database needs a signed-in account session.",
-    action: () => "Sign in, then create it — your goal is saved.",
-  }),
 
   // ── Anonymous-token adoption + bearer parsing ──────────────────────────
   invalid_bearer: defineError({

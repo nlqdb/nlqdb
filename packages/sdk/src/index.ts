@@ -459,7 +459,6 @@ export type ApiErrorCode =
   | "ddl_invalid"
   | "provision_failed"
   | "embed_failed"
-  | "create_requires_session"
   // Anonymous-session adoption + bearer parsing.
   | "invalid_bearer"
   | "invalid_token"

@@ -4040,18 +4040,11 @@ app.get("/v1/databases", requirePrincipal, async (c) => {
 // left-rail "+ New" affordance in the chat surface. Accepts
 // `{ name?, goal?, preset? }` (at least one required); uses the same
 // `orchestrateDbCreate` typed-plan pipeline as the `kind=create`
-// branch of `/v1/ask`. Anonymous access is not permitted (SK-HDC-021):
-// the generic goal/name create is the authenticated chat surface, and
-// the `agent_memory_v1` preset create additionally accepts `sk_live`/
-// `sk_mcp` account keys (the agent on-ramp).
-//
-// Note: the `/v1/ask` create path inherits the `orchestrateAsk`
-// per-account D1 limiter (`SK-HDC-008`); this dedicated
-// `POST /v1/databases` and the sibling `DELETE /v1/databases/:id`
-// do not yet pay through that same gate. The gap is bounded by the
-// account-principal requirement (no anon traffic) and tenant scope (a
-// principal can only thrash its own tenant's DBs), so it's accepted for
-// Phase 1.
+// branch of `/v1/ask`. Any account-scoped principal — session, `sk_live`,
+// `sk_mcp` — creates, preset or generic: `createDatabase({ goal })` with an
+// `sk_live_` key is the headless on-ramp (END_GOAL row 1). Anon and pk_live
+// never create. Each create pays one check on the same per-account D1
+// limiter as `/v1/ask` (`SK-HDC-008`), keyed per API key for `sk_*`.
 app.post("/v1/databases", requirePrincipal, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.databases.create", async (span) => {
@@ -4059,8 +4052,7 @@ app.post("/v1/databases", requirePrincipal, async (c) => {
     span.setAttribute("nlqdb.principal.kind", principal.kind);
     span.setAttribute("nlqdb.surface", surfaceFromPrincipal(principal));
 
-    // SK-HDC-021 (SK-PIVOT-010 amended 2026-08-09) — auth boundary.
-    // anon and pk_live have no account tenant and never create a DB.
+    // Auth boundary: anon and pk_live have no account tenant and never create a DB.
     const tenantId = accountTenantIdFromPrincipal(principal);
     if (!tenantId) {
       span.setAttribute("nlqdb.databases.create.outcome", "account_required");
@@ -4068,6 +4060,20 @@ app.post("/v1/databases", requirePrincipal, async (c) => {
       return fail(c, "account_required");
     }
     span.setAttribute("nlqdb.user.id", tenantId);
+
+    // SK-HDC-008 — one create pays one check on the account bucket, like `/v1/ask`.
+    const decision = await buildAskDeps(c.env).rateLimiter.check(rateLimitBucketKey(principal));
+    if (!decision.allowed) {
+      span.setAttribute("nlqdb.databases.create.outcome", "rate_limited");
+      span.end();
+      const now = Math.floor(Date.now() / 1000);
+      c.header("Retry-After", String(Math.max(0, decision.resetAt - now)));
+      return fail(c, "rate_limited", {
+        limit: decision.limit,
+        count: decision.count,
+        resetAt: decision.resetAt,
+      });
+    }
 
     const raw = await parseJsonBody<{
       name?: unknown;
@@ -4108,19 +4114,6 @@ app.post("/v1/databases", requirePrincipal, async (c) => {
         return fail(c, "preset_engine_conflict");
       }
       preset = raw.body.preset;
-    }
-
-    // SK-HDC-021 (SK-PIVOT-010 amended 2026-08-09) — the `agent_memory_v1`
-    // preset is the authed agent on-ramp, so preset create accepts any
-    // account-scoped principal (user session, sk_live, sk_mcp) — the dogfood
-    // provisioner uses an sk_ key. The generic LLM-inferred goal/name create
-    // stays the chat surface only (session), unchanged. The companion write
-    // verb `/v1/memory/remember` already trusts sk_ keys, so this closes the
-    // create-vs-write asymmetry the SK-PIVOT-016 dogfood gate hit.
-    if (!preset && principal.kind !== "user") {
-      span.setAttribute("nlqdb.databases.create.outcome", "create_requires_session");
-      span.end();
-      return fail(c, "create_requires_session");
     }
 
     if (!preset && !name && !goal) {

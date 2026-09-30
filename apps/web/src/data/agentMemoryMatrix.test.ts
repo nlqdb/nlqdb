@@ -25,7 +25,9 @@ describe("AGENT_MEMORY_MATRIX integrity", () => {
     expect(wedgeRows.length).toBeGreaterThanOrEqual(5);
   });
 
-  test("recall is honestly shown as table stakes (all four ship it)", () => {
+  // Storing a fact is the one capability all four ship; recall-by-similarity
+  // is ◐ for Letta (keyword-first MemFS) and nlqdb (SQL filters), 2026-09-30.
+  test("table stakes are honestly shown (all four ship at least one row)", () => {
     const recall = AGENT_MEMORY_MATRIX.filter(
       (r) =>
         r.mem0 === "shipped" &&
@@ -33,7 +35,7 @@ describe("AGENT_MEMORY_MATRIX integrity", () => {
         r.letta === "shipped" &&
         r.nlqdb === "shipped",
     );
-    expect(recall.length).toBeGreaterThanOrEqual(2);
+    expect(recall.length).toBeGreaterThanOrEqual(1);
   });
 
   test("verifiedOn is a valid, non-future ISO date", () => {
