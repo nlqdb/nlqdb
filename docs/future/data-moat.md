@@ -12,10 +12,9 @@
 
 The current moat is the DBA that optimizes for real, with observability
 ([`GLOBAL-041`](../decisions/GLOBAL-041-autonomous-dba.md)), and Phase A
-(infer on write) stays the current slice. This direction is where that engine
-goes next: it gets perfected across many kinds of data and data models, not
-only the rateme12 shape
-([`GLOBAL-042`](../decisions/GLOBAL-042-dogfood-iteration-loop.md)).
+(infer on write) stays the current slice. What this direction changes, if
+anything, is open (questions 3–4); rateme12 stays the first
+[`GLOBAL-042`](../decisions/GLOBAL-042-dogfood-iteration-loop.md) iteration.
 
 ## Open questions (answer before promoting)
 
