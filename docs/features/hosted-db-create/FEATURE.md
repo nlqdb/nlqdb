@@ -66,7 +66,6 @@ block.
 - [**SK-HDC-018**](decisions/SK-HDC-018-sample-insert-graceful-degradation.md) — A constraint-violating sample row degrades to an un-seeded DB, never a 500.
 - [**SK-HDC-019**](decisions/SK-HDC-019-deterministic-sample-row-salvage.md) — Pre-validate sample rows and drop only the uninsertable ones, salvaging the rest.
 - [**SK-HDC-020**](decisions/SK-HDC-020-agent-memory-preset.md) — Opt-in `agent_memory_v1` schema preset on the create path.
-- [**SK-HDC-021**](decisions/SK-HDC-021-preset-create-accepts-account-keys.md) — Preset create accepts any account-scoped principal (`user`/`sk_live`/`sk_mcp`); generic goal create stays session-only (applies the SK-PIVOT-010 2026-08-09 amendment).
 - [**SK-HDC-022**](decisions/SK-HDC-022-nullable-inferred-foreign-keys.md) — An inferred FK column is never `NOT NULL` unless it is part of the child's primary key, so the creator's next write is never structurally impossible.
 - [**SK-HDC-023**](decisions/SK-HDC-023-single-cron-job-table.md) — One `*/4 * * * *` cron trigger; every scheduled job on the api Worker is a row in the `scheduled/jobs.ts` job table (Cloudflare Free: 5 crons/account).
 

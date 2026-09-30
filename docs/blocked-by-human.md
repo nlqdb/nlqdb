@@ -9,24 +9,6 @@ Operator actions also get one metadata line in
 [`history/founder-actions-log.md`](./history/founder-actions-log.md) — never
 a secret value.
 
-## Authorize headless goal-create with an `sk_live_` key
-
-~5 min · blocked since 2026-09-30. Closes §6.1 R2 in
-[`001-rateme12.md`](./history/dogfood-iterations/001-rateme12.md), the gate
-on rateme12 §5b. [`END_GOAL.md`](./END_GOAL.md) row 1 is
-`createDatabase({ goal })` with an `sk_live_` key. `POST /v1/databases`
-still returns 403 `create_requires_session` for it (`SK-HDC-021`), while
-`/v1/ask` kind=create already admits the same key. Run 231 wrote the fix:
-drop that gate and charge each create against the `/v1/ask` per-account
-limiter (`SK-HDC-008`). The unattended agent's permission classifier blocks
-widening an auth boundary, so it needs your go-ahead.
-
-1. In a live Claude Code session, say: "remove the `create_requires_session`
-   gate on `POST /v1/databases` per END_GOAL row 1, with the `SK-HDC-008`
-   limiter, and amend `SK-HDC-021`".
-2. Review and merge that PR.
-3. Delete this bullet.
-
 ## Show HN launch sequence
 
 ~30 min · blocked since 2026-06-13. Gated on the `GLOBAL-041` Phase A exit
