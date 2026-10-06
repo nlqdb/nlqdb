@@ -4061,20 +4061,6 @@ app.post("/v1/databases", requirePrincipal, async (c) => {
     }
     span.setAttribute("nlqdb.user.id", tenantId);
 
-    // SK-HDC-008 — one create pays one check on the account bucket, like `/v1/ask`.
-    const decision = await buildAskDeps(c.env).rateLimiter.check(rateLimitBucketKey(principal));
-    if (!decision.allowed) {
-      span.setAttribute("nlqdb.databases.create.outcome", "rate_limited");
-      span.end();
-      const now = Math.floor(Date.now() / 1000);
-      c.header("Retry-After", String(Math.max(0, decision.resetAt - now)));
-      return fail(c, "rate_limited", {
-        limit: decision.limit,
-        count: decision.count,
-        resetAt: decision.resetAt,
-      });
-    }
-
     const raw = await parseJsonBody<{
       name?: unknown;
       goal?: unknown;
@@ -4153,6 +4139,21 @@ app.post("/v1/databases", requirePrincipal, async (c) => {
       span.setAttribute("nlqdb.databases.create.outcome", "idempotent_replay");
       span.end();
       return c.json({ ...prior, replayed: true }, 201);
+    }
+
+    // SK-HDC-008 — one create pays one check on the account bucket, like `/v1/ask`;
+    // checked after validation and replay so neither a bad body nor a retry burns quota.
+    const decision = await buildAskDeps(c.env).rateLimiter.check(rateLimitBucketKey(principal));
+    if (!decision.allowed) {
+      span.setAttribute("nlqdb.databases.create.outcome", "rate_limited");
+      span.end();
+      const now = Math.floor(Date.now() / 1000);
+      c.header("Retry-After", String(Math.max(0, decision.resetAt - now)));
+      return fail(c, "rate_limited", {
+        limit: decision.limit,
+        count: decision.count,
+        resetAt: decision.resetAt,
+      });
     }
 
     const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");

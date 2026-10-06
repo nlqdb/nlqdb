@@ -13,6 +13,7 @@
 //                            which this in-process test can't provision)
 //   - sk_live + generic (no preset) → admitted past auth too: headless
 //                            `createDatabase({ goal })` is END_GOAL row 1
+//   - over the per-key bucket → 429 rate_limited before any LLM/Neon call
 
 import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
@@ -108,5 +109,29 @@ describe("POST /v1/databases — create auth boundary", () => {
     });
     expect(res.status).toBe(400);
     expect(await bodyStatus(res)).toBe("goal_too_long");
+  });
+
+  it("429s a valid create once the key's per-account bucket is spent (SK-HDC-008)", async () => {
+    const { id, plaintext } = await mintSkLiveKey(
+      env.DB,
+      apiKeyHmacSecret(env),
+      "user_sk_ratelimited",
+      null,
+    );
+    // Pre-fill this key's current window to the /v1/ask cap (60/min).
+    const windowStart = Math.floor(Date.now() / 1000 / 60) * 60;
+    await env.DB.prepare(
+      "INSERT INTO rate_limit_buckets (bucket_key, window_start, count) VALUES (?, ?, 60)",
+    )
+      .bind(`rl:${id}`, windowStart)
+      .run();
+    const res = await SELF.fetch(URL, {
+      method: "POST",
+      headers: { ...JSON_HEADERS, authorization: `Bearer ${plaintext}` },
+      body: JSON.stringify({ goal: "a table of orders" }),
+    });
+    expect(res.status).toBe(429);
+    expect(res.headers.get("retry-after")).not.toBeNull();
+    expect(await bodyStatus(res)).toBe("rate_limited");
   });
 });
