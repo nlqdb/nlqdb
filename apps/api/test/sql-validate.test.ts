@@ -96,9 +96,6 @@ describe("validateSql", () => {
     });
   });
 
-  // Comment / paren / inline-comment cases that earlier tripped a
-  // naive `split(/\s+/)` leading-token gate. Each of these should
-  // resolve to a real verb token, not the comment / paren artifact.
   // SK-SDK-015 — `/v1/run` checks the bound params against this count.
   describe("maxParam", () => {
     it("reports the highest $n, ignoring a $n inside a string literal", () => {
@@ -113,6 +110,9 @@ describe("validateSql", () => {
     });
   });
 
+  // Comment / paren / inline-comment cases that earlier tripped a
+  // naive `split(/\s+/)` leading-token gate. Each of these should
+  // resolve to a real verb token, not the comment / paren artifact.
   describe("leading-token gate (paren/comment edge cases)", () => {
     it.each([
       ["EXPLAIN(ANALYZE) DELETE FROM users", false],
