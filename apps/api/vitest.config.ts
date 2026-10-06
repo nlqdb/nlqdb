@@ -105,6 +105,7 @@ export default defineConfig(async () => {
               "src/ask/retry.test.ts",
               "src/ask/diff.test.ts",
               "src/ask/write-constraint.test.ts",
+              "src/ask/exec-classify.test.ts",
               "src/ask/demand-signal.test.ts",
               "src/ask/destructive-clarify.test.ts",
               "src/ask/constraint-clarify.test.ts",

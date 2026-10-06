@@ -16,6 +16,8 @@
 // offending value, which is tenant data (GLOBAL-037), so it stays on the span
 // and the KV diag sink.
 
+const ROLE_MISSING_MSG = /role "[^"]+" does not exist/;
+
 const DATA_EXCEPTION_MSG =
   /invalid input syntax|out of range|division by zero|cannot be cast|invalid value for/i;
 
@@ -23,9 +25,12 @@ const DATA_EXCEPTION_MSG =
 // The message fallback covers Neon's HTTP driver, which drops `.code` on some
 // responses (the same gap `write-constraint.ts` compensates for).
 export function classifyDataException(err: unknown): string | null {
+  const msg = err instanceof Error ? err.message : String(err);
+  // `SET LOCAL ROLE` on a missing role also raises 22023 (SK-ASK-024). That
+  // is the database's state, not the caller's values, so it stays transient.
+  if (ROLE_MISSING_MSG.test(msg)) return null;
   const code = (err as { code?: unknown } | null)?.code;
   if (typeof code === "string" && /^22[0-9A-Z]{3}$/.test(code)) return code;
   if (typeof code === "string" && code !== "") return null;
-  const msg = err instanceof Error ? err.message : String(err);
   return DATA_EXCEPTION_MSG.test(msg) ? "22000" : null;
 }
