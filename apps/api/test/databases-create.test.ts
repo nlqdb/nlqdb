@@ -132,6 +132,8 @@ describe("POST /v1/databases — create auth boundary", () => {
     });
     expect(res.status).toBe(429);
     expect(res.headers.get("retry-after")).not.toBeNull();
+    expect(res.headers.get("x-ratelimit-limit")).toBe("60");
+    expect(res.headers.get("x-ratelimit-remaining")).toBe("0");
     expect(await bodyStatus(res)).toBe("rate_limited");
   });
 });
