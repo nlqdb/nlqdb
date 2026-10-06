@@ -1,5 +1,6 @@
 /*
   Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Content-Security-Policy: frame-ancestors 'self'
 
 # SK-WEB-028 — machine-discovery surfaces. The homepage advertises the API
 # catalog (RFC 9727 link relation) and the canonical agent setup guide
