@@ -219,14 +219,26 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
 }
 
 // `/v1/run` body — shape check only; SQL validation runs inside the orchestrator.
-export type RunBody = { sql: string; db: string };
+export type RunBody = { sql: string; db: string; params?: RunParam[] };
+
+// `SK-SDK-015` — bind values for `$1…$n`. JSON scalars only: a nested object
+// has no single Postgres binding, so it fails loud instead of guessing a cast.
+// An integer past 2^53 was already rounded by `JSON.parse` and could bind to
+// the wrong row — the caller sends it as a string instead.
+export type RunParam = string | number | boolean | null;
+export const MAX_RUN_PARAMS = 1000;
+
+function isRunParam(v: unknown): v is RunParam {
+  if (typeof v === "number") return !Number.isInteger(v) || Number.isSafeInteger(v);
+  return v === null || typeof v === "string" || typeof v === "boolean";
+}
 
 // `dbOptional` lets the pk_live route auto-fill from the principal's pinned dbId after parse.
 export async function parseRunBody(
   c: Context,
   opts: { dbOptional?: boolean } = {},
 ): Promise<ParseResult<RunBody>> {
-  const raw = await parseJsonBody<{ sql?: unknown; db?: unknown }>(c);
+  const raw = await parseJsonBody<{ sql?: unknown; db?: unknown; params?: unknown }>(c);
   if (!raw.ok) return { ok: false, error: { code: "invalid_json" } };
   if (typeof raw.body.sql !== "string" || raw.body.sql.trim().length === 0) {
     return { ok: false, error: { code: "sql_required" } };
@@ -241,7 +253,33 @@ export async function parseRunBody(
   if (!dbProvided && !opts.dbOptional) {
     return { ok: false, error: { code: "db_required" } };
   }
-  return { ok: true, body: { sql: raw.body.sql, db: dbProvided ? (raw.body.db as string) : "" } };
+  const body: RunBody = { sql: raw.body.sql, db: dbProvided ? (raw.body.db as string) : "" };
+  const params = raw.body.params;
+  if (params !== undefined) {
+    if (!Array.isArray(params) || !params.every(isRunParam)) {
+      return {
+        ok: false,
+        error: {
+          code: "invalid_body",
+          params: {
+            reason:
+              "`params` must be an array of strings, numbers, booleans or nulls; send integers past 2^53 as strings.",
+          },
+        },
+      };
+    }
+    if (params.length > MAX_RUN_PARAMS) {
+      return {
+        ok: false,
+        error: {
+          code: "invalid_body",
+          params: { reason: `\`params\` holds more than ${MAX_RUN_PARAMS} values.` },
+        },
+      };
+    }
+    body.params = params;
+  }
+  return { ok: true, body };
 }
 
 // JSON body reader that swallows the parse exception into a typed

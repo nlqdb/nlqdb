@@ -69,7 +69,7 @@ export function buildAskDeps(
     planCache: makePlanCache(envBindings.KV),
     confirmStash: makeConfirmStash(envBindings.KV),
     llm: llm ?? getLLMRouter(),
-    exec: (db, sql, signal) => buildExec(db, sql, signal, scope),
+    exec: (db, sql, signal, params) => buildExec(db, sql, signal, scope, params),
     rateLimiter: makeRateLimiter(envBindings.DB),
     firstQuery: makeFirstQueryTracker(envBindings.KV),
     events: buildEventEmitter(envBindings.EVENTS_QUEUE),
@@ -155,16 +155,27 @@ export type ExecRunners = {
     sql: string,
     signal?: AbortSignal,
     scope?: MemoryScope,
+    params?: unknown[],
   ) => Promise<QueryResult>;
   // BYO Postgres: the user SQL run directly (no search_path / RLS).
-  runByoPg: (url: string, sql: string, signal?: AbortSignal) => Promise<QueryResult>;
+  runByoPg: (
+    url: string,
+    sql: string,
+    signal?: AbortSignal,
+    params?: unknown[],
+  ) => Promise<QueryResult>;
   // BYO ClickHouse: rebuild the spec from the URL + run the SQL.
   runClickhouse: (url: string, sql: string, signal?: AbortSignal) => Promise<QueryResult>;
   // BYO Supabase over the Management-API transport (`SK-DBCONN-003`): no URL —
   // the token rides `db_oauth_grants`, so this runner takes the row and runs the
   // SQL read-only over HTTPS (`POST /database/query`). No egress guard: the
   // target is Supabase's own first-party API host, not a user-supplied one.
-  runSupabaseMgmt: (db: DbRecord, sql: string, signal?: AbortSignal) => Promise<QueryResult>;
+  runSupabaseMgmt: (
+    db: DbRecord,
+    sql: string,
+    signal?: AbortSignal,
+    params?: unknown[],
+  ) => Promise<QueryResult>;
 };
 
 // Executes the LLM-emitted SQL against the resolved DB. Dispatches on the
@@ -190,6 +201,9 @@ export async function dispatchExec(
   // E-03 memory scope — only the hosted path can honour it (a BYO database
   // has neither our schema nor our policies).
   scope?: MemoryScope,
+  // `SK-SDK-015` — `$n` bind values (`/v1/run`); the Postgres runners bind
+  // them, and `orchestrateRun` rejects them before a ClickHouse row gets here.
+  params: unknown[] = [],
 ): Promise<QueryResult> {
   if (db.engine === "clickhouse") {
     const url = await openUrl(db);
@@ -200,11 +214,11 @@ export async function dispatchExec(
   // (`SK-DBCONN-003`). Checked before the generic BYO-blob branch so `openUrl`
   // never tries to `openSecret` the sentinel.
   if (db.connectionBlob === SUPABASE_MGMT_BLOB_SENTINEL) {
-    return runners.runSupabaseMgmt(db, sql, signal);
+    return runners.runSupabaseMgmt(db, sql, signal, params);
   }
   if (db.connectionBlob) {
     const url = await openUrl(db);
-    return runners.runByoPg(url, sql, signal);
+    return runners.runByoPg(url, sql, signal, params);
   }
   const url = (env as unknown as Record<string, string | undefined>)[db.connectionSecretRef];
   if (!url) {
@@ -213,7 +227,7 @@ export async function dispatchExec(
     );
   }
   const schemaName = db.id.startsWith("db_") ? db.id.slice(3) : db.id;
-  return runners.runHostedPg(url, schemaName, db.tenantId, sql, signal, scope);
+  return runners.runHostedPg(url, schemaName, db.tenantId, sql, signal, scope, params);
 }
 
 // SK-ASK-024 — exec-time tenant-ACL self-heal. The adoption-time retarget
@@ -254,11 +268,12 @@ function buildExec(
   sql: string,
   signal?: AbortSignal,
   scope?: MemoryScope,
+  params?: unknown[],
 ): Promise<QueryResult> {
   return execWithTenantAclHeal(
     db,
     sql,
-    (d, s, sig) => dispatchExec(d, s, DEFAULT_RUNNERS, sig, openByoUrl, scope),
+    (d, s, sig) => dispatchExec(d, s, DEFAULT_RUNNERS, sig, openByoUrl, scope, params),
     makeAclRetarget(env, "exec_acl_heal_failed"),
     signal,
   );
@@ -315,18 +330,13 @@ async function runHostedPgQuery(
   sql: string,
   signal?: AbortSignal,
   scope?: MemoryScope,
+  params: unknown[] = [],
 ): Promise<QueryResult> {
   const neonSql = neon(url, { fullResults: true });
   const operation = detectSqlOperation(sql);
   const tracer = trace.getTracer("@nlqdb/api");
   const roleName = await tenantRoleName(tenantId);
-  const steps = buildHostedExecSteps(
-    schemaName,
-    tenantId,
-    roleName,
-    { text: sql, params: [] },
-    scope,
-  );
+  const steps = buildHostedExecSteps(schemaName, tenantId, roleName, { text: sql, params }, scope);
 
   return tracer.startActiveSpan(
     "db.query",
@@ -369,7 +379,12 @@ async function runHostedPgQuery(
 // speaks Neon's HTTP protocol. The socket connects lazily on the first query,
 // so the egress re-guard below runs BEFORE any socket opens, and the socket is
 // closed in `finally`.
-async function runByoPgQuery(url: string, sql: string, signal?: AbortSignal): Promise<QueryResult> {
+async function runByoPgQuery(
+  url: string,
+  sql: string,
+  signal?: AbortSignal,
+  params: unknown[] = [],
+): Promise<QueryResult> {
   const operation = detectSqlOperation(sql);
   const tracer = trace.getTracer("@nlqdb/api");
 
@@ -401,7 +416,7 @@ async function runByoPgQuery(url: string, sql: string, signal?: AbortSignal): Pr
         // no tenant schema; a statement timeout is the only exec guard that
         // applies. Run in one transaction so `SET LOCAL` scopes the timeout to
         // the user statement even behind a transaction-mode pooler.
-        return await conn.runBounded(sql, EXEC_STATEMENT_TIMEOUT, signal);
+        return await conn.runBounded(sql, EXEC_STATEMENT_TIMEOUT, signal, params);
       } catch (err) {
         span.recordException(err as Error);
         span.setStatus({ code: SpanStatusCode.ERROR });
@@ -425,6 +440,7 @@ async function runSupabaseMgmtQuery(
   db: DbRecord,
   sql: string,
   signal?: AbortSignal,
+  params: unknown[] = [],
 ): Promise<QueryResult> {
   const kek = kekFromEnv(env as { BYO_SECRET_KEK?: string });
   if (!kek) {
@@ -443,7 +459,7 @@ async function runSupabaseMgmtQuery(
   );
   signal?.throwIfAborted();
   const { query } = openSupabaseMgmtPostgres(projectRef, accessToken);
-  const res = await query(sql, [], signal);
+  const res = await query(sql, params, signal);
   return { rows: res.rows, rowCount: res.rowCount ?? res.rows.length };
 }
 

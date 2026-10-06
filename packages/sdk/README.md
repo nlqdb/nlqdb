@@ -75,7 +75,7 @@ unless the client was built with `withCredentials: true`.
 
 ```ts
 client.ask({ goal, dbId }, { signal? })           // POST /v1/ask
-client.runSql({ db, sql }, { signal?, idempotencyKey? }) // POST /v1/run
+client.runSql({ db, sql, params? }, { signal?, idempotencyKey? }) // POST /v1/run
 client.databases.connect({ engine, connectionUrl, name? }) // POST /v1/db/connect
 client.listChat({ signal? })                       // GET  /v1/chat/messages
 client.postChat({ goal, dbId }, { signal? })       // POST /v1/chat/messages

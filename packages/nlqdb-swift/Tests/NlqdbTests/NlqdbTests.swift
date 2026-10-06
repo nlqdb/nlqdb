@@ -107,4 +107,16 @@ struct NlqdbClientTests {
         StubProtocol.queue.append((204, Data(), "application/json"))
         try await client.deleteDatabase(id: "db_42")
     }
+
+    @Test("runSql: params encode as a JSON array and are omitted when nil (SK-SDK-015)")
+    func runSqlParamsEncoding() throws {
+        let enc = JSONEncoder()
+        enc.outputFormatting = .sortedKeys
+        let bound = try enc.encode(
+            RunSqlRequest(db: "d", sql: "SELECT $1", params: [.int(5), .string("x"), .null])
+        )
+        #expect(String(decoding: bound, as: UTF8.self) == #"{"db":"d","params":[5,"x",null],"sql":"SELECT $1"}"#)
+        let bare = try enc.encode(RunSqlRequest(db: "d", sql: "SELECT 1"))
+        #expect(String(decoding: bare, as: UTF8.self) == #"{"db":"d","sql":"SELECT 1"}"#)
+    }
 }

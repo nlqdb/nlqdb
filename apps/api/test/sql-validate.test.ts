@@ -96,6 +96,20 @@ describe("validateSql", () => {
     });
   });
 
+  // SK-SDK-015 — `/v1/run` checks the bound params against this count.
+  describe("maxParam", () => {
+    it("reports the highest $n, ignoring a $n inside a string literal", () => {
+      expect(validateSql("UPDATE t SET a = $3 WHERE id = $1 AND b = '$9'")).toEqual({
+        ok: true,
+        maxParam: 3,
+      });
+    });
+
+    it("is absent when the statement has no placeholder", () => {
+      expect(validateSql("SELECT 1")).toEqual({ ok: true });
+    });
+  });
+
   // Comment / paren / inline-comment cases that earlier tripped a
   // naive `split(/\s+/)` leading-token gate. Each of these should
   // resolve to a real verb token, not the comment / paren artifact.

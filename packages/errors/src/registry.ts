@@ -235,8 +235,7 @@ export const REGISTRY = {
     recoverability: "clarify",
     params: z.object({ pgCode: slug(8) }),
     message: () => "One of the values in that query didn't fit its column.",
-    action: () =>
-      "Restate the goal with values that match the column types (dates, numbers, enums).",
+    action: () => "Retry with values that match the column types (dates, numbers, enums).",
   }),
   // SK-TRUST-005 — a confirm arrived after its one-shot preview was consumed or
   // expired. Committing here would run a write the user never previewed
@@ -862,6 +861,15 @@ const SQL_REJECT_COPY: Record<string, [string, string]> = {
   write_via_repair: [
     "A retry of that query tried to change data, which the read path won't run.",
     "Ask for the change explicitly so it goes through the preview gate.",
+  ],
+  // SK-SDK-015 — `/v1/run` bind values, checked before anything runs.
+  params_mismatch: [
+    "The number of `params` doesn't match the highest $n placeholder in the SQL.",
+    "Send exactly one value per $1…$n, then retry.",
+  ],
+  params_unsupported_engine: [
+    "This database's engine doesn't take $n bind values.",
+    "Run the SQL without `params` on this database.",
   ],
   // SK-TRUST-006 — the preview couldn't be built, so the write is not offered.
   preview_unavailable: [

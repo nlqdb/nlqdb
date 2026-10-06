@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -19,9 +20,9 @@ import (
 
 // registerRun wires `nlq run` — the SK-CLI-003 raw-SQL verb (wire contract: SK-SDK-009).
 func registerRun(root *cobra.Command, g *globalFlags) {
-	var db string
+	var db, paramsJSON string
 	cmd := &cobra.Command{
-		Use:   "run [--db <id>] <sql>",
+		Use:   "run [--db <id>] [--params <json>] <sql>",
 		Short: "Run raw SQL against a database (escape hatch — no LLM)",
 		Long: `Run executes raw SQL via POST /v1/run. The same SQL allow-list as
 ` + "`nlq ask`" + ` applies (SELECT / INSERT / UPDATE / DELETE / WITH /
@@ -34,6 +35,10 @@ DB resolution mirrors ` + "`nlq ask`" + `:
     used. ` + "`nlq use <db>`" + ` switches it.
   • Pipe SQL on stdin to skip the positional argument:
       cat schema.sql | nlq run --db finance
+
+Bind values with --params (a JSON array for $1…$n) instead of inlining
+them into the SQL:
+  nlq run --params '[5, "great"]' 'INSERT INTO ratings (stars, note) VALUES ($1, $2)'
 
 Pass --json for machine-readable output.`,
 		Args: cobra.ArbitraryArgs,
@@ -55,23 +60,29 @@ Pass --json for machine-readable output.`,
 				printErr(cmd, "no active database — pass `--db <id>` or run `nlq use <id>` first.")
 				return errors.New("no active db")
 			}
+			params, err := parseParams(paramsJSON)
+			if err != nil {
+				printErr(cmd, "--params must be a JSON array, e.g. '[5, \"great\"]'.")
+				return err
+			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), 120*time.Second)
 			defer cancel()
-			return doRun(ctx, cmd, g, dbID, sqlText)
+			return doRun(ctx, cmd, g, dbID, sqlText, params)
 		},
 	}
 	cmd.Flags().StringVar(&db, "db", "", "database id to run against (default: active DB)")
+	cmd.Flags().StringVar(&paramsJSON, "params", "", "JSON array of values bound to $1…$n")
 	root.AddCommand(cmd)
 }
 
-func doRun(ctx context.Context, cmd *cobra.Command, g *globalFlags, dbID, sql string) error {
+func doRun(ctx context.Context, cmd *cobra.Command, g *globalFlags, dbID, sql string, params []any) error {
 	id, err := auth.Resolve(true)
 	if err != nil {
 		printErr(cmd, "auth: %v", err)
 		return err
 	}
 	client := api.New(g.apiURL, id)
-	resp, err := client.Run(ctx, api.RunRequest{DB: dbID, SQL: sql})
+	resp, err := client.Run(ctx, api.RunRequest{DB: dbID, SQL: sql, Params: params})
 	if err != nil {
 		return renderRunError(cmd, err)
 	}
@@ -127,4 +138,24 @@ func readSQL(cmd *cobra.Command, args []string) (string, error) {
 		return "", fmt.Errorf("read stdin: %w", err)
 	}
 	return string(b), nil
+}
+
+// parseParams decodes --params as a JSON array. UseNumber keeps each number's
+// literal digits, so a big integer id reaches the server unrounded; `null` or
+// any non-array is an error rather than a silently dropped flag.
+func parseParams(raw string) ([]any, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	dec := json.NewDecoder(strings.NewReader(raw))
+	dec.UseNumber()
+	var v any
+	if err := dec.Decode(&v); err != nil {
+		return nil, err
+	}
+	params, ok := v.([]any)
+	if !ok || dec.More() {
+		return nil, errors.New("--params is not a JSON array")
+	}
+	return params, nil
 }

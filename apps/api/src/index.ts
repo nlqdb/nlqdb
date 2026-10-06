@@ -1929,6 +1929,8 @@ app.post("/v1/run", requirePrincipal, async (c) => {
         parsed.body.db = principal.dbId;
       }
       span.setAttribute("nlqdb.run.sql_preview", redactPii(parsed.body.sql).slice(0, 200));
+      // Count only — bound values stay off spans like they stay out of the SQL.
+      span.setAttribute("nlqdb.run.param_count", parsed.body.params?.length ?? 0);
 
       // Anon-tier gates mirror `/v1/ask` ordering so raw-SQL can't sidestep the chat path's caps.
       if (principal.kind === "anon") {
@@ -1987,6 +1989,7 @@ app.post("/v1/run", requirePrincipal, async (c) => {
         },
         {
           sql: parsed.body.sql,
+          ...(parsed.body.params ? { params: parsed.body.params } : {}),
           dbId: parsed.body.db,
           userId: principal.id,
           rateLimitBucketKey: rateLimitBucketKey(principal),

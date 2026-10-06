@@ -4,6 +4,7 @@
 // (`SK-SQLAL-006`) and executor — only the LLM steps are bypassed.
 
 import { SpanStatusCode, trace } from "@opentelemetry/api";
+import { classifyDataException } from "../ask/exec-classify.ts";
 import { hashGoal } from "../ask/plan-cache.ts";
 import type { RateLimiter } from "../ask/rate-limit.ts";
 import { containsWriteVerb, validateSql } from "../ask/sql-validate.ts";
@@ -13,10 +14,15 @@ import {
   type DbRecord,
   type QueryResult,
   type Trace,
+  WriteConstraintError,
 } from "../ask/types.ts";
+import { classifyWriteConstraint } from "../ask/write-constraint.ts";
+import type { RunParam } from "../http.ts";
 
 export type RunRequest = {
   sql: string;
+  // `SK-SDK-015` — values bound to `$1…$n` out of band, never spliced into `sql`.
+  params?: RunParam[];
   dbId: string;
   // Tenant id (`Principal.id`) — drives `resolveDb` scope and the rate-limit bucket fallback.
   userId: string;
@@ -41,7 +47,12 @@ export type RunOutcome = { ok: true; result: RunResult } | { ok: false; error: R
 
 export type RunDeps = {
   resolveDb: (id: string, tenantId: string) => Promise<DbRecord | null>;
-  exec: (db: DbRecord, sql: string, signal?: AbortSignal) => Promise<QueryResult>;
+  exec: (
+    db: DbRecord,
+    sql: string,
+    signal?: AbortSignal,
+    params?: RunParam[],
+  ) => Promise<QueryResult>;
   rateLimiter: RateLimiter;
 };
 
@@ -95,16 +106,40 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
   if (!db) return { ok: false, error: { code: "db_not_found" } };
   if (!db.schemaHash) return { ok: false, error: { code: "schema_unavailable" } };
   const schemaHash = db.schemaHash;
+  const params = req.params ?? [];
+  // ClickHouse binds named `{name:Type}` params, not positional `$n` — reject
+  // rather than run the statement with its placeholders unbound.
+  if (params.length > 0 && db.engine === "clickhouse") {
+    return { ok: false, error: { code: "sql_rejected", reason: "params_unsupported_engine" } };
+  }
+  // Postgres needs exactly one value per `$1…$n`; a mismatch would fail at the
+  // driver and read as a retryable outage. SHOW / EXPLAIN skip the parse and
+  // report no placeholders, so they take no params.
+  if ((validation.maxParam ?? 0) !== params.length) {
+    return { ok: false, error: { code: "sql_rejected", reason: "params_mismatch" } };
+  }
 
   const sqlHash = await hashGoal(req.sql);
 
   let result: QueryResult;
   try {
-    result = await withSpan("nlqdb.run.exec", () => deps.exec(db, req.sql));
+    result = await withSpan("nlqdb.run.exec", () => deps.exec(db, req.sql, undefined, params));
   } catch (err) {
     if (err instanceof DbConfigError) {
       return { ok: false, error: { code: "db_misconfigured" } };
     }
+    // The same deterministic classes `/v1/ask` lifts out of its exec catch
+    // (SK-ASK-029 / SK-ASK-030): the statement's values are wrong, so a
+    // retryable `db_unreachable` would be a lie.
+    const constraint = classifyWriteConstraint(err)?.cause;
+    if (constraint instanceof WriteConstraintError) {
+      return {
+        ok: false,
+        error: { code: "write_constraint", kind: constraint.kind, ...constraint.target },
+      };
+    }
+    const pgCode = classifyDataException(err);
+    if (pgCode) return { ok: false, error: { code: "invalid_value", pgCode } };
     return { ok: false, error: { code: "db_unreachable" } };
   }
 

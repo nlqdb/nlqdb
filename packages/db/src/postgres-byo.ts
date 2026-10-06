@@ -67,7 +67,12 @@ export type ByoPostgresConnection = {
   // SQL — so a runaway BYO query is wall-clock bounded server-side and the
   // timeout scopes correctly even behind a transaction-mode pooler (which
   // assigns a backend per transaction). Returns the user statement's rows.
-  runBounded: (sql: string, statementTimeout: string, signal?: AbortSignal) => Promise<QueryResult>;
+  runBounded: (
+    sql: string,
+    statementTimeout: string,
+    signal?: AbortSignal,
+    params?: unknown[],
+  ) => Promise<QueryResult>;
   // Close the socket. Idempotent and never throws — a close failure must not
   // turn a successful introspection / query into an error.
   close: () => Promise<void>;
@@ -112,6 +117,7 @@ export function openByoPostgres(url: string, opts: ByoPostgresOptions = {}): Byo
     userSql: string,
     statementTimeout: string,
     signal?: AbortSignal,
+    params: unknown[] = [],
   ): Promise<QueryResult> => {
     signal?.throwIfAborted();
     return toResult(
@@ -119,7 +125,7 @@ export function openByoPostgres(url: string, opts: ByoPostgresOptions = {}): Byo
         // `SET LOCAL` scopes the timeout to this transaction only. The timeout
         // is a controlled constant from the caller, not user input.
         await tx.unsafe(`SET LOCAL statement_timeout = '${statementTimeout}'`);
-        return tx.unsafe(userSql);
+        return tx.unsafe(userSql, params);
       }),
     );
   };

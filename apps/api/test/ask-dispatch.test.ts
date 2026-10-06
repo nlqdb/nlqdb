@@ -65,12 +65,22 @@ describe("dispatchExec", () => {
     const runners = fakeRunners();
     const openUrl = vi.fn(async () => "postgres://u:p@byo.example.com/db");
     const row = db({ connectionBlob: "nbe1.sealed", engine: "postgres" });
-    await dispatchExec(row, "SELECT * FROM t", runners, undefined, openUrl);
+    await dispatchExec(
+      row,
+      "SELECT * FROM t WHERE id = $1",
+      runners,
+      undefined,
+      openUrl,
+      undefined,
+      [7],
+    );
     expect(openUrl).toHaveBeenCalledWith(row);
+    // `SK-SDK-015` — `/v1/run` bind values reach the runner untouched.
     expect(runners.runByoPg).toHaveBeenCalledWith(
       "postgres://u:p@byo.example.com/db",
-      "SELECT * FROM t",
+      "SELECT * FROM t WHERE id = $1",
       undefined,
+      [7],
     );
     // The hosted RLS runner is never used for a BYO row.
     expect(runners.runHostedPg).not.toHaveBeenCalled();
@@ -84,7 +94,7 @@ describe("dispatchExec", () => {
     await dispatchExec(row, "SELECT * FROM t", runners, undefined, openUrl);
     // The token rides db_oauth_grants, not a sealed DSN — no blob is opened.
     expect(openUrl).not.toHaveBeenCalled();
-    expect(runners.runSupabaseMgmt).toHaveBeenCalledWith(row, "SELECT * FROM t", undefined);
+    expect(runners.runSupabaseMgmt).toHaveBeenCalledWith(row, "SELECT * FROM t", undefined, []);
     expect(runners.runByoPg).not.toHaveBeenCalled();
     expect(runners.runHostedPg).not.toHaveBeenCalled();
   });

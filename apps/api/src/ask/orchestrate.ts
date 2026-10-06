@@ -72,7 +72,8 @@ export type OrchestrateDeps = {
   // Throws `DbConfigError` if the DB row's `connection_secret_ref`
   // doesn't resolve in env (operator config bug); other throws are
   // treated as transient `db_unreachable`.
-  exec(db: DbRecord, sql: string, signal?: AbortSignal): Promise<QueryResult>;
+  // `params` binds `$n` on the raw `/v1/run` path (SK-SDK-015); `/v1/ask` never sends it.
+  exec(db: DbRecord, sql: string, signal?: AbortSignal, params?: unknown[]): Promise<QueryResult>;
   rateLimiter: RateLimiter;
   firstQuery: FirstQueryTracker;
   // Product events. Producer hides whether the underlying transport

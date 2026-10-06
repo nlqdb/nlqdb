@@ -48,6 +48,89 @@ describe("orchestrateRun", () => {
     expect(out.result.trace.plan_id).toMatch(/^abc123:[0-9a-f]{64}$/);
   });
 
+  it("binds params out of band — the SQL and trace never carry the values (SK-SDK-015)", async () => {
+    const exec = vi.fn(async () => ({ rows: [], rowCount: 1 }));
+    const sql = "INSERT INTO ratings (stars, note) VALUES ($1, $2)";
+    const out = await orchestrateRun(makeDeps({ exec }), {
+      sql,
+      params: [5, "it's great'); DROP TABLE ratings; --"],
+      dbId: "db_test",
+      userId: "user_1",
+    });
+    expect(out.ok).toBe(true);
+    expect(exec).toHaveBeenCalledWith(expect.anything(), sql, undefined, [
+      5,
+      "it's great'); DROP TABLE ratings; --",
+    ]);
+    if (!out.ok) return;
+    expect(out.result.trace.sql).toBe(sql);
+  });
+
+  it("rejects params on a ClickHouse database before exec", async () => {
+    const exec = vi.fn();
+    const out = await orchestrateRun(
+      makeDeps({ exec, resolveDb: async () => makeDb({ engine: "clickhouse" }) }),
+      { sql: "SELECT $1", params: [1], dbId: "db_test", userId: "user_1" },
+    );
+    expect(out).toEqual({
+      ok: false,
+      error: { code: "sql_rejected", reason: "params_unsupported_engine" },
+    });
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["no params for $1", "SELECT * FROM orders WHERE id = $1", []],
+    ["one param for $2", "SELECT * FROM orders WHERE id = $2", [1]],
+    ["a param with no placeholder", "SELECT 1", [1]],
+  ])("rejects a placeholder/params mismatch before exec — %s", async (_label, sql, params) => {
+    const exec = vi.fn();
+    const out = await orchestrateRun(makeDeps({ exec }), {
+      sql,
+      params,
+      dbId: "db_test",
+      userId: "user_1",
+    });
+    expect(out).toEqual({ ok: false, error: { code: "sql_rejected", reason: "params_mismatch" } });
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it("maps a constraint violation to write_constraint, not db_unreachable (SK-ASK-029)", async () => {
+    const exec = async () => {
+      throw Object.assign(
+        new Error(
+          'null value in column "created_at" of relation "orders" violates not-null constraint',
+        ),
+        { code: "23502" },
+      );
+    };
+    const out = await orchestrateRun(makeDeps({ exec }), {
+      sql: "INSERT INTO orders (id) VALUES ($1)",
+      params: [1],
+      dbId: "db_test",
+      userId: "user_1",
+    });
+    expect(out).toEqual({
+      ok: false,
+      error: { code: "write_constraint", kind: "not_null", table: "orders", column: "created_at" },
+    });
+  });
+
+  it("maps a data exception to invalid_value (SK-ASK-030)", async () => {
+    const exec = async () => {
+      throw Object.assign(new Error('invalid input syntax for type integer: "x"'), {
+        code: "22P02",
+      });
+    };
+    const out = await orchestrateRun(makeDeps({ exec }), {
+      sql: "SELECT * FROM orders WHERE id = $1",
+      params: ["x"],
+      dbId: "db_test",
+      userId: "user_1",
+    });
+    expect(out).toEqual({ ok: false, error: { code: "invalid_value", pgCode: "22P02" } });
+  });
+
   it("rejects DDL via the shared SQL allow-list", async () => {
     const exec = vi.fn();
     const out = await orchestrateRun(makeDeps({ exec }), {

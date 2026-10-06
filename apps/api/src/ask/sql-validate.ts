@@ -50,8 +50,9 @@
 import { Parser } from "node-sql-parser";
 
 export type SqlValidationResult =
-  | { ok: true }
-  | { ok: false; reason: SqlRejectReason; matched?: string };
+  // `maxParam` — the highest `$n` placeholder, present only when the
+  // statement has one (`/v1/run` checks it against the bound params).
+  { ok: true; maxParam?: number } | { ok: false; reason: SqlRejectReason; matched?: string };
 
 export type SqlRejectReason =
   | "drop_statement"
@@ -288,7 +289,22 @@ export function validateSql(rawSql: string): SqlValidationResult {
     if (embedded) return { ok: false, reason: embedded };
   }
 
-  return { ok: true };
+  const maxParam = maxPlaceholder(asts);
+  return maxParam > 0 ? { ok: true, maxParam } : { ok: true };
+}
+
+// node-sql-parser parses `$n` as `{type:"var", prefix:"$", name:n}`; a `$n`
+// inside a string literal stays a string, so this counts real placeholders only.
+function maxPlaceholder(node: unknown): number {
+  if (node === null || typeof node !== "object") return 0;
+  if (Array.isArray(node)) return node.reduce((m: number, n) => Math.max(m, maxPlaceholder(n)), 0);
+  const obj = node as Record<string, unknown>;
+  let max =
+    obj["type"] === "var" && obj["prefix"] === "$" && typeof obj["name"] === "number"
+      ? obj["name"]
+      : 0;
+  for (const value of Object.values(obj)) max = Math.max(max, maxPlaceholder(value));
+  return max;
 }
 
 type AstNode = { [k: string]: unknown };
