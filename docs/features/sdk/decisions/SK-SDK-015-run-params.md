@@ -7,7 +7,11 @@ Parent feature: [`sdk/FEATURE.md`](../FEATURE.md). Builds on
 - **Decision:** `runSql()` and `/v1/run` take an optional `params` — a JSON
   array of strings, numbers, booleans or nulls, at most 1000, bound to
   `$1…$n` by the database driver. The SQL text and the `trace` block never
-  carry the values. Anything else is `invalid_body` (400). A ClickHouse
+  carry the values. Anything else is `invalid_body` (400), and so is an
+  integer past 2^53: `JSON.parse` has already rounded it, so it could bind
+  to the wrong row (send it as a string). The count must equal the highest
+  `$n` the parser finds, else `sql_rejected` (`params_mismatch`) before
+  exec. A ClickHouse
   database rejects non-empty `params` with `sql_rejected`
   (`params_unsupported_engine`), because ClickHouse binds named
   `{name:Type}` params, not `$n`. CLI: `nlq run --params '<json array>'`.
@@ -23,7 +27,9 @@ Parent feature: [`sdk/FEATURE.md`](../FEATURE.md). Builds on
   `params`. `apps/api/src/run/orchestrate.ts` passes them to `exec`. The
   `ask/build-deps.ts` `dispatchExec` runners bind them (hosted Neon, BYO
   `postgres.js`, Supabase mgmt). The span records `nlqdb.run.param_count`
-  only, never the values. MCP and `<nlq-data>` have no raw-SQL verb, so
+  only, never the values. Engine refusals reuse the `/v1/ask` classifiers:
+  class 23 is `write_constraint`, class 22 is `invalid_value`, never a
+  retryable `db_unreachable`. MCP and `<nlq-data>` have no raw-SQL verb, so
   there is no `GLOBAL-003` gap.
 - **Alternatives rejected:**
   - Structured values on `ask()`: this keeps writes on the inference path,

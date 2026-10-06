@@ -79,6 +79,58 @@ describe("orchestrateRun", () => {
     expect(exec).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["no params for $1", "SELECT * FROM orders WHERE id = $1", []],
+    ["one param for $2", "SELECT * FROM orders WHERE id = $2", [1]],
+    ["a param with no placeholder", "SELECT 1", [1]],
+  ])("rejects a placeholder/params mismatch before exec — %s", async (_label, sql, params) => {
+    const exec = vi.fn();
+    const out = await orchestrateRun(makeDeps({ exec }), {
+      sql,
+      params,
+      dbId: "db_test",
+      userId: "user_1",
+    });
+    expect(out).toEqual({ ok: false, error: { code: "sql_rejected", reason: "params_mismatch" } });
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it("maps a constraint violation to write_constraint, not db_unreachable (SK-ASK-029)", async () => {
+    const exec = async () => {
+      throw Object.assign(
+        new Error(
+          'null value in column "created_at" of relation "orders" violates not-null constraint',
+        ),
+        { code: "23502" },
+      );
+    };
+    const out = await orchestrateRun(makeDeps({ exec }), {
+      sql: "INSERT INTO orders (id) VALUES ($1)",
+      params: [1],
+      dbId: "db_test",
+      userId: "user_1",
+    });
+    expect(out).toEqual({
+      ok: false,
+      error: { code: "write_constraint", kind: "not_null", table: "orders", column: "created_at" },
+    });
+  });
+
+  it("maps a data exception to invalid_value (SK-ASK-030)", async () => {
+    const exec = async () => {
+      throw Object.assign(new Error('invalid input syntax for type integer: "x"'), {
+        code: "22P02",
+      });
+    };
+    const out = await orchestrateRun(makeDeps({ exec }), {
+      sql: "SELECT * FROM orders WHERE id = $1",
+      params: ["x"],
+      dbId: "db_test",
+      userId: "user_1",
+    });
+    expect(out).toEqual({ ok: false, error: { code: "invalid_value", pgCode: "22P02" } });
+  });
+
   it("rejects DDL via the shared SQL allow-list", async () => {
     const exec = vi.fn();
     const out = await orchestrateRun(makeDeps({ exec }), {

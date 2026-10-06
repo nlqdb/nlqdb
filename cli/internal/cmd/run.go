@@ -38,7 +38,7 @@ DB resolution mirrors ` + "`nlq ask`" + `:
 
 Bind values with --params (a JSON array for $1…$n) instead of inlining
 them into the SQL:
-  nlq run --params '[5, "great"]' "INSERT INTO ratings (stars, note) VALUES ($1, $2)"
+  nlq run --params '[5, "great"]' 'INSERT INTO ratings (stars, note) VALUES ($1, $2)'
 
 Pass --json for machine-readable output.`,
 		Args: cobra.ArbitraryArgs,
@@ -60,12 +60,10 @@ Pass --json for machine-readable output.`,
 				printErr(cmd, "no active database — pass `--db <id>` or run `nlq use <id>` first.")
 				return errors.New("no active db")
 			}
-			var params []any
-			if paramsJSON != "" {
-				if err := json.Unmarshal([]byte(paramsJSON), &params); err != nil {
-					printErr(cmd, "--params must be a JSON array, e.g. '[5, \"great\"]'.")
-					return err
-				}
+			params, err := parseParams(paramsJSON)
+			if err != nil {
+				printErr(cmd, "--params must be a JSON array, e.g. '[5, \"great\"]'.")
+				return err
 			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), 120*time.Second)
 			defer cancel()
@@ -140,4 +138,24 @@ func readSQL(cmd *cobra.Command, args []string) (string, error) {
 		return "", fmt.Errorf("read stdin: %w", err)
 	}
 	return string(b), nil
+}
+
+// parseParams decodes --params as a JSON array. UseNumber keeps each number's
+// literal digits, so a big integer id reaches the server unrounded; `null` or
+// any non-array is an error rather than a silently dropped flag.
+func parseParams(raw string) ([]any, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	dec := json.NewDecoder(strings.NewReader(raw))
+	dec.UseNumber()
+	var v any
+	if err := dec.Decode(&v); err != nil {
+		return nil, err
+	}
+	params, ok := v.([]any)
+	if !ok || dec.More() {
+		return nil, errors.New("--params is not a JSON array")
+	}
+	return params, nil
 }

@@ -4,6 +4,7 @@
 // (`SK-SQLAL-006`) and executor — only the LLM steps are bypassed.
 
 import { SpanStatusCode, trace } from "@opentelemetry/api";
+import { classifyDataException } from "../ask/exec-classify.ts";
 import { hashGoal } from "../ask/plan-cache.ts";
 import type { RateLimiter } from "../ask/rate-limit.ts";
 import { containsWriteVerb, validateSql } from "../ask/sql-validate.ts";
@@ -13,7 +14,9 @@ import {
   type DbRecord,
   type QueryResult,
   type Trace,
+  WriteConstraintError,
 } from "../ask/types.ts";
+import { classifyWriteConstraint } from "../ask/write-constraint.ts";
 import type { RunParam } from "../http.ts";
 
 export type RunRequest = {
@@ -109,6 +112,12 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
   if (params.length > 0 && db.engine === "clickhouse") {
     return { ok: false, error: { code: "sql_rejected", reason: "params_unsupported_engine" } };
   }
+  // Postgres needs exactly one value per `$1…$n`; a mismatch would fail at the
+  // driver and read as a retryable outage. SHOW / EXPLAIN skip the parse and
+  // report no placeholders, so they take no params.
+  if ((validation.maxParam ?? 0) !== params.length) {
+    return { ok: false, error: { code: "sql_rejected", reason: "params_mismatch" } };
+  }
 
   const sqlHash = await hashGoal(req.sql);
 
@@ -119,6 +128,18 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
     if (err instanceof DbConfigError) {
       return { ok: false, error: { code: "db_misconfigured" } };
     }
+    // The same deterministic classes `/v1/ask` lifts out of its exec catch
+    // (SK-ASK-029 / SK-ASK-030): the statement's values are wrong, so a
+    // retryable `db_unreachable` would be a lie.
+    const constraint = classifyWriteConstraint(err)?.cause;
+    if (constraint instanceof WriteConstraintError) {
+      return {
+        ok: false,
+        error: { code: "write_constraint", kind: constraint.kind, ...constraint.target },
+      };
+    }
+    const pgCode = classifyDataException(err);
+    if (pgCode) return { ok: false, error: { code: "invalid_value", pgCode } };
     return { ok: false, error: { code: "db_unreachable" } };
   }
 

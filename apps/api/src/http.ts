@@ -223,11 +223,14 @@ export type RunBody = { sql: string; db: string; params?: RunParam[] };
 
 // `SK-SDK-015` — bind values for `$1…$n`. JSON scalars only: a nested object
 // has no single Postgres binding, so it fails loud instead of guessing a cast.
+// An integer past 2^53 was already rounded by `JSON.parse` and could bind to
+// the wrong row — the caller sends it as a string instead.
 export type RunParam = string | number | boolean | null;
 export const MAX_RUN_PARAMS = 1000;
 
 function isRunParam(v: unknown): v is RunParam {
-  return v === null || ["string", "number", "boolean"].includes(typeof v);
+  if (typeof v === "number") return !Number.isInteger(v) || Number.isSafeInteger(v);
+  return v === null || typeof v === "string" || typeof v === "boolean";
 }
 
 // `dbOptional` lets the pk_live route auto-fill from the principal's pinned dbId after parse.
@@ -258,7 +261,10 @@ export async function parseRunBody(
         ok: false,
         error: {
           code: "invalid_body",
-          params: { reason: "`params` must be an array of strings, numbers, booleans or nulls." },
+          params: {
+            reason:
+              "`params` must be an array of strings, numbers, booleans or nulls; send integers past 2^53 as strings.",
+          },
         },
       };
     }

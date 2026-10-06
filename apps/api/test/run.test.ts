@@ -114,6 +114,7 @@ describe("POST /v1/run — body parse", () => {
     ["not an array", { a: 1 }],
     ["a nested object", [1, { a: 1 }]],
     ["more than the cap", Array.from({ length: 1001 }, (_, i) => i)],
+    ["an integer past 2^53", [2 ** 53 + 2]],
   ])("returns 400 invalid_body when params is %s (SK-SDK-015)", async (_label, params) => {
     const res = await SELF.fetch("https://example.com/v1/run", {
       method: "POST",
