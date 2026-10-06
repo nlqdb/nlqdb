@@ -11,10 +11,12 @@ Parent feature: [`sdk/FEATURE.md`](../FEATURE.md). Builds on
   integer past 2^53: `JSON.parse` has already rounded it, so it could bind
   to the wrong row (send it as a string). The count must equal the highest
   `$n` the parser finds, else `sql_rejected` (`params_mismatch`) before
-  exec. A ClickHouse
+  exec, so a cast is `CAST($1 AS int)` (the allow-list parser,
+  node-sql-parser 5.4, rejects `$1::int` as `parse_failed`). A ClickHouse
   database rejects non-empty `params` with `sql_rejected`
   (`params_unsupported_engine`), because ClickHouse binds named
-  `{name:Type}` params, not `$n`. CLI: `nlq run --params '<json array>'`.
+  `{name:Type}` params, not `$n`. CLI: `nlq run --params '<json array>'`;
+  Swift: `RunSqlRequest(params:)` (`SK-SWIFT-005` parity).
 - **Core value:** Bullet-proof, Simple
 - **Why:** an app's Worker writes user-typed values. Through `ask()` those
   values ride the goal text into an LLM plan and cost one plan per uncached

@@ -65,6 +65,9 @@ await client.runSql({
 });
 ```
 
+Write a cast as `CAST($1 AS int)`; the SQL allow-list's parser rejects `$1::int`
+(`parse_failed`).
+
 Pass `{ dryRun: true }` to preview a write as a diff (`requires_confirm`) without
 executing it.
 

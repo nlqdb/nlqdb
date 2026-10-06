@@ -100,10 +100,13 @@ public struct CreateDatabaseResult: Sendable, Codable {
 public struct RunSqlRequest: Sendable, Codable {
     public var db: String
     public var sql: String
+    /// `SK-SDK-015` — scalar values bound to `$1…$n`, never spliced into `sql`; omitted when nil.
+    public var params: [AnyCodable]?
 
-    public init(db: String, sql: String) {
+    public init(db: String, sql: String, params: [AnyCodable]? = nil) {
         self.db = db
         self.sql = sql
+        self.params = params
     }
 }
 
