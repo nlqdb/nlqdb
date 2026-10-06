@@ -527,7 +527,7 @@ function isAgentMemoryDbId(id: string): boolean {
 //      finds (idempotent across sessions);
 //   2. if none exists, calls `createDatabase({ preset: 'agent_memory_v1' })`
 //      — the server-side path already accepts sk_mcp keys under the
-//      `MEMORY_PRESET` flag (SK-HDC-020 / SK-HDC-021);
+//      `MEMORY_PRESET` flag (SK-HDC-020);
 //   3. re-runs the write against the resolved DB and returns `dbId`
 //      (and `db_created: true` on a fresh provision) so the agent can
 //      pin the id on the next call.

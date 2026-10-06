@@ -86,7 +86,7 @@ Not a vendor — P2b's default ("why not a `memories` table?"). **Gap:** `CREATE
 Postgres schema + Agent Skills (Claude Code/Cursor/Codex/…) for memory, chat, skills, tasks, CRM/KG, hybrid retrieval — one-command install. **Gap:** schema+skills on a Postgres *you* operate; agent/SDK authors SQL. nlqdb hosts and server-builds every write (SK-PIVOT-008) + RLS + TTL + NL→SQL shown. **Threat:** **High and rising for P2** — same coding-agent onboarding axis as R-04/R-05/R-07.
 
 ### Mem0 — https://mem0.ai
-Apache-2.0 OSS + hosted memory SDK. V3 search is hybrid retrieval (semantic + BM25 + entity) with filters + `expiration_date` — still add/search, not SQL. **Gap:** memory-shaped vs DB-shaped — "remember this" vs. "here's a DB." **Threat:** high for P2. *(Re-verified 2026-08-30: v2 filters are `eq/ne/in/gt/lt/contains` + `AND/OR/NOT` — filter-and-retrieve only, no aggregation; 2026 releases add none.)*
+Apache-2.0 OSS + hosted memory SDK. V3 search is hybrid retrieval (semantic + BM25 + entity) with filters + `expiration_date` — still add/search, not SQL. **Gap:** memory-shaped vs DB-shaped — "remember this" vs. "here's a DB." **Threat:** high for P2. *(Re-verified 2026-09-30: filter-and-retrieve only — no sort or aggregation through v2.2.1.)*
 
 ### Memori (Memori Labs, ex-GibsonAI) — https://memorilabs.ai · `MemoriLabs/Memori` (Apache-2.0)
 SQL-native memory engine — SDK hooks/MCP auto-capture agent traces; background "Advanced Augmentation" extracts facts/entities/rules into SQL tables (BYODB: SQLite/Postgres/MySQL). Memori Cloud hosted 2026-03; $3.7M raised; ~16k stars.
@@ -96,12 +96,12 @@ SQL-native memory engine — SDK hooks/MCP auto-capture agent traces; background
 ### Zep — https://getzep.com
 Agent-memory platform on **Graphiti** (temporal knowledge graph; validity windows + entity resolution); OSS core + hosted cloud. `/vs/zep`.
 - **Gap:** hybrid vector/BM25/graph *retrieval* — no query planner, so no `GROUP BY` / `JOIN` / aggregate; validity windows are point-in-time recall, not analytics.
-- **Threat:** **High for P2** — benchmark-led; stops short of SQL. Graphiti Apache-2.0 self-hosts; Zep platform hosted (CE deprecated). *(Re-verified 2026-08-01.)*
+- **Threat:** **High for P2** — benchmark-led; stops short of SQL. Graphiti Apache-2.0 self-hosts; Zep platform hosted (CE deprecated). *(Re-verified 2026-09-30.)*
 
 ### Letta (formerly MemGPT) — https://letta.com
-Apache-2.0 agent runtime with OS-style memory tiers (core / recall / archival); self-host (App Server) or hosted. Out of the 2023 Berkeley MemGPT paper. `/vs/letta`.
-- **Gap:** self-edited prose + searchable archive — can recall "Alice has a $50k deal" but not "average deal size per stage" (no relational layer). Composes: Letta runtime, nlqdb analytical store.
-- **Threat:** Medium — wants to be the runtime, not the store. *(Re-verified 2026-08-01.)*
+Apache-2.0 agent runtime, now **Letta Code** (V1 server retired). Memory = MemFS, git-backed Markdown found by file search; semantic search needs QMD. Self-host or cloud. `/vs/letta`.
+- **Gap:** prose files — recalls "Alice has a $50k deal", not "average deal size per stage". Composes: Letta runtime, nlqdb store.
+- **Threat:** Medium — wants to be the runtime, not the store. *(Re-verified 2026-09-30.)*
 
 ### LangMem (LangChain) — https://langchain.com
 OSS Python SDK adding long-term memory (semantic/episodic/procedural) to LangGraph agents — extract, consolidate, dedup; storage-backend-agnostic. (Full architecture in `/vs/langmem`.)

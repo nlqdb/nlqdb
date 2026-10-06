@@ -1,10 +1,7 @@
-// `POST /v1/databases` — the create auth boundary (SK-HDC-021).
-//
-// SK-PIVOT-010 (amended 2026-08-09) widened preset create from
-// session-only to any account-scoped principal so nlqdb's own agents can
-// provision their `agent_memory_v1` memory DB with an `sk_` key (the
-// SK-PIVOT-016 dogfood gate). This file pins the four seams of that
-// boundary via SELF.fetch against Miniflare's real D1:
+// `POST /v1/databases` — the create auth boundary. Any account-scoped
+// principal creates, preset or generic; anon and pk_live never do. This
+// file pins the seams of that boundary via SELF.fetch against Miniflare's
+// real D1:
 //
 //   - unauth               → 401 (requirePrincipal, before the handler)
 //   - anon bearer          → 403 account_required (anon has no tenant —
@@ -14,8 +11,9 @@
 //                            post-auth, pre-provision `invalid_preset`
 //                            400 — the full happy path would reach Neon,
 //                            which this in-process test can't provision)
-//   - sk_live + generic (no preset) → 403 create_requires_session (the
-//                            LLM-inferred create stays the chat surface)
+//   - sk_live + generic (no preset) → admitted past auth too: headless
+//                            `createDatabase({ goal })` is END_GOAL row 1
+//   - over the per-key bucket → 429 rate_limited before any LLM/Neon call
 
 import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
@@ -29,7 +27,7 @@ async function bodyStatus(res: Response): Promise<string | undefined> {
   return body.error?.code;
 }
 
-describe("POST /v1/databases — create auth boundary (SK-HDC-021)", () => {
+describe("POST /v1/databases — create auth boundary", () => {
   it("returns 401 without any credential", async () => {
     const res = await SELF.fetch(URL, {
       method: "POST",
@@ -95,19 +93,47 @@ describe("POST /v1/databases — create auth boundary (SK-HDC-021)", () => {
     expect(await bodyStatus(res)).toBe("invalid_preset");
   });
 
-  it("keeps generic (non-preset) create session-only — sk_live gets create_requires_session", async () => {
+  it("admits an sk_live key onto the generic goal path (END_GOAL row 1)", async () => {
     const { plaintext } = await mintSkLiveKey(
       env.DB,
       apiKeyHmacSecret(env),
       "user_sk_generic",
       null,
     );
+    // An over-cap goal is rejected AFTER auth but BEFORE the LLM or Neon, so
+    // `goal_too_long` (not 403) proves the sk_live principal was admitted.
+    const res = await SELF.fetch(URL, {
+      method: "POST",
+      headers: { ...JSON_HEADERS, authorization: `Bearer ${plaintext}` },
+      body: JSON.stringify({ goal: "a table of orders ".repeat(200) }),
+    });
+    expect(res.status).toBe(400);
+    expect(await bodyStatus(res)).toBe("goal_too_long");
+  });
+
+  it("429s a valid create once the key's per-account bucket is spent (SK-HDC-008)", async () => {
+    const { id, plaintext } = await mintSkLiveKey(
+      env.DB,
+      apiKeyHmacSecret(env),
+      "user_sk_ratelimited",
+      null,
+    );
+    // Pre-fill this key's current window to the /v1/ask cap (60/min).
+    const windowStart = Math.floor(Date.now() / 1000 / 60) * 60;
+    await env.DB.prepare(
+      "INSERT INTO rate_limit_buckets (bucket_key, window_start, count) VALUES (?, ?, 60)",
+    )
+      .bind(`rl:${id}`, windowStart)
+      .run();
     const res = await SELF.fetch(URL, {
       method: "POST",
       headers: { ...JSON_HEADERS, authorization: `Bearer ${plaintext}` },
       body: JSON.stringify({ goal: "a table of orders" }),
     });
-    expect(res.status).toBe(403);
-    expect(await bodyStatus(res)).toBe("create_requires_session");
+    expect(res.status).toBe(429);
+    expect(res.headers.get("retry-after")).not.toBeNull();
+    expect(res.headers.get("x-ratelimit-limit")).toBe("60");
+    expect(res.headers.get("x-ratelimit-remaining")).toBe("0");
+    expect(await bodyStatus(res)).toBe("rate_limited");
   });
 });

@@ -79,7 +79,6 @@ retryable and which need a human. `code` is the discriminant the SDK exposes as
 | `byollm_requires_session` | 400 | A per-request provider key needs a signed-in session. | No | Sign in, or save the key to your account. |
 | `auth_required` | 401 | The anonymous budget is exhausted (`body.params.cap`). | No | Sign in — your prompt is saved. |
 | `account_required` | 403 | The call needs an account-scoped key, not a public embed key. | No | Mint an account key and retry. |
-| `create_requires_session` | 403 | Creating a database needs a signed-in session. | No | Sign in, then create it. |
 | `challenge_required` | 428 | A human check is required before running that. | No | Complete the check, then retry. |
 | `key_not_found` | 404 | No key of yours matched that id. | No | Check the key list, then retry. |
 | `unconfigured` | 503 | That feature isn't configured on this deployment. | No | Operator action — retry later. |
