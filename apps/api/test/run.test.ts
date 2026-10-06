@@ -109,4 +109,23 @@ describe("POST /v1/run — body parse", () => {
       error: { code: "invalid_json", message: expect.any(String), action: expect.any(String) },
     });
   });
+
+  it.each([
+    ["not an array", { a: 1 }],
+    ["a nested object", [1, { a: 1 }]],
+    ["more than the cap", Array.from({ length: 1001 }, (_, i) => i)],
+  ])("returns 400 invalid_body when params is %s (SK-SDK-015)", async (_label, params) => {
+    const res = await SELF.fetch("https://example.com/v1/run", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer anon_abcdef0123456789",
+      },
+      body: JSON.stringify({ db: "db_x", sql: "SELECT $1", params }),
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({
+      error: { code: "invalid_body", message: expect.stringContaining("`params`") },
+    });
+  });
 });

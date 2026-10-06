@@ -78,6 +78,8 @@ type AskResponse struct {
 type RunRequest struct {
 	DB  string `json:"db"`
 	SQL string `json:"sql"`
+	// Params binds `$1…$n` out of band (SK-SDK-015); omitted when empty.
+	Params []any `json:"params,omitempty"`
 }
 
 // RunResponse mirrors the SDK's `RunSqlResult`; `Trace` is always present (`SK-TRUST-002`).

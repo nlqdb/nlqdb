@@ -48,6 +48,37 @@ describe("orchestrateRun", () => {
     expect(out.result.trace.plan_id).toMatch(/^abc123:[0-9a-f]{64}$/);
   });
 
+  it("binds params out of band — the SQL and trace never carry the values (SK-SDK-015)", async () => {
+    const exec = vi.fn(async () => ({ rows: [], rowCount: 1 }));
+    const sql = "INSERT INTO ratings (stars, note) VALUES ($1, $2)";
+    const out = await orchestrateRun(makeDeps({ exec }), {
+      sql,
+      params: [5, "it's great'); DROP TABLE ratings; --"],
+      dbId: "db_test",
+      userId: "user_1",
+    });
+    expect(out.ok).toBe(true);
+    expect(exec).toHaveBeenCalledWith(expect.anything(), sql, undefined, [
+      5,
+      "it's great'); DROP TABLE ratings; --",
+    ]);
+    if (!out.ok) return;
+    expect(out.result.trace.sql).toBe(sql);
+  });
+
+  it("rejects params on a ClickHouse database before exec", async () => {
+    const exec = vi.fn();
+    const out = await orchestrateRun(
+      makeDeps({ exec, resolveDb: async () => makeDb({ engine: "clickhouse" }) }),
+      { sql: "SELECT $1", params: [1], dbId: "db_test", userId: "user_1" },
+    );
+    expect(out).toEqual({
+      ok: false,
+      error: { code: "sql_rejected", reason: "params_unsupported_engine" },
+    });
+    expect(exec).not.toHaveBeenCalled();
+  });
+
   it("rejects DDL via the shared SQL allow-list", async () => {
     const exec = vi.fn();
     const out = await orchestrateRun(makeDeps({ exec }), {

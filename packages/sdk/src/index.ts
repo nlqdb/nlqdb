@@ -281,6 +281,9 @@ export type ConnectDatabaseResult = {
 export type RunSqlRequest = {
   db: string;
   sql: string;
+  // `SK-SDK-015` — values for `$1…$n`, bound by the database, never spliced
+  // into `sql`. Postgres databases only (ClickHouse rejects them).
+  params?: (string | number | boolean | null)[];
 };
 
 // Response from `client.runSql()` — same row/`trace` shape as `AskOk` minus the NL summary.
@@ -1081,7 +1084,9 @@ export type NlqClient = {
    * `POST /v1/run` — raw-SQL escape hatch (`SK-SDK-009` / `GLOBAL-015`). Same
    * allow-list and `trace` block as {@link ask}; DDL is rejected. Errors worth
    * a branch: `forbidden` (a read-only `pk_live` tried to write), `sql_rejected`,
-   * `sql_too_long`. Mutating (may `INSERT`): auto-keyed (`SK-SDK-006`).
+   * `sql_too_long`, `invalid_body` (mis-shaped `params`). Pass user-typed values
+   * in `params` against `$1…$n` placeholders (`SK-SDK-015`), never inlined.
+   * Mutating (may `INSERT`): auto-keyed (`SK-SDK-006`).
    */
   runSql(
     req: RunSqlRequest,

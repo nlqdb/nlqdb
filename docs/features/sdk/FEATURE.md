@@ -168,6 +168,13 @@ would break the headless embed the marketplace is built on. MCP/elements/CLI are
 product journey the private surface drives, not an operator terminal command, a
 bearer-safe MCP tool, or a display element.
 
+### SK-SDK-015 — `runSql({ params })` binds values to `$1…$n`, never inlined
+
+**Body:** [`decisions/SK-SDK-015-run-params.md`](./decisions/SK-SDK-015-run-params.md).
+Optional `params` (JSON scalars, ≤ 1000) on `runSql()` / `/v1/run` /
+`nlq run --params`; the Postgres drivers bind them, and the SQL and `trace` never hold
+the values. ClickHouse rejects them (`params_unsupported_engine`).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
@@ -191,7 +198,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- ~~**`runSql()` implementation slice.**~~ Shipped. `packages/sdk/src/index.ts` exposes `client.runSql({ db, sql, idempotencyKey? })`; backed by `POST /v1/run` in `apps/api/src/run/orchestrate.ts`; CLI `nlq run` in `cli/internal/cmd/run.go`. All three surfaces landed in one slice per `GLOBAL-003`. SQL allow-list reused (`apps/api/src/ask/sql-validate.ts`); pk_live writes rejected at the leading-verb gate (`SK-APIKEYS-003`).
 - **SSE consumer for `/v1/ask` — Parked until the `apps/web` trace-streaming UX needs it** (`GLOBAL-033`). `ask()` uses the buffered JSON path today; the `onTrace` hook (`SK-SDK-007`) is the consumer when streaming lands.
 - **Python / Go / Rust SDKs — each earns its own feature** (resolved per `GLOBAL-033`, mirror the precedent). We already split Swift into `sdk-swift` with its own `SK-SDK-SWIFT-*` prefix; the other languages follow the same shape (`SK-SDK-PY-*`, …) when they land. **Parked until** the Python SDK starts (`docs/architecture.md §3` Phase 2).
 - **`engine?` on Rust + Ruby SDK `db.create` (W3, GLOBAL-003 gap).** TS SDK lands `engine?` per `SK-DB-010` in W3. `packages/nlqdb-rs/src/lib.rs` and `packages/nlqdb-rb/lib/nlqdb.rb` are placeholder modules — no `db.create` shipped yet. Per `GLOBAL-003`, their first `db.create` exposes `engine?` directly (mirror the TS shape: optional, classifier-default when absent, `invalid_engine` 400 on unknown engines at the wire boundary). Closes when those slices ship.

@@ -54,6 +54,17 @@ EXPLAIN / SHOW`); DDL is rejected.
 const res = await client.runSql({ db: "orders", sql: "select count(*) from orders" });
 ```
 
+Pass user-typed values in `params`, bound to `$1…$n` — never inline them into the SQL
+(Postgres databases):
+
+```ts
+await client.runSql({
+  db: "orders",
+  sql: "insert into ratings (stars, note) values ($1, $2)",
+  params: [5, userNote],
+});
+```
+
 Pass `{ dryRun: true }` to preview a write as a diff (`requires_confirm`) without
 executing it.
 

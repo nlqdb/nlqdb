@@ -14,9 +14,12 @@ import {
   type QueryResult,
   type Trace,
 } from "../ask/types.ts";
+import type { RunParam } from "../http.ts";
 
 export type RunRequest = {
   sql: string;
+  // `SK-SDK-015` — values bound to `$1…$n` out of band, never spliced into `sql`.
+  params?: RunParam[];
   dbId: string;
   // Tenant id (`Principal.id`) — drives `resolveDb` scope and the rate-limit bucket fallback.
   userId: string;
@@ -41,7 +44,12 @@ export type RunOutcome = { ok: true; result: RunResult } | { ok: false; error: R
 
 export type RunDeps = {
   resolveDb: (id: string, tenantId: string) => Promise<DbRecord | null>;
-  exec: (db: DbRecord, sql: string, signal?: AbortSignal) => Promise<QueryResult>;
+  exec: (
+    db: DbRecord,
+    sql: string,
+    signal?: AbortSignal,
+    params?: RunParam[],
+  ) => Promise<QueryResult>;
   rateLimiter: RateLimiter;
 };
 
@@ -95,12 +103,18 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
   if (!db) return { ok: false, error: { code: "db_not_found" } };
   if (!db.schemaHash) return { ok: false, error: { code: "schema_unavailable" } };
   const schemaHash = db.schemaHash;
+  const params = req.params ?? [];
+  // ClickHouse binds named `{name:Type}` params, not positional `$n` — reject
+  // rather than run the statement with its placeholders unbound.
+  if (params.length > 0 && db.engine === "clickhouse") {
+    return { ok: false, error: { code: "sql_rejected", reason: "params_unsupported_engine" } };
+  }
 
   const sqlHash = await hashGoal(req.sql);
 
   let result: QueryResult;
   try {
-    result = await withSpan("nlqdb.run.exec", () => deps.exec(db, req.sql));
+    result = await withSpan("nlqdb.run.exec", () => deps.exec(db, req.sql, undefined, params));
   } catch (err) {
     if (err instanceof DbConfigError) {
       return { ok: false, error: { code: "db_misconfigured" } };
