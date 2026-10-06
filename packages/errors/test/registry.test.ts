@@ -47,7 +47,12 @@ const REPRESENTATIVE: Partial<Record<ErrorCode, Record<string, unknown>[]>> = {
       schemaTables: ["t1", "t2", "t3", "t4", "t5", "t6", "t7"],
     },
   ],
-  sql_rejected: [{ reason: "delete_without_where" }, { reason: "parse_failed" }, {}],
+  sql_rejected: [
+    { reason: "delete_without_where" },
+    { reason: "parse_failed" },
+    { reason: "params_mismatch" },
+    {},
+  ],
   clarify_required: [
     {
       clarification: "destructive_ambiguous",
