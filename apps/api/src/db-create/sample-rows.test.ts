@@ -139,6 +139,29 @@ describe("pruneUninsertableSampleRows", () => {
     expect(pruneUninsertableSampleRows(p).dropped[0]?.reason).toBe("not_null_violation");
   });
 
+  it("keeps a row that OMITS a NOT NULL record-time column (SK-HDC-015 now() fills it)", () => {
+    const p = plan({
+      tables: [
+        {
+          name: "t",
+          description: "t",
+          columns: [
+            { name: "id", type: "integer", nullable: false, description: "c" },
+            { name: "created_at", type: "timestamp_tz", nullable: false, description: "c" },
+            { name: "due_at", type: "timestamp_tz", nullable: false, description: "c" },
+          ],
+          primary_key: ["id"],
+        },
+      ],
+      foreign_keys: [],
+      sample_rows: [row("t", { due_at: "2026-10-06T00:00:00Z" }), row("t", {})],
+    });
+    const { dropped } = pruneUninsertableSampleRows(p);
+    expect(dropped).toHaveLength(1);
+    expect(dropped[0]?.row.values).toEqual({});
+    expect(dropped[0]?.reason).toBe("not_null_violation");
+  });
+
   it("keeps an omitted NOT NULL column when it has a DEFAULT", () => {
     const p = plan({
       tables: [

@@ -135,10 +135,10 @@ export function compileWriteDdl(plan: WidenPlan, schemaName: string): CompileWri
     statements.push(compileTable(table, schemaName));
   }
   for (const op of plan.add_columns) {
-    // `compileColumn(col, false)` on a nullable / no-default column emits
-    // exactly `"name" TYPE` — no NOT NULL, no DEFAULT, no auto-PK generator.
+    // `compileColumn(col)` on a nullable / no-default column emits exactly
+    // `"name" TYPE` — no NOT NULL, no DEFAULT, no compiler default.
     statements.push(
-      `ALTER TABLE ${quoted(schemaName, op.table)} ADD COLUMN ${compileColumn(op.column, false)};`,
+      `ALTER TABLE ${quoted(schemaName, op.table)} ADD COLUMN ${compileColumn(op.column)};`,
     );
   }
   return { ok: true, statements };
