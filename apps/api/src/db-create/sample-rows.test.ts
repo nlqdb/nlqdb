@@ -162,6 +162,25 @@ describe("pruneUninsertableSampleRows", () => {
     expect(dropped[0]?.reason).toBe("not_null_violation");
   });
 
+  it("still drops a row omitting a record-time PRIMARY KEY member — no clock default on keys", () => {
+    const p = plan({
+      tables: [
+        {
+          name: "daily",
+          description: "t",
+          columns: [
+            { name: "user_id", type: "integer", nullable: false, description: "c" },
+            { name: "created_on", type: "date", nullable: false, description: "c" },
+          ],
+          primary_key: ["user_id", "created_on"],
+        },
+      ],
+      foreign_keys: [],
+      sample_rows: [row("daily", { user_id: 1 })],
+    });
+    expect(pruneUninsertableSampleRows(p).dropped[0]?.reason).toBe("not_null_violation");
+  });
+
   it("keeps an omitted NOT NULL column when it has a DEFAULT", () => {
     const p = plan({
       tables: [
