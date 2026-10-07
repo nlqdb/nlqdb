@@ -1,0 +1,39 @@
+# Auto-deploys apps/rateme12 on merge — dogfood iteration 001 (GLOBAL-042,
+# docs/history/dogfood-iterations/001-rateme12.md). Copied from
+# deploy-docs.yml; static assets only, no secrets beyond the deploy token.
+# wrangler provisions rateme12.nlqdb.com via `custom_domain = true`.
+# Deleted with apps/rateme12 at the iteration's cleanup (§8).
+
+name: Deploy rateme12
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/rateme12/**"
+      - ".github/workflows/deploy-rateme12.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-rateme12
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: wrangler deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/rateme12
+          command: deploy

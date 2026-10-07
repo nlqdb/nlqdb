@@ -1,6 +1,6 @@
 # Dogfood iteration 001 — rateme12 on nlqdb
 
-**Status:** brief (not started) · **Governs:** [`GLOBAL-042`](../../decisions/GLOBAL-042-dogfood-iteration-loop.md) · **Measures:** [`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md) Phase A KPI 1
+**Status:** running (§5a step 1 done 2026-10-07) · **Governs:** [`GLOBAL-042`](../../decisions/GLOBAL-042-dogfood-iteration-loop.md) · **Measures:** [`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md) Phase A KPI 1
 Instantiates [`TEMPLATE.md`](./TEMPLATE.md) — the mechanics (§2 quarantine, §3 token handling, §5 fixed rules, §7 retro fields, §8 cleanup) live there and are not repeated here. The retro (§7) is appended to this file when the iteration ends.
 
 ## 1. Goal
@@ -39,11 +39,11 @@ Written from the **live product** and the non-quarantined UI code; nothing here 
 
 ## 5. Build plan
 
-Fixed rules per [`TEMPLATE.md §5`](./TEMPLATE.md#5-build-plan). Iteration specifics: code in `apps/rateme12/`, workflow `.github/workflows/deploy-rateme12.yml`, `@nlqdb/sdk` pinned at `0.4.0` at writing (re-check `npm view @nlqdb/sdk version`; its `main` points at TypeScript source — wrangler's bundler handles it). Domain: `[[routes]] pattern = "rateme12.nlqdb.com", custom_domain = true` in `wrangler.toml`, `workers_dev = false`. The zone is on Cloudflare, so the first deploy provisions the record if the CI `CLOUDFLARE_API_TOKEN` has Zone → DNS edit. **Founder step:** confirm that scope, or add the record by hand in the Cloudflare dashboard.
+Fixed rules per [`TEMPLATE.md §5`](./TEMPLATE.md#5-build-plan). Iteration specifics: code in `apps/rateme12/`, workflow `.github/workflows/deploy-rateme12.yml`, `@nlqdb/sdk` pinned at `0.4.0` at writing (re-check `npm view @nlqdb/sdk version`; its `main` points at TypeScript source — wrangler's bundler handles it). Domain: `[[routes]] pattern = "rateme12.nlqdb.com", custom_domain = true` in `wrangler.toml`, `workers_dev = false`. The first deploy provisions the record — the CI token already does the same for `docs.nlqdb.com`.
 
 ### 5a. The clone — starts now, no nlqdb dependency
 
-1. **Scaffold** `apps/rateme12/` (Worker + assets, typecheck/lint in `bun run check`, deploy workflow, custom domain). Ship an honest placeholder page first so the URL is live on day 1.
+1. ✅ **Scaffold** (2026-10-07): `apps/rateme12/` serves an honest "not connected yet" placeholder (`noindex`) as static assets; `deploy-rateme12.yml` deploys it on merge. The Worker entry arrives with step 4.
 2. **Inventory** (§4) from the live product.
 3. **One data module.** `apps/rateme12/src/data.ts`, one function per journey action (e.g. `listRatings`, `submitRating`), "not connected yet" state until §5b.
 4. **Journeys, look-and-feel.** Routes, layout, styling, forms, auth screens, empty/partial/error states, matching the live product side by side. Every form posts to a Worker route that calls `data.ts`.
