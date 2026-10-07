@@ -12,8 +12,8 @@
 // added NULLable with no default (an existing table already has rows, so a
 // NOT NULL / DEFAULT add is a retype-class change — a previewed proposal,
 // SK-SCHEMA-009, never a silent widen); a new table is created from the same
-// typed `Table` the create compiler consumes, so single-column int/uuid PKs
-// get the SK-HDC-015 auto-generator for free.
+// typed `Table` the create compiler consumes, so it gets the SK-HDC-015
+// `autoDefault`s (auto-PK generators, record-time clocks) for free.
 //
 // RLS + tenant-role grants for a widen-CREATED table are NOT emitted here:
 // exactly as `compile-ddl.ts` stays pure and tenant-agnostic while

@@ -26,6 +26,9 @@ describe("validateCompiledDdl", () => {
           columns: [
             { name: "id", type: "uuid", nullable: false, description: "test col" },
             { name: "email", type: "text", nullable: false, description: "test col" },
+            // SK-HDC-015 record-time defaults (`DEFAULT now()` / `CURRENT_DATE`).
+            { name: "created_at", type: "timestamp_tz", nullable: false, description: "test col" },
+            { name: "updated_on", type: "date", nullable: true, description: "test col" },
           ],
           primary_key: ["id"],
         },
