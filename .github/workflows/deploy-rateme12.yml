@@ -1,6 +1,7 @@
 # Auto-deploys apps/rateme12 on merge — dogfood iteration 001 (GLOBAL-042,
 # docs/history/dogfood-iterations/001-rateme12.md). Copied from
 # deploy-docs.yml; static assets only, no secrets beyond the deploy token.
+# PRs touching the app run the dry-run build only (no deploy).
 # wrangler provisions rateme12.nlqdb.com via `custom_domain = true`.
 # Deleted with apps/rateme12 at the iteration's cleanup (§8).
 
@@ -12,10 +13,16 @@ on:
     paths:
       - "apps/rateme12/**"
       - ".github/workflows/deploy-rateme12.yml"
+  # PRs run the dry-run build only, so a broken wrangler.toml fails here,
+  # not on main.
+  pull_request:
+    paths:
+      - "apps/rateme12/**"
+      - ".github/workflows/deploy-rateme12.yml"
   workflow_dispatch:
 
 concurrency:
-  group: deploy-rateme12
+  group: deploy-rateme12-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -30,7 +37,11 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ./.github/actions/setup
 
+      - name: Dry-run build
+        run: bun run --cwd apps/rateme12 build
+
       - name: Deploy
+        if: github.event_name != 'pull_request'
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
