@@ -210,18 +210,9 @@ function fkIndexName(fk: ForeignKey): string {
   return `idx_${fk.from_table}__${fk.from_columns.join("_")}`;
 }
 
-// SK-HDC-015 — `CREATE TABLE`-time defaults the compiler applies when the plan
-// supplies none, so an app INSERT that names only its own fields lands:
-//   • a single-column integer/bigint/uuid PK auto-generates — the planner
-//     emits `INSERT INTO t (name, ...)` without the key;
-//   • a record-time column (`created_at`, `updated_at`, …) defaults to the
-//     insert time — the inferer marks it NOT NULL with no default for most
-//     goals, and an app never supplies it.
-// Composite / text PKs, key columns and domain dates (`due_date`, `scheduled_at`) are left
-// alone: their value is the user's, not the clock's. Widen's `ADD COLUMN`
-// stays default-free (SK-SCHEMA-008), so this applies only inside
-// `compileTable`. `sample-rows.ts` reads the same function to know which
-// omitted columns Postgres fills.
+// SK-HDC-015 — the one owner of defaults the compiler adds when the plan has
+// none (single-column int/uuid PK generators, record-time clocks), so an app
+// INSERT naming only its own fields lands; `sample-rows.ts` reads it too.
 const RECORD_TIME_COLUMN = /^(created|updated|inserted|added|modified)_(at|on)$/;
 
 export function autoDefault(col: Column, table: Table): string | null {
