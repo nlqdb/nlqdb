@@ -1,7 +1,7 @@
 # Auto-deploys apps/rateme12 on merge — dogfood iteration 001 (GLOBAL-042,
 # docs/history/dogfood-iterations/001-rateme12.md). Copied from
 # deploy-docs.yml; static assets only, no secrets beyond the deploy token.
-# PRs touching the app run the dry-run build only (no deploy).
+# PRs touching the app run the dry-run build only; only `main` deploys.
 # wrangler provisions rateme12.nlqdb.com via `custom_domain = true`.
 # Deleted with apps/rateme12 at the iteration's cleanup (§8).
 
@@ -41,7 +41,8 @@ jobs:
         run: bun run --cwd apps/rateme12 build
 
       - name: Deploy
-        if: github.event_name != 'pull_request'
+        # Covers PRs and a dispatch from a non-main branch: neither reaches prod.
+        if: github.ref == 'refs/heads/main'
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
