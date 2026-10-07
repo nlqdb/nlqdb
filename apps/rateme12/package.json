@@ -1,0 +1,14 @@
+{
+  "name": "@nlqdb/rateme12",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Dogfood iteration 001 (GLOBAL-042): rateme12 rebuilt on @nlqdb/sdk. Deleted at the iteration's cleanup.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

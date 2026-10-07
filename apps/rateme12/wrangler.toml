@@ -1,0 +1,21 @@
+name = "rateme12"
+compatibility_date = "2026-04-27"
+
+# Dogfood iteration 001 (GLOBAL-042) — docs/history/dogfood-iterations/001-rateme12.md.
+# §5a step 1: an honest placeholder served as static assets, so the URL is
+# live on day 1. A Worker entry (`main`) arrives with the journeys (§5a step 4)
+# — every form posts to a Worker route that calls src/data.ts.
+workers_dev = false
+
+[assets]
+directory = "./public"
+not_found_handling = "404-page"
+
+[observability]
+enabled = true
+
+# Same pattern as apps/docs: wrangler provisions the proxied record + cert on
+# first deploy.
+[[routes]]
+pattern = "rateme12.nlqdb.com"
+custom_domain = true
