@@ -1,6 +1,6 @@
 # Dogfood iteration 001 — rateme12 on nlqdb
 
-**Status:** running (§5a step 1 done 2026-10-07) · **Governs:** [`GLOBAL-042`](../../decisions/GLOBAL-042-dogfood-iteration-loop.md) · **Measures:** [`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md) Phase A KPI 1
+**Status:** running (§5a steps 1–2 done 2026-10-07) · **Governs:** [`GLOBAL-042`](../../decisions/GLOBAL-042-dogfood-iteration-loop.md) · **Measures:** [`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md) Phase A KPI 1
 Instantiates [`TEMPLATE.md`](./TEMPLATE.md) — the mechanics (§2 quarantine, §3 token handling, §5 fixed rules, §7 retro fields, §8 cleanup) live there and are not repeated here. The retro (§7) is appended to this file when the iteration ends.
 
 ## 1. Goal
@@ -20,7 +20,7 @@ Run [`TEMPLATE.md §2`](./TEMPLATE.md#2-schema-quarantine--before-opening-any-fi
 ## 3. Repo access
 
 - Token: `$RATEME12_GH_TOKEN`, handled per [`TEMPLATE.md §3`](./TEMPLATE.md#3-repo-access).
-- Repo: `omerhochman/rateme12` (founder-confirmed). This proxy may limit `api.github.com` to repo-scoped endpoints, so do not rely on listing. Live URL: confirm with the founder if it differs from rateme12's obvious domain.
+- Repo: `omerhochman/rateme12` (founder-confirmed; cloned 2026-10-07). Live URL in §4.
 
 ## 4. Product inventory — fill on day 1, before §5a step 2
 
@@ -28,14 +28,14 @@ Written from the **live product** and the non-quarantined UI code; nothing here 
 
 | Item | Value |
 |---|---|
-| Live URL (look-and-feel reference) | |
-| Stack (framework, language, hosting) | |
-| Size (files, LOC after quarantine, number of routes) | |
-| Routes / pages, in navigation order | |
-| Primary user journeys (≤ 5, entry → action → proof of value) | |
-| Auth model (who signs in, how; anonymous paths) | |
-| External services (email, payments, storage, analytics) | |
-| Content types the UI shows (names only, as rendered — not row shapes) | |
+| Live URL (look-and-feel reference) | `https://rateme12.com` (directory) + `https://api.rateme12.com` (API, MCP at `/mcp`) — both live 2026-10-07 |
+| Stack (framework, language, hosting) | Astro 7 SSR + React islands, TypeScript, Bun workspaces; two Cloudflare Workers (`rateme12-web` → service binding → `rateme12-api`); D1; Better Auth |
+| Size (files, LOC after quarantine, number of routes) | 151 files, ~10.7 K LOC (`.ts`/`.tsx`/`.astro`, incl. tests), 13 page routes + 3 sitemaps |
+| Routes / pages, in navigation order | `/` (search + category chips + ranked list) · `/c/[tag]` · `/servers/[id]` · `/publishers/[id]` · `/install` ("Connect an agent") · `/submit` · `/fleet` · `/about` · `/privacy` · `/terms` · `/admin/{duplicates,merges,pipelines}` |
+| Primary user journeys (≤ 5, entry → action → proof of value) | 1. Search/browse: `/` → query or category → ranked servers with score + stars. 2. Server page: install snippets per client + "what the web says" signals + version history. 3. Rate: server page → 👍/👎 on the current version (signed in) → review listed. 4. Submit a server: `/submit` (signed in) → listed. 5. Connect an agent: `/install` → MCP endpoint; with a key, `/fleet` shows the agent's usage |
+| Auth model (who signs in, how; anonymous paths) | Browsing, search and MCP reads are anonymous. Sign-in (email, GitHub, Google via Better Auth) gates rating, submitting and agent keys; admin pages gated to operators |
+| External services (email, payments, storage, analytics) | Turnstile; GitHub API + the MCP registry (signal and listing imports, ~32 K servers); IndexNow; R2 (one mention). No payments |
+| Content types the UI shows (names only, as rendered — not row shapes) | MCP server, category, publisher, version, install snippet, review (👍/👎), ecosystem signals (stars, contributors, last commit, releases, license), registry listing, agent key, fleet usage, duplicate/merge/pipeline (admin) |
 
 ## 5. Build plan
 
@@ -44,7 +44,7 @@ Fixed rules per [`TEMPLATE.md §5`](./TEMPLATE.md#5-build-plan). Iteration speci
 ### 5a. The clone — starts now, no nlqdb dependency
 
 1. ✅ **Scaffold** (2026-10-07): `apps/rateme12/` serves an honest "not connected yet" placeholder (`noindex`) as static assets; `deploy-rateme12.yml` deploys it on merge.
-2. **Inventory** (§4) from the live product.
+2. ✅ **Inventory** (2026-10-07): §4, from the live product and the non-quarantined UI. The directory's ~32 K servers arrive by import, not by user writes — the §5b workload must say which rows the clone writes through `ask()` and which it imports.
 3. **One data module.** `apps/rateme12/src/data.ts`, one function per journey action (e.g. `listRatings`, `submitRating`), "not connected yet" state until §5b. The first `.ts` file also adds `tsconfig.json` + a `typecheck` script — `bun run typecheck` silently skips a workspace without one.
 4. **Journeys, look-and-feel.** Routes, layout, styling, forms, auth screens, empty/partial/error states, matching the live product side by side. Every form posts to a Worker route that calls `data.ts`.
 5. **Visual walk** of every route against the live product; fix parity gaps. The clone is "done" for 5a when a stranger cannot tell the two apart except for the "not connected" states.
@@ -83,7 +83,11 @@ Single source for these gaps — `CLAUDE.md` §1 points here; every engine PR na
 
 ## 7. Retrospective — filled at the end
 
-Fields per [`TEMPLATE.md §7`](./TEMPLATE.md#7-retrospective--filled-at-the-end). Leverage verdict of this brief at design time (reconciled here when the iteration ends):
+Fields per [`TEMPLATE.md §7`](./TEMPLATE.md#7-retrospective--filled-at-the-end).
+
+**Quarantine `PATHS.txt` (2026-10-07, §2; never opened):** `packages/db`, `apps/api/src` (whole backend — its query layer), `apps/web/src/lib/query.ts` + `query.test.ts`, `e2e/{identity,merge-log,near-duplicate,owner-aliases,ranking}-fixture.sql`.
+
+Leverage verdict of this brief at design time (reconciled here when the iteration ends):
 
 ```
 Leverage: spend-with-seams
