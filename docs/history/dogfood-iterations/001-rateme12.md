@@ -43,9 +43,9 @@ Fixed rules per [`TEMPLATE.md §5`](./TEMPLATE.md#5-build-plan). Iteration speci
 
 ### 5a. The clone — starts now, no nlqdb dependency
 
-1. ✅ **Scaffold** (2026-10-07): `apps/rateme12/` serves an honest "not connected yet" placeholder (`noindex`) as static assets; `deploy-rateme12.yml` deploys it on merge. The Worker entry arrives with step 4.
+1. ✅ **Scaffold** (2026-10-07): `apps/rateme12/` serves an honest "not connected yet" placeholder (`noindex`) as static assets; `deploy-rateme12.yml` deploys it on merge.
 2. **Inventory** (§4) from the live product.
-3. **One data module.** `apps/rateme12/src/data.ts`, one function per journey action (e.g. `listRatings`, `submitRating`), "not connected yet" state until §5b.
+3. **One data module.** `apps/rateme12/src/data.ts`, one function per journey action (e.g. `listRatings`, `submitRating`), "not connected yet" state until §5b. The first `.ts` file also adds `tsconfig.json` + a `typecheck` script — `bun run typecheck` silently skips a workspace without one.
 4. **Journeys, look-and-feel.** Routes, layout, styling, forms, auth screens, empty/partial/error states, matching the live product side by side. Every form posts to a Worker route that calls `data.ts`.
 5. **Visual walk** of every route against the live product; fix parity gaps. The clone is "done" for 5a when a stranger cannot tell the two apart except for the "not connected" states.
 
