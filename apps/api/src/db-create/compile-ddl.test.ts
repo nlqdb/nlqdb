@@ -206,6 +206,47 @@ describe("compileDdl", () => {
     expect(result).toMatchObject({ ok: false, reason: "fk_target_not_found" });
   });
 
+  it("defaults a record-time column to the insert time, never a domain date (SK-HDC-015)", () => {
+    // The run-232 preview shape: `restaurants.created_at` NOT NULL with no
+    // default made every app INSERT that omits it fail (23502).
+    const plan: SchemaPlan = {
+      ...minimalTable,
+      tables: [
+        {
+          name: "restaurants",
+          description: "test table",
+          columns: [
+            { name: "id", type: "integer", nullable: false, description: "test col" },
+            { name: "created_at", type: "timestamp_tz", nullable: false, description: "test col" },
+            { name: "updated_on", type: "date", nullable: true, description: "test col" },
+            {
+              name: "updated_at",
+              type: "timestamp_tz",
+              nullable: false,
+              default: "now()",
+              description: "test col",
+            },
+            {
+              name: "scheduled_at",
+              type: "timestamp_tz",
+              nullable: false,
+              description: "test col",
+            },
+            { name: "created_by", type: "text", nullable: false, description: "test col" },
+          ],
+          primary_key: ["id"],
+        },
+      ],
+    };
+    const result = compileDdl(plan, "tenant_j");
+    if (!result.ok) throw new Error(`expected ok: ${result.reason}`);
+    expect(result.statements[0]).toContain(`"created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),`);
+    expect(result.statements[0]).toContain(`"updated_on" DATE DEFAULT CURRENT_DATE,`);
+    expect(result.statements[0]).toContain(`"updated_at" TIMESTAMPTZ NOT NULL DEFAULT now(),`);
+    expect(result.statements[0]).toContain(`"scheduled_at" TIMESTAMPTZ NOT NULL,`);
+    expect(result.statements[0]).toContain(`"created_by" TEXT NOT NULL,`);
+  });
+
   it("defensively rejects a reserved-word column name (post-Zod safety net)", () => {
     const plan: SchemaPlan = {
       ...minimalTable,

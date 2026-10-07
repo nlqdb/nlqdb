@@ -12,8 +12,8 @@
 // added NULLable with no default (an existing table already has rows, so a
 // NOT NULL / DEFAULT add is a retype-class change — a previewed proposal,
 // SK-SCHEMA-009, never a silent widen); a new table is created from the same
-// typed `Table` the create compiler consumes, so single-column int/uuid PKs
-// get the SK-HDC-015 auto-generator for free.
+// typed `Table` the create compiler consumes, so it gets the SK-HDC-015
+// `autoDefault`s (auto-PK generators, record-time clocks) for free.
 //
 // RLS + tenant-role grants for a widen-CREATED table are NOT emitted here:
 // exactly as `compile-ddl.ts` stays pure and tenant-agnostic while
@@ -135,10 +135,10 @@ export function compileWriteDdl(plan: WidenPlan, schemaName: string): CompileWri
     statements.push(compileTable(table, schemaName));
   }
   for (const op of plan.add_columns) {
-    // `compileColumn(col, false)` on a nullable / no-default column emits
-    // exactly `"name" TYPE` — no NOT NULL, no DEFAULT, no auto-PK generator.
+    // `compileColumn(col)` on a nullable / no-default column emits exactly
+    // `"name" TYPE` — no NOT NULL, no DEFAULT, no compiler default.
     statements.push(
-      `ALTER TABLE ${quoted(schemaName, op.table)} ADD COLUMN ${compileColumn(op.column, false)};`,
+      `ALTER TABLE ${quoted(schemaName, op.table)} ADD COLUMN ${compileColumn(op.column)};`,
     );
   }
   return { ok: true, statements };

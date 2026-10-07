@@ -30,6 +30,7 @@
 //     earlier in plan order → 23503. Matching uses string-coerced equality so
 //     a parent that Postgres would accept is never treated as missing.
 
+import { autoDefault } from "./compile-ddl.ts";
 import type { SampleRow, SchemaPlan } from "./types.ts";
 
 export type DroppedSampleRow = { row: SampleRow; reason: string };
@@ -117,22 +118,15 @@ export function pruneUninsertableSampleRows(plan: SchemaPlan): SampleRowPruneRes
 
     // NOT NULL completeness — a column is required when it is NOT NULL
     // (explicit `nullable: false` or a primary-key member) AND has no DEFAULT.
-    // SK-HDC-015: the compiler gives a single-column integer/bigint/uuid PK with
-    // no plan default an IDENTITY / gen_random_uuid() default, so an OMITTED key
-    // is filled by Postgres and the INSERT (which names only the provided
-    // columns, `neon-provision.ts`) succeeds — pruning must not read that as a
-    // 23502. An explicit null still violates the column, so relax ONLY when the
-    // key is absent from the row.
-    const singleColPk = table.primary_key.length === 1;
+    // SK-HDC-015: the compiler's `autoDefault` fills an OMITTED auto-PK or
+    // record-time column, and the INSERT names only the provided columns
+    // (`neon-provision.ts`), so pruning must not read that as a 23502. An
+    // explicit null still violates the column, so relax ONLY when it is absent.
     let badReason: string | undefined;
     for (const col of table.columns) {
       const isNotNull = col.nullable === false || pk.has(col.name);
-      const autoPk =
-        singleColPk &&
-        pk.has(col.name) &&
-        col.default == null &&
-        (col.type === "integer" || col.type === "bigint" || col.type === "uuid");
-      const hasDefault = col.default != null || (autoPk && !(col.name in row.values));
+      const hasDefault =
+        col.default != null || (autoDefault(col, table) !== null && !(col.name in row.values));
       if (isNotNull && !hasDefault) {
         const v = row.values[col.name];
         if (v == null) {

@@ -60,7 +60,7 @@ block.
 - [**SK-HDC-012**](decisions/SK-HDC-012-batched-neon-transaction.md) — Provisioner batches DDL + RLS + sample inserts in a single Neon HTTP transaction.
 - [**SK-HDC-013**](decisions/SK-HDC-013-waituntil-tail-steps.md) — Tail steps (recent-tables MRU, table-card embed) run via `ctx.waitUntil`, off the response path.
 - [**SK-HDC-014**](decisions/SK-HDC-014-neon-keep-warm-cron.md) — Neon Free-tier keep-warm: one `SELECT 1` every 4 min, Mon–Fri 13–21 UTC.
-- [**SK-HDC-015**](decisions/SK-HDC-015-pk-auto-defaults.md) — Compiler auto-generates defaults for single-column integer/uuid primary keys.
+- [**SK-HDC-015**](decisions/SK-HDC-015-pk-auto-defaults.md) — Compiler auto-generates defaults for single-column integer/uuid primary keys and record-time columns (`created_at` → `now()`).
 - [**SK-HDC-016**](decisions/SK-HDC-016-delete-database.md) — `DELETE /v1/databases/:id` reuses `dropSchemaAndRegistry`; UI gates with typed-name confirmation.
 - [**SK-HDC-017**](decisions/SK-HDC-017-provision-sqlstate-fidelity.md) — Provisioner maps SQLSTATE classes and pins the raw SQLSTATE on the failure span.
 - [**SK-HDC-018**](decisions/SK-HDC-018-sample-insert-graceful-degradation.md) — A constraint-violating sample row degrades to an un-seeded DB, never a 500.
