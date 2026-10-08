@@ -34,6 +34,7 @@ export async function listReviews(_serverId: string): Promise<Result<Row[]>> {
 }
 
 export async function rateServer(_input: {
+  userId: string;
   serverId: string;
   vote: "up" | "down";
 }): Promise<Result<Row>> {
@@ -41,8 +42,11 @@ export async function rateServer(_input: {
 }
 
 // Journey 4 — submit a server (`/submit`). Fields pass through as the form
-// carries them.
-export async function submitServer(_form: Record<string, string>): Promise<Result<Row>> {
+// carries them; rating and submitting are signed-in actions (§4 auth model).
+export async function submitServer(_input: {
+  userId: string;
+  form: Record<string, string>;
+}): Promise<Result<Row>> {
   return notConnected;
 }
 
