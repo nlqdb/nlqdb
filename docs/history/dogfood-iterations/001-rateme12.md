@@ -1,6 +1,6 @@
 # Dogfood iteration 001 — rateme12 on nlqdb
 
-**Status:** running (§5a steps 1–2 done 2026-10-07) · **Governs:** [`GLOBAL-042`](../../decisions/GLOBAL-042-dogfood-iteration-loop.md) · **Measures:** [`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md) Phase A KPI 1
+**Status:** running (§5a steps 1–3 done 2026-10-08) · **Governs:** [`GLOBAL-042`](../../decisions/GLOBAL-042-dogfood-iteration-loop.md) · **Measures:** [`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md) Phase A KPI 1
 Instantiates [`TEMPLATE.md`](./TEMPLATE.md) — the mechanics (§2 quarantine, §3 token handling, §5 fixed rules, §7 retro fields, §8 cleanup) live there and are not repeated here. The retro (§7) is appended to this file when the iteration ends.
 
 ## 1. Goal
@@ -45,13 +45,13 @@ Fixed rules per [`TEMPLATE.md §5`](./TEMPLATE.md#5-build-plan). Iteration speci
 
 1. ✅ **Scaffold** (2026-10-07): `apps/rateme12/` serves an honest "not connected yet" placeholder (`noindex`) as static assets; `deploy-rateme12.yml` deploys it on merge.
 2. ✅ **Inventory** (2026-10-07): §4, from the live product and the non-quarantined UI. The directory's ~32 K servers arrive by import, not by user writes — the §5b workload must say which rows the clone writes through `ask()` and which it imports.
-3. **One data module.** `apps/rateme12/src/data.ts`, one function per journey action (e.g. `listRatings`, `submitRating`), "not connected yet" state until §5b. The first `.ts` file also adds `tsconfig.json` + a `typecheck` script — `bun run typecheck` silently skips a workspace without one.
+3. ✅ **One data module** (2026-10-08): `apps/rateme12/src/data.ts`, one function per §4 journey action (8), each returning `not_connected` until §5b; rows typed `Record<string, unknown>` so no shape is pre-modelled. `tsconfig.json` clears the base `@nlqdb/*` path alias, so `bun run typecheck` rejects an SDK import no dependency declares. That does not enforce the published pin: as a workspace member, `bun install` (1.4.2) links `packages/sdk` for any pin equal to its version (`"0.4.0"`, `npm:` and renamed aliases alike) and fetches the registry only for a pin that differs (probed 2026-10-08); step 6 carries the check.
 4. **Journeys, look-and-feel.** Routes, layout, styling, forms, auth screens, empty/partial/error states, matching the live product side by side. Every form posts to a Worker route that calls `data.ts`.
 5. **Visual walk** of every route against the live product; fix parity gaps. The clone is "done" for 5a when a stranger cannot tell the two apart except for the "not connected" states.
 
 ### 5b. The last mile — gated on §6.1, strictly after 5a step 5
 
-6. **Hosted DB through the public surface.** Create it from the app's own goal sentence (`createDatabase({ goal })` / `nlq new` / `/app` chat — whichever §6.1 R2 makes available). Record the `dbId` and mint the `sk_live_` as a Worker secret (`wrangler secret put NLQDB_API_KEY`). Never pre-model a field to make KPI 1 look good.
+6. **Hosted DB through the public surface.** Create it from the app's own goal sentence (`createDatabase({ goal })` / `nlq new` / `/app` chat — whichever §6.1 R2 makes available). Record the `dbId` and mint the `sk_live_` as a Worker secret (`wrangler secret put NLQDB_API_KEY`). Pin `@nlqdb/sdk` to a published version and confirm `apps/rateme12/node_modules/@nlqdb/sdk` resolves into `node_modules/.bun/@nlqdb+sdk@<pin>`, not `packages/sdk` (step 3). Never pre-model a field to make KPI 1 look good.
 7. **One vertical slice.** Wire one write + its read in `data.ts` through `client.ask()` (preview → `confirm: true`), deploy, use it in the browser on the production URL. Log every `schema_mismatch` / `confirm_expired` / `rate_limited` as a §7 number.
 8. **Remaining journeys** in `data.ts`, one per commit, same logging.
 9. **E2E walk (P6):** `tests/e2e/rateme12/` — each §4 journey end-to-end on `rateme12.nlqdb.com`; the founder uses the production URL by hand once.

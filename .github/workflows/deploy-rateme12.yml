@@ -37,6 +37,10 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ./.github/actions/setup
 
+      # ci.yml has no rateme12 job, so this is the only CI gate on src/.
+      - name: Typecheck
+        run: bun run --cwd apps/rateme12 typecheck
+
       - name: Dry-run build
         run: bun run --cwd apps/rateme12 build
 
