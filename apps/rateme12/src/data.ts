@@ -42,7 +42,7 @@ export async function rateServer(_input: {
 }
 
 // Journey 4 — submit a server (`/submit`). Fields pass through as the form
-// carries them; rating and submitting are signed-in actions (§4 auth model).
+// carries them; rating, submitting and agent keys are signed-in (§4 auth model).
 export async function submitServer(_input: {
   userId: string;
   form: Record<string, string>;
