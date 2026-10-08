@@ -75,7 +75,7 @@ KPI 1; nothing commits writes, so the formal KPI stays unread.
 
 ## Last change
 
-**2026-10-07 (run 235)** — **rateme12 iteration 001: §5 steps 1/10 → 2/10; §4 inventory 0/8 → 8/8 rows.** §2 quarantine ran by name before any source file was opened (`PATHS.txt` in the brief's §7); §4 is written from the live product. **GLOBAL-025 onboarding** advanced: the real-app walk now has its journey list. No KPI degrades: docs-only diff (the brief + this scorecard).
+**2026-10-07 (run 235)** — **rateme12 iteration 001: §5 steps 1/10 → 2/10; §4 inventory 0/8 → 8/8 rows.** §2 quarantine ran by name before any source file was opened (`PATHS.txt` in the brief's §7); §4 is written from the live product. **GLOBAL-025 onboarding** advanced: the real-app walk now has its journey list. No KPI degrades: docs-only diff (the brief, its index row, this scorecard).
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
