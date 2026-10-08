@@ -1,6 +1,6 @@
 # Dogfood iteration 001 — rateme12 on nlqdb
 
-**Status:** running (§5a steps 1–2 done 2026-10-07) · **Governs:** [`GLOBAL-042`](../../decisions/GLOBAL-042-dogfood-iteration-loop.md) · **Measures:** [`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md) Phase A KPI 1
+**Status:** running (§5a steps 1–3 done 2026-10-08) · **Governs:** [`GLOBAL-042`](../../decisions/GLOBAL-042-dogfood-iteration-loop.md) · **Measures:** [`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md) Phase A KPI 1
 Instantiates [`TEMPLATE.md`](./TEMPLATE.md) — the mechanics (§2 quarantine, §3 token handling, §5 fixed rules, §7 retro fields, §8 cleanup) live there and are not repeated here. The retro (§7) is appended to this file when the iteration ends.
 
 ## 1. Goal
@@ -45,7 +45,7 @@ Fixed rules per [`TEMPLATE.md §5`](./TEMPLATE.md#5-build-plan). Iteration speci
 
 1. ✅ **Scaffold** (2026-10-07): `apps/rateme12/` serves an honest "not connected yet" placeholder (`noindex`) as static assets; `deploy-rateme12.yml` deploys it on merge.
 2. ✅ **Inventory** (2026-10-07): §4, from the live product and the non-quarantined UI. The directory's ~32 K servers arrive by import, not by user writes — the §5b workload must say which rows the clone writes through `ask()` and which it imports.
-3. **One data module.** `apps/rateme12/src/data.ts`, one function per journey action (e.g. `listRatings`, `submitRating`), "not connected yet" state until §5b. The first `.ts` file also adds `tsconfig.json` + a `typecheck` script — `bun run typecheck` silently skips a workspace without one.
+3. ✅ **One data module** (2026-10-08): `apps/rateme12/src/data.ts`, one function per §4 journey action (8), each returning `not_connected` until §5b; rows typed `Record<string, unknown>` so no shape is pre-modelled. `tsconfig.json` clears the base `@nlqdb/*` path alias, so `bun run typecheck` rejects a workspace import — the published-SDK-only rule is compiler-enforced.
 4. **Journeys, look-and-feel.** Routes, layout, styling, forms, auth screens, empty/partial/error states, matching the live product side by side. Every form posts to a Worker route that calls `data.ts`.
 5. **Visual walk** of every route against the live product; fix parity gaps. The clone is "done" for 5a when a stranger cannot tell the two apart except for the "not connected" states.
 
