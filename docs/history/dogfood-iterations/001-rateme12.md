@@ -22,7 +22,7 @@ Run [`TEMPLATE.md §2`](./TEMPLATE.md#2-schema-quarantine--before-opening-any-fi
 - Token: `$RATEME12_GH_TOKEN`, handled per [`TEMPLATE.md §3`](./TEMPLATE.md#3-repo-access).
 - Repo: `omerhochman/rateme12` (founder-confirmed; cloned 2026-10-07). Live URL in §4.
 
-## 4. Product inventory — fill on day 1, before §5a step 2
+## 4. Product inventory — filled at §5a step 2
 
 Written from the **live product** and the non-quarantined UI code; nothing here may be derived from quarantined files.
 

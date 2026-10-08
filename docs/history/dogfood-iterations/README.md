@@ -14,4 +14,4 @@ cleanup before the next iteration starts.
 
 | # | Iteration | Date | Outcome |
 |---|-----------|------|---------|
-| 001 | [rateme12 on nlqdb](001-rateme12.md) — clone `rateme12.nlqdb.com`, data last mile gated on nlqdb readiness | 2026-09-06 (brief) | running — §5a step 1 (scaffold) 2026-10-07 |
+| 001 | [rateme12 on nlqdb](001-rateme12.md) — clone `rateme12.nlqdb.com`, data last mile gated on nlqdb readiness | 2026-09-06 (brief) | running — §5a steps 1–2 (scaffold, inventory) 2026-10-07 |
