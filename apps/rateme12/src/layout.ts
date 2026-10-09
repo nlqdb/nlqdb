@@ -38,7 +38,10 @@ export function html(strings: TemplateStringsArray, ...parts: Part[]): Html {
 const FONTS_HREF =
   "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap";
 
-export function page(title: string, body: Html): string {
+// What every route returns: the page title and the body the shell wraps.
+export type View = { title: string; body: Html };
+
+export function page({ title, body }: View): string {
   return html`<!doctype html>
 <html lang="en">
   <head>

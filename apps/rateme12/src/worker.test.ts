@@ -35,6 +35,7 @@ describe("journey 1 — search / browse", () => {
   test("unbuilt routes and malformed tags are an honest 404", async () => {
     expect((await get("/servers/x")).status).toBe(404);
     expect((await get("/c/%E0%A4%A")).status).toBe(404);
+    expect((await get("/c/%20")).status).toBe(404);
   });
 
   test("writes are refused until the forms exist", async () => {

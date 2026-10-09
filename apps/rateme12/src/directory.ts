@@ -4,7 +4,7 @@
 // list slot shows the honest not-connected state.
 
 import { listCategories, type Result, type Row, searchServers } from "./data.ts";
-import { type Html, html, notConnectedNotice } from "./layout.ts";
+import { type Html, html, notConnectedNotice, type View } from "./layout.ts";
 
 // From the live product's "How the score works" strip — the static substance
 // that renders under the list in every state.
@@ -45,7 +45,7 @@ function serverList(servers: Result<Row[]>): Html {
   return servers.status === "ok" ? html`` : notConnectedNotice;
 }
 
-export async function directoryPage(q: string): Promise<{ title: string; body: Html }> {
+export async function directoryPage(q: string): Promise<View> {
   const [servers, categories] = await Promise.all([
     searchServers({ query: q || undefined }),
     listCategories(),
@@ -77,7 +77,7 @@ ${serverList(servers)}
   };
 }
 
-export async function categoryPage(tag: string): Promise<{ title: string; body: Html }> {
+export async function categoryPage(tag: string): Promise<View> {
   const [servers, categories] = await Promise.all([searchServers({ tag }), listCategories()]);
   return {
     title: `Best ${tag} MCP servers — rateme12`,
