@@ -73,11 +73,14 @@ describe("journey 2 — an unknown id once connected", () => {
       ...real,
       getServer: async () => ({ status: "ok", value: null }),
     }));
-    const res = await get("/servers/nope");
-    expect(res.status).toBe(404);
-    const body = await res.text();
-    expect(body).toContain("<title>Server not found — rateme12 MCP directory</title>");
-    expect(body).toContain("<p>Nothing in the directory has the id “nope”.</p>");
-    mock.module("./data.ts", () => real);
+    try {
+      const res = await get("/servers/nope");
+      expect(res.status).toBe(404);
+      const body = await res.text();
+      expect(body).toContain("<title>Server not found — rateme12 MCP directory</title>");
+      expect(body).toContain("<p>Nothing in the directory has the id “nope”.</p>");
+    } finally {
+      mock.module("./data.ts", () => real); // a failed assertion must not leak the mock
+    }
   });
 });
