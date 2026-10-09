@@ -1,5 +1,6 @@
 /// <reference types="bun-types" />
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
+import * as data from "./data.ts";
 import worker from "./worker.ts";
 
 const get = (path: string) => worker.fetch(new Request(`https://rateme12.nlqdb.com${path}`));
@@ -62,5 +63,21 @@ describe("journey 2 — server and publisher pages", () => {
     const body = await res.text();
     expect(body).toContain('<a class="back" href="/">← All servers</a>');
     expect(body).toContain("Not connected yet");
+  });
+});
+
+describe("journey 2 — an unknown id once connected", () => {
+  test("gets the live product's 404 notice and title", async () => {
+    const real = { ...data };
+    mock.module("./data.ts", () => ({
+      ...real,
+      getServer: async () => ({ status: "ok", value: null }),
+    }));
+    const res = await get("/servers/nope");
+    expect(res.status).toBe(404);
+    const body = await res.text();
+    expect(body).toContain("<title>Server not found — rateme12 MCP directory</title>");
+    expect(body).toContain("<p>Nothing in the directory has the id “nope”.</p>");
+    mock.module("./data.ts", () => real);
   });
 });
