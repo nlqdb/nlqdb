@@ -1,6 +1,6 @@
 # Auto-deploys apps/rateme12 on merge — dogfood iteration 001 (GLOBAL-042,
 # docs/history/dogfood-iterations/001-rateme12.md). Copied from
-# deploy-docs.yml; static assets only, no secrets beyond the deploy token.
+# deploy-docs.yml; a Worker + static assets, no secrets beyond the deploy token.
 # PRs touching the app run the dry-run build only; only `main` deploys.
 # wrangler provisions rateme12.nlqdb.com via `custom_domain = true`.
 # Deleted with apps/rateme12 at the iteration's cleanup (§8).
@@ -40,6 +40,9 @@ jobs:
       # ci.yml has no rateme12 job, so this is the only CI gate on src/.
       - name: Typecheck
         run: bun run --cwd apps/rateme12 typecheck
+
+      - name: Test
+        run: bun run --cwd apps/rateme12 test
 
       - name: Dry-run build
         run: bun run --cwd apps/rateme12 build

@@ -19,6 +19,11 @@ export async function searchServers(_input: {
   return notConnected;
 }
 
+// The category chips above every list.
+export async function listCategories(): Promise<Result<Row[]>> {
+  return notConnected;
+}
+
 // Journey 2 — server page (`/servers/[id]`), its publisher (`/publishers/[id]`).
 export async function getServer(_id: string): Promise<Result<Row | null>> {
   return notConnected;

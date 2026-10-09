@@ -1,0 +1,2174 @@
+/*
+ * One stylesheet for the whole directory — no framework (nothing here needs
+ * one yet; delete-before-add). Tokens first, then layout, then components.
+ * Light and dark both defined via tokens so the theme flips with the OS.
+ */
+
+/* Registry design language (docs/UX.md § Visual identity): trust-first palette
+   — navy ink on cool paper, green strictly for verification, the logo's amber
+   strictly for actions — with mono type carrying all data. The ink bar
+   (--bar-*) is constant across light and dark: the header is the brand. */
+:root {
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --surface-2: #eef0f4;
+  --border: #e2e5eb;
+  --border-strong: #131c2e;
+  --text: #131c2e;
+  --text-muted: #5b6472;
+  --link: #29507d;
+  --accent: #eea82f;
+  --accent-contrast: #131c2e;
+  --ok: #1e7a55;
+  --danger: #b42318;
+  --bar-bg: #131c2e;
+  --bar-fg: #eef1f7;
+  --bar-muted: #8b93a6;
+  --radius: 4px;
+  --radius-sm: 2px;
+  --shadow: none;
+  --maxw: 1080px;
+  --font:
+    "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c111c;
+    --surface: #121a29;
+    --surface-2: #1a2334;
+    --border: #253044;
+    --border-strong: #e8ebf2;
+    --text: #e8ebf2;
+    --text-muted: #97a1b3;
+    --link: #8fb4e3;
+    --accent: #eea82f;
+    --accent-contrast: #131c2e;
+    --ok: #4cc694;
+    --danger: #ff9b8f;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.container {
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Header ------------------------------------------------------------------ */
+.site-header {
+  background: var(--bar-bg);
+  color: var(--bar-fg);
+}
+.site-header .container {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: 13px;
+  padding-bottom: 13px;
+  flex-wrap: wrap;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+}
+.brand:hover {
+  text-decoration: none;
+}
+.brand-mark {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+.tagline {
+  color: var(--bar-muted);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+main {
+  padding: 28px 0 64px;
+}
+
+.site-footer {
+  border-top: 2px solid var(--border-strong);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+.site-footer .container {
+  padding-top: 20px;
+  padding-bottom: 40px;
+}
+
+/* Homepage intro ---------------------------------------------------------- */
+/* Deliberately slim — the list is the front page (docs/UX.md § Default view),
+   so this is a tight credibility band, never a marketing hero. */
+.home-intro {
+  margin-bottom: 22px;
+}
+.home-intro h1 {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 1.45rem;
+  letter-spacing: -0.02em;
+}
+.home-mission {
+  margin: 0 0 8px;
+  max-width: 640px;
+  color: var(--text);
+  font-size: 0.98rem;
+}
+.home-lede {
+  margin: 0;
+  max-width: 640px;
+  color: var(--text-muted);
+  font-size: 0.98rem;
+}
+.home-lede strong {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The trust points list — shared by the homepage "how reputation works" strip
+   and the /install "why the ratings mean something" section, so the claim
+   styling lives once (fed by lib/trust.ts). Base rule precedes the
+   .trust-strip override below to keep specificity ascending. */
+.trust-points {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+.trust-points li {
+  padding-left: 24px;
+  position: relative;
+  color: var(--text-muted);
+}
+.trust-points li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 700;
+  color: var(--ok);
+}
+.trust-points li strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Homepage trust strip ---------------------------------------------------- */
+.trust-strip {
+  margin-top: 48px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+  scroll-margin-top: 20px;
+}
+.trust-strip h2 {
+  margin: 0 0 16px;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+}
+.trust-strip .trust-points {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px 24px;
+}
+.trust-note {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Search ------------------------------------------------------------------ */
+.search {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.search input[type="search"] {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 14px;
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.search input[type="search"]:focus {
+  border-color: var(--border-strong);
+  outline: none;
+}
+.search input[type="search"]::placeholder {
+  color: var(--text-muted);
+}
+.btn {
+  padding: 11px 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--accent-contrast);
+  background: var(--accent);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.btn:hover {
+  filter: brightness(1.05);
+  text-decoration: none;
+}
+
+/* Category chips ---------------------------------------------------------- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--text);
+  border-radius: var(--radius-sm);
+}
+.chip:hover {
+  background: var(--surface-2);
+  text-decoration: none;
+}
+.chip[aria-current="true"] {
+  background: var(--bar-bg);
+  color: var(--bar-fg);
+}
+.chip .count {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.chip[aria-current="true"] .count {
+  color: var(--bar-muted);
+}
+
+/* Result meta ------------------------------------------------------------- */
+.result-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.result-meta a {
+  font-weight: 500;
+}
+/* Sort control: two peer links, the active one inked and boxed so the current
+   order is legible at a glance. Sits between the count and any clear-search. */
+.sort-toggle {
+  display: inline-flex;
+  gap: 2px;
+  margin-right: auto;
+  margin-left: 12px;
+}
+.sort-toggle a {
+  padding: 1px 7px;
+  border-radius: 5px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.sort-toggle a[aria-current="true"] {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Registry rows ------------------------------------------------------------ */
+/* The directory is a registry, not a card wall: aligned columns so the list
+   scans like a table (name, capabilities, ecosystem signals), hairline row
+   separators, mono for every data value. One grid template shared by the
+   header row and the rows (ServerRows.astro) keeps the columns aligned by
+   construction. */
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+.rows-head,
+.row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 170px 72px 62px 176px;
+  gap: 14px;
+  align-items: center;
+  padding: 10px;
+}
+.rows-head {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  border-bottom: 2px solid var(--border-strong);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+.row {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+}
+.row:hover {
+  background: var(--surface);
+}
+.row h2 {
+  display: inline;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.row h2 a {
+  color: var(--text);
+}
+/* Stretch the title link across the whole row so it is one click target,
+   while keeping a single real link for a11y/keyboard. */
+.row h2 a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.row-main {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.row-caps {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+/* The canonical registry name under the display name: a quiet, mono secondary
+   line, truncated so a long reverse-DNS name never widens the name column. */
+.row-registry {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+.row-community,
+.row-baseline,
+.row-signals {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+/* The baseline is the default sort key — give it the row's ink. */
+.row-baseline {
+  font-weight: 600;
+}
+/* Community: the headline score with its short sample stacked beneath, so
+   the number never stands bare. */
+.row-community {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+}
+.row-community-score {
+  font-weight: 700;
+}
+.row-community-note {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+/* Ecosystem signals: stars (checkable against the baseline, and the opt-in sort
+   key) then the usage figure (muted), right-aligned so the figures line up down
+   the column. */
+.row-signals {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  white-space: nowrap;
+}
+.row-signal-usage {
+  color: var(--text-muted);
+}
+@media (max-width: 720px) {
+  /* Narrow rows keep name + community + baseline: the community score is the
+     headline and the baseline the default sort key, so hiding either would
+     make the row or its order read as arbitrary; capabilities and the signals
+     lane (stars + usage) move to the detail page. */
+  .rows-head,
+  .row {
+    grid-template-columns: 24px minmax(0, 1fr) 64px 40px;
+  }
+  .rows-head .row-caps,
+  .rows-head .row-signals,
+  .row .row-caps,
+  .row .row-signals {
+    display: none;
+  }
+  .row-main {
+    white-space: normal;
+  }
+}
+
+/* Per-server mark (ServerMark.astro): GitHub avatar when the repo is on
+   GitHub, else a deterministic monogram tile hued from the slug. The img
+   layers over the monogram, so a failed avatar quietly falls back. */
+.mark {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--mark-size, 24px);
+  height: var(--mark-size, 24px);
+  background: oklch(0.92 0.05 var(--mark-hue, 80));
+  color: oklch(0.42 0.09 var(--mark-hue, 80));
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: calc(var(--mark-size, 24px) * 0.48);
+  overflow: hidden;
+}
+.mark-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@media (prefers-color-scheme: dark) {
+  .mark {
+    background: oklch(0.3 0.06 var(--mark-hue, 80));
+    color: oklch(0.85 0.07 var(--mark-hue, 80));
+  }
+}
+
+/* Person avatar (Avatar.astro + the /submit island): the social-login image
+   over an initials monogram, round to read as a person rather than a server
+   mark. Same image-over-fallback layering as .mark. */
+.avatar {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--avatar-size, 32px);
+  height: var(--avatar-size, 32px);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: calc(var(--avatar-size, 32px) * 0.4);
+  overflow: hidden;
+}
+.avatar-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Publisher page header (publishers/[id].astro): avatar + name + count. */
+.publisher-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 0 24px;
+}
+.publisher-head h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+.publisher-sub {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.tag {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+a.tag:hover {
+  color: var(--link);
+}
+/* Pagination -------------------------------------------------------------- */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  margin-top: 32px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.pagination {
+  font-family: var(--mono);
+}
+.pagination a,
+.pagination span {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.pagination span[aria-disabled="true"] {
+  opacity: 0.4;
+}
+
+/* Notices (empty / error) ------------------------------------------------- */
+.notice {
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.notice h2 {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+}
+.notice p {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+}
+.notice.error {
+  border-color: var(--danger);
+}
+/* Maintenance (backend outage) reads as an intentional, calm state — not the
+   red of a client-side error. A left accent marks it as a status, not a fault. */
+.notice.maintenance {
+  border-color: var(--border);
+  border-left: 3px solid var(--link);
+  text-align: left;
+}
+
+/* Detail page ------------------------------------------------------------- */
+.back {
+  display: inline-block;
+  margin-bottom: 18px;
+  font-size: 0.9rem;
+}
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+  margin-bottom: 18px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  min-width: 0;
+}
+.breadcrumbs [aria-current="page"] {
+  overflow-wrap: anywhere;
+}
+.nearby {
+  margin-top: 24px;
+}
+.nearby-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-wrap: anywhere;
+}
+.nearby-more {
+  margin: 12px 0 0;
+  font-size: 0.9rem;
+}
+.detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.detail-head h1 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+}
+.detail-head .lede,
+.detail-head .tags {
+  flex-basis: 100%;
+}
+.detail-head .lede {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+/* Latest version, in the identity header and nowhere else (docs/UX.md
+   § Detail-page anatomy: a fact appears once). */
+.detail-ver {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+/* "Also known as" — the component's other public names (npm/PyPI/Docker/registry
+   + repo/homepage), each resolving to this one page (docs/END_GOAL.md row 2). A
+   quiet identity strip under the name, not a CTA. */
+.aka {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin: 0;
+}
+.aka-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 100%;
+  font-size: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+}
+.aka-row dt {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.66rem;
+}
+.aka-row dd {
+  margin: 0;
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+.panel {
+  padding: 12px 0 0;
+  border-top: 2px solid var(--border-strong);
+}
+.panel h2 {
+  margin: 0 0 12px;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+.kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+.kv:last-child {
+  border-bottom: none;
+}
+.kv dt {
+  color: var(--text-muted);
+  margin: 0;
+}
+.kv dd {
+  margin: 0;
+  text-align: right;
+  word-break: break-word;
+}
+.versions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.versions li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.versions li:last-child {
+  border-bottom: none;
+}
+.versions .ver {
+  font-weight: 700;
+  color: var(--text);
+}
+/* Reputation summary (§ Component page): the community score — the answer the
+   page exists to give — default-open above every collapsed detail, then the
+   "what the web says" baseline in its own section. Each lane is a hairline-ruled
+   row so they read as adjacent-but-distinct — the never-blend point made visible
+   (docs/RISKS.md § Cold start). */
+.repsum {
+  margin-top: 24px;
+}
+.lane {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.lane:last-child {
+  border-bottom: none;
+}
+.lane-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.lane-label {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+.lane-score {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.lane-score strong {
+  font-size: 1.5rem;
+  color: var(--text);
+}
+.lane-score-max {
+  margin-left: 3px;
+  font-size: 0.8rem;
+}
+.lane-empty {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.lane-note {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+/* The community score's per-input breakdown: label left, value + weight share
+   right, mono figures so the column lines up. */
+.lane-breakdown {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.lane-breakdown li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+}
+.lane-breakdown-value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Rate control + newest reviews (§ Component page): under the score, the
+   one-tap verdict on the shown version, then the reviews that back it. Amber is
+   for actions, so a pressed verdict/chip takes the ink fill, not the accent. */
+.rate {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.rate-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.rate-ask {
+  font-size: 0.92rem;
+}
+.rate-verdicts,
+.rate-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rate-chips {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+/* Named for screen readers; the chips speak for themselves visually. */
+.rate-legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.rate-verdict,
+.rate-chip {
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.rate-chip {
+  padding: 4px 9px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+.rate-verdict:hover,
+.rate-chip:hover {
+  border-color: var(--border-strong);
+}
+.rate-verdict[aria-pressed="true"],
+.rate-chip[aria-pressed="true"] {
+  color: var(--bar-fg);
+  background: var(--bar-bg);
+  border-color: var(--bar-bg);
+}
+.rate-verdict:disabled,
+.rate-chip:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.rate-detail {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.rate-line {
+  display: flex;
+  gap: 8px;
+}
+.rate-line input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.rate-line .btn {
+  padding: 9px 16px;
+}
+.rate-auth {
+  margin-top: 12px;
+}
+.rate-status {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.rate-status:empty {
+  display: none;
+}
+.rate-none,
+.reviews-empty {
+  margin: 12px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.reviews {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.review {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.review:last-child {
+  border-bottom: none;
+}
+.review-head,
+.review-chips,
+.review-line {
+  margin: 0;
+}
+.review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+.review-verdict-text {
+  margin-left: 4px;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+.review-meta {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.review-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.review-chip {
+  padding: 2px 7px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+.review-line {
+  margin-top: 6px;
+  font-size: 0.92rem;
+  overflow-wrap: anywhere;
+}
+
+/* Collapsed detail accordions (§ Detail-page anatomy): native <details> framed
+   like the panels above, the summary reusing the panel heading style. Closed by
+   default and JS-off safe — a reader who never opens one still decided from the
+   summary. */
+.accordion {
+  border-top: 2px solid var(--border-strong);
+}
+.accordion + .accordion {
+  border-top-width: 1px;
+}
+.accordion > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+.accordion > summary::-webkit-details-marker {
+  display: none;
+}
+/* Title takes the row; hint + disclosure marker align right in both the
+   with-hint and no-hint cases. */
+.accordion-title {
+  margin-right: auto;
+}
+.accordion > summary::after {
+  content: "+";
+  font-size: 1rem;
+  line-height: 1;
+}
+.accordion[open] > summary::after {
+  content: "–";
+}
+.accordion-hint {
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+.accordion-body {
+  padding: 0 0 14px;
+}
+
+/* Per-signal ecosystem breakdown (inside the "what the web says" family blocks):
+   the audit trail under the baseline score shown in the reputation summary. */
+.signals-list {
+  margin: 4px 0 0;
+}
+.signals-age {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* What the web says — one compact block per source family (docs/UX.md
+   § Component page). Each is a hairline-ruled group with its family label and a
+   link to the source the facts were measured from. */
+.websays-block {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.websays-block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.websays-src {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.websays-src:hover {
+  color: var(--accent);
+}
+.websays-fact-src {
+  font-size: 0.82rem;
+}
+.websays-empty {
+  margin: 6px 0 2px;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+/* The Mentions block nests the quote list in the page's standard accordion; the
+   block already carries the hairline rule, so drop the accordion's own top
+   border to keep one clean line under the family head. */
+.websays-block > .accordion {
+  border-top: none;
+}
+
+/* Scraped-review quotes (inside the "Scraped reviews" accordion) — the public
+   text the community score is built from. Deliberately NOT the verification
+   green: the low-confidence, never-blended lane reads muted/ink, distinct from
+   the verified ledger (docs/RISKS.md § Cold start). */
+.community-empty {
+  margin: 8px 0 4px;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.community-list {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.community-item {
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.community-item-link {
+  font-weight: 600;
+}
+.community-excerpt {
+  margin: 4px 0 0;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+.community-meta {
+  margin: 4px 0 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* Report a review or quote (ReportControl) -------------------------------- */
+.report-link {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.community-meta .report-link {
+  margin-left: 8px;
+}
+.report-link:hover {
+  color: var(--link);
+}
+.report-link[hidden] {
+  display: none;
+}
+.report-dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 20px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+.report-dialog::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+.report-body h2 {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+}
+.report-reasons {
+  display: grid;
+  gap: 8px;
+}
+.report-reasons .btn {
+  text-align: left;
+}
+.report-done {
+  margin: 0;
+}
+.report-close {
+  margin-top: 14px;
+  font-size: 0.85rem;
+}
+
+/* Header nav + CTA -------------------------------------------------------- */
+.header-nav {
+  margin-left: auto;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.header-nav > a:not(.header-cta) {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--bar-fg);
+}
+.header-nav > a:not(.header-cta):hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+.header-cta {
+  padding: 7px 13px;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent-contrast);
+  background: var(--accent);
+  border-radius: var(--radius-sm);
+}
+.header-cta:hover {
+  filter: brightness(1.05);
+  text-decoration: none;
+}
+
+/* Submit form ------------------------------------------------------------- */
+.submit-intro {
+  margin-bottom: 22px;
+}
+.submit-intro h1 {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 1.7rem;
+  letter-spacing: -0.02em;
+}
+.submit-intro p {
+  margin: 0;
+  color: var(--text-muted);
+}
+.submit-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 460px;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.submit-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.submit-card input,
+.submit-card select,
+.submit-card textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 400;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.submit-card textarea {
+  resize: vertical;
+}
+.submit-optional {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.submit-fieldnote {
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.submit-social {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* Provider sign-in buttons follow each brand's guidelines (colors set via the
+   --social-* tokens below), not the site accent — familiarity is the point. */
+.btn-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  font-weight: 500;
+  color: var(--social-fg);
+  background: var(--social-bg);
+  border: 1px solid var(--social-border);
+}
+.btn-social:hover:not(:disabled) {
+  filter: none;
+  background: var(--social-bg-hover);
+}
+.btn-social-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+/* Google's spec: white surface, #747775 border, #1f1f1f text (light);
+   #131314 surface, #8e918f border, #e3e3e3 text (dark). The "G" keeps its
+   own colors from the SVG. */
+.btn-social-google {
+  --social-fg: #1f1f1f;
+  --social-bg: #ffffff;
+  --social-bg-hover: #f3f4f6;
+  --social-border: #747775;
+}
+/* GitHub's mark on its canonical near-black button; inverted in dark mode so
+   the invertocat stays high-contrast, per GitHub logo usage guidance. */
+.btn-social-github {
+  --social-fg: #ffffff;
+  --social-bg: #24292f;
+  --social-bg-hover: #32383f;
+  --social-border: #24292f;
+}
+@media (prefers-color-scheme: dark) {
+  .btn-social-google {
+    --social-fg: #e3e3e3;
+    --social-bg: #131314;
+    --social-bg-hover: #1e1f26;
+    --social-border: #8e918f;
+  }
+  .btn-social-github {
+    --social-fg: #24292f;
+    --social-bg: #f6f8fa;
+    --social-bg-hover: #ffffff;
+    --social-border: #f6f8fa;
+  }
+}
+.submit-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+.submit-or::before,
+.submit-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.submit-tabs {
+  display: flex;
+  gap: 6px;
+}
+.submit-tabs button {
+  flex: 1;
+  padding: 9px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.submit-tabs button.active {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.submit-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+.submit-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+/* Turnstile renders a fixed-size iframe; reserve room so the form doesn't jump
+   when the widget appears, and let it shrink on narrow screens. */
+.submit-captcha {
+  min-height: 65px;
+}
+.submit-captcha iframe {
+  max-width: 100%;
+}
+.submit-status {
+  color: var(--text-muted);
+}
+.submit-account {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.submit-account strong {
+  color: var(--text);
+}
+.submit-account-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.submit-account-id {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+  min-width: 0;
+}
+.submit-account-id a {
+  font-size: 0.82rem;
+}
+.linklike {
+  padding: 0;
+  font: inherit;
+  color: var(--link);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.submit-done {
+  margin: 0;
+  font-size: 1.3rem;
+}
+.submit-actions {
+  display: flex;
+  gap: 10px;
+}
+.btn-ghost {
+  color: var(--text);
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Owner alias offer (claimed page) ---------------------------------------- */
+.owner-alias-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.owner-alias-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.owner-alias-name {
+  overflow-wrap: anywhere;
+}
+.owner-alias-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.owner-alias-done {
+  color: var(--text-muted);
+}
+
+/* Agent-key panel (/install) --------------------------------------------- */
+/* The register form and the agents list share the .submit-card shell, so they
+   read as the same account surface as /submit. */
+.agent-register,
+.agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.agent-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.agent-list-head {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.agent-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.agent-row-id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.9rem;
+}
+.agent-row-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+/* The once-shown key: called out so an operator can't scroll past the single
+   moment the raw key exists. */
+.agent-key-card {
+  padding: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+}
+.agent-key-card h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+.agent-key-card h3 span {
+  color: var(--accent);
+}
+.agent-key-card p {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+.agent-key-card code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  padding: 1px 5px;
+  background: var(--surface);
+  border-radius: 5px;
+  color: var(--text);
+}
+.onb-subhead {
+  margin: 28px 0 8px;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+/* Onboarding / install page ----------------------------------------------- */
+.onb-hero {
+  max-width: 680px;
+  margin-bottom: 28px;
+}
+.onb-eyebrow {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+.onb-hero h1 {
+  margin: 0 0 12px;
+  font-family: var(--mono);
+  font-size: 1.9rem;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+.onb-lede {
+  margin: 0 0 20px;
+  font-size: 1.08rem;
+  color: var(--text-muted);
+}
+.onb-lede strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.onb-endpoint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.onb-endpoint-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.onb-endpoint code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--text);
+  word-break: break-all;
+}
+
+/* Client tabs */
+.install-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.install-tab {
+  padding: 8px 14px;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+.install-tab:hover {
+  color: var(--text);
+}
+.install-tab.active {
+  color: var(--bar-fg);
+  background: var(--bar-bg);
+}
+
+.install-panel {
+  margin-bottom: 18px;
+}
+.install-env-note {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+/* One-click install leads inside its client's tab, above the snippet. */
+.install-oneclick {
+  display: inline-block;
+}
+.install-env-note code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  padding: 1px 5px;
+  background: var(--surface-2);
+  border-radius: 4px;
+}
+.onb-agent h2,
+.onb-trust h2 {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+}
+.install-panel p,
+.onb-agent p {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+}
+.onb-note {
+  font-size: 0.9rem;
+}
+.install-panel code,
+.onb-note code,
+.onb-agent code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  padding: 1px 5px;
+  background: var(--surface-2);
+  border-radius: 5px;
+  color: var(--text);
+}
+
+/* Copyable code block */
+.code {
+  position: relative;
+  margin: 0 0 12px;
+}
+/* Code blocks render on the constant ink bar in both themes — terminal
+   output looks like a terminal. */
+.code pre {
+  margin: 0;
+  padding: 16px 76px 16px 16px;
+  overflow-x: auto;
+  background: var(--bar-bg);
+  border-radius: var(--radius-sm);
+}
+.code pre code {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--bar-fg);
+  white-space: pre;
+  background: none;
+  padding: 0;
+}
+.copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 10px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+/* On the ink code blocks the button goes brand amber — it reads there. */
+.code .copy-btn {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.copy-btn:hover {
+  color: var(--accent-contrast);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.copy-btn.copied,
+.code .copy-btn.copied {
+  color: var(--ok);
+  border-color: var(--ok);
+  background: none;
+}
+/* The hero endpoint copy button sits inline, not absolutely positioned. */
+.onb-endpoint .copy-btn {
+  position: static;
+}
+
+.onb-agent,
+.onb-trust {
+  margin-top: 36px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+/* "opt-in" pill beside the telemetry heading — a quiet label, not a badge. */
+.onb-optin {
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-radius: 999px;
+}
+/* The agent brief is prose-shaped — wrap it instead of scrolling. */
+.onb-agent .code pre code {
+  white-space: pre-wrap;
+}
+.onb-footcta {
+  margin-top: 36px;
+  padding: 18px;
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+}
+
+/* Footer legal nav -------------------------------------------------------- */
+/* The footer carries the standing tagline plus the legal links (Privacy,
+   Terms) that the Google OAuth consent screen points at. */
+.site-footer-line {
+  margin: 0;
+}
+.site-footer-nav {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+.site-footer-nav a {
+  color: var(--text-muted);
+}
+.site-footer-nav a:hover {
+  color: var(--text);
+}
+
+/* Prose pages (/about, /privacy, /terms) --------------------------------- */
+/* Plain readable prose — a narrow measure, generous spacing, muted body. No
+   marketing furniture; these pages exist to be read and to be a stable URL. */
+.legal {
+  max-width: 680px;
+  margin: 8px 0 8px;
+}
+.legal h1 {
+  margin: 0 0 4px;
+  font-size: 1.7rem;
+  letter-spacing: -0.02em;
+}
+.legal-meta {
+  margin: 0 0 24px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.legal-lede {
+  font-size: 1.05rem;
+  color: var(--text);
+}
+.legal h2 {
+  margin: 32px 0 8px;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+}
+.legal p,
+.legal li {
+  color: var(--text-muted);
+}
+.legal li {
+  margin-bottom: 6px;
+}
+.legal strong {
+  color: var(--text);
+  font-weight: 600;
+}
+/* /about: the category ladder is an ordered list with a status tag per rung,
+   so "live" vs "next" is visible on the line, never implied by prose. */
+.about-ladder {
+  padding-left: 1.4em;
+}
+.about-status {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.about .trust-points {
+  margin: 8px 0 12px;
+}
+
+/* Admin pipeline-health board (/admin/pipelines) ------------------------- */
+.pipe-head h1 {
+  margin: 0 0 4px;
+  font-family: var(--mono);
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
+}
+.pipe-asof {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.pipe {
+  margin: 24px 0;
+  padding-top: 12px;
+  border-top: 2px solid var(--border-strong);
+}
+.pipe-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+.pipe-title h2 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 1.05rem;
+}
+.pipe-badge {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid currentColor;
+}
+.pipe-good {
+  color: var(--ok);
+}
+.pipe-bad {
+  color: var(--danger);
+}
+.pipe-warn {
+  color: var(--accent);
+}
+.pipe-when {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.pipe-error {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--danger);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  word-break: break-word;
+}
+.pipe-kv {
+  margin: 12px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0 32px;
+}
+.pipe-muted {
+  color: var(--text-muted);
+}
+/* /admin/duplicates: the two listings side by side, then the verdict. */
+.dup-pair {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.dup-side {
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+.dup-side h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+.dup-side p {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.dup-side dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  font-size: 0.82rem;
+}
+.dup-side dt {
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+.dup-side dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  overflow-wrap: anywhere;
+}
+.dup-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dup-verdicts {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+/* /admin/merges: the one-question confirm before a split pins the pair. */
+.merge-confirm {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--danger);
+  background: var(--surface-2);
+}
+.merge-confirm p {
+  margin: 0 0 10px;
+}
+.pipe-sources {
+  width: 100%;
+  margin: 16px 0 0;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.pipe-sources th,
+.pipe-sources td {
+  text-align: right;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.pipe-sources th:first-child,
+.pipe-sources td:first-child {
+  text-align: left;
+}
+.pipe-sources th {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Fleet usage dashboard (/fleet) ----------------------------------------- */
+.fleet-head h1 {
+  margin: 0 0 4px;
+  font-family: var(--mono);
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
+}
+.fleet-asof {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+/* Day/month toggle — a segmented control (a fieldset for the a11y grouping),
+   the current grain pressed in. The fieldset's own chrome is reset away. */
+.fleet-toggle {
+  display: inline-flex;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+/* The group's label is for assistive tech; the two button labels carry it
+   visually. */
+.fleet-legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.fleet-toggle button {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  padding: 6px 14px;
+  background: var(--surface);
+  color: var(--text);
+  border: none;
+  border-left: 1px solid var(--border);
+  cursor: pointer;
+}
+.fleet-toggle button:first-child {
+  border-left: none;
+}
+.fleet-toggle button.active {
+  background: var(--border-strong);
+  color: var(--bg);
+}
+/* Grand-total stat tiles — honest counts, not a dashboard of gauges. */
+.fleet-stats {
+  margin: 20px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+}
+.fleet-stat {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.fleet-stat dt {
+  margin: 0 0 4px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.fleet-stat dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+/* Per-period bar row — bar heights are call counts relative to the busiest
+   period, so a quiet day reads as a short bar, not a hidden one. */
+.fleet-timeline {
+  margin: 28px 0 0;
+}
+.fleet-timeline h2,
+.fleet-servers h2 {
+  margin: 0 0 4px;
+  font-family: var(--mono);
+  font-size: 1.05rem;
+}
+.fleet-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 120px;
+  margin-top: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.fleet-bar {
+  flex: 1 0 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+.fleet-bar-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  min-height: 0;
+}
+.fleet-bar-fill {
+  width: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+.fleet-bar-label {
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.fleet-servers {
+  margin: 28px 0 0;
+}
+.fleet-hint {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+/* One server, its per-tool table under a disclosure. */
+.fleet-server {
+  border-top: 1px solid var(--border);
+  padding: 10px 0;
+}
+.fleet-server > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.fleet-server > summary::-webkit-details-marker {
+  display: none;
+}
+.fleet-server-name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+.fleet-server-nums {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+.fleet-muted {
+  color: var(--text-muted);
+}
+.fleet-bad {
+  color: var(--danger);
+}
+.fleet-tools {
+  width: 100%;
+  margin: 10px 0 4px;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.fleet-tools th,
+.fleet-tools td {
+  text-align: right;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.fleet-tools th:first-child,
+.fleet-tools td:first-child {
+  text-align: left;
+}
+.fleet-tools th {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
