@@ -38,8 +38,9 @@ export function html(strings: TemplateStringsArray, ...parts: Part[]): Html {
 const FONTS_HREF =
   "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap";
 
-// What every route returns: the page title and the body the shell wraps.
-export type View = { title: string; body: Html };
+// What every route returns: the page title, the body the shell wraps, and the
+// HTTP status when it isn't 200.
+export type View = { title: string; body: Html; status?: number };
 
 export function page({ title, body }: View): string {
   return html`<!doctype html>

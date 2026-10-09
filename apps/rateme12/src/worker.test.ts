@@ -33,7 +33,8 @@ describe("journey 1 — search / browse", () => {
   });
 
   test("unbuilt routes and malformed tags are an honest 404", async () => {
-    expect((await get("/servers/x")).status).toBe(404);
+    expect((await get("/install")).status).toBe(404);
+    expect((await get("/servers/%E0%A4%A")).status).toBe(404);
     expect((await get("/c/%E0%A4%A")).status).toBe(404);
     expect((await get("/c/%20")).status).toBe(404);
   });
@@ -41,5 +42,25 @@ describe("journey 1 — search / browse", () => {
   test("writes are refused until the forms exist", async () => {
     const res = await worker.fetch(new Request("https://rateme12.nlqdb.com/", { method: "POST" }));
     expect(res.status).toBe(405);
+  });
+});
+
+describe("journey 2 — server and publisher pages", () => {
+  test("/servers/[id] keeps the breadcrumb and shows the not-connected state", async () => {
+    const res = await get("/servers/201145a3-9ec0-4504-84b4-511c772da4c0");
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain(
+      '<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">All servers</a></nav>',
+    );
+    expect(body).toContain("Not connected yet");
+  });
+
+  test("/publishers/[id] keeps the back link and shows the not-connected state", async () => {
+    const res = await get("/publishers/heyputer");
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain('<a class="back" href="/">← All servers</a>');
+    expect(body).toContain("Not connected yet");
   });
 });
