@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512" role="img" aria-labelledby="title">
+  <title id="title">rateme12</title>
+  <path d="M50 8 L86 20 V48 C86 70 70 84 50 92 C30 84 14 70 14 48 V20 Z" fill="#EEA82F"/>
+  <rect x="30" y="24" width="40" height="9" rx="3.5" fill="#11141C"/>
+  <g fill="none" stroke="#EEA82F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M56.4 27.5 L57.8 26.4 V30.6"/>
+    <path d="M60.6 27.7 Q60.6 26.3 62.3 26.3 Q64 26.3 64 27.8 Q64 28.9 62.6 29.8 L60.8 30.6 H64.2"/>
+  </g>
+  <rect x="30" y="37" width="40" height="9" rx="3.5" fill="#11141C"/>
+  <circle cx="63" cy="41.5" r="2.6" fill="#EEA82F"/>
+  <polygon points="50,49 53.8,58.8 64.3,59.4 56.1,66 58.8,76.1 50,70.4 41.2,76.1 43.9,66 35.7,59.4 46.2,58.8" fill="#11141C"/>
+  <circle cx="64.3" cy="59.4" r="4" fill="#2FA173" stroke="#11141C" stroke-width="1.7"/>
+  <path d="M62.54 59.51 L63.93 60.84 L66.17 58.23" fill="none" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
