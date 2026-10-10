@@ -57,6 +57,12 @@ export const DEFAULT_TIMEOUTS_MS: Record<LLMOperation, number> = {
   engine_classify: 1500,
 };
 
+// A write's SQL echoes the values its goal carries, so a long goal needs a
+// long completion: the 2000-char dogfood delta took Workers AI 8–13 s for 664
+// tokens and timed out every leg at the flat 5 s. The budget grows with the
+// goal past ~625 chars; shorter goals keep the flat `plan` timeout.
+const PLAN_MS_PER_GOAL_CHAR = 8;
+
 export type LLMRouterOptions = {
   providers: Provider[];
   chains: LLMChains;
@@ -410,6 +416,7 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
     req: Req,
     call: (p: Provider, r: Req, o: CallOpts) => Promise<Res>,
     callerOpts: CallOpts | undefined,
+    timeoutMs: number = timeouts[op],
   ): Promise<Res> {
     const chain = opts.chains[op] ?? [];
     if (chain.length === 0) {
@@ -423,7 +430,6 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
     }
 
     const attempts: AttemptRecord[] = [];
-    const timeoutMs = timeouts[op];
 
     // SK-LLM-014 — Hedged race over the first two eligible providers
     // when `opts.hedge[op]` is configured. Free-tier providers only —
@@ -660,6 +666,7 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
         req,
         (p, r, o) => p.plan(r, o),
         callerOpts,
+        Math.max(timeouts.plan, req.goal.length * PLAN_MS_PER_GOAL_CHAR),
       );
     },
     summarize(req, callerOpts) {

@@ -70,7 +70,9 @@ async function workersAIChat(
       // deterministic leg keeps the weekly baseline reproducible (SK-QUAL-006).
       // The SK-QUAL-017 self-consistency sampler is the only caller that
       // overrides this with temperature > 0, on its separate code path.
-      body: JSON.stringify({ messages, temperature: temperature ?? 0 }),
+      // `max_tokens`: Workers AI stops at 256 completion tokens by default, which
+      // cut a long write's INSERT mid-JSON (`parse`). 4096 fits any 2000-char goal.
+      body: JSON.stringify({ messages, temperature: temperature ?? 0, max_tokens: 4096 }),
       signal: opts.signal,
     });
   } catch (err) {

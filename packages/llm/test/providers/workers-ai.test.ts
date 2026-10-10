@@ -77,20 +77,31 @@ describe("createWorkersAIProvider", () => {
     expect(res.summary).toBe("the answer");
   });
 
-  it("sends temperature 0 for greedy decoding parity with the rest of the chain (SK-LLM-024)", async () => {
+  it("sends temperature 0 (SK-LLM-024) and lifts the 256-token default completion cap", async () => {
     const provider = createWorkersAIProvider({ accountId, apiToken });
-    let body: { temperature?: number } = {};
+    let body: { temperature?: number; max_tokens?: number } = {};
     const fetch = mockFetch([
       {
         match: /api\.cloudflare\.com/,
         respond: async (req) => {
-          body = (await req.clone().json()) as { temperature?: number };
+          body = (await req.clone().json()) as typeof body;
           return workersAIResponse(JSON.stringify({ sql: "SELECT 1" }));
         },
       },
     ]);
     await provider.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
     expect(body.temperature).toBe(0);
+    expect(body.max_tokens).toBe(4096);
+  });
+
+  it("repairs a SQL-style \\' apostrophe escape in the plan JSON to Postgres ''", async () => {
+    const provider = createWorkersAIProvider({ accountId, apiToken });
+    const raw = String.raw`{"sql":"INSERT INTO t (note) VALUES ('run 223\'s hint')"}`;
+    const fetch = mockFetch([
+      { match: /api\.cloudflare\.com/, respond: () => workersAIResponse(raw) },
+    ]);
+    const res = await provider.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
+    expect(res.sql).toBe("INSERT INTO t (note) VALUES ('run 223''s hint')");
   });
 
   it("forwards a PlanRequest.temperature override for SK-QUAL-017 sampling", async () => {
