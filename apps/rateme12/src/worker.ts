@@ -1,6 +1,7 @@
 // The Worker entry: static assets (styles, logo) are served before this runs;
 // every page route renders here and reads through src/data.ts only.
 
+import { publisherPage, serverPage } from "./detail.ts";
 import { categoryPage, directoryPage } from "./directory.ts";
 import { html, page, type View } from "./layout.ts";
 
@@ -21,9 +22,12 @@ const HEADERS = {
 const ROUTES: [RegExp, (params: string[], url: URL) => Promise<View>][] = [
   [/^\/$/, (_, url) => directoryPage((url.searchParams.get("q") ?? "").trim())],
   [/^\/c\/([^/]+)\/?$/, ([tag]) => categoryPage(tag as string)],
+  [/^\/servers\/([^/]+)\/?$/, ([id]) => serverPage(id as string)],
+  [/^\/publishers\/([^/]+)\/?$/, ([id]) => publisherPage(id as string)],
 ];
 
 const notFound: View = {
+  status: 404,
   title: "Not found — rateme12",
   body: html`<div class="notice">
   <h2>This page doesn't exist yet</h2>
@@ -41,13 +45,13 @@ function decodeParams(match: RegExpExecArray): string[] | null {
   }
 }
 
-async function render(url: URL): Promise<[View, number]> {
+async function render(url: URL): Promise<View> {
   for (const [pattern, view] of ROUTES) {
     const match = pattern.exec(url.pathname);
     const params = match && decodeParams(match);
-    if (params) return [await view(params, url), 200];
+    if (params) return view(params, url);
   }
-  return [notFound, 404];
+  return notFound;
 }
 
 export default {
@@ -58,9 +62,9 @@ export default {
         headers: { ...HEADERS, Allow: "GET, HEAD" },
       });
     }
-    const [view, status] = await render(new URL(request.url));
+    const view = await render(new URL(request.url));
     return new Response(page(view), {
-      status,
+      status: view.status ?? 200,
       headers: { ...HEADERS, "Content-Type": "text/html; charset=utf-8" },
     });
   },
