@@ -170,12 +170,22 @@ export function classifyWrite(
   return { inSample: true, hit: false, reason: landed ? "landed_no_rewrite" : "not_committed" };
 }
 
+// Pure: the error's code plus the cause the envelope declares (bounded,
+// secret-free `params`, SK-LLM-051) — `llm_failed:circuit_open@groq`, so a
+// miss names why it missed instead of only that it did.
+export function errorCode(err: unknown): string {
+  if (!(err instanceof NlqdbApiError)) return `network:${(err as Error).message}`;
+  const { reason, provider } = err.body?.params ?? {};
+  const cause = typeof reason === "string" ? `:${reason}` : "";
+  const where = cause && typeof provider === "string" ? `@${provider}` : "";
+  return `${err.code}${cause}${where}`;
+}
+
 async function attempt(fn: () => Promise<AskResponse>): Promise<WriteOutcome> {
   try {
     return { ok: true, res: await fn() };
   } catch (err) {
-    const code = err instanceof NlqdbApiError ? err.code : `network:${(err as Error).message}`;
-    return { ok: false, code };
+    return { ok: false, code: errorCode(err) };
   }
 }
 
