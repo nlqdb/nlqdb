@@ -93,6 +93,23 @@ const secondaryStorage = {
   delete: async (key: string) => kv.delete(key),
 };
 
+// Rate-limit counters fail open: KV allows one write per key per second,
+// so a burst from one IP 429s the counter write — that must never 500 the
+// request it was only metering (same availability stance as SK-AUTH-020).
+const rateLimitStorage = {
+  get: async (key: string) => {
+    const raw = await kv.get(key).catch(() => null);
+    return raw ? JSON.parse(raw) : null;
+  },
+  set: async (key: string, value: unknown, _update?: boolean) => {
+    try {
+      await kv.put(key, JSON.stringify(value), { expirationTtl: KV_MIN_TTL_SECONDS });
+    } catch (err) {
+      trace.getActiveSpan()?.addEvent("auth.rate_limit.write_failed", { error: String(err) });
+    }
+  },
+};
+
 export const auth = betterAuth({
   // `BETTER_AUTH_URL` lets the canary worker (`SK-AUTH-017`) point at
   // `nlqdb-api-canary.omer-hochman.workers.dev` without a parallel
@@ -114,9 +131,12 @@ export const auth = betterAuth({
     enabled: true,
     window: 60,
     max: 100,
-    storage: "secondary-storage",
+    customStorage: rateLimitStorage,
     customRules: {
       "/sign-in/magic-link": { window: 60, max: 5 },
+      // Read-only probe fired on every page load — metering it only
+      // spends a KV write per load and 429s on fast navigation.
+      "/get-session": false,
     },
   },
   session: {

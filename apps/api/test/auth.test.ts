@@ -15,7 +15,7 @@
 // against real auth, which is stronger evidence than the dropped
 // mocked unit tests.
 
-import { SELF } from "cloudflare:test";
+import { env, SELF } from "cloudflare:test";
 import { createTestTelemetry, type TestTelemetry } from "@nlqdb/otel/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -51,6 +51,20 @@ describe("/api/auth/* telemetry wrapper", () => {
       (dp) => dp.attributes["type"] === "verify" && dp.attributes["outcome"] === "success",
     );
     expect(point).toBeDefined();
+  });
+
+  // Regression: metering the per-page-load session probe spent a KV write
+  // per load, and two loads inside a second hit KV's 1-write/key/sec 429 → 500.
+  it("does not rate-limit-meter /api/auth/get-session", async () => {
+    const headers = { "cf-connecting-ip": "203.0.113.7" };
+    const statuses = await Promise.all(
+      [1, 2, 3].map(() =>
+        SELF.fetch("https://example.com/api/auth/get-session", { headers }).then((r) => r.status),
+      ),
+    );
+    expect(statuses).toEqual([200, 200, 200]);
+    const { keys } = await env.KV.list();
+    expect(keys.filter((k) => k.name.endsWith("|/get-session"))).toEqual([]);
   });
 
   // Regression for the SK-AUTH-015 preview-auth bug. Top-level
