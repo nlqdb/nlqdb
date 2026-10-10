@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { AskResponse } from "@nlqdb/sdk";
+import { type AskResponse, NlqdbApiError } from "@nlqdb/sdk";
 
 import {
   BLOCKED_TABLE,
@@ -8,6 +8,7 @@ import {
   classifyWrite,
   DELTA_TABLE,
   deltaWrites,
+  errorCode,
   parseLastChange,
   parseRows,
   TABLE,
@@ -197,5 +198,24 @@ describe("classifyWrite", () => {
       "commit_error:confirm_expired",
     );
     expect(classifyWrite(TABLE, pre).reason).toBe("not_committed");
+  });
+});
+
+describe("errorCode", () => {
+  const apiErr = (code: string, params?: Record<string, unknown>) =>
+    new NlqdbApiError("x", 502, code as never, "/v1/ask", { code: code as never, params });
+
+  it("names the declared cause and provider, so a miss says why (run 237)", () => {
+    const err = apiErr("llm_failed", { reason: "circuit_open", provider: "groq", lane: "free" });
+    expect(errorCode(err)).toBe("llm_failed:circuit_open@groq");
+    expect(classifyWrite(TABLE, { ok: false, code: errorCode(err) }).reason).toBe(
+      "preview_error:llm_failed:circuit_open@groq",
+    );
+  });
+
+  it("bare code when the envelope declares no cause; network errors keep their message", () => {
+    expect(errorCode(apiErr("rate_limited"))).toBe("rate_limited");
+    expect(errorCode(apiErr("llm_failed", { provider: "groq" }))).toBe("llm_failed");
+    expect(errorCode(new Error("ECONNRESET"))).toBe("network:ECONNRESET");
   });
 });
