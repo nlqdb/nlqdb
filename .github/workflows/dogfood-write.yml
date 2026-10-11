@@ -33,10 +33,31 @@ jobs:
   write:
     name: Write the run outputs to the dogfood DB
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
+      # Read this commit's Deploy API run (wait step below).
+      actions: read
     steps:
+      # The verdict must measure the build this merge ships. Deploy API fires on
+      # the same push and syncs Worker secrets only after `wrangler deploy`, so
+      # an unwaited write hits the old build or a secret-less one
+      # (`auth_unavailable`, run 240). A merge that didn't touch the API has no
+      # such run and writes at once.
+      - name: Wait for this commit's Deploy API run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for _ in 1 2 3 4 5 6; do
+            id=$(gh run list -R "$GITHUB_REPOSITORY" --workflow deploy-api.yml \
+              --commit "$GITHUB_SHA" --json databaseId -q '.[0].databaseId')
+            [ -n "$id" ] && break
+            sleep 5
+          done
+          if [ -z "$id" ]; then echo "No Deploy API run for $GITHUB_SHA — writing now."; exit 0; fi
+          gh run watch "$id" -R "$GITHUB_REPOSITORY" --interval 15 --exit-status \
+            || echo "::warning::Deploy API run $id did not succeed — verdicts measure the previous build."
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           # The push's `before` commit tells a new run record or bullet from an
