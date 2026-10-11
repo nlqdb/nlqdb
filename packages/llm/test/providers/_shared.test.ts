@@ -130,7 +130,7 @@ describe("SK-LLM-030 — httpError", () => {
 
 describe("sqlQuoteEscapes", () => {
   it("rewrites an unescaped \\' to '' and leaves an escaped backslash alone", () => {
-    expect(sqlQuoteEscapes(String.raw`{"sql":"'a\'b'"}`)).toBe(String.raw`{"sql":"'a''b'"}`);
+    expect(sqlQuoteEscapes(String.raw`{"sql":"'a\'b'"}`)).toBe(`{"sql":"'a''b'"}`);
     expect(sqlQuoteEscapes(String.raw`{"sql":"'a\\'"}`)).toBe(String.raw`{"sql":"'a\\'"}`);
     expect(sqlQuoteEscapes(String.raw`{"sql":"'a\\\'b'"}`)).toBe(String.raw`{"sql":"'a\\''b'"}`);
   });
