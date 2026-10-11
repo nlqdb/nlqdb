@@ -3,6 +3,7 @@
 
 import { publisherPage, serverPage } from "./detail.ts";
 import { categoryPage, directoryPage } from "./directory.ts";
+import { aboutPage, privacyPage, termsPage } from "./info.ts";
 import { html, page, type View } from "./layout.ts";
 
 // _headers covers static assets only; Worker responses carry their own. The
@@ -24,6 +25,9 @@ const ROUTES: [RegExp, (params: string[], url: URL) => Promise<View>][] = [
   [/^\/c\/([^/]+)\/?$/, ([tag]) => categoryPage(tag as string)],
   [/^\/servers\/([^/]+)\/?$/, ([id]) => serverPage(id as string)],
   [/^\/publishers\/([^/]+)\/?$/, ([id]) => publisherPage(id as string)],
+  [/^\/about\/?$/, async () => aboutPage],
+  [/^\/privacy\/?$/, async () => privacyPage],
+  [/^\/terms\/?$/, async () => termsPage],
 ];
 
 const notFound: View = {

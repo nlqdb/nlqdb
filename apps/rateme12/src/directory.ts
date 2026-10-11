@@ -24,6 +24,11 @@ const TRUST_POINTS = [
   ],
 ] as const;
 
+// Shared with /about, which lists the same four points.
+export const trustPoints = html`<ul class="trust-points">
+    ${TRUST_POINTS.map(([title, body]) => html`<li><strong>${title}.</strong> ${body}</li>`)}
+  </ul>`;
+
 function searchBar(q: string): Html {
   return html`<form class="search" method="GET" action="/" role="search">
   <input type="search" name="q" value="${q}" placeholder="Search MCP servers by name or description…" aria-label="Search MCP servers" />
@@ -70,9 +75,7 @@ ${q ? html`<div class="result-meta"><a href="/">Clear search</a></div>` : ""}
 ${serverList(servers)}
 <section class="trust-strip" id="how-reputation-works">
   <h2>How the score works</h2>
-  <ul class="trust-points">
-    ${TRUST_POINTS.map(([title, body]) => html`<li><strong>${title}.</strong> ${body}</li>`)}
-  </ul>
+  ${trustPoints}
 </section>`,
   };
 }
