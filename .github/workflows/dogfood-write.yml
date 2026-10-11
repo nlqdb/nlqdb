@@ -48,15 +48,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # `|| true`: a transient API error retries instead of failing the step (bash -e).
           for _ in 1 2 3 4 5 6; do
             id=$(gh run list -R "$GITHUB_REPOSITORY" --workflow deploy-api.yml \
-              --commit "$GITHUB_SHA" --json databaseId -q '.[0].databaseId')
+              --commit "$GITHUB_SHA" --json databaseId -q '.[0].databaseId' || true)
             [ -n "$id" ] && break
             sleep 5
           done
           if [ -z "$id" ]; then echo "No Deploy API run for $GITHUB_SHA — writing now."; exit 0; fi
-          gh run watch "$id" -R "$GITHUB_REPOSITORY" --interval 15 --exit-status \
-            || echo "::warning::Deploy API run $id did not succeed — verdicts measure the previous build."
+          if ! gh run watch "$id" -R "$GITHUB_REPOSITORY" --interval 15 --compact --exit-status; then
+            msg="Deploy API run $id did not succeed — verdicts below measure the previous build."
+            echo "::warning::$msg"
+            echo "> $msg" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
