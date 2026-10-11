@@ -12,7 +12,7 @@ run 238 never carried them. Run 239 had 3 more, every one
 `preview_error:llm_failed:circuit_open@mistral`
 ([38061162547](https://github.com/nlqdb/nlqdb/actions/runs/38061162547), log
 re-read). Both triples trace to a long `scorecard_deltas` write failing
-the whole plan chain in ~76 s, which opened the breakers; in run 239 that
+the whole plan chain in ~80 s, which opened the breakers; in run 239 that
 was the 1997-char E1 row, itself the first miss. #1171 fixes the plan
 stage. Its claim is 3/7 → 6/7 on the real goals. **Window 1 closed 10-10
 at 2 HIT / 7 MISS (22 % HIT), 9/200.** `GLOBAL-041` opens a window at
@@ -75,7 +75,7 @@ openrouter `nemotron-3-ultra:free` → mistral `codestral` (live OK).
 Cerebras still returns 402 `payment_required` (probed today). It now
 sells expiring credits, not a free tier
 ([CostBench, 08-06](https://www.costbench.com/best/best-llm-api-with-free-tier/)),
-so it stays a dead leg in 4 chains for a 3rd week. Pruning it is an
+so it stays a dead leg in 5 chains for a 3rd week. Pruning it is an
 agent lever. No better free model on an existing key: Groq, Gemini and
 OpenRouter `/v1/models` were re-listed live, and `gemini-3.8-flash` was
 rejected 09-27 on latency. No key-gated bullet.
