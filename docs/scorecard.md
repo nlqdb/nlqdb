@@ -10,14 +10,15 @@ run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 Phase 2 exits on Phase A alone; acquisition paused; BIRD/Spider = regression
 alarm only; premium tier stays. Retired rows dropped below.
 
-**Weekly focus (2026-09-27 →, `/weekly`; keeps the founder's 2026-09-04
-KPI-1/Phase-A frame):** **`/daily` runs whose own outputs (run log,
-scorecard deltas, blocked items) land in the dogfood DB through a CI job —
-today 0/day, target every run** (the `GLOBAL-041` workload that opens the
-formal Phase A sample, 0/200; never a generated stream — `GLOBAL-041`
-rejects a synthetic workload). Why: the preview walk is saturated at 10/10
-(three independent CI runs on `de56f37`), so more routing work cannot move
-KPI 1; nothing commits writes, so the formal KPI stays unread.
+**Weekly focus (2026-10-11 →, `/weekly`; keeps the founder's 2026-09-04
+KPI-1/Phase-A frame):** **the KPI-1 formal-sample HIT rate in dogfood
+window 2: window 1 closed 2026-10-10 at 2 HIT / 7 MISS (22 %, 9/200); the
+floor is ≥ 95 %.** Window 2 opens at the next unseen-field insert
+(`GLOBAL-041`). Why: the CI writer now writes on every merge and names each
+miss's cause. All 6 misses since run 237 trace to one agent-fixable engine
+defect class: the plan stage failing on long writes (#1171). So the
+in-sample HIT rate is movable at $0, while the preview walk is saturated
+at 10/10.
 
 **Worst number today (run 240, 2026-10-10) — the formal KPI-1 sample is 2 HIT / 7 MISS (22 %), 9/200, on its last day (14/14).** Run 239's merge added 3 MISSes, every one `preview_error:llm_failed:circuit_open@mistral` ([38061162547](https://github.com/nlqdb/nlqdb/actions/runs/38061162547)). The pattern matches run 237: in both runs the failing write was the **1997-char row-E1 delta**. It spent 76 s on a whole-chain failure (Workers log: 76.8 s → 502), which opened the breakers that the shorter writes behind it then hit. The window cannot reach 200; resetting it is `/weekly`'s call (tomorrow).
 **This run's lever (run 240) — a long write's plan no longer fails the whole chain (`GLOBAL-041` Phase A, the next lever run 239 named).** Probing the prod `plan` op on the real delta goals found two defects. (1) Workers AI stops at its 256-token default completion, which cut the E1 INSERT (664 tokens) mid-JSON. (2) Models escape an apostrophe ("run 223's") as `\'`, which is not a JSON escape, so the plan failed `parse` even after it finished. A third issue was the flat 5 s `plan` budget against the 8–13 s a 2000-char echo takes. Fix: `max_tokens: 4096`, a `\'` → `''` repair for plan JSON, and a write's plan budget of 8 ms per goal char past 625 chars (reads and shorter writes unchanged). **Real dogfood delta goals planned by the Workers AI leg (runs 237 + 239, 7 goals; Workers-AI-only chain, `daily_runs` + `scorecard_deltas` all-text schema): 1/7 → 3–4/7 over 4 re-walks; the two E1 goals 0/2 → 1–2/2.** The first walk's 6/7 used an unrecorded schema and did not reproduce. **Next lever:** the 616-char goal and both 642-char goals fail every time: the model drops the closing `}` after the SQL string. Try Workers AI JSON mode (`response_format`) at the provider, not another string repair, then read the next merge's verdicts once Deploy API has shipped this.
