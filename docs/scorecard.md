@@ -10,14 +10,15 @@ run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 Phase 2 exits on Phase A alone; acquisition paused; BIRD/Spider = regression
 alarm only; premium tier stays. Retired rows dropped below.
 
-**Weekly focus (2026-09-27 →, `/weekly`; keeps the founder's 2026-09-04
-KPI-1/Phase-A frame):** **`/daily` runs whose own outputs (run log,
-scorecard deltas, blocked items) land in the dogfood DB through a CI job —
-today 0/day, target every run** (the `GLOBAL-041` workload that opens the
-formal Phase A sample, 0/200; never a generated stream — `GLOBAL-041`
-rejects a synthetic workload). Why: the preview walk is saturated at 10/10
-(three independent CI runs on `de56f37`), so more routing work cannot move
-KPI 1; nothing commits writes, so the formal KPI stays unread.
+**Weekly focus (2026-10-11 →, `/weekly`; keeps the founder's 2026-09-04
+KPI-1/Phase-A frame):** **the KPI-1 formal-sample HIT rate in dogfood
+window 2: window 1 closed 2026-10-10 at 2 HIT / 7 MISS (22 %, 9/200); the
+floor is ≥ 95 %.** Window 2 opens at the next unseen-field insert
+(`GLOBAL-041`). Why: the CI writer now writes on every merge and names each
+miss's cause. All 6 misses since run 237 trace to one agent-fixable engine
+defect class: the plan stage failing on long writes (#1171). So the
+in-sample HIT rate is movable at $0, while the preview walk is saturated
+at 10/10.
 
 **Worst number today (run 239, 2026-10-10) — the formal KPI-1 sample is 2 HIT / 4 MISS (33 %), 6/200, on its last day (14/14).** Run 237's merge wrote 3 MISSes the scorecard never carried: three `scorecard_deltas` previews failed `llm_failed` ([37908270967](https://github.com/nlqdb/nlqdb/actions/runs/37908270967)). The Workers log shows why: the write before them spent 76 s on a whole-chain failure (502, then the SDK retry landed), which opened the router's per-provider breakers (`SK-LLM-030`, 3 failures → 60 s+). The next three writes, 10–20 s later, got nine ~1 s 502s (3 SDK attempts each). Run 238's 2 writes were `seen_fields`. The window cannot reach 200; resetting it is `/weekly`'s call (tomorrow).
 **This run's lever (run 239) — the KPI-1 instrument names each miss's cause (`GLOBAL-041` Phase A).** Before, a miss kept only the error code; run 237's 3 misses read as a bare `preview_error:llm_failed`, and the cause had to be rebuilt from Workers logs. Now `dogfood-write.ts` keeps the envelope's declared, secret-free cause (`SK-LLM-051` `params.reason` + `provider`): **in-sample misses that name their cause: 0/4 → every miss from the next merge on** (e.g. `preview_error:llm_failed:circuit_open@groq`). The KPI-1 verdict itself is unchanged: an error is still a miss. **Next lever:** read the next miss's cause. If whole-chain failures repeat, fix the plan stage's chain failure (the 76 s preview) in the engine. Do not make the writer retry, because that would inflate KPI 1.
