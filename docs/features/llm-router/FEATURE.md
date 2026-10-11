@@ -67,7 +67,7 @@ when-to-load:
 
 ### SK-LLM-012 — `schema_infer` is a distinct router operation, not an alias of `plan`
 
-**Body:** [`decisions/SK-LLM-012-schema-infer-op.md`](./decisions/SK-LLM-012-schema-infer-op.md). `schema_infer` is its own router op (`router.schemaInfer` → span `llm.schema_infer`), not a `plan` alias — shares the planner chain but ships distinct prompt / request / response shapes and an 8000 ms budget (vs `plan`'s 5000 ms, 8 ms/goal-char when longer). Runs once per DB, ever.
+**Body:** [`decisions/SK-LLM-012-schema-infer-op.md`](./decisions/SK-LLM-012-schema-infer-op.md). `schema_infer` is its own router op (`router.schemaInfer` → span `llm.schema_infer`), not a `plan` alias — shares the planner chain but ships distinct prompt / request / response shapes and an 8000 ms budget (vs `plan`'s 5000 ms, 8 ms/goal-char for a longer write). Runs once per DB, ever.
 
 ### SK-LLM-014 — Hedged-request race on free-tier chains for planner-tier ops
 

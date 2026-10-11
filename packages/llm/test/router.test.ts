@@ -440,7 +440,7 @@ describe("createLLMRouter — timeouts", () => {
     expect(failover?.dataPoints[0]?.attributes["reason"]).toBe("timeout");
   });
 
-  it("grows the plan budget with the goal so a long write can echo its values", async () => {
+  it("grows a write's plan budget with its goal so it can echo its values; reads stay flat", async () => {
     const slow = fakeProvider("gemini", {
       plan: (_req, opts) =>
         new Promise((resolve, reject) => {
@@ -460,8 +460,16 @@ describe("createLLMRouter — timeouts", () => {
     });
     const short = await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
     expect(short.sql).toBe("-- groq");
-    const long = await router.plan({ goal: "g".repeat(2000), schema: "s", dialect: "postgres" });
-    expect(long.sql).toBe("-- slow");
+    const longGoal = "g".repeat(2000);
+    const longRead = await router.plan({ goal: longGoal, schema: "s", dialect: "postgres" });
+    expect(longRead.sql).toBe("-- groq");
+    const longWrite = await router.plan({
+      goal: longGoal,
+      schema: "s",
+      dialect: "postgres",
+      intent: "write",
+    });
+    expect(longWrite.sql).toBe("-- slow");
   });
 
   it("propagates the per-call signal so providers can wire it to fetch", async () => {

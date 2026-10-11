@@ -57,10 +57,10 @@ export const DEFAULT_TIMEOUTS_MS: Record<LLMOperation, number> = {
   engine_classify: 1500,
 };
 
-// A write's SQL echoes the values its goal carries, so a long goal needs a
+// A write's SQL echoes the values its goal carries, so a long write needs a
 // long completion: the 2000-char dogfood delta took Workers AI 8–13 s for 664
-// tokens and timed out every leg at the flat 5 s. The budget grows with the
-// goal past ~625 chars; shorter goals keep the flat `plan` timeout.
+// tokens and timed out every leg at the flat 5 s. A write's budget grows with
+// its goal past ~625 chars; reads and shorter writes keep the flat timeout.
 const PLAN_MS_PER_GOAL_CHAR = 8;
 
 export type LLMRouterOptions = {
@@ -666,7 +666,9 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
         req,
         (p, r, o) => p.plan(r, o),
         callerOpts,
-        Math.max(timeouts.plan, req.goal.length * PLAN_MS_PER_GOAL_CHAR),
+        req.intent === "write"
+          ? Math.max(timeouts.plan, req.goal.length * PLAN_MS_PER_GOAL_CHAR)
+          : timeouts.plan,
       );
     },
     summarize(req, callerOpts) {
