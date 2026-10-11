@@ -67,7 +67,7 @@ when-to-load:
 
 ### SK-LLM-012 — `schema_infer` is a distinct router operation, not an alias of `plan`
 
-**Body:** [`decisions/SK-LLM-012-schema-infer-op.md`](./decisions/SK-LLM-012-schema-infer-op.md). `schema_infer` is its own router op (`router.schemaInfer` → span `llm.schema_infer`), not a `plan` alias — shares the planner chain but ships distinct prompt / request / response shapes and an 8000 ms budget (vs `plan`'s 5000 ms). Runs once per DB, ever.
+**Body:** [`decisions/SK-LLM-012-schema-infer-op.md`](./decisions/SK-LLM-012-schema-infer-op.md). `schema_infer` is its own router op (`router.schemaInfer` → span `llm.schema_infer`), not a `plan` alias — shares the planner chain but ships distinct prompt / request / response shapes and an 8000 ms budget (vs `plan`'s 5000 ms, 8 ms/goal-char for a longer write). Runs once per DB, ever.
 
 ### SK-LLM-014 — Hedged-request race on free-tier chains for planner-tier ops
 
@@ -95,7 +95,7 @@ when-to-load:
 
 ### SK-LLM-015 — OpenRouter code-gen default — REPLACED by SK-LLM-045
 
-**Body:** [`decisions/SK-LLM-015-openrouter-codegen-default.md`](./decisions/SK-LLM-015-openrouter-codegen-default.md). Replaced — [`SK-LLM-045`](#sk-llm-045) has the current ids.
+**Body:** [`decisions/SK-LLM-015-openrouter-codegen-default.md`](./decisions/SK-LLM-015-openrouter-codegen-default.md). Replaced.
 
 ### SK-LLM-018 — Schema-fidelity planner prompt + diagnostic retry framing
 
@@ -203,7 +203,7 @@ when-to-load:
 
 ### SK-LLM-048 — GLM-4.7 planner head — REPLACED by SK-LLM-053
 
-**Body:** [`decisions/SK-LLM-048-glm-4.7-planner-head.md`](./decisions/SK-LLM-048-glm-4.7-planner-head.md). Replaced 2026-08-22 by [`SK-LLM-053`](#sk-llm-053) (Cerebras 404'd `zai-glm-4.7`).
+**Body:** [`decisions/SK-LLM-048-glm-4.7-planner-head.md`](./decisions/SK-LLM-048-glm-4.7-planner-head.md). Replaced 2026-08-22.
 
 ### SK-LLM-049 — Schema-metadata goals directive in the planner prompt
 
@@ -223,7 +223,7 @@ when-to-load:
 
 ### SK-LLM-053 — Qwen3.6-27B planner head — REPLACED by SK-LLM-054
 
-**Body:** [`decisions/SK-LLM-053-qwen3.6-27b-planner-head.md`](./decisions/SK-LLM-053-qwen3.6-27b-planner-head.md). Replaced 2026-08-29 by [`SK-LLM-054`](#sk-llm-054).
+**Body:** [`decisions/SK-LLM-053-qwen3.6-27b-planner-head.md`](./decisions/SK-LLM-053-qwen3.6-27b-planner-head.md). Replaced 2026-08-29.
 
 ### SK-LLM-054 — Qwen3.8-27B (`qwen/qwen3.8-27b`, Groq) leads the strict-$0 planner tier
 

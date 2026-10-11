@@ -32,7 +32,7 @@ import {
   type RouteResponse,
   type SchemaInferResponse,
 } from "../types.ts";
-import { parseJsonResponse } from "./_shared.ts";
+import { parseJsonResponse, sqlQuoteEscapes } from "./_shared.ts";
 import type { ChatMessage } from "./openai-compatible.ts";
 
 export type ChatCallArgs = {
@@ -95,7 +95,7 @@ export function createChatProvider(impl: ChatProviderImpl): Provider {
       // SK-TRUST-002: the trace block wants the model that emitted the
       // plan + a per-plan confidence. Placeholder 1.0 until the
       // `quality-eval` harness calibrates per-stage floors (SK-TRUST-003).
-      const parsed = parseJsonResponse<{ sql: string }>(raw);
+      const parsed = parseJsonResponse<{ sql: string }>(sqlQuoteEscapes(raw));
       return { sql: parsed.sql, model, confidence: 1.0 } satisfies PlanResponse;
     },
     async summarize(req, opts = {}) {

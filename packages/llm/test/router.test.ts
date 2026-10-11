@@ -440,6 +440,38 @@ describe("createLLMRouter — timeouts", () => {
     expect(failover?.dataPoints[0]?.attributes["reason"]).toBe("timeout");
   });
 
+  it("grows a write's plan budget with its goal so it can echo its values; reads stay flat", async () => {
+    const slow = fakeProvider("gemini", {
+      plan: (_req, opts) =>
+        new Promise((resolve, reject) => {
+          const t = setTimeout(() => resolve({ sql: "-- slow", model: "m", confidence: 1 }), 60);
+          opts?.signal?.addEventListener("abort", () => {
+            clearTimeout(t);
+            const err = new Error("aborted");
+            err.name = "AbortError";
+            reject(err);
+          });
+        }),
+    });
+    const router = createLLMRouter({
+      providers: [slow, fakeProvider("groq")],
+      chains: { plan: ["gemini", "groq"] },
+      timeouts: { plan: 30 },
+    });
+    const short = await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+    expect(short.sql).toBe("-- groq");
+    const longGoal = "g".repeat(2000);
+    const longRead = await router.plan({ goal: longGoal, schema: "s", dialect: "postgres" });
+    expect(longRead.sql).toBe("-- groq");
+    const longWrite = await router.plan({
+      goal: longGoal,
+      schema: "s",
+      dialect: "postgres",
+      intent: "write",
+    });
+    expect(longWrite.sql).toBe("-- slow");
+  });
+
   it("propagates the per-call signal so providers can wire it to fetch", async () => {
     let captured: AbortSignal | undefined;
     const a = fakeProvider("groq", {

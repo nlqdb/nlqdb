@@ -66,6 +66,14 @@ function firstBalancedObject(s: string): string | null {
   return null;
 }
 
+// A model writing SQL often escapes an apostrophe as `\'` — not a JSON escape,
+// so the whole plan fails `parse` (seen live on a goal quoting "run 223's").
+// Postgres spells that quote `''`. Only an unescaped backslash matches, so
+// valid JSON (where `\\'` is a literal backslash, then a quote) is untouched.
+export function sqlQuoteEscapes(raw: string): string {
+  return raw.replace(/(?<!\\)((?:\\\\)*)\\'/g, "$1''");
+}
+
 // Cap strings before they end up in error messages or logs. Keeps
 // transcripts readable without dropping the head of the failure.
 export function truncate(s: string, max: number): string {
