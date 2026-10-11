@@ -11,10 +11,11 @@ run. Instead, six misses landed in two merges. Run 237 had 3 misses, and
 run 238 never carried them. Run 239 had 3 more, every one
 `preview_error:llm_failed:circuit_open@mistral`
 ([38061162547](https://github.com/nlqdb/nlqdb/actions/runs/38061162547), log
-re-read). Both triples came after the 1997-char E1 `scorecard_deltas`
-write failed the whole plan chain in 76 s, which opened the breakers.
-#1171 fixes the plan stage. Its claim is 3/7 → 6/7 on the real goals.
-**Window 1 closed 10-10 at 9/200 (22 %).** `GLOBAL-041` opens a window at
+re-read). Both triples trace to a long `scorecard_deltas` write failing
+the whole plan chain in ~76 s, which opened the breakers; in run 239 that
+was the 1997-char E1 row, itself the first miss. #1171 fixes the plan
+stage. Its claim is 3/7 → 6/7 on the real goals. **Window 1 closed 10-10
+at 2 HIT / 7 MISS (22 % HIT), 9/200.** `GLOBAL-041` opens a window at
 the first unseen-field insert, so window 2 opens at the next one. No
 reset is needed.
 
@@ -44,7 +45,7 @@ each miss's cause.
 ## Dark metrics (check 4)
 
 - Row #18 (the `dryRun` claim) is a phantom capability on
-  `docs.nlqdb.com/sdk`. It has been carried 9 days since run 232 and is
+  `docs.nlqdb.com/sdk`. It has been carried 5 days (runs 232–239) and is
   agent-fixable at $0: drop the claim or build it.
 - Row #15 (E2E freshness) is 0.00. sdk/examples/mcp last passed 09-08,
   33 days ago. Re-dispatching them costs $0, so they are not dark; only
@@ -57,9 +58,9 @@ each miss's cause.
 
 `daily.md` still said the CI writer was unbuilt ("until that job exists…
 window stays shut"). It also said to record a miss "the same run", which
-cannot happen: `dogfood-write.yml` fires on merge, after the run. It now
-tells step 1 to read the latest Dogfood write run. That gap is how run 238
-dropped 3 misses. All IDs and paths resolve.
+cannot happen: `dogfood-write.yml` fires on merge, after the run. Step 1
+now reads every Dogfood write run since the last scorecard update; that
+gap is how run 238 dropped 3 misses. All IDs and paths resolve.
 
 ## Public roadmap: one stale marker fixed (check 7)
 

@@ -153,9 +153,10 @@ so the write succeeds. A write that lands with a field the schema had not
 seen is a KPI 1 hit; one that errors or needs a manual step is a miss —
 record it in the scorecard. The DB id and the window's start
 date live in the scorecard header. The prod key crosses only the CI
-boundary, so `dogfood-write.yml` writes on each merge, after the run: step 1
-reads the latest Dogfood write run's verdicts into the scorecard, and every
-MISS in it is inspected this run (`GLOBAL-025` KPI-1 alert).
+boundary, so `dogfood-write.yml` writes on each merge to `main`, after the
+run: step 1 reads the verdicts of every Dogfood write run since the last
+scorecard update into the scorecard, and every MISS is inspected this run
+(`GLOBAL-025` KPI-1 alert).
 
 ### 2 — One lever, measured
 
