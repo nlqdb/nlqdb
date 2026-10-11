@@ -177,8 +177,9 @@ Build order in [`GLOBAL-041`](./docs/decisions/GLOBAL-041-autonomous-dba.md).
 
 - ~ `kind=extend` typed plan — a write naming an unseen table or field widens
   the schema in the same transaction as the insert, never a `schema_mismatch`
-  (live on prod with no user action — preview walk 10/10; the formal
-  200-insert dogfood sample has not opened yet)
+  (live on prod with no user action — preview walk 10/10; the first 14-day
+  dogfood window closed 2026-10-10 at 2 HIT / 7 MISS, 9/200 — the misses
+  were the plan stage failing on long writes)
 - ~ Extend diff + trace on every surface — `trace.widen` live on SDK · MCP ·
   `<nlq-data>`; CLI/web render pending
 - ✓ KPI counters `asks_extend_ok` / `asks_extend_failed` on the `/v1/ask` write path

@@ -151,10 +151,11 @@ item** to the hosted dogfood nlqdb database through `@nlqdb/sdk` — not to
 markdown. Write the record as the run produced it; never pre-model a field
 so the write succeeds. A write that lands with a field the schema had not
 seen is a KPI 1 hit; one that errors or needs a manual step is a miss —
-record it in the scorecard the same run. The DB id and the window's start
-date live in the scorecard header. The extend path is live; the prod key
-crosses only the CI boundary, so these writes go through a CI job — until
-that job exists, building it is lever candidate #1 and the window stays shut.
+record it in the scorecard. The DB id and the window's start
+date live in the scorecard header. The prod key crosses only the CI
+boundary, so `dogfood-write.yml` writes on each merge, after the run: step 1
+reads the latest Dogfood write run's verdicts into the scorecard, and every
+MISS in it is inspected this run (`GLOBAL-025` KPI-1 alert).
 
 ### 2 — One lever, measured
 
