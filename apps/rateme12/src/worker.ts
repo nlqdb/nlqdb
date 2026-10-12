@@ -5,6 +5,7 @@ import { publisherPage, serverPage } from "./detail.ts";
 import { categoryPage, directoryPage } from "./directory.ts";
 import { aboutPage, privacyPage, termsPage } from "./info.ts";
 import { html, page, type View } from "./layout.ts";
+import { submitPage, submitPost } from "./submit.ts";
 
 // _headers covers static assets only; Worker responses carry their own. The
 // live product's fonts come from Google Fonts, so CSP admits those two hosts.
@@ -28,7 +29,11 @@ const ROUTES: [RegExp, (params: string[], url: URL) => Promise<View>][] = [
   [/^\/about\/?$/, async () => aboutPage],
   [/^\/privacy\/?$/, async () => privacyPage],
   [/^\/terms\/?$/, async () => termsPage],
+  [/^\/submit\/?$/, (_, url) => submitPage(url)],
 ];
+
+// The routes a form POSTs to; each calls src/data.ts and re-renders its page.
+const FORMS: [RegExp, (form: FormData) => Promise<View>][] = [[/^\/submit\/?$/, submitPost]];
 
 const notFound: View = {
   status: 404,
@@ -60,13 +65,17 @@ async function render(url: URL): Promise<View> {
 
 export default {
   async fetch(request: Request): Promise<Response> {
-    if (request.method !== "GET" && request.method !== "HEAD") {
+    const url = new URL(request.url);
+    const form = request.method === "POST" && FORMS.find(([p]) => p.test(url.pathname));
+    if (!form && request.method !== "GET" && request.method !== "HEAD") {
       return new Response("Method not allowed", {
         status: 405,
         headers: { ...HEADERS, Allow: "GET, HEAD" },
       });
     }
-    const view = await render(new URL(request.url));
+    const view = form
+      ? await form[1](await request.formData().catch(() => new FormData()))
+      : await render(url);
     return new Response(page(view), {
       status: view.status ?? 200,
       headers: { ...HEADERS, "Content-Type": "text/html; charset=utf-8" },
