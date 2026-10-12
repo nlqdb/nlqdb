@@ -84,3 +84,27 @@ describe("journey 2 — an unknown id once connected", () => {
     }
   });
 });
+
+describe("footer pages — about, privacy, terms", () => {
+  test("/about renders the live page and its formula anchor", async () => {
+    const res = await get("/about");
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("<title>About rateme12 — Why We Rate MCP Servers</title>");
+    expect(body).toContain('<h2 id="formula">The formula (community v3)</h2>');
+    expect(body).not.toContain("Not connected yet");
+  });
+
+  test("/privacy and /terms say the rebuild stores nothing yet", async () => {
+    for (const [path, h1] of [
+      ["/privacy", "Privacy Policy"],
+      ["/terms", "Terms of Service"],
+    ]) {
+      const res = await get(path as string);
+      expect(res.status).toBe(200);
+      const body = await res.text();
+      expect(body).toContain(`<h1>${h1}</h1>`);
+      expect(body).toContain("This rebuild has no accounts and stores nothing yet.");
+    }
+  });
+});
