@@ -77,3 +77,6 @@ at 10/10.
 ## Last change
 
 **2026-10-11 (run 242)** — **rateme12 §5a step 4: the footer pages render the live copy. §4 page routes rendered: 4/13 → 7/13.** `/about`, `/privacy` and `/terms` now render in the product shell (`apps/rateme12/src/info.ts`). A Chromium screenshot of `/about` matches the live page at 1100 px. The two policy pages open with one honest line: the rebuild has no accounts and stores nothing yet. Run 241's three merge writes waited for their deploy and landed as `seen_fields` (out of sample). The run record's `sql_rejected:parse_failed` did not recur. **GLOBAL-025 onboarding** advanced (more of the clone's journey surface; it brings §5b's real first-inserts closer). No KPI degrades: the diff is a static Worker page module, with no engine or API path changed.
+
+_(Single-entry by design — per-run history lives in `git log` +
+`progress/quality-score-verification-log.md`.)_
