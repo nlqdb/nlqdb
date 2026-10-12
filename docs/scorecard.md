@@ -77,3 +77,6 @@ at 10/10.
 ## Last change
 
 **2026-10-12 (run 243)** — **rateme12 §5a step 4: journey 4 `/submit` renders the live account card. §4 page routes rendered: 7/13 → 8/13.** The card (GitHub / Google, create account / sign in) works with no script, and it POSTs to the Worker, which calls `data.ts` `signIn` (`apps/rateme12/src/submit.ts`). Until §5b a post re-renders it with the honest notice, keeping what was typed except the password. Run 242's three merge writes landed as `seen_fields` (out of sample). **GLOBAL-025 onboarding** advanced (the clone's first form, on the path to §5b's real first-inserts). No KPI degrades: the diff is a Worker page module plus one `not_connected` data function, with no engine or API path changed.
+
+_(Single-entry by design — per-run history lives in `git log` +
+`progress/quality-score-verification-log.md`.)_
