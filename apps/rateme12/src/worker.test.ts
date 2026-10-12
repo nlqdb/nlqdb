@@ -34,7 +34,7 @@ describe("journey 1 — search / browse", () => {
   });
 
   test("unbuilt routes and malformed tags are an honest 404", async () => {
-    expect((await get("/install")).status).toBe(404);
+    expect((await get("/fleet")).status).toBe(404);
     expect((await get("/servers/%E0%A4%A")).status).toBe(404);
     expect((await get("/c/%E0%A4%A")).status).toBe(404);
     expect((await get("/c/%20")).status).toBe(404);
@@ -106,5 +106,61 @@ describe("footer pages — about, privacy, terms", () => {
       expect(body).toContain(`<h1>${h1}</h1>`);
       expect(body).toContain("This rebuild has no accounts and stores nothing yet.");
     }
+  });
+});
+
+describe("journey 4 — submit a server", () => {
+  const post = (fields: Record<string, string>) => {
+    const body = new FormData();
+    for (const [k, v] of Object.entries(fields)) body.set(k, v);
+    return worker.fetch(new Request("https://rateme12.nlqdb.com/submit", { method: "POST", body }));
+  };
+
+  test("/submit shows the live account card, create-account tab first", async () => {
+    const res = await get("/submit");
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("<h1>Submit an MCP server</h1>");
+    expect(body).toContain('<form class="submit-card" method="POST" action="/submit">');
+    expect(body).toContain("Continue with GitHub");
+    expect(body).toContain('autocomplete="new-password"');
+    expect(body).not.toContain("Accounts aren't connected yet");
+  });
+
+  test("the sign-in tab is a plain GET, no script needed", async () => {
+    const body = await (await get("/submit?mode=signin")).text();
+    expect(body).toContain('value="signin" class="active">Sign in</button>');
+    expect(body).toContain('autocomplete="current-password"');
+    expect(body).not.toContain('name="name"');
+  });
+
+  test("a post calls data.ts and keeps what was typed except the password", async () => {
+    const res = await post({
+      mode: "create",
+      method: "password",
+      name: "<b>Ada</b>",
+      email: "ada@example.com",
+      password: "hunter2hunter2",
+    });
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("Accounts aren't connected yet");
+    expect(body).toContain('value="&lt;b&gt;Ada&lt;/b&gt;"');
+    expect(body).toContain('value="ada@example.com"');
+    expect(body).not.toContain("hunter2");
+  });
+
+  test("a social button and a malformed body both land on the notice", async () => {
+    expect(await (await post({ mode: "signin", method: "github" })).text()).toContain(
+      "Accounts aren't connected yet",
+    );
+    const res = await worker.fetch(
+      new Request("https://rateme12.nlqdb.com/submit", {
+        method: "POST",
+        headers: { "Content-Type": "multipart/form-data; boundary=x" },
+        body: "not multipart",
+      }),
+    );
+    expect(res.status).toBe(200);
   });
 });

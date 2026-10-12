@@ -46,6 +46,13 @@ export async function rateServer(_input: {
   return notConnected;
 }
 
+// The account card that gates journeys 4 and 5 (`/submit`, `/install`): create
+// an account, sign in, or continue with GitHub / Google. Fields pass through as
+// the form carries them; the password is never echoed back.
+export async function signIn(_form: Record<string, string>): Promise<Result<Row>> {
+  return notConnected;
+}
+
 // Journey 4 — submit a server (`/submit`). Fields pass through as the form
 // carries them; rating, submitting and agent keys are signed-in (§4 auth model).
 export async function submitServer(_input: {
