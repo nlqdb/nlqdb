@@ -4,6 +4,7 @@
 import { publisherPage, serverPage } from "./detail.ts";
 import { categoryPage, directoryPage } from "./directory.ts";
 import { aboutPage, privacyPage, termsPage } from "./info.ts";
+import { fleetPage, installPage, installPost } from "./install.ts";
 import { html, page, type View } from "./layout.ts";
 import { submitPage, submitPost } from "./submit.ts";
 
@@ -30,10 +31,15 @@ const ROUTES: [RegExp, (params: string[], url: URL) => Promise<View>][] = [
   [/^\/privacy\/?$/, async () => privacyPage],
   [/^\/terms\/?$/, async () => termsPage],
   [/^\/submit\/?$/, (_, url) => submitPage(url)],
+  [/^\/install\/?$/, (_, url) => installPage(url)],
+  [/^\/fleet\/?$/, async () => fleetPage],
 ];
 
 // The routes a form POSTs to; each calls src/data.ts and re-renders its page.
-const FORMS: [RegExp, (form: FormData) => Promise<View>][] = [[/^\/submit\/?$/, submitPost]];
+const FORMS: [RegExp, (form: FormData) => Promise<View>][] = [
+  [/^\/submit\/?$/, submitPost],
+  [/^\/install\/?$/, installPost],
+];
 
 const notFound: View = {
   status: 404,
