@@ -6,7 +6,7 @@
 // lands with the §5b last mile — until then the honest not-connected state.
 
 import { getPublisher, getServer, type Result, type Row } from "./data.ts";
-import { type Html, html, notConnectedNotice, type View } from "./layout.ts";
+import { type Html, html, notConnectedNotice, noticeCard, type View } from "./layout.ts";
 
 const KINDS = {
   server: {
@@ -32,11 +32,7 @@ function detailPage(kind: keyof typeof KINDS, found: Result<Row | null>, id: str
       title: missingTitle,
       status: 404,
       body: html`${nav}
-<div class="notice">
-  <h2>No such ${kind}</h2>
-  <p>${noOne} in the directory has the id “${id}”.</p>
-  <a class="btn" href="/">Browse the directory</a>
-</div>`,
+${noticeCard(`No such ${kind}`, `${noOne} in the directory has the id “${id}”.`, "/", "Browse the directory")}`,
     };
   }
   const body: Html = found.status === "ok" ? html`` : notConnectedNotice;

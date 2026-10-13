@@ -6,7 +6,7 @@
 // rebuilt yet, logged for §5a step 5: copy buttons, the telemetry hook and the
 // hosted gateway sections.
 
-import { html, type View } from "./layout.ts";
+import { html, noticeCard, type View } from "./layout.ts";
 import { accountCard, type Mode, modeOf, postedCard } from "./submit.ts";
 
 const ENDPOINT = "https://rateme12.nlqdb.com/mcp";
@@ -142,9 +142,10 @@ export async function installPost(form: FormData): Promise<View> {
 // the live signed-out card — the true state, not a placeholder.
 export const fleetPage: View = {
   title: "Fleet usage — rateme12",
-  body: html`<div class="notice">
-  <h2>Sign in to see your fleet usage</h2>
-  <p>Usage is per account — sign in to see how your agents are calling each server.</p>
-  <a class="btn" href="/install">Connect an agent</a>
-</div>`,
+  body: noticeCard(
+    "Sign in to see your fleet usage",
+    "Usage is per account — sign in to see how your agents are calling each server.",
+    "/install",
+    "Connect an agent",
+  ),
 };

@@ -33,7 +33,7 @@ describe("journey 1 — search / browse", () => {
     expect(body).toContain("Not connected yet");
   });
 
-  test("unbuilt routes and malformed tags are an honest 404", async () => {
+  test("unknown routes and malformed tags are an honest 404", async () => {
     expect((await get("/admin/nope")).status).toBe(404);
     expect((await get("/admin/toString")).status).toBe(404);
     expect((await get("/nope")).status).toBe(404);

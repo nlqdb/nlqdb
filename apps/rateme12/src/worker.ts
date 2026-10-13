@@ -6,7 +6,7 @@ import { publisherPage, serverPage } from "./detail.ts";
 import { categoryPage, directoryPage } from "./directory.ts";
 import { aboutPage, privacyPage, termsPage } from "./info.ts";
 import { fleetPage, installPage, installPost } from "./install.ts";
-import { html, page, type View } from "./layout.ts";
+import { noticeCard, page, type View } from "./layout.ts";
 import { submitPage, submitPost } from "./submit.ts";
 
 // _headers covers static assets only; Worker responses carry their own. The
@@ -46,11 +46,12 @@ const FORMS: [RegExp, (form: FormData) => Promise<View>][] = [
 const notFound: View = {
   status: 404,
   title: "Not found — rateme12",
-  body: html`<div class="notice">
-  <h2>This page doesn't exist</h2>
-  <p>There's nothing at this address.</p>
-  <a class="btn" href="/">Browse all servers</a>
-</div>`,
+  body: noticeCard(
+    "This page doesn't exist",
+    "There's nothing at this address.",
+    "/",
+    "Browse all servers",
+  ),
 };
 
 function decodeParams(match: RegExpExecArray): string[] | null {
