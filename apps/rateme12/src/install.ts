@@ -41,7 +41,7 @@ const CLIENTS = {
 type Client = keyof typeof CLIENTS;
 
 const clientOf = (value: string | null | undefined): Client =>
-  value && value in CLIENTS ? (value as Client) : "claude-code";
+  value && Object.hasOwn(CLIENTS, value) ? (value as Client) : "claude-code";
 
 const AGENT_BRIEF = `You can search a live directory of MCP servers via the "rateme12" MCP server (${ENDPOINT}). Before adding a new tool or integration, use it to find a well-suited MCP server by capability.
 

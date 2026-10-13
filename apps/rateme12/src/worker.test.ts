@@ -195,7 +195,9 @@ describe("journey 5 — connect an agent", () => {
     expect(body).not.toContain("claude mcp add");
     expect(body).toContain('<input type="hidden" name="mode" value="signin" />');
     expect(body).toContain('<input type="hidden" name="client" value="cursor" />');
-    expect(await (await get("/install?client=nope")).text()).toContain("claude mcp add");
+    for (const client of ["nope", "toString", "__proto__"]) {
+      expect(await (await get(`/install?client=${client}`)).text()).toContain("claude mcp add");
+    }
   });
 
   test("a card post calls data.ts and keeps the client tab, never the password", async () => {
