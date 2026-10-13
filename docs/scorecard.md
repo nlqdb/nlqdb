@@ -76,7 +76,7 @@ at 10/10.
 
 ## Last change
 
-**2026-10-13 (run 245)** — **rateme12 §5a step 4 closed: the operator boards `/admin/{duplicates,merges,pipelines}`. §4 page routes rendered: 10/13 → 13/13; iteration build steps 3/10 → 4/10.** Each board shows the live signed-out card (`apps/rateme12/src/admin.ts`), matching `rateme12.com` in Chromium at 1100 px. An unknown board, including an inherited key like `toString`, is a 404, and the 404 copy no longer promises pages still to come. Run 244's two merge writes landed `seen_fields` (out of sample). **GLOBAL-025 UX** advanced (the clone's last unbuilt routes, on the way to §5b's real first-inserts). No KPI degrades: the diff is one Worker page module and its route. No engine or API path changed.
+**2026-10-13 (run 245)** — **rateme12 §5a step 4 closed: the operator boards `/admin/{duplicates,merges,pipelines}`. §4 page routes rendered: 10/13 → 13/13; iteration build steps 3/10 → 4/10.** Each board shows the live signed-out card (`apps/rateme12/src/admin.ts`), matching `rateme12.com` in Chromium at 1100 px. An unknown board, including an inherited key like `toString`, is a 404, and the 404 copy no longer promises pages still to come. Run 244's two merge writes landed `seen_fields` (out of sample). **GLOBAL-025 UX** advanced (the clone's last unbuilt routes, on the way to §5b's real first-inserts). No KPI degrades: the diff is one Worker page module, its route and a shared `noticeCard` helper for the clone's four notice cards (output unchanged). No engine or API path changed.
 
 _(Single-entry by design — per-run history lives in `git log` +
 `progress/quality-score-verification-log.md`.)_
