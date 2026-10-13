@@ -9,7 +9,7 @@
 import { signIn } from "./data.ts";
 import { html, type View } from "./layout.ts";
 
-type Mode = "create" | "signin";
+export type Mode = "create" | "signin";
 
 const githubIcon = html`<svg class="btn-social-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path></svg>`;
 
@@ -26,17 +26,24 @@ function tab(mode: Mode, current: Mode, label: string) {
   return html`<button type="submit" form="auth-mode" name="mode" value="${mode}" class="${mode === current ? "active" : ""}">${label}</button>`;
 }
 
-function submitView(mode: Mode, values: Record<string, string> = {}, posted = false): View {
+// The live account card, shared by every page it gates (`/submit`, `/install`).
+// `keep` carries the page's own query state through both of the card's forms.
+export function accountCard(card: {
+  action: string;
+  mode: Mode;
+  hint: string;
+  values?: Record<string, string>;
+  posted?: boolean;
+  keep?: Record<string, string>;
+}) {
+  const { action, mode, hint, values = {}, posted = false, keep = {} } = card;
   const create = mode === "create";
-  return {
-    title: "Submit an MCP server — rateme12",
-    body: html`<div class="submit-intro">
-  <h1>Submit an MCP server</h1>
-  <p>Add a server to the directory. You'll need an account — it's the only thing here that does.</p>
-</div>
-<form id="auth-mode" method="GET" action="/submit"></form>
-<form class="submit-card" method="POST" action="/submit">
-  <input type="hidden" name="mode" value="${mode}" />
+  const kept = Object.entries(keep).map(
+    ([name, value]) => html`<input type="hidden" name="${name}" value="${value}" />`,
+  );
+  return html`<form id="auth-mode" method="GET" action="${action}">${kept}</form>
+<form class="submit-card" method="POST" action="${action}">
+  <input type="hidden" name="mode" value="${mode}" />${kept}
   <!-- First submit button = Enter's default: a password submit, not GitHub. -->
   <button type="submit" name="method" value="password" hidden tabindex="-1" aria-hidden="true"></button>
   <div class="submit-social">
@@ -48,24 +55,45 @@ function submitView(mode: Mode, values: Record<string, string> = {}, posted = fa
     ${tab("create", mode, "Create account")}
     ${tab("signin", mode, "Sign in")}
   </div>
-  <p class="submit-hint">Browsing needs no account — publishing a server does.</p>
+  <p class="submit-hint">${hint}</p>
   ${create ? html`<label>Name<input name="name" autocomplete="name" required value="${values["name"] ?? ""}" /></label>` : ""}
   <label>Email<input name="email" autocomplete="email" required type="email" value="${values["email"] ?? ""}" /></label>
   <label>Password<input name="password" autocomplete="${create ? "new-password" : "current-password"}" minlength="8" required type="password" /></label>
   ${posted ? accountsNotConnected : ""}
   <button type="submit" name="method" value="password" class="btn">${create ? "Create account" : "Sign in"}</button>
-</form>`,
+</form>`;
+}
+
+// A posted card: what was typed, minus the password, after data.ts saw it.
+export async function postedCard(form: FormData) {
+  const values: Record<string, string> = {};
+  for (const [key, value] of form) if (typeof value === "string") values[key] = value;
+  await signIn(values);
+  delete values["password"];
+  // Only the not-connected state exists until §5b: no session is ever set.
+  return { mode: modeOf(values["mode"]), values };
+}
+
+export function modeOf(value: string | null | undefined): Mode {
+  return value === "signin" ? "signin" : "create";
+}
+
+function submitView(mode: Mode, values: Record<string, string> = {}, posted = false): View {
+  return {
+    title: "Submit an MCP server — rateme12",
+    body: html`<div class="submit-intro">
+  <h1>Submit an MCP server</h1>
+  <p>Add a server to the directory. You'll need an account — it's the only thing here that does.</p>
+</div>
+${accountCard({ action: "/submit", mode, values, posted, hint: "Browsing needs no account — publishing a server does." })}`,
   };
 }
 
 export async function submitPage(url: URL): Promise<View> {
-  return submitView(url.searchParams.get("mode") === "signin" ? "signin" : "create");
+  return submitView(modeOf(url.searchParams.get("mode")));
 }
 
 export async function submitPost(form: FormData): Promise<View> {
-  const values: Record<string, string> = {};
-  for (const [key, value] of form) if (typeof value === "string") values[key] = value;
-  await signIn(values);
-  // Only the not-connected state exists until §5b: no session is ever set.
-  return submitView(values["mode"] === "signin" ? "signin" : "create", values, true);
+  const { mode, values } = await postedCard(form);
+  return submitView(mode, values, true);
 }

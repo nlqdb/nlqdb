@@ -34,7 +34,7 @@ describe("journey 1 — search / browse", () => {
   });
 
   test("unbuilt routes and malformed tags are an honest 404", async () => {
-    expect((await get("/fleet")).status).toBe(404);
+    expect((await get("/admin/duplicates")).status).toBe(404);
     expect((await get("/servers/%E0%A4%A")).status).toBe(404);
     expect((await get("/c/%E0%A4%A")).status).toBe(404);
     expect((await get("/c/%20")).status).toBe(404);
@@ -162,5 +162,65 @@ describe("journey 4 — submit a server", () => {
       }),
     );
     expect(res.status).toBe(200);
+  });
+});
+
+describe("journey 5 — connect an agent", () => {
+  const post = (fields: Record<string, string>) => {
+    const body = new FormData();
+    for (const [k, v] of Object.entries(fields)) body.set(k, v);
+    return worker.fetch(
+      new Request("https://rateme12.nlqdb.com/install", { method: "POST", body }),
+    );
+  };
+
+  test("/install names the rebuild's own endpoint and says it isn't served yet", async () => {
+    const res = await get("/install");
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("<h1>Give your agent the MCP-server directory</h1>");
+    expect(body).toContain(
+      "claude mcp add --transport http rateme12 https://rateme12.nlqdb.com/mcp",
+    );
+    expect(body).not.toContain("api.rateme12.com");
+    expect(body).toContain("Not connected yet");
+    expect(body).toContain('<form class="submit-card" method="POST" action="/install">');
+    expect(body).toContain("reviewing as an agent needs an agent key.");
+  });
+
+  test("the client tabs are a GET that keeps the card's tab, and vice versa", async () => {
+    const body = await (await get("/install?client=cursor&mode=signin")).text();
+    expect(body).toContain('value="cursor" class="install-tab active"');
+    expect(body).toContain("~/.cursor/mcp.json");
+    expect(body).not.toContain("claude mcp add");
+    expect(body).toContain('<input type="hidden" name="mode" value="signin" />');
+    expect(body).toContain('<input type="hidden" name="client" value="cursor" />');
+    for (const client of ["nope", "toString", "__proto__"]) {
+      expect(await (await get(`/install?client=${client}`)).text()).toContain("claude mcp add");
+    }
+  });
+
+  test("a card post calls data.ts and keeps the client tab, never the password", async () => {
+    const body = await (
+      await post({
+        mode: "signin",
+        method: "password",
+        client: "raw",
+        email: "a@b.co",
+        password: "hunter2hunter2",
+      })
+    ).text();
+    expect(body).toContain("Accounts aren't connected yet");
+    expect(body).toContain('value="raw" class="install-tab active"');
+    expect(body).toContain('value="a@b.co"');
+    expect(body).not.toContain("hunter2");
+  });
+
+  test("/fleet shows the live signed-out card", async () => {
+    const res = await get("/fleet");
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("<h2>Sign in to see your fleet usage</h2>");
+    expect(body).toContain('<a class="btn" href="/install">Connect an agent</a>');
   });
 });
