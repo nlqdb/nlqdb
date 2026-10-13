@@ -1,6 +1,7 @@
 // The Worker entry: static assets (styles, logo) are served before this runs;
 // every page route renders here and reads through src/data.ts only.
 
+import { adminBoard } from "./admin.ts";
 import { publisherPage, serverPage } from "./detail.ts";
 import { categoryPage, directoryPage } from "./directory.ts";
 import { aboutPage, privacyPage, termsPage } from "./info.ts";
@@ -33,6 +34,7 @@ const ROUTES: [RegExp, (params: string[], url: URL) => Promise<View>][] = [
   [/^\/submit\/?$/, (_, url) => submitPage(url)],
   [/^\/install\/?$/, (_, url) => installPage(url)],
   [/^\/fleet\/?$/, async () => fleetPage],
+  [/^\/admin\/([^/]+)\/?$/, async ([board]) => adminBoard(board as string) ?? notFound],
 ];
 
 // The routes a form POSTs to; each calls src/data.ts and re-renders its page.
@@ -45,8 +47,8 @@ const notFound: View = {
   status: 404,
   title: "Not found — rateme12",
   body: html`<div class="notice">
-  <h2>This page doesn't exist yet</h2>
-  <p>The rebuild adds the rest of rateme12's pages one journey at a time.</p>
+  <h2>This page doesn't exist</h2>
+  <p>There's nothing at this address.</p>
   <a class="btn" href="/">Browse all servers</a>
 </div>`,
 };

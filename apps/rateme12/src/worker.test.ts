@@ -34,7 +34,9 @@ describe("journey 1 — search / browse", () => {
   });
 
   test("unbuilt routes and malformed tags are an honest 404", async () => {
-    expect((await get("/admin/duplicates")).status).toBe(404);
+    expect((await get("/admin/nope")).status).toBe(404);
+    expect((await get("/admin/toString")).status).toBe(404);
+    expect((await get("/nope")).status).toBe(404);
     expect((await get("/servers/%E0%A4%A")).status).toBe(404);
     expect((await get("/c/%E0%A4%A")).status).toBe(404);
     expect((await get("/c/%20")).status).toBe(404);
@@ -222,5 +224,21 @@ describe("journey 5 — connect an agent", () => {
     const body = await res.text();
     expect(body).toContain("<h2>Sign in to see your fleet usage</h2>");
     expect(body).toContain('<a class="btn" href="/install">Connect an agent</a>');
+  });
+});
+
+describe("operator boards — /admin/*", () => {
+  test.each([
+    ["duplicates", "Near-duplicates", "the near-duplicate queue"],
+    ["merges", "Merge log", "the merge log"],
+    ["pipelines", "Pipeline health", "pipeline health"],
+  ])("/admin/%s shows the live signed-out card", async (board, title, name) => {
+    const res = await get(`/admin/${board}`);
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain(`<title>${title} — rateme12</title>`);
+    expect(body).toContain(`<h2>Sign in to view ${name}</h2>`);
+    expect(body).toContain("<p>This board is for administrators.</p>");
+    expect(body).toContain('<a class="btn" href="/submit">Sign in</a>');
   });
 });
