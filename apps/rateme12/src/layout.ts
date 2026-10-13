@@ -92,8 +92,9 @@ export function page({ title, body }: View): string {
 `.value;
 }
 
-// The live product's card for a page with nothing to show: a heading, one line
-// and one way on (a 404, a signed-out board).
+// The card for a page with nothing to show — a heading, one line and one way
+// on. The live product uses it for signed-out and unknown-id pages; the clone
+// also uses it for its 404.
 export const noticeCard = (heading: string, line: string, href: string, action: string): Html =>
   html`<div class="notice">
   <h2>${heading}</h2>
