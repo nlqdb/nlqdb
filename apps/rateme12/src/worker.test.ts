@@ -190,6 +190,29 @@ describe("journey 5 — connect an agent", () => {
     expect(body).toContain("reviewing as an agent needs an agent key.");
   });
 
+  test("every snippet has a copy button naming its block, plus the hook and gateway", async () => {
+    const body = await (await get("/install")).text();
+    const targets = [...body.matchAll(/data-copy="([^"]+)"/g)].map((m) => m[1]);
+    expect(targets).toEqual([
+      "snip-endpoint",
+      "ins-claude-code",
+      "snip-agent-brief",
+      "snip-reviewer",
+      "snip-telemetry",
+      "snip-gateway-endpoint",
+      "snip-gateway",
+    ]);
+    for (const id of targets) expect(body).toContain(`id="${id}"`);
+    expect(body).toContain('<script type="module" src="/copy.js"></script>');
+    expect(body).toContain("&quot;command&quot;: &quot;rateme12-hook&quot;");
+    expect(body).toContain(
+      '<code id="snip-gateway-endpoint">https://rateme12.nlqdb.com/gateway</code>',
+    );
+    const cursor = await (await get("/install?client=cursor")).text();
+    const config = /mcp\/install\?name=rateme12&amp;config=([^"]+)"/.exec(cursor)?.[1] ?? "";
+    expect(JSON.parse(atob(config))).toEqual({ url: "https://rateme12.nlqdb.com/mcp" });
+  });
+
   test("the client tabs are a GET that keeps the card's tab, and vice versa", async () => {
     const body = await (await get("/install?client=cursor&mode=signin")).text();
     expect(body).toContain('value="cursor" class="install-tab active"');
