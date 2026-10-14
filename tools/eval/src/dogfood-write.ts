@@ -1,5 +1,5 @@
-// Phase A dogfood workload — GLOBAL-041 build-order step 8, the KPI 1
-// instrument. The daily loop's own outputs — its run record ("Last change"),
+// Phase A dogfood canary — GLOBAL-041 build-order step 8, a regression check
+// (the KPI 1 sample is rateme12's inserts). The daily loop's own outputs — its run record ("Last change"),
 // its scorecard row deltas and its new blocked-by-human items — go into the
 // hosted dogfood DB through `@nlqdb/sdk`, as the run wrote them, never
 // pre-modeled.
@@ -10,8 +10,8 @@
 // `dogfood-write.yml` runs this on every merge that touches the scorecard or
 // the blocked-by-human queue.
 // Unlike `kpi1-live-walk.ts` (preview-only proxy) this COMMITS: a real write
-// into the real dogfood DB is the only thing that opens the GLOBAL-041
-// 200-insert window and moves the prod `asks_extend_ok/failed` counters.
+// into the real dogfood DB is what moves the prod
+// `asks_extend_ok/failed` counters.
 //
 // Skill cross-ref: docs/features/schema-widening/FEATURE.md SK-SCHEMA-010.
 
