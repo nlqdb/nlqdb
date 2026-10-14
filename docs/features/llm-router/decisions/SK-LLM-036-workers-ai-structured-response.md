@@ -1,8 +1,8 @@
-# SK-LLM-036 — Workers AI: accept the object-shaped `result.response` a JSON-emitting model returns
+# SK-LLM-036 — Workers AI: `json_object` mode on JSON ops; accept an object `result.response`
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Repairs the
 Workers AI leg ([`SK-LLM-003`](./SK-LLM-003-strict-zero-chain.md)'s non-US
-backup, 4th in the planner chain) without touching any other provider.
+backup, 5th in the planner chain) without touching any other provider.
 
 - **Decision:** `workersAIChat` (`packages/llm/src/providers/workers-ai.ts`)
   accepts `result.response` of type **string or object**. A string passes

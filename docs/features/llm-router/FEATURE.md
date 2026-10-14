@@ -153,7 +153,7 @@ when-to-load:
 
 **Body:** [`decisions/SK-LLM-035-numeric-text-cast-directive.md`](./decisions/SK-LLM-035-numeric-text-cast-directive.md). One `PLAN_DIRECTIVES` bullet: `CAST(<col> AS REAL)` when a `TEXT`-declared column is used numerically (C1, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)); prompt-only.
 
-### SK-LLM-036 — Workers AI: accept the object-shaped `result.response` a JSON-emitting model returns
+### SK-LLM-036 — Workers AI: `json_object` mode on JSON ops; accept an object `result.response`
 
 **Body:** [`decisions/SK-LLM-036-workers-ai-structured-response.md`](./decisions/SK-LLM-036-workers-ai-structured-response.md). Workers AI JSON ops send `json_object` mode; a pre-parsed-object `result.response` re-serializes so `parseJsonResponse` stays the single JSON entry point.
 
