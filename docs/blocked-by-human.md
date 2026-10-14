@@ -24,7 +24,7 @@ step 9 green). Love gate: [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.m
 
 ## Show HN launch sequence
 
-~30 min · blocked since 2026-06-13. Gated on the `GLOBAL-041` love gate:
+⏱ ~30 min · blocked since 2026-06-13. Gated on the `GLOBAL-041` love gate:
 rateme12 on nlqdb 14 consecutive days **and** ≥ 3 of the 10 builders back
 unprompted in week 2. Kit: [`research/launch-kit.md`](./research/launch-kit.md).
 
@@ -36,7 +36,7 @@ unprompted in week 2. Kit: [`research/launch-kit.md`](./research/launch-kit.md).
 
 ## Deploy the email-router Worker
 
-~5 min · blocked since 2026-09-18. The fix is **merged** (#1134, 2026-09-21)
+⏱ ~5 min · blocked since 2026-09-18. The fix is **merged** (#1134, 2026-09-21)
 but not live: `apps/email-router` is dashboard-managed with no deploy
 workflow, so `main` still runs the old script. Until it ships, the DMARC
 retry storm and two inbound-mail-loss paths stay open.
@@ -51,7 +51,7 @@ retry storm and two inbound-mail-loss paths stay open.
 
 ## Anthropic Claude connector directory
 
-~20 min · blocked since 2026-07-21. Needs a **Team/Enterprise** Claude.ai org
+⏱ ~20 min · blocked since 2026-07-21. Needs a **Team/Enterprise** Claude.ai org
 with Owner or Directory-management access. If reaching it means paying, it
 waits per [`cost-ladder.md`](./cost-ladder.md). Ledger row #9.
 
@@ -71,7 +71,7 @@ waits per [`cost-ladder.md`](./cost-ladder.md). Ledger row #9.
 
 ## PulseMCP + mcp.directory
 
-~10 min · blocked since 2026-09-01. Both were expected to pick nlqdb up by
+⏱ ~10 min · blocked since 2026-09-01. Both were expected to pick nlqdb up by
 crawl from the official registry; re-checked live, both still show 0 results.
 Lowest-yield directories — do these only when the queue head is parked.
 
@@ -91,7 +91,7 @@ what it writes. One command.`
 
 ## `nlqdb-memory` → cc-marketplace
 
-~10 min · blocked since 2026-09-04. Ledger row #27. Exact payload is parked in
+⏱ ~10 min · blocked since 2026-09-04. Ledger row #27. Exact payload is parked in
 [`acquisition-channels-mechanisms.md` §Row #27](./research/acquisition-channels-mechanisms.md#row-27)
 — copy it verbatim. Either path works.
 
