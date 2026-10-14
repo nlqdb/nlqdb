@@ -46,6 +46,7 @@ async function workersAIChat(
   model: string,
   messages: ChatMessage[],
   temperature: number | undefined,
+  jsonMode: boolean,
   opts: CallOpts,
   gatewayToken?: string,
 ): Promise<string> {
@@ -72,7 +73,15 @@ async function workersAIChat(
       // overrides this with temperature > 0, on its separate code path.
       // `max_tokens`: Workers AI stops at 256 completion tokens by default, which
       // cut a long write's INSERT mid-JSON (`parse`). 4096 fits any 2000-char goal.
-      body: JSON.stringify({ messages, temperature: temperature ?? 0, max_tokens: 4096 }),
+      // `response_format` (SK-LLM-036): unconstrained, the plan model echoes a
+      // long goal's quotes and drops the closing brace (6/14 `parse` on the
+      // dogfood deltas); JSON mode returned valid JSON on all 25 that finished.
+      body: JSON.stringify({
+        messages,
+        temperature: temperature ?? 0,
+        max_tokens: 4096,
+        ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+      }),
       signal: opts.signal,
     });
   } catch (err) {
@@ -116,7 +125,7 @@ export function createWorkersAIProvider(opts: WorkersAIProviderOptions): Provide
   return createChatProvider({
     name: "workers-ai",
     models: { ...DEFAULT_MODELS, ...opts.models },
-    callChat: ({ model, messages, temperature, opts: callOpts }) =>
+    callChat: ({ model, messages, jsonMode, temperature, opts: callOpts }) =>
       workersAIChat(
         opts.accountId,
         opts.apiToken,
@@ -124,6 +133,7 @@ export function createWorkersAIProvider(opts: WorkersAIProviderOptions): Provide
         model,
         messages,
         temperature,
+        jsonMode,
         callOpts,
         opts.gatewayToken,
       ),

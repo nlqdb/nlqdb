@@ -58,10 +58,11 @@ export const DEFAULT_TIMEOUTS_MS: Record<LLMOperation, number> = {
 };
 
 // A write's SQL echoes the values its goal carries, so a long write needs a
-// long completion: the 2000-char dogfood delta took Workers AI 8–13 s for 664
-// tokens and timed out every leg at the flat 5 s. A write's budget grows with
-// its goal past ~625 chars; reads and shorter writes keep the flat timeout.
-const PLAN_MS_PER_GOAL_CHAR = 8;
+// long completion. Workers AI in JSON mode (SK-LLM-036) took 10–16 ms per goal
+// char on the dogfood deltas (616–1997 chars), past the flat 5 s. A write's
+// budget grows with its goal past ~312 chars; reads and shorter writes keep
+// the flat timeout.
+const PLAN_MS_PER_GOAL_CHAR = 16;
 
 export type LLMRouterOptions = {
   providers: Provider[];

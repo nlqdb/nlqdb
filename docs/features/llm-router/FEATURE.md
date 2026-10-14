@@ -67,7 +67,7 @@ when-to-load:
 
 ### SK-LLM-012 — `schema_infer` is a distinct router operation, not an alias of `plan`
 
-**Body:** [`decisions/SK-LLM-012-schema-infer-op.md`](./decisions/SK-LLM-012-schema-infer-op.md). `schema_infer` is its own router op (`router.schemaInfer` → span `llm.schema_infer`), not a `plan` alias — shares the planner chain but ships distinct prompt / request / response shapes and an 8000 ms budget (vs `plan`'s 5000 ms, 8 ms/goal-char for a longer write). Runs once per DB, ever.
+**Body:** [`decisions/SK-LLM-012-schema-infer-op.md`](./decisions/SK-LLM-012-schema-infer-op.md). `schema_infer` is its own router op (`router.schemaInfer` → span `llm.schema_infer`), not a `plan` alias — shares the planner chain but ships distinct prompt / request / response shapes and an 8000 ms budget (vs `plan`'s 5000 ms, 16 ms/goal-char for a longer write). Runs once per DB, ever.
 
 ### SK-LLM-014 — Hedged-request race on free-tier chains for planner-tier ops
 
@@ -153,9 +153,9 @@ when-to-load:
 
 **Body:** [`decisions/SK-LLM-035-numeric-text-cast-directive.md`](./decisions/SK-LLM-035-numeric-text-cast-directive.md). One `PLAN_DIRECTIVES` bullet: `CAST(<col> AS REAL)` when a `TEXT`-declared column is used numerically (C1, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)); prompt-only.
 
-### SK-LLM-036 — Workers AI: accept the object-shaped `result.response` a JSON-emitting model returns
+### SK-LLM-036 — Workers AI: `json_object` mode on JSON ops; accept an object `result.response`
 
-**Body:** [`decisions/SK-LLM-036-workers-ai-structured-response.md`](./decisions/SK-LLM-036-workers-ai-structured-response.md). Accept the string *or* pre-parsed-object `result.response` Workers AI returns; objects re-serialize so `parseJsonResponse` stays the single JSON entry point.
+**Body:** [`decisions/SK-LLM-036-workers-ai-structured-response.md`](./decisions/SK-LLM-036-workers-ai-structured-response.md). Workers AI JSON ops send `json_object` mode; a pre-parsed-object `result.response` re-serializes so `parseJsonResponse` stays the single JSON entry point.
 
 ### SK-LLM-037 — Goal-relevant schema pruning in the planner prompt (recall-first, table-granular)
 

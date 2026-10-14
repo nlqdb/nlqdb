@@ -51,13 +51,8 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
     `0` when unset. The greedy production chain never sets it, so this
     invariant is unchanged; only the eval's self-consistency sampler overrides
     it.)**
-  - **Also enable Workers AI JSON mode (`response_format`)** — the
-    native `/ai/run` endpoint requires a per-op `json_schema` (no
-    unconstrained `json_object`, verified against the Workers AI JSON-mode
-    docs 2026-06); the prompt's "strict JSON, no fences" contract plus
-    the [`SK-LLM-025`](./SK-LLM-025-json-recovery-fallback.md) recovery
-    fallback already govern output, so schema-mode is a larger, per-op
-    change deferred until a measured JSON-parse-failure rate justifies it.
+  - **Also enable Workers AI JSON mode** — deferred here; adopted 2026-10-14
+    on a measured parse-failure rate ([`SK-LLM-036`](./SK-LLM-036-workers-ai-structured-response.md)).
   - **Switch Workers AI to the OpenAI-compat endpoint for `json_object`**
     — changes the auth / URL / error-shape contract of a marginal
     fallback leg for no measured win; out of scope.
