@@ -73,11 +73,9 @@ export async function initAppAnalytics(
   if (!cfg) return;
   started = true;
 
-  // The SDK chunk is content-hashed and stable across deploys, so a failed
-  // fetch here is the network (sleep/wake, offline, a blocker), not a stale
-  // build. Analytics is optional: swallow it so it never surfaces as an
-  // unhandled rejection in the `/v1/errors/web` boot reporter, and re-arm so
-  // the next trigger (or page load) retries.
+  // Analytics is optional: a failed SDK chunk fetch (network, content blocker)
+  // must not surface as an unhandled rejection in the `/v1/errors/web` boot
+  // reporter, so swallow it and reset `started` so a later call can retry.
   let posthog: PostHogModule["default"];
   try {
     ({ default: posthog } = await load());
