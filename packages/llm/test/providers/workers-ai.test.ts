@@ -77,9 +77,9 @@ describe("createWorkersAIProvider", () => {
     expect(res.summary).toBe("the answer");
   });
 
-  it("sends temperature 0 (SK-LLM-024) and lifts the 256-token default completion cap", async () => {
+  it("sends temperature 0 (SK-LLM-024), JSON mode and lifts the 256-token default completion cap", async () => {
     const provider = createWorkersAIProvider({ accountId, apiToken });
-    let body: { temperature?: number; max_tokens?: number } = {};
+    let body: { temperature?: number; max_tokens?: number; response_format?: unknown } = {};
     const fetch = mockFetch([
       {
         match: /api\.cloudflare\.com/,
@@ -92,6 +92,23 @@ describe("createWorkersAIProvider", () => {
     await provider.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
     expect(body.temperature).toBe(0);
     expect(body.max_tokens).toBe(4096);
+    expect(body.response_format).toEqual({ type: "json_object" });
+  });
+
+  it("leaves prose ops (summarize) out of JSON mode", async () => {
+    const provider = createWorkersAIProvider({ accountId, apiToken });
+    let body: { response_format?: unknown } = {};
+    const fetch = mockFetch([
+      {
+        match: /api\.cloudflare\.com/,
+        respond: async (req) => {
+          body = (await req.clone().json()) as typeof body;
+          return workersAIResponse("prose");
+        },
+      },
+    ]);
+    await provider.summarize({ goal: "g", rows: [] }, { fetch });
+    expect(body.response_format).toBeUndefined();
   });
 
   it("repairs a SQL-style \\' apostrophe escape in the plan JSON to Postgres ''", async () => {

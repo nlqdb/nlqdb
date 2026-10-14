@@ -9,7 +9,8 @@ backup, 4th in the planner chain) without touching any other provider.
   through unchanged (prose ops, non-JSON outputs); an object is re-serialized
   with `JSON.stringify` so the shared `parseJsonResponse` sees the same wire
   shape every other leg returns. Only a missing/`null` `response` still fails
-  with `reason: "parse"`.
+  with `reason: "parse"`. A JSON op (`jsonMode`) also sends
+  `response_format: {type: "json_object"}`; summarize (prose) does not.
 - **Core value:** Engine quality, Free
 - **Why:** The Workers AI REST endpoint returns `result.response` as a
   **pre-parsed JSON object** when `@cf/meta/llama-3.3-70b-instruct-fp8-fast`
@@ -31,10 +32,14 @@ backup, 4th in the planner chain) without touching any other provider.
   still-`parse`-on-missing behaviours. Effect measured combined on the next
   smoke dispatch (`SK-QUAL-002`).
 - **Alternatives rejected:**
-  - **Force a string with `response_format` (JSON mode).** Changes the request
-    contract for all five ops through the shared `callChat` (summarize wants
-    prose), and Workers AI documents JSON-mode output as best-effort — the
-    response-shape tolerance is needed anyway. Larger surface, same outcome.
+  - **No JSON mode (rejected 2026-10-14, reversing the 2026-06 call).** On
+    the seven run-237/239 dogfood write goals (616–1997 chars), unconstrained
+    output failed `parse` 6/14 even with no timeout: the model echoes the
+    goal's quotes and drops the closing brace. `json_object` on the native
+    `/ai/run` endpoint returned valid JSON on every call that finished
+    (25/25; `json_schema` 21/21), at 10–16 ms per goal char
+    (hence `plan`'s write budget, `packages/llm/src/router.ts`); route
+    latency was unchanged. `jsonMode` is per call, so prose ops are untouched.
   - **Parse the object directly instead of re-serializing.** Would fork the
     response path per provider; re-serializing keeps `parseJsonResponse` the
     single JSON entry point for every leg (`SK-LLM-025`'s recovery included).
