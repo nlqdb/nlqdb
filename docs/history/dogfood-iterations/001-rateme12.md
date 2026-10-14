@@ -101,4 +101,4 @@ Category: a real app built on nlqdb through the public surfaces only — 0 prior
 
 ## 8. Cleanup checklist — after §7 is committed
 
-[`TEMPLATE.md §8`](./TEMPLATE.md#8-cleanup-checklist--after-7-is-committed) with `<slug>=rateme12`: hosted DB + both keys, `apps/rateme12` + `deploy-rateme12.yml` + `tests/e2e/rateme12`, Worker `rateme12` + `rateme12.nlqdb.com` record, scratch `rateme12-src` + `quarantine/`, README index row.
+[`TEMPLATE.md §8`](./TEMPLATE.md#8-cleanup-checklist--after-7-is-committed) with `<slug>=rateme12`: scratch `rateme12-src` + `quarantine/`, README index row. After the §5b 9b cutover the serving build — hosted DB, its key, `apps/rateme12`, `deploy-rateme12.yml`, `tests/e2e/rateme12`, Worker and `rateme12.nlqdb.com` record — stays (`GLOBAL-042` rule 4.3).
