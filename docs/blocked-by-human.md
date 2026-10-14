@@ -9,12 +9,23 @@ Operator actions also get one metadata line in
 [`history/founder-actions-log.md`](./history/founder-actions-log.md) — never
 a secret value.
 
+## Cut rateme12 over to nlqdb, then recruit 10 builders
+
+⏱ ~1 h + ~5 h · gated (not yet actionable) since 2026-10-14. Opens when
+`rateme12.nlqdb.com` serves all §4 journeys from nlqdb (iteration 001 §5b
+step 9 green). Love gate: [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md).
+
+1. Point real rateme12 traffic at the nlqdb-backed build (§5b step 9b) and
+   use it yourself.
+2. DM ~10 P1 solo builders (no content, no SEO); each builds one small thing
+   on `@nlqdb/sdk`. Agents track week-2 returns on the scorecard.
+3. Delete this bullet once 10 have started.
+
 ## Show HN launch sequence
 
-~30 min · blocked since 2026-06-13. Gated on the `GLOBAL-041` Phase A exit
-(≥ 190/200 real first-inserts; the formal sample is 2 HIT / 4 MISS — agents drive it;
-the preview walk's 10/10 does not open it). Kit:
-[`research/launch-kit.md`](./research/launch-kit.md).
+~30 min · blocked since 2026-06-13. Gated on the `GLOBAL-041` love gate:
+rateme12 on nlqdb 14 consecutive days **and** ≥ 3 of the 10 builders back
+unprompted in week 2. Kit: [`research/launch-kit.md`](./research/launch-kit.md).
 
 1. Pick the angle (§2). Write the Show HN post + first comment in your own
    voice from the §3.1 fact sheet — never agent copy (the r/SQL lesson).

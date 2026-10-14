@@ -35,9 +35,12 @@ from the top of `docs/scorecard.md`; [`/weekly`](weekly.md) audits this loop
 once a week and sets it — the founder may override it and a founder-written
 number is never overwritten.
 
-**The number under drive is
-[`GLOBAL-041`](../../docs/decisions/GLOBAL-041-autonomous-dba.md) Phase A —
-KPI 1, first-insert inference rate ≥ 95 % on the dogfood workload.**
+**The work under drive is the fixed
+[`GLOBAL-041`](../../docs/decisions/GLOBAL-041-autonomous-dba.md) Phase A
+sequence in step 2** (founder steer 2026-10-14): KPI 1 ≥ 95 % on
+rateme12's own structured inserts with 0 LLM calls on the write path, then
+real rateme12 traffic on nlqdb, then the love gate. Depth only — love over
+reach ([`END_GOAL.md`](../../docs/END_GOAL.md)).
 Onboarding, UX, and performance stay at their [`GLOBAL-025`](../../docs/decisions/GLOBAL-025-north-star.md) floors on every change.
 This loop's job is to advance the current
 [`GLOBAL-042`](../../docs/decisions/GLOBAL-042-dogfood-iteration-loop.md)
@@ -62,8 +65,10 @@ content or marketplace lever; existing pages stay live.
    not a delta. Name the scorecard row (or a named direct input to one) the
    fix moves.
 3. **Measure → change → re-measure.** Engine work: the KPI 1 counters
-   (`asks_extend_ok` / `asks_extend_failed`) over the dogfood workload, or
-   the E2E extend walk. UX-flow work: the stranger-test walkers
+   (`inserts_infer_ok` / `inserts_infer_failed`) over rateme12's writes, or
+   the step's E2E walk. **No live free-LLM probes inside a PR** — they burn
+   the shared daily quota (PR #1179 could not be re-walked); regression
+   checks run on recorded fixtures, one budgeted live canary a day. UX-flow work: the stranger-test walkers
    (`scripts/stranger-test.sh`, `scripts/flow-005-walk.sh`). Δ ≥ 0 on the
    number you meant to move keeps; a drop reverts with a one-line note in
    the scorecard. Name the other pillar this diff can move. Where that
@@ -94,12 +99,16 @@ content or marketplace lever; existing pages stay live.
 7. **Anti-rut.** If the last 5 merged daily PRs (`git log`) pulled the same
    lever category, a 6th identical pull is forbidden: this run must instead
    measure that lever's *yield* on its KPI and record it as a scorecard row
-   — or pull a different lever.
+   — or pull a different lever. **Suspended while the step-2 sequence
+   runs:** consecutive sequence steps are the plan, not a rut.
 8. **Dark metrics don't loop.** A scorecard row blocked/carried 3+
    consecutive runs: stop re-attempting it in step 1, mark it dark with a
    days-blocked count, and make sure its root blocker (if human-only) is in
    `blocked-by-human.md` at its yield rank with a days-blocked count. Never
    pick a dark metric as the lever.
+9. **Depth only** (`GLOBAL-041`): no lever adds or polishes breadth —
+   other-language SDKs, framework wrappers, premium tier, BIRD/Spider beyond
+   the alarm. Existing surfaces get fixes only.
 
 ## The loop, in order
 
@@ -111,7 +120,9 @@ table + the header lines, no changelog):
 - **Engine — the `GLOBAL-041` KPIs first:** (1) **first-insert inference
   rate** — writes that reference an unseen table/field and land with no user
   action, over all such writes (two non-saturating `/v1/ask` counters,
-  `SK-GTM-011` shape), read over the **Phase A dogfood workload** (below);
+  `SK-GTM-011` shape), read over **rateme12's structured inserts**
+  (`inserts_infer_*`; until they flow, report `asks_extend_*` and the
+  canary below);
   (2) **evolution-without-user-action rate**;
   (3) **optimizer yield**. Where the instrument doesn't exist yet, write
   `unmeasured — build the instrument`; that gap is lever candidate #1.
@@ -131,8 +142,9 @@ table + the header lines, no changelog):
   `freshness` = `max(0, 1 − days_since_last_success / 7)`. Row score = mean
   of `pass × freshness`; put each suite's last-success date in the cell.
 - **Phase gate:** Phase 2 exits on `GLOBAL-041` Phase A alone — state KPI 1
-  vs its ≥ 95 % floor and the dogfood window's progress (n/200 inserts,
-  day n/14). Nothing else gates it.
+  vs its ≥ 95 % floor over rateme12's unseen-field inserts (n/200), and
+  `llm.*` spans under an insert (target 0). Also the love gate: days of
+  rateme12 traffic on nlqdb (n/14) and returning builders (n/10).
 - **Surface integrity:** dead links on the deployed user-facing surfaces —
   including cross-app hrefs (nlqdb.com → docs.nlqdb.com) — counted by
   sweeping built output; target 0.
@@ -145,7 +157,7 @@ table + the header lines, no changelog):
   then the top `blocked-by-human.md` **title** + its days-blocked. When a
   queue bullet carries a condition gate, also note progress (n/N green).
 
-**Dogfood workload (the KPI 1 instrument, `GLOBAL-041`).** Every run writes
+**Dogfood canary (regression check, no longer the KPI 1 sample — `GLOBAL-041`).** Every run writes
 its **run log**, its **"Last change" delta** and any **new blocked-by-human
 item** to the hosted dogfood nlqdb database through `@nlqdb/sdk` — not to
 markdown. Write the record as the run produced it; never pre-model a field
@@ -160,26 +172,26 @@ scorecard update into the scorecard, and every MISS is inspected this run
 
 ### 2 — One lever, measured
 
-Pick the smallest change that moves the weekly focus number (or, if none is
-set, the worst **agent-movable** number). Skip dark or founder-blocked
-metrics when *choosing the lever* — still report them, but never pick a
-target no single run can move. Lever order:
+**No lever picker — the run takes the first unfinished step of this
+sequence** (founder steer 2026-10-14; rule 6 and a met draft still come
+first). A step spanning runs takes the next run too; a human-blocked step
+is skipped to the next.
 
-**Usefulness first:** the DBA must act on a real database, observably.
-Walkers, GSC, blog, SEO, Show HN wait.
+0. **Neon role cap.** Prod is at 500/500 roles (one per hosted DB, never
+   reaped), so hosted create fails and `apps/api smoke` is red on every PR.
+   Reap roles of deleted and test DBs, drop the role on DB delete, stop
+   minting one per ephemeral test DB (`hosted-db-create`). Number: smoke
+   green, prod create success 100 %.
+1. **Deterministic structured insert** (`GLOBAL-041` Phase A step 10,
+   rateme12 §6.1 R5). Number: `llm.*` spans under an insert 0, and the
+   insert E2E walk's inference rate.
+2. **rateme12 §5b steps 6 → 9**, in order, one per run — registry import
+   included. Number: §4 journeys wired to nlqdb n/5.
+3. **Cutover** (founder, `blocked-by-human.md`), then Phase A step 11
+   (async enrichment), then KPI 3 on rateme12's search route — the first
+   applied index with a measured p95 delta. That is the moat.
 
-1. **`GLOBAL-041` — the DBA acts.** Current slice is Phase A KPI 1
-   (first-insert inference): the Phase A build order (`kind=extend` plan →
-   extend prompt → `compile-write-ddl` → validator → one transaction →
-   `schema_hash` rewrite → trace parity → dogfood writes → E2E walk). Then
-   KPI 2, then **KPI 3 (optimizer yield) + the dashboard** — inspect,
-   index, before/after, one-click apply/undo. That is the moat. A missing
-   instrument is a lever; so is any slice that moves those KPIs.
-2. **A broken land→ask path** only if it blocks the DBA from acting.
-   Chromium walker / FLOW-005 / stranger-test launch fixes are not the
-   focus.
-3. **Meta last, written waiver required:** D5 doc cleanup only after this
-   run states why no DBA lever is pullable. Acquisition stays paused.
+UI parity work on the clone is done; it is never a step.
 
 **If no lever clears that bar, don't manufacture one:** record the finding
 and end the run with only the step-1 scorecard update — a null run is a

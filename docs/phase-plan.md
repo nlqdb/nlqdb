@@ -182,10 +182,9 @@ LLM lane, wired in §10 above, turned on when §6 tripped —
 live 2026-08-14.)
 
 **Exit gate:** **Phase A of [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md)
-shipped, and nothing else** — widen-on-write live and first-insert
-inference rate ≥ 95 % on the Phase A dogfood workload defined there (the
-`/daily` loop's own writes through `@nlqdb/sdk`; first 200 unseen-field
-inserts in a 14-day window). No BIRD/Spider floor, no MCP-host count, no
+shipped, and nothing else** — first-insert inference ≥ 95 % over ≥ 200
+unseen-field structured inserts from rateme12's own writes, with 0 LLM calls
+on the write path (defined there). No BIRD/Spider floor, no MCP-host count, no
 CSV user test, no TTFV — TTFV gates Phase 3.
 
 **Status (2026-05):**
@@ -292,8 +291,10 @@ capacity-driven).
 
 ## 8. Always-on (cross-phase)
 
-- Build-in-public cadence, blog drip and channel work: **paused until
-  `GLOBAL-041` Phase A measures**; existing pages stay live. Recruitment +
+- Build-in-public cadence, blog drip and channel work: **paused**
+  (`GLOBAL-041`); existing pages stay live. The one exception is the
+  founder's ~10 hand-recruited builders after the rateme12 cutover; Show HN
+  waits on the `GLOBAL-041` love gate. Recruitment +
   interview cadence in [`docs/founder-playbook.md`](./founder-playbook.md).
 - Security hygiene: Trivy + CodeQL on every PR; secret rotation
   quarterly; Renovate (`renovate.json5`) for dependency updates.

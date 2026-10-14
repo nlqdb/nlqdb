@@ -10,8 +10,14 @@ run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 Phase 2 exits on Phase A alone; acquisition paused; BIRD/Spider = regression
 alarm only; premium tier stays. Retired rows dropped below.
 
-**Weekly focus (2026-10-11 →, `/weekly`; keeps the founder's 2026-09-04
-KPI-1/Phase-A frame):** **the KPI-1 formal-sample HIT rate in dogfood
+**Focus (founder-written 2026-10-14 — `/weekly` keeps it):** the fixed
+`GLOBAL-041` sequence in `daily.md` step 2 — **Neon role cap (500/500,
+smoke red) → deterministic `insert()` (0 LLM calls on the write path) →
+rateme12 §5b journeys wired 0/5 → cutover (n/14 days) → returning builders
+(n/10).** KPI 1 is now read on rateme12's own inserts; the run-log windows
+below are history.
+
+**Previous weekly focus (2026-10-11, superseded):** **the KPI-1 formal-sample HIT rate in dogfood
 window 2: window 1 closed 2026-10-10 at 2 HIT / 7 MISS (22 %, 9/200); the
 floor is ≥ 95 %.** Window 2 opens at the next unseen-field insert
 (`GLOBAL-041`). Why: the CI writer now writes on every merge and names each

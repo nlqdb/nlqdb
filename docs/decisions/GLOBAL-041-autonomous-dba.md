@@ -15,14 +15,20 @@
   4. **Shows everything in a transparent dashboard** — where data lives,
      which engines, bottom-line usage and cost, recommendations — with
      **one-click apply and undo**.
-  It **acts**; it does not merely recommend. NL→SQL (`/v1/ask`) is the
-  interface the app talks to its database through — not what nlqdb sells.
-  The LLM bet stands: great on free LLMs ⇒ invincible on frontier LLMs
-  ([`GLOBAL-026`](./GLOBAL-026-llm-strategy-byollm-hosted-premium.md)).
-  Until Phase A (below) has measured, **the whole company works on Phase A**:
-  acquisition is paused and no other gate exists. Phase A is driven and
-  measured by the [`GLOBAL-042`](./GLOBAL-042-dogfood-iteration-loop.md)
-  dogfood-iteration loop.
+  It **acts**; it does not merely recommend. **Structured writes are inferred
+  deterministically** — `insert(table, rows)` maps JSON values to columns
+  with **no model call on the write path**. NL (`/v1/ask`) is the interface
+  for reads, chat writes and the DBA's proposals, not what nlqdb sells; the
+  LLM's judgement (better types, renames, enums, indexes) runs **async** and
+  lands as proposals with 1-click apply/undo. The LLM bet stands — great on
+  free LLMs ⇒ invincible on frontier LLMs
+  ([`GLOBAL-026`](./GLOBAL-026-llm-strategy-byollm-hosted-premium.md)) — and
+  is spent on the DBA's judgement, never on parsing a write.
+  **The whole company works on Phase A through rateme12** (revised by the
+  founder 2026-10-14): Phase A is measured on the
+  [`GLOBAL-042`](./GLOBAL-042-dogfood-iteration-loop.md) rateme12 build's
+  own writes, and the first users are ten builders the founder recruits by
+  hand — love over reach ([`END_GOAL.md`](../END_GOAL.md)).
 
 - **Core value:** Goal-first, Effortless UX, Bullet-proof, Simple, Honest latency
 
@@ -53,9 +59,11 @@
     1. **First-insert inference rate** — share of writes that reference a
        table or field the DB has not yet observed and that land with no
        user action (no error, no `nlq new`, no manual DDL). Numerator /
-       denominator are two non-saturating counters on the `/v1/ask` write
-       path (`asks_extend_ok` / `asks_extend_failed`, same shape as
-       `SK-GTM-011`). Floor: ≥ 95 % at Phase A exit, ≥ 99 % at Phase B exit.
+       denominator are two non-saturating counters per write path, same
+       shape as `SK-GTM-011`: `inserts_infer_ok` / `inserts_infer_failed`
+       on the structured insert (the KPI), `asks_extend_ok` /
+       `asks_extend_failed` on `/v1/ask` (reported, not gated). Floor:
+       ≥ 95 % at Phase A exit, ≥ 99 % at Phase B exit.
     2. **Evolution-without-user-action rate** — share of detected shape
        changes (new field, retype, drop, rename) absorbed by the DBA —
        applied, or proposed and applied in one click — versus those that
@@ -65,29 +73,39 @@
        + p95 latency delta of the affected fingerprint, 7 days after vs
        7 days before apply. Floor: ≥ 1 applied / active DB / month, median
        p95 improvement ≥ 20 %, 0 regressions > 10 % not auto-undone.
-  - **Phase A dogfood workload — the KPI 1 instrument.** The `/daily` loop
-    writes its run log, its scorecard deltas ("Last change") and its
-    blocked-by-human items to **one hosted nlqdb database through
-    `@nlqdb/sdk`** instead of editing markdown. Writer = the agent. Sample =
-    the **first 200 inserts that carry a field the schema has not seen**,
-    inside a **14-day window** that opens at the first such insert. **Phase A
-    exits when ≥ 190 of those 200 (≥ 95 %) land with no user action.** A field
-    is never pre-modeled to make the number look good — the write goes in
-    as the run produced it.
+  - **Phase A workload — rateme12's own writes (the KPI 1 instrument).**
+    Every structured insert `rateme12.nlqdb.com` makes through `@nlqdb/sdk`
+    — the ~32 K-server registry import included — that carries a table or
+    field the schema has not seen. The whole population counts; there is no
+    sampling window. **Phase A exits when ≥ 95 % of ≥ 200 such inserts land
+    with no user action AND the synchronous write path makes 0 LLM calls**
+    (OTel: no `llm.*` span under an insert). A field is never pre-modeled to
+    make the number look good. The `/daily` loop's own CI writes
+    (`dogfood-write.yml`) stay as a regression canary, not the sample.
   - **Phase gates.** [`phase-plan.md`](../phase-plan.md) **Phase 2 exits on
     Phase A alone** — nothing else gates it: no BIRD/Spider floor, no
     MCP-host count, no CSV user test, no TTFV. **Phase 3 exits on Phase B**:
     KPI 1 ≥ 99 %, KPI 2 ≥ 90 %, KPI 3 at floor, **TTFV p50 ≤ 60 s** (moved
     here from the Phase 2 gate). Phase C (engine placement) starts only after
     Phase B clears.
-  - **Acquisition is paused until Phase A measures.** This **supersedes the
-    2026-07-19 "operating focus is user acquisition" directive that lived in
+  - **Acquisition is paused; one exception, the love gate.** This
+    **supersedes the 2026-07-19 "operating focus is user acquisition"
+    directive that lived in
     [`GLOBAL-038`](./GLOBAL-038-gtm-pmf-instrumentation.md)** — GLOBAL-038
     keeps the instrument (`/app/admin`, `gtm_snapshots`), not the focus. The
     `/reach` loop, the ICP-mining cron, the dev.to drip and new blog / `/vs` /
-    `/solve` content commits stop; existing pages stay live and keep being
-    measured. The expert-knowledge platform is the first app built on the
-    DBA, gated on Phase A (`SK-EKP-005`).
+    `/solve` content commits stay stopped; existing pages stay live. **The
+    exception:** once real rateme12 traffic runs on nlqdb (the cutover in
+    the iteration brief), the founder recruits **~10 P1 solo builders by
+    direct message** — never content or SEO — each building something small
+    on the SDK. **Show HN opens on the love gate:** rateme12 served by nlqdb
+    for 14 consecutive days with zero hand-written DDL **and ≥ 3 of the 10
+    builders return unprompted in their second week** (a session with ≥ 1
+    inferred table). Not on KPI 1 alone. The expert-knowledge platform stays
+    gated on Phase A (`SK-EKP-005`).
+  - **Depth only until the love gate opens.** No breadth work: no new or
+    polished other-language SDKs, framework wrappers or premium-tier
+    features; existing ones get fixes only.
   - **BIRD/Spider is a CI regression alarm, not a KPI.** The harness runs on
     a fixed sample and fails when accuracy drops **> 5 pp** below the last
     green run (`SK-QUAL-002`). No floor, no weekly re-measure lever, no
@@ -123,14 +141,41 @@
   - **Keep BIRD/Spider as a phase floor** — gates the phase on an interface
     number the product bet does not move; the alarm keeps it from regressing.
   - **Synthetic Phase A workload** — a generated insert stream proves the
-    extend path, not that a real writer never has to model; the loop's own
-    outputs are the cheapest real workload with unplanned fields.
+    extend path, not that a real writer never has to model.
+  - **The loop's own run logs as the Phase A workload** (2026-09-05 →
+    10-14) — mostly re-used fields: two 14-day windows yielded 12 samples
+    (2 HIT / 10 MISS), ~0.5 a day against 200 needed; the workload was
+    designed by the thing under test.
+  - **Keep the LLM on the structured write path** — every KPI-1 miss traced
+    to the free-LLM plan stage on ~2 KB writes (truncation, timeouts,
+    breakers), capped by free quotas the $0 policy cannot lift; a mapping
+    from JSON values to columns needs no model.
+  - **Gate first users on KPI 1 ≥ 190/200** — a reach-style gate that held
+    user contact at zero for 122+ days and cannot produce the love signal
+    `END_GOAL.md` says counts.
 
 ## Build order
 
 ### Phase A — widen-on-write (2–4 weeks)
 
-Goal: KPI 1 live and ≥ 95 % on the dogfood workload above.
+Goal: KPI 1 ≥ 95 % on the rateme12 workload above, 0 LLM calls on the
+write path. Steps 1–9 below shipped the `/v1/ask` extend path (live,
+`SK-SCHEMA-008`/`-010`/`-011`); it stays as the chat write path. Remaining,
+in order (revised 2026-10-14):
+
+10. **Deterministic structured insert.** `insert(table, rows)` on
+    `@nlqdb/sdk` (+ CLI / MCP twins, `GLOBAL-003`): types from the JSON
+    values; unseen table → `CREATE TABLE`, unseen key → `ADD COLUMN … NULL`
+    through steps 3–6 (compiler, validator, one transaction, `schema_hash`
+    rewrite) — no model call. Its `SK-SCHEMA` decision lands in
+    `schema-widening` with the first code PR.
+11. **Async enrichment.** The LLM reviews newly inferred columns off the
+    write path and files typed proposals (retype / rename / enum) — the
+    first rows of the Phase B proposal pipeline.
+12. **rateme12 §5b on the structured insert**, registry import included,
+    then the cutover to real traffic (iteration brief).
+
+Original steps:
 
 1. `kind=extend` typed plan in the `/v1/ask` orchestrator (`apps/api/src/ask/orchestrate.ts`, `route-ask.ts`, `types.ts`): a write whose fields are not in the observed schema routes to extend, never to `schema_mismatch`.
 2. Extend prompt in the typed-plan layer (`packages/llm` prompts): emits `{ add_columns[], create_tables[] }` with types inferred from the values — JSON, never DDL text (`GLOBAL-037` schema-only egress holds).
@@ -139,7 +184,7 @@ Goal: KPI 1 live and ≥ 95 % on the dogfood workload above.
 5. Single Neon transaction: widen DDL + `INSERT` commit or roll back together (`db-create/pg-client.ts`; `SK-HDC-010` 30 s timeout applies).
 6. Rewrite `schema_text` and `schema_hash` in D1 after commit (`db-registry.ts`); old plan-cache entries evict by miss (`SK-SCHEMA-005` stands).
 7. Diff preview + trace for the extend step on every surface (`GLOBAL-023`); `GLOBAL-003` parity — no new verb: SDK / CLI / MCP / `<nlq-data>` render the extend trace and the KPI counters.
-8. Dogfood workload: `/daily` writes through `@nlqdb/sdk` (above); the 200-insert window opens with the first unseen-field write.
+8. Dogfood workload: `/daily` writes through `@nlqdb/sdk` — now a regression canary; the sample moved to rateme12 (step 12).
 9. E2E walk (`tests/e2e`): fresh DB → first insert with an unseen field → row lands, schema shows the column, plan cache still hits for unchanged queries.
 
 ### Phase B — inspection + index + dashboard + apply (6–10 weeks)
