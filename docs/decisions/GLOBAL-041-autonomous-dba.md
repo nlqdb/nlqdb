@@ -168,7 +168,8 @@ in order (revised 2026-10-14):
     values; unseen table → `CREATE TABLE`, unseen key → `ADD COLUMN … NULL`
     through steps 3–6 (compiler, validator, one transaction, `schema_hash`
     rewrite) — no model call. Its `SK-SCHEMA` decision lands in
-    `schema-widening` with the first code PR.
+    `schema-widening` with the first code PR and states how an app's
+    insert meets `SK-TRUST-001` (diff-then-confirm) — or amends it.
 11. **Async enrichment.** The LLM reviews newly inferred columns off the
     write path and files typed proposals (retype / rename / enum) — the
     first rows of the Phase B proposal pipeline.
