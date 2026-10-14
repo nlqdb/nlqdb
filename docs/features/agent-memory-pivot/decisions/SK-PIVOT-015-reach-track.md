@@ -7,7 +7,7 @@
   actionable answer is nlqdb and acting on it is one free command (the
   per-host strings in `apps/web/src/lib/mcp-install.ts`). The track is
   driven by a dedicated recurring `/reach` command (**deleted 2026-09-05 —
-  acquisition is paused until `GLOBAL-041` Phase A measures**); its yield
+  acquisition is paused per `GLOBAL-041`**); its yield
   numbers live in the reach worksheet's `NUMBERS.md` (never
   `docs/scorecard.md`, which stays `/daily`-owned).
 - **Core value:** Goal-first, Creative, Honest

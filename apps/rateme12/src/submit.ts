@@ -4,7 +4,7 @@
 // tabs are a GET form, the card POSTs here and calls src/data.ts. Until the
 // §5b last mile no account can exist, so a post re-renders the card with the
 // honest not-connected notice, keeping what was typed except the password.
-// The live card's Turnstile widget has no site key here yet — §5a step 5 logs it.
+// The live card's Turnstile widget is out of scope (§5a step 5, 2026-10-14).
 
 import { signIn } from "./data.ts";
 import { html, type View } from "./layout.ts";

@@ -108,6 +108,8 @@ not fix** inside the iteration.
 
 ## 8. Cleanup checklist — after §7 is committed
 
+A build cut over to real traffic skips the first three boxes for what it serves on (`GLOBAL-042` rule 4.3).
+
 - [ ] Hosted DB deleted (`client.deleteDatabase()` or `/app` typed-name confirm); every `sk_live_` / `pk_live_` minted for the iteration revoked (`/app/keys`).
 - [ ] `rm -rf apps/<slug> .github/workflows/deploy-<slug>.yml tests/e2e/<slug>`; `bun run check && bun run typecheck` green.
 - [ ] Worker `<slug>` deleted in Cloudflare; `<slug>.nlqdb.com` record removed (founder or CI token).

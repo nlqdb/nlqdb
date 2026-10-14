@@ -65,9 +65,10 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
 1. **Set the weekly focus number** at the top of `docs/scorecard.md`: one
    agent-movable number + a one-line why, chosen from the audit. If the
    founder wrote one this week, keep theirs — never overwrite a founder
-   edit. **Default: the `GLOBAL-041` KPI furthest from its floor** — KPI 1
-   (first-insert inference rate, floor ≥ 95 % on the Phase A dogfood
-   workload) until it clears, then KPI 2 / KPI 3 as their instruments land.
+   edit. **Default: the number of the first unfinished step in `daily.md`
+   step 2's fixed sequence** (role cap → structured insert → rateme12 §5b →
+   cutover → KPI 3 on rateme12); once the founder's builders are recruited,
+   **returning builders in week 2 (n/10)** — the love gate (`GLOBAL-041`).
    Agent-movable means **movable at $0** (`docs/cost-ladder.md` — no spend
    while there are no paying customers): a focus whose only lever needs
    founder spend or founder-held credentials is not agent-movable. Pick
@@ -75,7 +76,7 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
    dark** (levers exhausted or externally blocked) — a focus no daily run
    can pull scatters the week into meta work and measurement churn.
    Acquisition numbers are never the focus while the lane is paused
-   (`GLOBAL-041`).
+   (`GLOBAL-041`), except the love-gate count above.
 2. **Overwrite `docs/weekly-review.md`** (current-state, ≤ 4 KB, no
    accretion): one short paragraph per check, worst finding first, each
    naming its evidence (PR #s, scorecard rows, URLs).

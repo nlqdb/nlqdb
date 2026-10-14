@@ -55,7 +55,9 @@
         leverage, before any code.
      3. **Clean up everything the iteration created** — hosted DBs, API
         keys, branches, scratch code, test tenants. The repo and the
-        platform look as if the iteration never ran, except for the retro.
+        platform look as if the iteration never ran, except for the retro
+        and a build cut over to real traffic, which keeps serving
+        ([`END_GOAL.md`](../END_GOAL.md) row 8).
      4. Only then start the next iteration.
   5. **Rethinking decisions is expected.** A retro or any PR may change or
      replace existing GLOBALs / SK-IDs, per `P1`/`P3`: edit the canonical
@@ -98,7 +100,7 @@ Discovery (re-runnable): `ls examples/ tools/ tests/ scripts/`;
 Nearest near-misses, none an app with journeys: `examples/*` (11 one-file
 `<nlq-data>` read embeds), `tools/stranger-test/fixtures/agent-app/` (scratch
 fixture a cold agent edits, never deployed), the `/daily` dogfood workload
-(`.claude/commands/daily.md`, SDK writes of run logs — the KPI 1 instrument,
+(`.claude/commands/daily.md`, SDK writes of run logs — a regression canary,
 not a product), `tests/opencheck/tests-{a,b,c}.yaml` (create → write → cleanup
 lifecycle on the web surface). The one-level-up instances —
 `tools/stranger-test` FLOW-001/002/003, `scripts/flow-005-walk.sh`,

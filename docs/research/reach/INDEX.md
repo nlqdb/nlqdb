@@ -1,6 +1,6 @@
 # Reach track — search-moment interception + coding-agent injection
 
-Marketing lane — **paused until `GLOBAL-041` Phase A measures**: the
+Marketing lane — **paused per `GLOBAL-041`**: the
 `/reach` loop is deleted, existing pages stay live. Decision record
 [SK-PIVOT-015](../../features/agent-memory-pivot/decisions/SK-PIVOT-015-reach-track.md).
 

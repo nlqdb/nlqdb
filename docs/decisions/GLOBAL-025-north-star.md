@@ -104,7 +104,7 @@ routes.
 
 | KPI | Current | Floor | Alert | Owner |
 |---|---|---|---|---|
-| **1. First-insert inference rate** | unmeasured — instrument = the Phase A dogfood workload (`/daily` writes through `@nlqdb/sdk`; first 200 unseen-field inserts in a 14-day window) | ≥ 95 % at Phase A exit (= Phase 2 exit) · ≥ 99 % at Phase B exit | any miss on the dogfood workload is inspected the same run | `schema-widening` |
+| **1. First-insert inference rate** | unmeasured — instrument = rateme12's structured inserts (`GLOBAL-041`) | ≥ 95 % at Phase A exit (= Phase 2 exit) · ≥ 99 % at Phase B exit | any miss is inspected the same run | `schema-widening` |
 | **2. Evolution-without-user-action rate** | unmeasured — Phase B instrument | ≥ 90 % at Phase B exit | −5 pp wk/wk | `schema-widening` |
 | **3. Optimizer yield** | unmeasured — Phase B instrument | ≥ 1 applied / active DB / month; median p95 improvement ≥ 20 %; 0 un-undone regressions > 10 % | any un-undone regression | `engine-migration` |
 | Cross-engine dual-read equivalence | unmeasured — Phase C | 100 % | any divergence | `engine-migration` |
@@ -145,8 +145,8 @@ headline user-visible numbers from `architecture.md §0`.
 
 ## How measurement is operationalized
 
-- **Engine KPI 1** reads the two `/v1/ask` write-path counters over the
-  dogfood workload (`GLOBAL-041`). **Onboarding and UX KPIs** come from the
+- **Engine KPI 1** reads the structured-insert counters over rateme12's
+  writes (`GLOBAL-041`). **Onboarding and UX KPIs** come from the
   event pipeline (`packages/events`,
   [`GLOBAL-024`](./GLOBAL-024-demand-signal-telemetry.md)) plus the
   `nlqdb.surface` label; first-10-queries reads the D1 `first10_*` counters

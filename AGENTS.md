@@ -20,17 +20,17 @@ as good as or better than the hand-made one —
 [`GLOBAL-042`](docs/decisions/GLOBAL-042-dogfood-iteration-loop.md), measured
 by `GLOBAL-041` KPI 1 (first-insert inference ≥ 95 %). Every engine PR asks:
 does this bring the readiness table in
-[`001-rateme12.md` §6.1](docs/history/dogfood-iterations/001-rateme12.md#61-readiness-gate--all-four-green-before-5b-step-6)
+[`001-rateme12.md` §6.1](docs/history/dogfood-iterations/001-rateme12.md#61-readiness-gate--all-five-green-before-5b-step-6)
 closer to green? Name the row in the PR body. That table is the work queue —
 each row carries its owner feature doc and today-status. What those rows add
 up to, flow by flow, is [`docs/END_GOAL.md`](docs/END_GOAL.md) — the
 top-ranked doc: it outranks P1–P6 and every decision doc; whatever contradicts
 it is the bug, fixed in the same PR.
 
-Acquisition paused. Walkers, GSC, SEO, Show HN wait. The moat is the DBA
-that **optimizes for real, with observability** (`GLOBAL-041` KPI 3 +
-dashboard); Phase A (infer on write) is the current slice because the DBA
-cannot optimize a schema it cannot evolve. Numbers:
+No LLM on the write path; depth only. Acquisition paused but for ~10
+founder-recruited builders after the rateme12 cutover; Show HN waits on the
+love gate (`GLOBAL-041`). The moat: the DBA **optimizing for real, with
+observability** (KPI 3 + dashboard). Numbers:
 [`docs/scorecard.md`](docs/scorecard.md).
 
 ### North-star — what every PR moves

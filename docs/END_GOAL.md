@@ -15,6 +15,15 @@ in that PR (or the founder amends this doc in that PR). A
 gap is a [`blocked-by-human.md`](blocked-by-human.md) decision (`GLOBAL-033`),
 never a licence to invent.
 
+## Love over reach
+
+**100 users who love nlqdb beat 1 000 000 who like it.** Every trade between
+depth and breadth goes to depth: a change that makes nlqdb indispensable to
+the users it already fits outranks one that widens reach. Love is measured,
+never assumed — users who come back unprompted and would be very disappointed
+without it (the Sean-Ellis share and session retention in `GLOBAL-025`) —
+never visits, signups or impressions.
+
 ## Architecture — simple and scalable
 
 The DBA loop — infer → evolve → optimize → show/apply/undo (`GLOBAL-041`) —
@@ -38,23 +47,19 @@ replaces. **Scalable**: that one design holds at 1 table and 1 000 tables,
 |---|------|------|---------|
 | 1 | `createDatabase({ goal })` returns a `dbId` and the schema nlqdb wrote — no surface has a `CREATE TABLE` verb | `npm i @nlqdb/sdk`, mints `sk_live_` (`SK-CLI-006`), pastes one goal sentence | `SK-HDC-010` |
 | 2 | First write: `requires_confirm` with a `diff` and `trace.sql` — one payload on every surface (`SK-TRUST-001`, `GLOBAL-003`). Confirmed, the row is in the database and `/app` shows the DBA's table, trace present, never tier-gated (`SK-TRUST-002`) | confirms, reads back | miss, then hit ([`performance.md` §1](performance.md)) |
-| 3 | A write with a never-seen field: the diff names the **added column**, the row lands in the same commit (`SK-SCHEMA-008`); old-shape queries still answer, only what changed re-plans (`SK-SCHEMA-005`), `asks_extend_ok` on the [scorecard](scorecard.md) (`SK-SCHEMA-010`) | keeps writing app data | one round trip |
+| 3 | A write with a never-seen field: `insert()` infers the **added column** from the value — no model call on the write — and the row lands in the same commit (`SK-SCHEMA-008`); old-shape queries still answer, only what changed re-plans (`SK-SCHEMA-005`). A better type or name arrives later as a proposal (row 5), never as a blocked write | keeps writing app data | one round trip |
 | 4 | `/app/dba` — tables × engine, usage and cost, proposals, applied history with each fingerprint's p95 7 days after vs before | opens one page | page-load |
 | 5 | A drop / rename / retype proposal: diff, expected effect, inverse recorded up front (`SK-MIGRATE-003`); apply bumps `schema_hash` (`SK-SCHEMA-009`) under `GLOBAL-014` + `GLOBAL-005`, **undo** replays the inverse, and a change that made things worse is already undone | **apply** or **undo**, once | `SK-HDC-010` |
 | 6 | A `move_to_engine` proposal (`SK-MULTIENG-003`) — dual-read verified, reversible after cutover; the trace names the index or Pipe serving each query (`SK-MIGRATE-005`) | applies; queries keep their shape | cache-hit SLO |
 | 7 | One model picker everywhere: the free chain, their own key at 0 % markup, or hosted premium with allowance and spend cap (`SK-PREMIUM-008`, `-009`, `-011`) | picks a model, or keeps the default | — |
-| 8 | A whole product built this way — `rateme12.nlqdb.com`, every read and write through `@nlqdb/sdk`, schema inferred from its inserts | writes app code, no DDL | — |
+| 8 | A whole product built this way — `rateme12.nlqdb.com`, every read and write through `@nlqdb/sdk`, schema inferred from its inserts, serving real rateme12 traffic | writes app code, no DDL | — |
 | 9 | nlqdb.com: one input and starter goals (`SK-ONBOARD-008`), an anonymous DB, the chat; sign-in adopts it and its history (`SK-ANON-001`) | asks, signs in for a key | `GLOBAL-025` TTFV |
 
 **Not in this flow:** no wizard, plan-picker or verification wall
 (`SK-ONBOARD-001`), no advisory-only tab, no approval queue.
 
-**Surface feel** (`SK-WEB-031`): nlqdb.com has one primary action — the
-goal input — and reads top-down as the loop above: how it works →
-diff-then-confirm → surfaces → ways in → a non-gating preview of what is
-next → under the hood → one closing CTA.
-Solve, Compare and Blog are secondary, grouped under one Content menu; they
-never compete with row 9.
+**Surface feel:** nlqdb.com has one primary action, the goal input; every
+other band and the Content menu are secondary to row 9 (`SK-WEB-031`).
 
 ## Empty, error, and edge states
 
@@ -70,11 +75,13 @@ never compete with row 9.
 
 - [ ] Every row above works on `nlqdb.com`, `/app`, `@nlqdb/sdk`, `nlq` and MCP inside the [`performance.md` §1](performance.md) SLOs, and a stranger gets a first answer with no account, card or config.
 - [ ] The `GLOBAL-041` and `GLOBAL-025` KPIs stand at their floors.
+- [ ] Builders we never met come back unprompted: the `GLOBAL-041` love gate (≥ 3 of the first 10 hand-recruited builders return in week 2) opened, and the share keeps rising.
 - [ ] `rateme12.nlqdb.com` runs on zero hand-written DDL, its retro rating the inferred schema **as good as or better than** the hand-made one it never saw first (`GLOBAL-042` 2–3).
 - [ ] Every DBA change — widen, drop, rename, retype, index, engine move — is previewed, versioned, undoable; dual reads agree 100 %.
 
 ## Non-goals
 
 - **Not an NL→SQL product, not a recommend-only advisor** (`GLOBAL-041`).
+- **No model call on the structured write path.** The LLM judges and proposes; it never sits between an app and its insert.
 - **No user-authored migrations, ever.** The engine emits every DDL statement; no file, folder or CLI verb writes one.
 - **No undo after a committed user write.** Diff-then-confirm is that action (`SK-TRUST-001`); undo belongs to DBA proposals, whose inverse is recorded first.

@@ -172,7 +172,8 @@ them are the engine roadmap. Canonical plan + exit gates:
 ### Now — Phase A: the schema infers itself (`GLOBAL-041`)
 
 The first insert creates the shape; later inserts and reads evolve it. KPI:
-first-insert inference rate ≥ 95 % at Phase A exit on the dogfood workload.
+first-insert inference rate ≥ 95 % at Phase A exit, measured on
+`rateme12.nlqdb.com`'s own writes, with no model call on the write path.
 Build order in [`GLOBAL-041`](./docs/decisions/GLOBAL-041-autonomous-dba.md).
 
 - ~ `kind=extend` typed plan — a write naming an unseen table or field widens
@@ -184,6 +185,9 @@ Build order in [`GLOBAL-041`](./docs/decisions/GLOBAL-041-autonomous-dba.md).
   `<nlq-data>`; CLI/web render pending
 - ✓ KPI counters `asks_extend_ok` / `asks_extend_failed` on the `/v1/ask` write path
   (`SK-SCHEMA-010`; the rate reads on `/app/admin`)
+- ◯ Deterministic `insert(table, rows)` — types from the values, no LLM on the
+  write path; the LLM's better types and names arrive later as proposals
+- ◯ rateme12 on nlqdb with real traffic, then ~10 hand-picked builders
 - ◯ Phase B — `pg_stat_*` + `EXPLAIN` collection → typed proposals (index /
   retype / drop / rename / move-to-engine) → `/app/dba` dashboard with
   1-click apply + undo

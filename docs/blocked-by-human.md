@@ -9,12 +9,24 @@ Operator actions also get one metadata line in
 [`history/founder-actions-log.md`](./history/founder-actions-log.md) — never
 a secret value.
 
+## Cut rateme12 over to nlqdb, then recruit 10 builders
+
+⏱ ~1 h + ~5 h · blocked since 2026-10-14. Gated — opens when
+`rateme12.nlqdb.com` serves all §4 journeys from nlqdb
+([iteration 001 §5b](./history/dogfood-iterations/001-rateme12.md#5b-the-last-mile--gated-on-61-strictly-after-5a-step-5)
+step 9 green). Love gate: [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md).
+
+1. Point real rateme12 traffic at the nlqdb-backed build (§5b step 9b) and
+   use it yourself.
+2. DM ~10 P1 solo builders (no content, no SEO); each builds one small thing
+   on `@nlqdb/sdk`. Agents track week-2 returns on the scorecard.
+3. Delete this bullet once 10 have started.
+
 ## Show HN launch sequence
 
-~30 min · blocked since 2026-06-13. Gated on the `GLOBAL-041` Phase A exit
-(≥ 190/200 real first-inserts; the formal sample is 2 HIT / 4 MISS — agents drive it;
-the preview walk's 10/10 does not open it). Kit:
-[`research/launch-kit.md`](./research/launch-kit.md).
+⏱ ~30 min · blocked since 2026-06-13. Gated on the `GLOBAL-041` love gate:
+rateme12 on nlqdb 14 consecutive days **and** ≥ 3 of the 10 builders back
+unprompted in week 2. Kit: [`research/launch-kit.md`](./research/launch-kit.md).
 
 1. Pick the angle (§2). Write the Show HN post + first comment in your own
    voice from the §3.1 fact sheet — never agent copy (the r/SQL lesson).
@@ -24,7 +36,7 @@ the preview walk's 10/10 does not open it). Kit:
 
 ## Deploy the email-router Worker
 
-~5 min · blocked since 2026-09-18. The fix is **merged** (#1134, 2026-09-21)
+⏱ ~5 min · blocked since 2026-09-18. The fix is **merged** (#1134, 2026-09-21)
 but not live: `apps/email-router` is dashboard-managed with no deploy
 workflow, so `main` still runs the old script. Until it ships, the DMARC
 retry storm and two inbound-mail-loss paths stay open.
@@ -39,7 +51,7 @@ retry storm and two inbound-mail-loss paths stay open.
 
 ## Anthropic Claude connector directory
 
-~20 min · blocked since 2026-07-21. Needs a **Team/Enterprise** Claude.ai org
+⏱ ~20 min · blocked since 2026-07-21. Needs a **Team/Enterprise** Claude.ai org
 with Owner or Directory-management access. If reaching it means paying, it
 waits per [`cost-ladder.md`](./cost-ladder.md). Ledger row #9.
 
@@ -59,7 +71,7 @@ waits per [`cost-ladder.md`](./cost-ladder.md). Ledger row #9.
 
 ## PulseMCP + mcp.directory
 
-~10 min · blocked since 2026-09-01. Both were expected to pick nlqdb up by
+⏱ ~10 min · blocked since 2026-09-01. Both were expected to pick nlqdb up by
 crawl from the official registry; re-checked live, both still show 0 results.
 Lowest-yield directories — do these only when the queue head is parked.
 
@@ -79,7 +91,7 @@ what it writes. One command.`
 
 ## `nlqdb-memory` → cc-marketplace
 
-~10 min · blocked since 2026-09-04. Ledger row #27. Exact payload is parked in
+⏱ ~10 min · blocked since 2026-09-04. Ledger row #27. Exact payload is parked in
 [`acquisition-channels-mechanisms.md` §Row #27](./research/acquisition-channels-mechanisms.md#row-27)
 — copy it verbatim. Either path works.
 
