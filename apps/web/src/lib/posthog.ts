@@ -53,7 +53,13 @@ function config(): { key: string; host: string } | null {
   return key ? { key, host } : null;
 }
 
-export async function initAppAnalytics(user: SessionUser | null): Promise<void> {
+type PostHogModule = typeof import("posthog-js");
+
+// `load` is a seam for the unit test only; production always takes the default.
+export async function initAppAnalytics(
+  user: SessionUser | null,
+  load: () => Promise<PostHogModule> = () => import("posthog-js"),
+): Promise<void> {
   if (started || typeof window === "undefined") return;
   // Never start capture while the URL still carries a handoff. `stripFragment`
   // below covers the top-level URL properties, but session replay records
@@ -67,7 +73,18 @@ export async function initAppAnalytics(user: SessionUser | null): Promise<void> 
   if (!cfg) return;
   started = true;
 
-  const { default: posthog } = await import("posthog-js");
+  // The SDK chunk is content-hashed and stable across deploys, so a failed
+  // fetch here is the network (sleep/wake, offline, a blocker), not a stale
+  // build. Analytics is optional: swallow it so it never surfaces as an
+  // unhandled rejection in the `/v1/errors/web` boot reporter, and re-arm so
+  // the next trigger (or page load) retries.
+  let posthog: PostHogModule["default"];
+  try {
+    ({ default: posthog } = await load());
+  } catch {
+    started = false;
+    return;
+  }
   posthog.init(cfg.key, {
     api_host: cfg.host,
     sanitize_properties: stripFragment,

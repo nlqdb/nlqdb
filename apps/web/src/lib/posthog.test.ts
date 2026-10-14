@@ -32,3 +32,33 @@ describe("stripFragment (the sanitize_properties hook)", () => {
     expect(stripFragment({ ...props })).toEqual(props);
   });
 });
+
+// Prod report 2026-10-14: `Failed to fetch dynamically imported module:
+// …/_astro/module.<hash>.js` (the posthog-js chunk) reached the R&D inbox as a
+// "client boot" error. The chunk was live and unchanged — a transient fetch
+// failure of optional analytics must not reject, and must re-arm for a retry.
+describe("initAppAnalytics when the SDK chunk fails to load", () => {
+  test("resolves quietly, then retries on the next call", async () => {
+    const g = globalThis as { window?: unknown };
+    const prevWindow = g.window;
+    const prevKey = process.env["PUBLIC_POSTHOG_KEY"];
+    g.window = { location: { hash: "" } };
+    process.env["PUBLIC_POSTHOG_KEY"] = "phc_test";
+    try {
+      const { initAppAnalytics } = await import("./posthog");
+      const failing = () =>
+        Promise.reject(new TypeError("Failed to fetch dynamically imported module"));
+      await expect(initAppAnalytics(null, failing)).resolves.toBeUndefined();
+
+      let inits = 0;
+      const sdk = { init: () => void inits++, identify: () => {} };
+      const ok = () => Promise.resolve({ default: sdk } as never);
+      await initAppAnalytics(null, ok);
+      expect(inits).toBe(1);
+    } finally {
+      g.window = prevWindow;
+      if (prevKey === undefined) delete process.env["PUBLIC_POSTHOG_KEY"];
+      else process.env["PUBLIC_POSTHOG_KEY"] = prevKey;
+    }
+  });
+});
