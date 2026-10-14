@@ -119,7 +119,7 @@ table + the header lines, no changelog):
 
 - **Engine — the `GLOBAL-041` KPIs first:** (1) **first-insert inference
   rate** — writes that reference an unseen table/field and land with no user
-  action, over all such writes (two non-saturating `/v1/ask` counters,
+  action, over all such writes (two non-saturating counters,
   `SK-GTM-011` shape), read over **rateme12's structured inserts**
   (`inserts_infer_*`; until they flow, report `asks_extend_*` and the
   canary below);
@@ -162,9 +162,8 @@ its **run log**, its **"Last change" delta** and any **new blocked-by-human
 item** to the hosted dogfood nlqdb database through `@nlqdb/sdk` — not to
 markdown. Write the record as the run produced it; never pre-model a field
 so the write succeeds. A write that lands with a field the schema had not
-seen is a KPI 1 hit; one that errors or needs a manual step is a miss —
-record it in the scorecard. The DB id and the window's start
-date live in the scorecard header. The prod key crosses only the CI
+seen is a canary hit; one that errors or needs a manual step is a miss —
+record it in the scorecard. The DB id lives in the scorecard header. The prod key crosses only the CI
 boundary, so `dogfood-write.yml` writes on each merge to `main`, after the
 run: step 1 reads the verdicts of every Dogfood write run since the last
 scorecard update into the scorecard, and every MISS is inspected this run
@@ -193,7 +192,7 @@ is skipped to the next.
 
 UI parity work on the clone is done; it is never a step.
 
-**If no lever clears that bar, don't manufacture one:** record the finding
+**If every step is done or human-blocked, don't manufacture a lever:** record the finding
 and end the run with only the step-1 scorecard update — a null run is a
 valid outcome; busywork is not.
 
@@ -205,7 +204,7 @@ review, **never self-executed**, the run still a null. One proposal, then
 back to nulls until it is answered.
 
 Write this run's delta (and any revert note) as the "Last change" record
-through the dogfood workload above. One lever per run.
+through the dogfood canary above. One lever per run.
 
 ### 3 — Ship
 
