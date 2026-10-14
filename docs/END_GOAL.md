@@ -15,6 +15,15 @@ in that PR (or the founder amends this doc in that PR). A
 gap is a [`blocked-by-human.md`](blocked-by-human.md) decision (`GLOBAL-033`),
 never a licence to invent.
 
+## Love over reach
+
+**100 users who love nlqdb beat 1 000 000 who like it.** Every trade between
+depth and breadth goes to depth: a change that makes nlqdb indispensable to
+the users it already fits outranks one that widens reach. Love is measured,
+never assumed — users who come back unprompted and would be very disappointed
+without it (the Sean-Ellis share and session retention in `GLOBAL-025`) —
+never visits, signups or impressions.
+
 ## Architecture — simple and scalable
 
 The DBA loop — infer → evolve → optimize → show/apply/undo (`GLOBAL-041`) —
@@ -49,12 +58,8 @@ replaces. **Scalable**: that one design holds at 1 table and 1 000 tables,
 **Not in this flow:** no wizard, plan-picker or verification wall
 (`SK-ONBOARD-001`), no advisory-only tab, no approval queue.
 
-**Surface feel** (`SK-WEB-031`): nlqdb.com has one primary action — the
-goal input — and reads top-down as the loop above: how it works →
-diff-then-confirm → surfaces → ways in → a non-gating preview of what is
-next → under the hood → one closing CTA.
-Solve, Compare and Blog are secondary, grouped under one Content menu; they
-never compete with row 9.
+**Surface feel:** nlqdb.com has one primary action, the goal input; every
+other band and the Content menu are secondary to row 9 (`SK-WEB-031`).
 
 ## Empty, error, and edge states
 
