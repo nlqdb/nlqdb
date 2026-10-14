@@ -143,9 +143,9 @@
   - **Synthetic Phase A workload** — a generated insert stream proves the
     extend path, not that a real writer never has to model.
   - **The loop's own run logs as the Phase A workload** (2026-09-05 →
-    10-14) — mostly re-used fields: two 14-day windows yielded 12 samples
-    (2 HIT / 10 MISS), ~0.5 a day against 200 needed; the workload was
-    designed by the thing under test.
+    10-14) — mostly re-used fields: one 14-day window plus 3 days of a
+    second yielded 12 samples (2 HIT / 10 MISS), ~0.5 a day against 200
+    needed; the workload was designed by the thing under test.
   - **Keep the LLM on the structured write path** — every KPI-1 miss traced
     to the free-LLM plan stage on ~2 KB writes (truncation, timeouts,
     breakers), capped by free quotas the $0 policy cannot lift; a mapping

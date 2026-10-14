@@ -11,8 +11,9 @@ a secret value.
 
 ## Cut rateme12 over to nlqdb, then recruit 10 builders
 
-⏱ ~1 h + ~5 h · gated (not yet actionable) since 2026-10-14. Opens when
-`rateme12.nlqdb.com` serves all §4 journeys from nlqdb (iteration 001 §5b
+⏱ ~1 h + ~5 h · blocked since 2026-10-14. Gated — opens when
+`rateme12.nlqdb.com` serves all §4 journeys from nlqdb
+([iteration 001 §5b](./history/dogfood-iterations/001-rateme12.md#5b-the-last-mile--gated-on-61-strictly-after-5a-step-5)
 step 9 green). Love gate: [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md).
 
 1. Point real rateme12 traffic at the nlqdb-backed build (§5b step 9b) and
