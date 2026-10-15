@@ -72,6 +72,9 @@ describe("planInsert", () => {
     );
     // …after the id sequence is lifted past the explicit 7, so DEFAULT draws 8.
     expect(out.ok && out.value.sequence?.params).toEqual([7, '"s1"."servers"']);
+    // Only ever raises: a setval that kept the value could lower a sequence a
+    // concurrent insert advanced meanwhile.
+    expect(out.ok && out.value.sequence?.sql).toContain("$1::bigint > COALESCE(");
   });
 
   it("lifts no sequence when no row names an integer id", () => {
