@@ -292,8 +292,13 @@ function Metrics({ m }: { m: GtmMetrics }) {
         <div className="admin__tiles">
           <Tile
             label="First-insert inference rate"
+            valueText={fmtPct(m.engine.insertInferenceRate)}
+            hint={`KPI 1 — insert() calls naming an unseen table/field that landed: ${m.engine.insertsInferOk} of ${m.engine.insertsInferOk + m.engine.insertsInferFailed}; Phase A floor ≥ 95%`}
+          />
+          <Tile
+            label="Chat extend rate"
             valueText={fmtPct(m.engine.firstInsertInferenceRate)}
-            hint="KPI 1 — extend-needed writes absorbed with no user action; Phase A floor ≥ 95%"
+            hint="/v1/ask writes to an unseen table absorbed with no user action"
           />
           <Tile
             label="Extend-needed writes"

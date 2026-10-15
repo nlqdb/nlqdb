@@ -29,6 +29,10 @@ export type GtmMetrics = {
     extendOk: number;
     extendFailed: number;
     firstInsertInferenceRate: number | null;
+    // SK-SCHEMA-012 — the structured-insert KPI-1 sample.
+    insertsInferOk: number;
+    insertsInferFailed: number;
+    insertInferenceRate: number | null;
   };
   uniques: {
     realUsers: number;

@@ -294,6 +294,25 @@ export type RunSqlResult = {
   trace: Trace;
 };
 
+// `SK-SCHEMA-012` — deterministic structured insert (`GLOBAL-041`). Keys map
+// to lower_snake_case columns (`serverId` → `server_id`); a table or field the
+// DB hasn't seen is created in the same transaction. No model call.
+export type InsertRequest = {
+  db: string;
+  table: string;
+  rows: Record<string, unknown>[];
+};
+
+export type InsertResult = {
+  status: "ok";
+  // The landed rows as stored (`RETURNING *`), generated `id` included.
+  rows: Record<string, unknown>[];
+  rowCount: number;
+  table: string;
+  // Present only when the insert created a table or column.
+  widen?: TraceWiden;
+};
+
 // E-02 — the agent-memory write verb. `client.remember()` materialises a
 // typed row into an `agent_memory_v1` preset DB (no LLM in the loop). The
 // MCP `nlqdb_remember` tool and `nlq remember` (fast-follow) wrap this.
@@ -1094,6 +1113,18 @@ export type NlqClient = {
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<RunSqlResult>;
   /**
+   * `POST /v1/insert` — write rows with no data modelling (`SK-SCHEMA-012`).
+   * Types come from the JSON values; an unseen table or field is created in
+   * the same transaction, with no model call. Errors worth a branch:
+   * `forbidden` (a read-only key), `invalid_body` (a row that isn't an object
+   * or a field with no letters), `write_constraint` / `invalid_value` (the
+   * engine refused a value). Mutating: auto-keyed (`SK-SDK-006`).
+   */
+  insert(
+    req: InsertRequest,
+    opts?: { signal?: AbortSignal; idempotencyKey?: string },
+  ): Promise<InsertResult>;
+  /**
    * `POST /v1/memory/remember` — write a typed memory row into an
    * `agent_memory_v1` preset DB (E-02). No LLM in the loop: the payload is
    * structured, so the server emits a deterministic parameterised INSERT.
@@ -1553,6 +1584,15 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
     askStream: streamAsk,
     runSql: (req, callOpts) =>
       call<RunSqlResult>("/v1/run", {
+        method: "POST",
+        body: JSON.stringify(req),
+        signal: callOpts?.signal,
+        ...(callOpts?.idempotencyKey
+          ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+          : {}),
+      }),
+    insert: (req, callOpts) =>
+      call<InsertResult>("/v1/insert", {
         method: "POST",
         body: JSON.stringify(req),
         signal: callOpts?.signal,

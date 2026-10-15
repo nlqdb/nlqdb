@@ -38,6 +38,11 @@ describe("parseLastChange", () => {
     });
   });
 
+  it("accepts a colon separator (run 248's entry, which wrote nothing)", () => {
+    const md = "## Last change\n\n**2026-10-15 (run 248)**: **Roles counted.** Reaper.\n";
+    expect(parseLastChange(md)).toMatchObject({ run: "248", headline: "Roles counted." });
+  });
+
   it("null when the section is missing or malformed", () => {
     expect(parseLastChange("# Scorecard\n")).toBeNull();
     expect(parseLastChange("## Last change\n\nfree text\n")).toBeNull();

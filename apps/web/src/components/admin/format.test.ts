@@ -31,6 +31,9 @@ function metrics(overrides: Partial<GtmMetrics> = {}): GtmMetrics {
       extendOk: 0,
       extendFailed: 0,
       firstInsertInferenceRate: null,
+      insertsInferOk: 0,
+      insertsInferFailed: 0,
+      insertInferenceRate: null,
     },
     uniques: {
       realUsers: 2,

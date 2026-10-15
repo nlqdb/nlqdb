@@ -116,6 +116,7 @@ export default defineConfig(async () => {
               "src/ask/summarize-gate.test.ts",
               "src/ask/memory-exec-steps.test.ts",
               "src/run/orchestrate.test.ts",
+              "src/insert/*.test.ts",
               "src/memory/expire.test.ts",
               "src/scheduled/jobs.test.ts",
               "src/db-sweep/role-reap.test.ts",

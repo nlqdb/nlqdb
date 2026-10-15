@@ -295,7 +295,14 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
     expect(m.funnel.adoptionRate).toBeNull();
     expect(m.funnel.adoptionRateReal).toBeNull();
     expect(m.activation.first10SuccessRate).toBeNull();
-    expect(m.engine).toEqual({ extendOk: 0, extendFailed: 0, firstInsertInferenceRate: null });
+    expect(m.engine).toEqual({
+      extendOk: 0,
+      extendFailed: 0,
+      firstInsertInferenceRate: null,
+      insertsInferOk: 0,
+      insertsInferFailed: 0,
+      insertInferenceRate: null,
+    });
     expect(m.retention.strangersRetained7d).toBe(0);
     expect(m.uniques).toEqual({
       realUsers: 0,
@@ -336,6 +343,20 @@ describe("computeGtmMetrics — SK-GTM-001 definitions", () => {
     expect(m.engine.extendOk).toBe(6);
     expect(m.engine.extendFailed).toBe(4);
     expect(m.engine.firstInsertInferenceRate).toBeCloseTo(0.6);
+  });
+
+  it("SK-SCHEMA-012: sums the structured-insert KPI-1 counters into the insert inference rate", async () => {
+    await seedUser("u_i1", "eng@builders.io", "2026-08-01T00:00:00.000Z");
+    await seedDb("db_i1", "u_i1");
+    await seedDb("db_i2", "u_i1");
+    await env.DB.prepare(
+      "UPDATE databases SET inserts_infer_ok = CASE id WHEN 'db_i1' THEN 18 ELSE 1 END, inserts_infer_failed = CASE id WHEN 'db_i1' THEN 0 ELSE 1 END",
+    ).run();
+
+    const m = await computeGtmMetrics(env.DB);
+    expect(m.engine.insertsInferOk).toBe(19);
+    expect(m.engine.insertsInferFailed).toBe(1);
+    expect(m.engine.insertInferenceRate).toBeCloseTo(0.95);
   });
 });
 

@@ -137,6 +137,7 @@ import {
 } from "./http.ts";
 import { httpsRedirectTarget, withHsts } from "./https-enforce.ts";
 import { idempotencyLookup, idempotencyStore } from "./idempotency.ts";
+import { orchestrateInsert } from "./insert/orchestrate.ts";
 import { alertRnd } from "./internal-alert.ts";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
 import { getLLMRouter } from "./llm-router.ts";
@@ -2043,6 +2044,97 @@ app.post("/v1/run", requirePrincipal, async (c) => {
           .catch(() => undefined),
       );
 
+      return c.json({ status: "ok" as const, ...outcome.result });
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// `POST /v1/insert` — deterministic structured insert (SK-SCHEMA-012,
+// GLOBAL-041 Phase A step 10): `{ db, table, rows }` lands with no model call,
+// widening the table/columns it names in the same transaction. Account keys
+// only — pk_live and anon are read-only, as on `/v1/run`.
+app.post("/v1/insert", requirePrincipal, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.insert", async (span) => {
+    try {
+      const principal = c.var.principal as Principal;
+      span.setAttribute("nlqdb.principal.kind", principal.kind);
+      span.setAttribute("nlqdb.surface", surfaceFromPrincipal(principal));
+      if (principal.kind === "pk_live" || principal.kind === "anon") {
+        span.setAttribute("nlqdb.insert.outcome", "forbidden");
+        return fail(c, "forbidden", { reason: "read_only_principal" });
+      }
+      const raw = await parseJsonBody<{ db?: unknown; table?: unknown; rows?: unknown }>(c);
+      if (!raw.ok) return fail(c, "invalid_json");
+      const { db, table, rows } = raw.body ?? {};
+      if (typeof db !== "string" || db.length === 0) return fail(c, "db_required");
+      if (typeof table !== "string" || !Array.isArray(rows)) {
+        return fail(c, "invalid_body", {
+          reason: "Send `table` as a string and `rows` as an array of objects.",
+        });
+      }
+
+      const askDeps = buildAskDeps(c.env);
+      const [{ validateCompiledDdl }, { buildPgClient, resolveDatabaseUrl }] = await Promise.all([
+        import("./ask/sql-validate-ddl.ts"),
+        import("./db-create/pg-client.ts"),
+      ]);
+      const outcome = await orchestrateInsert(
+        {
+          resolveDb: askDeps.resolveDb,
+          rateLimiter: askDeps.rateLimiter,
+          pg: buildPgClient(resolveDatabaseUrl(c.env)),
+          d1: c.env.DB,
+          validateCompiledDdl,
+        },
+        {
+          dbId: db,
+          table,
+          rows: rows as Record<string, unknown>[],
+          userId: principal.id,
+          rateLimitBucketKey: rateLimitBucketKey(principal),
+        },
+      );
+
+      // SK-SCHEMA-012 — the KPI-1 sample: inserts that named an unseen table
+      // or field, split by outcome. Synthetic walkers never count.
+      if (outcome.widened && !isSyntheticUserAgent(c.req.header("user-agent"))) {
+        c.executionCtx.waitUntil(
+          c.env.DB.prepare(
+            "UPDATE databases SET inserts_infer_ok = inserts_infer_ok + ?, inserts_infer_failed = inserts_infer_failed + ? WHERE id = ? AND tenant_id = ?",
+          )
+            .bind(outcome.ok ? 1 : 0, outcome.ok ? 0 : 1, db, principal.id)
+            .run()
+            .catch(() => undefined),
+        );
+      }
+      span.setAttribute("nlqdb.insert.widened", outcome.widened);
+
+      if (!outcome.ok) {
+        if (outcome.error.code === "rate_limited") {
+          const { limit, count, resetAt } = outcome.error;
+          const now = Math.floor(Date.now() / 1000);
+          c.header("X-RateLimit-Limit", String(limit));
+          c.header("X-RateLimit-Remaining", String(Math.max(0, limit - count)));
+          c.header("X-RateLimit-Reset", String(resetAt));
+          c.header("Retry-After", String(Math.max(0, resetAt - now)));
+        }
+        span.setAttribute("nlqdb.insert.outcome", outcome.error.code);
+        return errorResponse(c, outcome.error);
+      }
+
+      span.setAttribute("nlqdb.insert.outcome", "ok");
+      span.setAttribute("nlqdb.insert.rows", outcome.result.rowCount);
+      c.executionCtx.waitUntil(
+        c.env.DB.prepare(
+          "UPDATE databases SET last_queried_at = unixepoch() WHERE id = ? AND tenant_id = ?",
+        )
+          .bind(db, principal.id)
+          .run()
+          .catch(() => undefined),
+      );
       return c.json({ status: "ok" as const, ...outcome.result });
     } finally {
       span.end();

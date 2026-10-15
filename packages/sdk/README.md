@@ -76,6 +76,7 @@ unless the client was built with `withCredentials: true`.
 ```ts
 client.ask({ goal, dbId }, { signal? })           // POST /v1/ask
 client.runSql({ db, sql, params? }, { signal?, idempotencyKey? }) // POST /v1/run
+client.insert({ db, table, rows }, { signal?, idempotencyKey? })   // POST /v1/insert
 client.databases.connect({ engine, connectionUrl, name? }) // POST /v1/db/connect
 client.listChat({ signal? })                       // GET  /v1/chat/messages
 client.postChat({ goal, dbId }, { signal? })       // POST /v1/chat/messages
@@ -89,6 +90,12 @@ client.clearByollm()                               // DELETE /v1/keys/byollm
 rejected. Use it when the LLM-emitted SQL is the wrong shape and you
 want to hand-write the query — the response carries the same `trace`
 block as `ask()`.
+
+`insert` writes rows with no data modelling: types come from the JSON
+values, keys become lower_snake_case columns (`serverId` → `server_id`),
+and a table or field the database hasn't seen is created in the same
+transaction — no model call on the write. The response carries the rows
+as stored (`RETURNING *`) and, when it created anything, `widen.ddl`.
 
 `databases.connect` is the bring-your-own-database verb
 (`SK-DBCONN-001`): connect your own Postgres or ClickHouse and query it
