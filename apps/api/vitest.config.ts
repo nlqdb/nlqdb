@@ -188,6 +188,7 @@ export default defineConfig(async () => {
               "test/libpg-query-workerd.test.ts",
               "test/first10.test.ts",
               "test/run.test.ts",
+              "test/insert.test.ts",
               "test/admin-metrics.test.ts",
             ],
             setupFiles: ["./test/apply-migrations.ts"],

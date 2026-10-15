@@ -117,7 +117,7 @@ The hosted-premium model lane went live 2026-08-14. The full model strategy is i
 
 | Surface | Status | Where |
 |---|---|---|
-| HTTP API (`POST /v1/ask`, `POST /v1/run`) | ✓ shipped | `apps/api/src/ask/**` |
+| HTTP API (`POST /v1/ask`, `POST /v1/run`, `POST /v1/insert`) | ✓ shipped | `apps/api/src/ask/**` |
 | `<nlq-data>` + `<nlq-action>` elements | ✓ shipped (v0.1) | `packages/elements/**` |
 | `@nlqdb/sdk` (TypeScript) | ✓ shipped (incl. `runSql` + cross-tenant grant + pack-import runner verbs) — installable from npm (`0.4.0`) | `packages/sdk/**` |
 | Framework wrappers (React / Next / Vue / Nuxt / Svelte / SvelteKit / Astro / Solid + Swift) | ~ built + CI-tested; npm / SPM publish pending | `packages/{react,next,…}/**` |
@@ -185,8 +185,9 @@ Build order in [`GLOBAL-041`](./docs/decisions/GLOBAL-041-autonomous-dba.md).
   `<nlq-data>`; CLI/web render pending
 - ✓ KPI counters `asks_extend_ok` / `asks_extend_failed` on the `/v1/ask` write path
   (`SK-SCHEMA-010`; the rate reads on `/app/admin`)
-- ◯ Deterministic `insert(table, rows)` — types from the values, no LLM on the
-  write path; the LLM's better types and names arrive later as proposals
+- ~ Deterministic `insert(table, rows)` — types from the values, no LLM on the
+  write path; the LLM's better types and names arrive later as proposals.
+  `POST /v1/insert` + SDK `insert()` built (`SK-SCHEMA-012`); `nlq` + MCP pending
 - ◯ rateme12 on nlqdb with real traffic, then ~10 hand-picked builders
 - ◯ Phase B — `pg_stat_*` + `EXPLAIN` collection → typed proposals (index /
   retype / drop / rename / move-to-engine) → `/app/dba` dashboard with

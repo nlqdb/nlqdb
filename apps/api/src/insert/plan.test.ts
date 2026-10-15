@@ -61,6 +61,11 @@ describe("planInsert", () => {
     expect(uuids.ok && uuids.value.plan.create_tables[0]?.columns[0]?.type).toBe("uuid");
   });
 
+  it("lets a row that omits the app's id take the generated one", () => {
+    const out = planInsert(none, "s1", "servers", [{ id: 7, name: "a" }, { name: "b" }]);
+    expect(out.ok && out.value.insert.sql).toContain("VALUES ($1, $2), (DEFAULT, $3)");
+  });
+
   it("adds only the unseen fields of an observed table, nullable", () => {
     const observed: ObservedSchema = new Map([
       [
@@ -87,8 +92,9 @@ describe("planInsert", () => {
         },
       ],
     });
-    // A jsonb column takes any value as its JSON text; a missing field is NULL.
-    expect(out.value.insert.params).toEqual(["up", '"plain"', 2, "down", null, "heavy"]);
+    // A jsonb column takes any value as its JSON text; a missing field is DEFAULT.
+    expect(out.value.insert.sql).toMatch(/VALUES \(\$1, \$2, \$3\), \(\$4, DEFAULT, \$5\)/);
+    expect(out.value.insert.params).toEqual(["up", '"plain"', 2, "down", "heavy"]);
   });
 
   it("does not widen a write whose fields are all observed", () => {
@@ -105,6 +111,7 @@ describe("planInsert", () => {
     ["two keys on one column", "t", [{ serverId: 1, server_id: 2 }]],
     ["a non-finite number", "t", [{ n: Number.NaN }]],
     ["a table with no letters", "42", [{ a: 1 }]],
+    ["a Postgres system column name", "t", [{ xmin: 1 }]],
   ])("rejects %s with a reason", (_label, table, rows) => {
     const out = planInsert(none, "s1", table, rows as Record<string, unknown>[]);
     expect(out.ok).toBe(false);

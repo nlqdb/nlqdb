@@ -2054,7 +2054,7 @@ app.post("/v1/run", requirePrincipal, async (c) => {
 // `POST /v1/insert` — deterministic structured insert (SK-SCHEMA-012,
 // GLOBAL-041 Phase A step 10): `{ db, table, rows }` lands with no model call,
 // widening the table/columns it names in the same transaction. Account keys
-// only — pk_live and anon are read-only, as on `/v1/run`.
+// only — pk_live and anon are read-only.
 app.post("/v1/insert", requirePrincipal, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.insert", async (span) => {
@@ -2074,6 +2074,14 @@ app.post("/v1/insert", requirePrincipal, async (c) => {
         return fail(c, "invalid_body", {
           reason: "Send `table` as a string and `rows` as an array of objects.",
         });
+      }
+      // GLOBAL-005 — the SDK re-sends a timed-out insert under the same key
+      // (SK-SDK-006); replay the committed result instead of landing the rows twice.
+      const idemKey = c.req.header("idempotency-key");
+      const prior = await idempotencyLookup(c.env.KV, "insert", principal.id, idemKey);
+      if (prior) {
+        span.setAttribute("nlqdb.insert.outcome", "idempotent_replay");
+        return c.json(prior);
       }
 
       const askDeps = buildAskDeps(c.env);
@@ -2135,7 +2143,9 @@ app.post("/v1/insert", requirePrincipal, async (c) => {
           .run()
           .catch(() => undefined),
       );
-      return c.json({ status: "ok" as const, ...outcome.result });
+      const body = { status: "ok" as const, ...outcome.result };
+      idempotencyStore(c.executionCtx, c.env.KV, "insert", principal.id, idemKey, body);
+      return c.json(body);
     } finally {
       span.end();
     }

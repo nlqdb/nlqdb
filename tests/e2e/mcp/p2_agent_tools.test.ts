@@ -25,6 +25,7 @@ function stubClient(overrides: Partial<NlqClient>): NlqClient {
     mintKey: notStubbed("mintKey"),
     revokeKey: notStubbed("revokeKey"),
     redeemOAuthBridgeCode: notStubbed("redeemOAuthBridgeCode"),
+    insert: notStubbed("insert"),
     remember: notStubbed("remember"),
     setByollm: notStubbed("setByollm"),
     getByollmStatus: notStubbed("getByollmStatus"),

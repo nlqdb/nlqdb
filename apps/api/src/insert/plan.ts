@@ -68,6 +68,9 @@ function mergedType(kinds: Set<ValueKind>): ColumnType {
   return kinds.has("jsonb") ? "jsonb" : "text";
 }
 
+// Postgres reserves these on every table; a CREATE/ADD naming one fails 42701.
+const SYSTEM_COLUMNS = new Set(["tableoid", "xmin", "cmin", "xmax", "cmax", "ctid"]);
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function idType(values: unknown[]): ColumnType {
@@ -109,6 +112,9 @@ export function planInsert(
     for (const [key, value] of Object.entries(row)) {
       const col = columnName(key);
       if (!col) return { ok: false, reason: `Field "${key.slice(0, 60)}" has no letters.` };
+      if (SYSTEM_COLUMNS.has(col)) {
+        return { ok: false, reason: `Field "${col}" is a Postgres system column name; rename it.` };
+      }
       if (out.has(col)) {
         return { ok: false, reason: `Two fields in one row both map to the column "${col}".` };
       }
@@ -157,11 +163,14 @@ export function planInsert(
     }
   }
 
+  // A key a row omits is `DEFAULT`, not NULL, so a generated `id` or a
+  // `created_at DEFAULT now()` still fills in a mixed-shape batch.
   const params: unknown[] = [];
   const tuples = named.map(
     (row) =>
       `(${columns
         .map((col) => {
+          if (!row.has(col)) return "DEFAULT";
           params.push(param(row.get(col), types.get(col)));
           return `$${params.length}`;
         })
