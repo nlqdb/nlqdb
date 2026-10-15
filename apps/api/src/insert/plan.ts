@@ -79,10 +79,13 @@ function idType(values: unknown[]): ColumnType {
   return mergedType(new Set(values.map((v) => kindOf(v) ?? "text")));
 }
 
-// A JSON column takes the JSON text of any value; any other column takes an
-// object as its JSON text and a primitive as itself (Postgres casts it).
+// A JSON column takes the JSON text of any value; an array column (the
+// create path's `text_array`, `data_type` `ARRAY`) takes a JSON array as is,
+// which the driver binds as a Postgres array literal; any other column takes
+// an object as its JSON text and a primitive as itself (Postgres casts it).
 function param(v: unknown, pgType: string | undefined): unknown {
   if (v === undefined || v === null) return null;
+  if (pgType === "ARRAY" && Array.isArray(v)) return v;
   if (pgType === "jsonb" || pgType === "json" || typeof v === "object") return JSON.stringify(v);
   return v;
 }

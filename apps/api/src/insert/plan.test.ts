@@ -97,6 +97,14 @@ describe("planInsert", () => {
     expect(out.value.insert.params).toEqual(["up", '"plain"', 2, "down", "heavy"]);
   });
 
+  it("binds a JSON array as is into a create-path text[] column", () => {
+    // `information_schema` reports `text[]` as `ARRAY`; its JSON text would be
+    // a malformed array literal (22P02), the driver's array binding is not.
+    const observed: ObservedSchema = new Map([["posts", new Map([["tags", "ARRAY"]])]]);
+    const out = planInsert(observed, "s1", "posts", [{ tags: ["a", "b"] }]);
+    expect(out.ok && out.value.insert.params).toEqual([["a", "b"]]);
+  });
+
   it("does not widen a write whose fields are all observed", () => {
     const observed: ObservedSchema = new Map([["votes", new Map([["vote", "text"]])]]);
     const out = planInsert(observed, "s1", "votes", [{ vote: "up" }]);
