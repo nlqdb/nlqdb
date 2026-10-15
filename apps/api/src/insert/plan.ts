@@ -29,6 +29,9 @@ export type InsertPlan = {
   // True when the write named a table or field the schema had not observed —
   // the KPI-1 sample (`inserts_infer_*`, SK-SCHEMA-012).
   widens: boolean;
+  // Runs right before `insert` when a row names an integer `id`: moves the
+  // id's sequence past it (see `SEQUENCE_SQL`). Absent otherwise.
+  sequence?: PgTransactionStatement;
   insert: PgTransactionStatement;
 };
 
@@ -89,6 +92,14 @@ function param(v: unknown, pgType: string | undefined): unknown {
   if (pgType === "jsonb" || pgType === "json" || typeof v === "object") return JSON.stringify(v);
   return v;
 }
+
+// An app-supplied integer `id` does not advance an identity sequence, so a
+// row that takes DEFAULT — later in the batch or in a later call — would draw
+// the same id (23505). Lift the sequence to the batch's largest explicit id
+// before the INSERT; never lower it. A no-op on an `id` with no sequence.
+const SEQUENCE_SQL =
+  "SELECT setval(seq::regclass, GREATEST($1::bigint, COALESCE(pg_sequence_last_value(seq::regclass), 0))) " +
+  "FROM pg_get_serial_sequence($2, 'id') AS seq WHERE seq IS NOT NULL";
 
 export function planInsert(
   observed: ObservedSchema,
@@ -173,7 +184,8 @@ export function planInsert(
     (row) =>
       `(${columns
         .map((col) => {
-          if (!row.has(col)) return "DEFAULT";
+          // A null `id` is no id: the key is NOT NULL, so it takes DEFAULT too.
+          if (!row.has(col) || (col === "id" && row.get(col) === null)) return "DEFAULT";
           params.push(param(row.get(col), types.get(col)));
           return `$${params.length}`;
         })
@@ -183,12 +195,18 @@ export function planInsert(
     `INSERT INTO ${quoted(schemaName, table)} (${columns.map(quoteIdent).join(", ")}) ` +
     `VALUES ${tuples.join(", ")} RETURNING *`;
 
+  const ids = named.map((r) => r.get("id")).filter((v) => Number.isSafeInteger(v)) as number[];
+  const maxId = Math.max(0, ...ids);
+
   return {
     ok: true,
     value: {
       table,
       plan,
       widens: plan.create_tables.length + plan.add_columns.length > 0,
+      ...(types.has("id") && maxId >= 1
+        ? { sequence: { sql: SEQUENCE_SQL, params: [maxId, quoted(schemaName, table)] } }
+        : {}),
       insert: { sql, params },
     },
   };

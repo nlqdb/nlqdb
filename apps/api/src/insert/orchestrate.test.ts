@@ -101,6 +101,17 @@ describe("orchestrateInsert", () => {
     expect(batch.map((s) => s.sql.split(" ")[0])).toEqual(["SET", "INSERT"]);
   });
 
+  it("lifts the id sequence right before an INSERT that names an integer id", async () => {
+    const pg = pgStub([
+      { table_name: "votes", column_name: "id", data_type: "bigint" },
+      { table_name: "votes", column_name: "vote", data_type: "text" },
+    ]);
+    await orchestrateInsert(deps(pg), { ...req, rows: [{ id: 9, vote: "up" }, { vote: "down" }] });
+    const batch = vi.mocked(pg.transaction).mock.calls[0]?.[0] as PgTransactionStatement[];
+    expect(batch.map((s) => s.sql.split(" ")[0])).toEqual(["SET", "SELECT", "INSERT"]);
+    expect(batch[1]?.params).toEqual([9, '"app1"."votes"']);
+  });
+
   it("re-observes and re-plans once when a concurrent insert widened first", async () => {
     let calls = 0;
     const pg = pgStub([], async (s) => {

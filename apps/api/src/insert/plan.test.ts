@@ -61,9 +61,22 @@ describe("planInsert", () => {
     expect(uuids.ok && uuids.value.plan.create_tables[0]?.columns[0]?.type).toBe("uuid");
   });
 
-  it("lets a row that omits the app's id take the generated one", () => {
-    const out = planInsert(none, "s1", "servers", [{ id: 7, name: "a" }, { name: "b" }]);
-    expect(out.ok && out.value.insert.sql).toContain("VALUES ($1, $2), (DEFAULT, $3)");
+  it("lets a row that omits (or nulls) the app's id take the generated one", () => {
+    const out = planInsert(none, "s1", "servers", [
+      { id: 7, name: "a" },
+      { name: "b" },
+      { id: null, name: "c" },
+    ]);
+    expect(out.ok && out.value.insert.sql).toContain(
+      "VALUES ($1, $2), (DEFAULT, $3), (DEFAULT, $4)",
+    );
+    // …after the id sequence is lifted past the explicit 7, so DEFAULT draws 8.
+    expect(out.ok && out.value.sequence?.params).toEqual([7, '"s1"."servers"']);
+  });
+
+  it("lifts no sequence when no row names an integer id", () => {
+    const out = planInsert(none, "s1", "servers", [{ name: "a" }, { id: null }]);
+    expect(out.ok && out.value.sequence).toBeUndefined();
   });
 
   it("adds only the unseen fields of an observed table, nullable", () => {

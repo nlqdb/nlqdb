@@ -148,6 +148,7 @@ export async function orchestrateInsert(
       statements = batch.statements;
       ddl = compiled.statements;
     }
+    if (planned.value.sequence) statements.splice(-1, 0, planned.value.sequence);
     exec = await executeWidenBatch({ pg: deps.pg }, statements);
     if (exec.ok || !RACED.has(exec.sqlState ?? "")) break;
   }
