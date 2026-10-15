@@ -29,7 +29,11 @@ export const at =
   (t) =>
     t.getUTCHours() === hour && t.getUTCMinutes() === minute;
 
-export const hourly: When = (t) => t.getUTCMinutes() === 0;
+// `minute` must be a multiple of 4 — the only minutes the trigger fires on.
+export const hourlyAt =
+  (minute: number): When =>
+  (t) =>
+    t.getUTCMinutes() === minute;
 
 export const weeklyAt =
   (day: number, hour: number): When =>
@@ -88,8 +92,10 @@ export const JOBS: Job[] = [
     // SK-HDC-024 — Neon caps a branch at 500 roles. Counts live vs orphan
     // `tenant_*` roles every hour; drops orphans only once the founder sets
     // `TENANT_ROLE_REAP=1` (dropping production roles is an owner decision).
+    // :32, off the :00 ticks the 04:00 / Mon 06:00 jobs share, so its
+    // drops never spend their Workers-Free 50-subrequest budget.
     name: "tenant_role_reap",
-    when: hourly,
+    when: hourlyAt(32),
     run: async (env) => {
       if (!env.DATABASE_URL) return;
       const { buildPgClient } = await import("../db-create/pg-client.ts");

@@ -18,14 +18,14 @@ is red on every PR. Once the run-248 PR is deployed, the hourly
 in, because dropping prod roles is your call
 ([`SK-HDC-024`](./features/hosted-db-create/decisions/SK-HDC-024-tenant-role-reap.md)).
 
-1. After the next full hour, open
+1. After :32 past the next hour, open
    [Workers Logs for `nlqdb-api`](https://dash.cloudflare.com/?to=/:account/workers/services/view/nlqdb-api/production/observability/logs) and find
    `"msg":"tenant_role_reap"`: `rolesTotal − rolesLive` = roles a drop frees.
    If that is near 0, the cap is live tenants, not leaks — stop here and
    comment the line on the run-248 PR.
 2. If that looks right: `cd apps/api && wrangler secret put TENANT_ROLE_REAP`
    with value `1`.
-3. An hour later the log shows `reaped` > 0 (50 per hour). Re-run the
+3. An hour later the log shows `reaped` > 0 (40 per hour). Re-run the
    `apps/api smoke` job on any PR; it goes green once ≥ 1 role is free.
 4. Log the action in `history/founder-actions-log.md`, then delete this bullet.
 

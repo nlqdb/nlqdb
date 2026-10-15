@@ -20,10 +20,11 @@ import { assertSafeIdentifier } from "../db-create/neon-provision.ts";
 import type { PgClient, PgTransactionStatement } from "../db-create/types.ts";
 import { assertTenantRoleName, tenantRoleName } from "../tenant-role.ts";
 
-// Bounded work per tick: the job runs hourly, so a backlog drains in hours.
-// Dropping is founder-gated — `TENANT_ROLE_REAP=1` on the api Worker; unset,
-// the job passes batch 0 and only counts (the instrument for the role cap).
-export const REAP_BATCH = 50;
+// Each drop is one Neon fetch, and Workers Free allows 50 subrequests per
+// invocation: 40 + the catalog read + the D1 read + keep-warm + span flush
+// stays under it. Dropping is founder-gated — `TENANT_ROLE_REAP=1` on the
+// api Worker; unset, the job passes batch 0 and only counts.
+export const REAP_BATCH = 40;
 
 // Every `tenant_*` role with the schemas it holds a grant on (none → one
 // row with a null schema). One catalog read for the whole run.
