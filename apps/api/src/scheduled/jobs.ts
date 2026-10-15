@@ -9,6 +9,7 @@
 import { createPipeManagementClient, createTinybirdAdapter } from "@nlqdb/db";
 import { writeDailyGtmSnapshot } from "../admin/gtm-metrics.ts";
 import { reconcilePremiumMeter } from "../billing/premium/index.ts";
+import { REAP_BATCH, reapTenantRoles } from "../db-sweep/role-reap.ts";
 import { sweepAnonDatabases } from "../db-sweep/sweep.ts";
 import { runIcpCluster } from "../icp-cluster.ts";
 import { runIcpScore } from "../icp-score.ts";
@@ -27,6 +28,12 @@ export const at =
   (hour: number, minute = 0): When =>
   (t) =>
     t.getUTCHours() === hour && t.getUTCMinutes() === minute;
+
+// `minute` must be a multiple of 4 — the only minutes the trigger fires on.
+export const hourlyAt =
+  (minute: number): When =>
+  (t) =>
+    t.getUTCMinutes() === minute;
 
 export const weeklyAt =
   (day: number, hour: number): When =>
@@ -79,6 +86,22 @@ export const JOBS: Job[] = [
         evicted_by_cap: sweep.evictedByCap.length,
         total_anon_after: sweep.totalAnonAfter,
       });
+    },
+  },
+  {
+    // SK-HDC-024 — Neon caps a branch at 500 roles. Counts live vs orphan
+    // `tenant_*` roles every hour; drops orphans only once the founder sets
+    // `TENANT_ROLE_REAP=1` (dropping production roles is an owner decision).
+    // :32, off the :00 ticks the 04:00 / Mon 06:00 jobs share, so its
+    // drops never spend their Workers-Free 50-subrequest budget.
+    name: "tenant_role_reap",
+    when: hourlyAt(32),
+    run: async (env) => {
+      if (!env.DATABASE_URL) return;
+      const { buildPgClient } = await import("../db-create/pg-client.ts");
+      const batch = env.TENANT_ROLE_REAP === "1" ? REAP_BATCH : 0;
+      const result = await reapTenantRoles(buildPgClient(env.DATABASE_URL), env.DB, batch);
+      info({ msg: "tenant_role_reap", ...result });
     },
   },
   {

@@ -118,6 +118,7 @@ export default defineConfig(async () => {
               "src/run/orchestrate.test.ts",
               "src/memory/expire.test.ts",
               "src/scheduled/jobs.test.ts",
+              "src/db-sweep/role-reap.test.ts",
               "src/memory/remember.test.ts",
               "src/pack-runner/**/*.test.ts",
             ],

@@ -151,7 +151,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.sql.validate`          | SQL parse + schema-fit check.                  |
 | `db.query`                    | Neon HTTP execute — standard OTel `db.*`. Attributes: `db.system=postgresql`, `db.operation.name`, `db.statement` (PII-redacted SQL text). |
 | `db.transaction`              | One Neon HTTP `transaction([...])` round-trip; no per-statement `db.query` nests under it. Always `db.system=postgresql`; on failure `db.transaction.error_sqlstate` (SK-HDC-017). Emitters: db.create provision batch (SK-HDC-012 — adds `db.transaction.statement_count`, `db.transaction.batch_call=true`) and the ACL retarget (SK-ANON-003 / SK-ASK-024 — adds `nlqdb.anon.adopt.regrant_db_id`; heal stamps `nlqdb.ask.acl_healed` on the request span). |
-| `db.query` (Neon keep-warm)   | SK-HDC-014 — every-4-min `SELECT 1` cron ping; discriminator `nlqdb.cron="keep_warm"`. Owner: `db-create/pg-client.ts:keepNeonWarm`. |
+| `db.query`/`db.transaction` (cron) | `nlqdb.cron` names the job: `keep_warm` (SK-HDC-014 `SELECT 1`), `tenant_role_reap` (SK-HDC-024 role read + per-role drop). |
 | `nlqdb.auth.oauth.callback`   | `/api/auth/callback/{github,google}` flow.     |
 | `nlqdb.anon.adopt`            | Better Auth `after`-hook adoption hop (SK-ANON-012): wraps `recordAnonAdoption()` (SK-ANON-003) on magic-link / OAuth callback when `__Secure-anon-bearer` is present. Carries `nlqdb.user.id`, `nlqdb.anon.adopt.outcome ∈ {adopted, replay, invalid_cookie, invalid_token, token_taken, internal}`. Owner: `apps/api/src/auth.ts`. |
 | `nlqdb.webhook.stripe`        | Stripe webhook handler.                        |
@@ -222,7 +222,7 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | `nlqdb.surface`        | 5                    | `hero` / `chat` / `embed` / `mcp` / `cli`. Span attr on `nlqdb.ask`, `nlqdb.chat.turn`, `nlqdb.databases.create` + `feature.*` events (`SK-EVENTS-010`); derived once via `surfaceFromPrincipal()`. |
 | `status` (on `llm.calls.total`) | 3              | `ok` / `error` / `hedge_lost` (SK-LLM-014, cancelled hedge legs); filter `status="error"` for real failures. |
 | `reason` (on `llm.failover.total`) | bounded     | `FailoverReason` set + `hedge_lost` (SK-LLM-014). |
-| `nlqdb.cron`            | bounded (~3)        | On `db.query` keep-warm pings (SK-HDC-014); a fixed job-name literal, never the cron string. |
+| `nlqdb.cron`            | bounded (~3)        | Cron job name on its spans (row above); a literal, never the cron string. |
 | `sized`                | 3                   | `standard` / `large` / `refused` — hosted-premium cost/token histograms (SK-PREMIUM-010). |
 | `nlqdb.llm.hedge_lost`  | 2 (boolean)         | Span-only on `llm.<op>` for a hedge-cancelled leg (SK-LLM-014); `hedge_lost=true`. Not a metric label. |
 | `llm.dispatch_lane` / `llm.billed_to` / `llm.byollm_provider` / `llm.byollm_source` / `llm.model_preset` / `llm.byollm_degraded` | 3 / 3 / ~5 / 2 / 3 / 1 | Ask-span only (SK-LLM-020, GLOBAL-026): lane `free`/`byollm`/`premium`; billed-to `platform`/`byollm`/`metered`; byollm slug (not the model); source `header`/`account` (SK-PREMIUM-012); preset `auto`/`fast`/`best`, stamped only when the request sent one (SK-PREMIUM-014 §6 demand signal); `byollm_degraded=gateway_unconfigured` stamped only when the ambient account lane fell back to the free chain because AI Gateway is unset (SK-LLM-021). Not metric labels. |

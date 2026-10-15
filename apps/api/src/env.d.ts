@@ -206,6 +206,10 @@ declare global {
       // untouched (the preset path is opt-in).
       MEMORY_PRESET?: string;
 
+      // SK-HDC-024 — founder opt-in for the hourly tenant-role reaper to
+      // drop orphan roles. Unset: the job only counts them.
+      TENANT_ROLE_REAP?: string;
+
       // Tinybird credentials for the W5 workload analyser (`SK-MIGRATE-001`).
       // The cron reads `query_log` via the Tinybird adapter and
       // creates Pipes via the management API. When unset, the

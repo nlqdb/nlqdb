@@ -1,7 +1,16 @@
 // SK-HDC-023 — job selection off the scheduled minute + per-job isolation.
 
 import { describe, expect, it, vi } from "vitest";
-import { at, dueJobs, JOBS, type Job, runDueJobs, weekdaysBetween, weeklyAt } from "./jobs.ts";
+import {
+  at,
+  dueJobs,
+  hourlyAt,
+  JOBS,
+  type Job,
+  runDueJobs,
+  weekdaysBetween,
+  weeklyAt,
+} from "./jobs.ts";
 
 // 2026-09-07 is a Monday.
 const utc = (day: number, hh: number, mm: number) => Date.UTC(2026, 8, day, hh, mm);
@@ -18,6 +27,10 @@ describe("time predicates", () => {
     expect(at(4)(new Date(utc(MON, 4, 0)))).toBe(true);
     expect(at(4)(new Date(utc(MON, 4, 4)))).toBe(false);
     expect(at(4, 4)(new Date(utc(MON, 4, 4)))).toBe(true);
+  });
+  it("hourlyAt() matches its minute of every hour only", () => {
+    expect(hourlyAt(32)(new Date(utc(SAT, 13, 32)))).toBe(true);
+    expect(hourlyAt(32)(new Date(utc(SAT, 13, 0)))).toBe(false);
   });
   it("weeklyAt() uses getUTCDay (0 = Sun)", () => {
     expect(weeklyAt(1, 6)(new Date(utc(MON, 6, 0)))).toBe(true);
@@ -42,8 +55,14 @@ describe("JOBS selection by scheduledTime", () => {
   it("04:00 Sunday → the four daily jobs", () => {
     expect(due(utc(SUN, 4, 0))).toEqual(DAILY);
   });
+  it("04:32 any day → the role reap alone (never on a :00 job tick)", () => {
+    expect(due(utc(SUN, 4, 32))).toEqual(["tenant_role_reap"]);
+  });
   it("13:00 Mon → keep-warm only", () => {
     expect(due(utc(MON, 13, 0))).toEqual(["neon_keep_warm"]);
+  });
+  it("13:32 Mon → keep-warm + the hourly role reap", () => {
+    expect(due(utc(MON, 13, 32))).toEqual(["neon_keep_warm", "tenant_role_reap"]);
   });
   it("12:56 Mon → nothing (window not open)", () => {
     expect(due(utc(MON, 12, 56))).toEqual([]);
@@ -56,6 +75,9 @@ describe("JOBS selection by scheduledTime", () => {
   });
   it("13:00 Sat → nothing (weekend)", () => {
     expect(due(utc(SAT, 13, 0))).toEqual([]);
+  });
+  it("13:32 Sat → the role reap only (no weekend keep-warm)", () => {
+    expect(due(utc(SAT, 13, 32))).toEqual(["tenant_role_reap"]);
   });
   it("Mon 06:00 → ICP pipeline only", () => {
     expect(due(utc(MON, 6, 0))).toEqual(["icp_pipeline"]);
