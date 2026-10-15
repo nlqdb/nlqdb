@@ -96,10 +96,12 @@ function param(v: unknown, pgType: string | undefined): unknown {
 // An app-supplied integer `id` does not advance an identity sequence, so a
 // row that takes DEFAULT — later in the batch or in a later call — would draw
 // the same id (23505). Lift the sequence to the batch's largest explicit id
-// before the INSERT; never lower it. A no-op on an `id` with no sequence.
+// before the INSERT, only when that raises it — a setval that kept the value
+// could lower a sequence a concurrent insert advanced meanwhile. A no-op on an
+// `id` with no sequence.
 const SEQUENCE_SQL =
-  "SELECT setval(seq::regclass, GREATEST($1::bigint, COALESCE(pg_sequence_last_value(seq::regclass), 0))) " +
-  "FROM pg_get_serial_sequence($2, 'id') AS seq WHERE seq IS NOT NULL";
+  "SELECT setval(seq::regclass, $1::bigint) FROM pg_get_serial_sequence($2, 'id') AS seq " +
+  "WHERE seq IS NOT NULL AND $1::bigint > COALESCE(pg_sequence_last_value(seq::regclass), 0)";
 
 export function planInsert(
   observed: ObservedSchema,
