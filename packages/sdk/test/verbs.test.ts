@@ -320,3 +320,52 @@ describe("401 handling on a withCredentials client", () => {
     expect(calls).toBe(1);
   });
 });
+
+describe("insert (SK-SCHEMA-012)", () => {
+  it("POSTs /v1/insert with { db, table, rows } + auto Idempotency-Key", async () => {
+    let url = "";
+    let init: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (u, i) => {
+      url = String(u);
+      init = i;
+      return new Response(
+        JSON.stringify({
+          status: "ok",
+          rows: [{ id: "8c4f…", server_id: "s1", vote: "up" }],
+          rowCount: 1,
+          table: "votes",
+          widen: { tables: ["votes"], ddl: ["CREATE TABLE …"], schema_rewritten: true },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({ apiKey: "sk_live_test", fetch: fakeFetch });
+    const out = await client.insert({
+      db: "db_app",
+      table: "votes",
+      rows: [{ serverId: "s1", vote: "up" }],
+    });
+
+    expect(url).toBe("https://app.nlqdb.com/v1/insert");
+    expect(init?.method).toBe("POST");
+    expect(headerBag(init)["idempotency-key"]).toMatch(/^[0-9a-f]{32}$/);
+    expect(JSON.parse(String(init?.body))).toEqual({
+      db: "db_app",
+      table: "votes",
+      rows: [{ serverId: "s1", vote: "up" }],
+    });
+    expect(out).toMatchObject({ status: "ok", rowCount: 1, widen: { tables: ["votes"] } });
+  });
+
+  it("surfaces 403 forbidden for a read-only key as NlqdbApiError", async () => {
+    const fakeFetch: FetchLike = async () =>
+      new Response(JSON.stringify({ error: { code: "forbidden" } }), {
+        status: 403,
+        headers: { "content-type": "application/json" },
+      });
+    const client = createClient({ apiKey: "pk_live_test", fetch: fakeFetch });
+    await expect(
+      client.insert({ db: "db_app", table: "votes", rows: [{ vote: "up" }] }),
+    ).rejects.toMatchObject({ name: "NlqdbApiError", code: "forbidden", httpStatus: 403 });
+  });
+});

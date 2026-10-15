@@ -103,6 +103,12 @@ export type GtmMetrics = {
     /** KPI 1 = extendOk / (extendOk + extendFailed); null at N = 0.
         The Phase-A-exit floor is ≥ 0.95. */
     firstInsertInferenceRate: number | null;
+    /** SK-SCHEMA-012 — structured inserts (`/v1/insert`) that named an unseen
+        table/field and landed / failed: the GLOBAL-041 KPI-1 sample. */
+    insertsInferOk: number;
+    insertsInferFailed: number;
+    /** insertsInferOk / (ok + failed); null at N = 0. Floor ≥ 0.95. */
+    insertInferenceRate: number | null;
   };
   /** Unique-people counts (SK-GTM-005) — the founder's headline ask. */
   uniques: {
@@ -308,7 +314,9 @@ export async function computeGtmMetrics(
         SUM(CASE WHEN last_queried_at >= ?2 THEN 1 ELSE 0 END) AS active30d,
         SUM(CASE WHEN source_json IS NOT NULL THEN 1 ELSE 0 END) AS withSource,
         SUM(asks_extend_ok) AS extendOk,
-        SUM(asks_extend_failed) AS extendFailed
+        SUM(asks_extend_failed) AS extendFailed,
+        SUM(inserts_infer_ok) AS insertsInferOk,
+        SUM(inserts_infer_failed) AS insertsInferFailed
       FROM databases`)
       .bind(cut7d, cut30d),
     db
@@ -524,6 +532,12 @@ export async function computeGtmMetrics(
       firstInsertInferenceRate: ratio(
         num(dc, "extendOk"),
         num(dc, "extendOk") + num(dc, "extendFailed"),
+      ),
+      insertsInferOk: num(dc, "insertsInferOk"),
+      insertsInferFailed: num(dc, "insertsInferFailed"),
+      insertInferenceRate: ratio(
+        num(dc, "insertsInferOk"),
+        num(dc, "insertsInferOk") + num(dc, "insertsInferFailed"),
       ),
     },
     uniques: {

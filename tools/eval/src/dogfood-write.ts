@@ -41,7 +41,7 @@ export function parseLastChange(md: string): RunRecord | null {
   if (!section) return null;
   const entry = section.trim().split(/\n\s*\n/)[0] ?? "";
   const m = entry.match(
-    /^\*\*(\d{4}-\d{2}-\d{2}) \(run (\d+)\)\*\*\s*—\s*\*\*(.+?)\*\*\s*([\s\S]*)$/,
+    /^\*\*(\d{4}-\d{2}-\d{2}) \(run (\d+)\)\*\*\s*[—:]\s*\*\*(.+?)\*\*\s*([\s\S]*)$/,
   );
   if (!m) return null;
   const [, date = "", run = "", headline = "", details = ""] = m;

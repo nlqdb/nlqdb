@@ -6,6 +6,7 @@ when-to-load:
     - apps/api/src/db-registry.ts
     - apps/api/src/ask/orchestrate.ts
     - apps/api/src/ask/extend.ts
+    - apps/api/src/insert/**
     - apps/api/src/ask/types.ts
     - packages/db/**
   topics: [schema, schema_hash, evolution, widening, inference, fingerprint, plan-cache]
@@ -14,13 +15,14 @@ when-to-load:
 # Feature: Schema Evolution
 
 **One-liner:** The logical schema is inferred from inserts and reads and evolves in both directions (add / drop / rename / retype / index) as typed, previewed, versioned operations the engine generates — never a user-authored migration. `schema_hash` is the version.
-**Status:** partial — `schema_hash` plumbed end-to-end; `/v1/ask` KPI-1 counters live (`SK-SCHEMA-010`). Phase A widen-on-write built + wired end-to-end (steps 1–7, 9; `git log` runs 196–215): `/v1/ask` absorbs a hosted INSERT to an unobserved **table** (`42P01`) or **column** (`42703`) via `orchestrate.ts` Defenses A/B → `extendOnWrite` (design `WidenPlan` → compile + allow-list DDL, `compile-write-ddl.ts` → `CREATE TABLE`/`ADD COLUMN` + INSERT in one Neon tx, `SK-SCHEMA-008`) → CAS-rewrite `schema_hash` (`SK-SCHEMA-011`); `build-deps.ts` injects the wire lazily (`SK-ASK-024`). Executor verified vs real Postgres (run 206, 3/3); `trace.widen` parity (run 207). **DEPLOYED 2026-09-14; run-212 WASM-init 500 fixed, confirmed live (run 214: `forceExtend` first-insert on prod).** The last routing gap — an unseen-**table** write on a *pinned* DB classified `kind=create`, dead-ending on the SK-ASK-014 clarify — is closed: a pinned **write-verb** goal now routes `kind=write` (`route-ask.ts` `reason=pinned_write`), reaching Defense B with no clarify/flag (run 215). `forceExtend` remains for the residual create-shaped goal (GLOBAL-003 chip + CLI/MCP gap). Phase B (`SK-SCHEMA-009`) next.
+**Status:** partial — Phase A: `/v1/ask` widen-on-write live since 2026-09-14 (`SK-SCHEMA-008`/`-010`/`-011`; history in `git log` runs 196–215). Step 10, the model-free `insert()` (`SK-SCHEMA-012`), is built on API + SDK; its `nlq insert` and MCP twins are the open `GLOBAL-003` gap. Phase B (`SK-SCHEMA-009`) next.
 **Owners (code):** `apps/api/src/ask/extend.ts`, `apps/api/src/db-registry.ts`, `apps/api/src/ask/orchestrate.ts`, `apps/api/src/ask/types.ts`, `apps/api/src/ask/plan-cache.ts`, `packages/db/**`
 **Cross-refs:** docs/architecture.md §0.1 (on-ramp inversion bullets), §9 row "Schema mismatch" (line 936) · docs/phase-plan.md §1 (plan cache key — Phase 0 deliverable) · docs/performance.md §2.1 stage 4 / §2.2 stage 4 (hash compute budget — 1 ms p50 / 5 ms p99; folded into the parent span, no dedicated `nlqdb.ask.hash`) · [GLOBAL-004](../../decisions/GLOBAL-004-logical-schema-evolves.md) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
 ## Touchpoints — read this feature before editing
 
 - `apps/api/src/ask/extend.ts` — `extendOnWrite` compose; wired from `orchestrate.ts` Defense B via the `extendWrite` dep.
+- `apps/api/src/insert/**` — `POST /v1/insert`, the model-free structured insert (`SK-SCHEMA-012`).
 - `apps/api/src/db-registry.ts` — reads `schema_hash`; `rewriteWidenedSchema` CAS-writes it.
 - `apps/api/src/ask/orchestrate.ts` — guards `/v1/ask` on `db.schemaHash != null`; Defense A/B absorb a hosted write to an unobserved table via `deps.extendWrite`.
 - `apps/api/src/ask/build-deps.ts` — wires `extendWrite` (owner `buildPgClient` + lazily-imported DDL validator; SK-ASK-024).
@@ -53,15 +55,10 @@ when-to-load:
 - **Consequence in code:** `plan-cache.ts` has no widen-aware code paths and never should. Widening writes one D1 row; the cache catches up the next request. PRs that add cache-walk-on-widen logic should be rejected.
 - **Alternatives rejected:** eagerly migrate cache entries to the new hash (expensive scan; the hash change auto-evicts on miss); TTL aligned to widen frequency (couples KV TTL to schema dynamics, fragile).
 
-### SK-SCHEMA-006 — Empty-DB first query: explicit `schema_unavailable` until the observation pipeline lands
+### SK-SCHEMA-006 — A DB with no observed schema answers `schema_unavailable`
 
-- **Decision:** Until the post-Phase-0 observation pipeline lands, an `/v1/ask` request against a DB with `schemaHash == null` returns the error `schema_unavailable` (`apps/api/src/ask/orchestrate.ts` line 116–119). This is the documented Phase 0 behaviour — Phase 0 testing requires a fixture row in D1's `databases` table and a schema seeded directly on Neon (`docs/phase-plan.md §1`).
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** The implicit-create path (goal-with-no-dbId triggers schema inference + provisioner) ships in Phase 1 §4 as the "hosted db.create" slice — it requires the typed-plan validator and Neon-provisioner described in DESIGN §3.6. Bolting a partial inference into Phase 0 would create a code path that diverges from the typed-plan model and would have to be rewritten.
-- **Consequence in code:** `orchestrate.ts` returns `{ status: "schema_unavailable" }` on null hash; do not change this to "infer on the fly" without landing the typed-plan path. When the observation pipeline lands, this branch becomes the bootstrap entry point; the SK-IDs gain a follow-up.
-- **Alternatives rejected:**
-  - Inline schema inference in Phase 0 — duplicates Phase 1's typed-plan work; throws away when the real path lands.
-  - Treat null `schema_hash` as a sentinel "match-anything" hash — silently caches plans against the wrong assumption.
+- **Decision:** `/v1/ask` against a DB whose `schemaHash` is null returns `schema_unavailable` (`ask/orchestrate.ts`); it never guesses a schema on the fly or treats null as match-anything.
+- **Why:** A sentinel hash would cache plans against a shape nobody observed. Every hosted create writes a hash, so null only marks a legacy or half-provisioned row.
 
 ### SK-SCHEMA-008 — First insert creates columns; types widen, never narrow
 
@@ -96,6 +93,10 @@ when-to-load:
 - **Why:** The widen path never holds the original `SchemaPlan`, so it can't reproduce the create-time hash; the DDL text is what D1 already stores and what the BYO path fingerprints, so hashing it needs no new state and any DDL change moves the hash — all `SK-SCHEMA-001` asks of the version. The CAS resolves the multi-Worker race: a concurrent widen that moved the hash first makes the write a no-op and the loser re-observes; widening is monotonic, so a lost CAS costs one observation cycle, never data loss.
 - **Consequence in code:** `widenedSchema` is pure (unit-tested, no D1); `rewriteWidenedSchema` returns `{ updated }` so the routing wire-in (step 1) knows whether to re-read. Old cache entries evict by miss (`SK-SCHEMA-005`). A create-then-widen DB and a directly-created one with the same logical schema can hold different hashes (plan-JSON vs DDL-text fingerprint) — a cross-DB cache-sharing cost only, accepted rather than re-hashing every live create-time entry.
 - **Alternatives rejected:** re-derive the `SchemaPlan` JSON to re-hash (state the widen path doesn't keep); last-write-wins `UPDATE` with no CAS (a lost update persists a hash whose columns another widen replaced).
+
+### SK-SCHEMA-012 — `insert(table, rows)` lands rows with no model
+
+Types from the values (widest safe), unseen shape widened in the same transaction, no preview hop. Body: [`decisions/SK-SCHEMA-012-structured-insert.md`](decisions/SK-SCHEMA-012-structured-insert.md).
 
 ## GLOBALs governing this feature
 
