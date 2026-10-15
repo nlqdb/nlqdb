@@ -18,7 +18,8 @@ is red on every PR. Once the run-248 PR is deployed, the hourly
 in, because dropping prod roles is your call
 ([`SK-HDC-024`](./features/hosted-db-create/decisions/SK-HDC-024-tenant-role-reap.md)).
 
-1. After the next full hour, open Workers Logs for `nlqdb-api` and find
+1. After the next full hour, open
+   [Workers Logs for `nlqdb-api`](https://dash.cloudflare.com/?to=/:account/workers/services/view/nlqdb-api/production/observability/logs) and find
    `"msg":"tenant_role_reap"`: `rolesTotal − rolesLive` = roles a drop frees.
    If that is near 0, the cap is live tenants, not leaks — stop here and
    comment the line on the run-248 PR.

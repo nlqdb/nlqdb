@@ -63,13 +63,6 @@ export async function reapTenantRoles(
 ): Promise<ReapResult> {
   const tracer = trace.getTracer("@nlqdb/api/role-reap");
 
-  const tenants = await d1
-    .prepare("SELECT DISTINCT tenant_id FROM databases")
-    .all<{ tenant_id: string }>();
-  const live = new Set(
-    await Promise.all((tenants.results ?? []).map((r) => tenantRoleName(r.tenant_id))),
-  );
-
   const rows = await tracer.startActiveSpan("db.query", async (span) => {
     span.setAttribute("db.system", "postgresql");
     span.setAttribute("db.operation", "SELECT");
@@ -84,6 +77,15 @@ export async function reapTenantRoles(
       span.end();
     }
   });
+
+  // D1 after the catalog: a create commits its role, then its `databases`
+  // row, so only a create whose two writes straddle both reads is exposed.
+  const tenants = await d1
+    .prepare("SELECT DISTINCT tenant_id FROM databases")
+    .all<{ tenant_id: string }>();
+  const live = new Set(
+    await Promise.all((tenants.results ?? []).map((r) => tenantRoleName(r.tenant_id))),
+  );
 
   const schemasByRole = new Map<string, string[]>();
   for (const { rolname, nspname } of rows) {
