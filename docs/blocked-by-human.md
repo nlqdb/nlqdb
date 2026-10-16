@@ -9,25 +9,6 @@ Operator actions also get one metadata line in
 [`history/founder-actions-log.md`](./history/founder-actions-log.md) — never
 a secret value.
 
-## Turn on the tenant-role reaper (Neon 500/500 roles — hosted create down)
-
-⏱ ~10 min · blocked since 2026-10-15. Prod is at the Neon 500-roles cap, so
-every hosted create fails (422 `roles limit exceeded`). Once the run-248 PR is deployed, the hourly
-`tenant_role_reap` job counts orphan roles; it drops them only after you opt
-in, because dropping prod roles is your call
-([`SK-HDC-024`](./features/hosted-db-create/decisions/SK-HDC-024-tenant-role-reap.md)).
-
-1. After :32 past the next hour, open
-   [Workers Logs for `nlqdb-api`](https://dash.cloudflare.com/?to=/:account/workers/services/view/nlqdb-api/production/observability/logs) and find
-   `"msg":"tenant_role_reap"`: `rolesTotal − rolesLive` = roles a drop frees.
-   If that is near 0, the cap is live tenants, not leaks — stop here and
-   comment the line on the run-248 PR.
-2. If that looks right: `cd apps/api && wrangler secret put TENANT_ROLE_REAP`
-   with value `1`.
-3. An hour later the log shows `reaped` > 0 (40 per hour), and a hosted
-   create on nlqdb.com succeeds.
-4. Log the action in `history/founder-actions-log.md`, then delete this bullet.
-
 ## Cut rateme12 over to nlqdb, then recruit 10 builders
 
 ⏱ ~1 h + ~5 h · blocked since 2026-10-14. Gated — opens when
