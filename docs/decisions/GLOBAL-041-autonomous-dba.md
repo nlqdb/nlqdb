@@ -164,11 +164,11 @@
 Goal: KPI 1 ≥ 95 % on the rateme12 workload above, 0 LLM calls on the
 write path. Steps 1–9 below shipped the `/v1/ask` extend path (live,
 `SK-SCHEMA-008`/`-010`/`-011`); it stays as the chat write path. Remaining,
-in order (revised 2026-10-14):
+in order (revised 2026-10-14, 2026-10-16):
 
 10. ✅ **Deterministic structured insert** (`SK-SCHEMA-012`, deployed
     2026-10-15). Remaining: the live walk on prod; CLI / MCP twins are a
-    tracked `GLOBAL-003` gap that does not block step 12.
+    tracked `GLOBAL-003` gap that does not block step 13.
 11. **Keys and the change ledger** (revised 2026-10-16). `insert({ key })`
     creates a unique index on first use and upserts (`ON CONFLICT … DO
     UPDATE`); a row that fails (duplicate without `key`, value that won't
@@ -200,7 +200,7 @@ Original steps:
 5. Single Neon transaction: widen DDL + `INSERT` commit or roll back together (`db-create/pg-client.ts`; `SK-HDC-010` 30 s timeout applies).
 6. Rewrite `schema_text` and `schema_hash` in D1 after commit (`db-registry.ts`); old plan-cache entries evict by miss (`SK-SCHEMA-005` stands).
 7. Diff preview + trace for the extend step on every surface (`GLOBAL-023`); `GLOBAL-003` parity — no new verb: SDK / CLI / MCP / `<nlq-data>` render the extend trace and the KPI counters.
-8. Dogfood workload: `/daily` writes through `@nlqdb/sdk` — now a regression canary; the sample moved to rateme12 (step 12).
+8. Dogfood workload: `/daily` writes through `@nlqdb/sdk` — now a regression canary; the sample moved to rateme12 (step 13).
 9. E2E walk (`tests/e2e`): fresh DB → first insert with an unseen field → row lands, schema shows the column, plan cache still hits for unchanged queries.
 
 ### Phase B — inspection + index + dashboard + apply (6–10 weeks)
