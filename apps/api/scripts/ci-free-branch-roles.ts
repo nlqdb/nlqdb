@@ -1,7 +1,6 @@
 // CI only: frees tenant roles on the throwaway `ci-smoke-*` Neon branch so
-// the smoke suite can mint its own. The branch copies production's roles,
-// and production sits at Neon's 500-role cap until the founder-gated reaper
-// runs (SK-HDC-024), so `CREATE ROLE` failed on every PR. Dropping roles on
+// the smoke suite can mint its own even when production (whose roles the
+// branch copies) sits at Neon's 500-role cap (SK-HDC-024). Dropping roles on
 // a child branch never touches its parent; the branch is deleted after the
 // job. Never point this at production — it ignores D1 liveness.
 //
@@ -30,8 +29,11 @@ for (const [role, schemas] of schemasByRole) {
   try {
     await pg.transaction(buildReapStatements(role, schemas));
     freed++;
-  } catch {
+  } catch (err) {
     failed++; // 2BP01 — holds a privilege outside its schemas; try the next
+    console.warn(
+      `skip ${role}: ${(err instanceof Error ? err.message : String(err)).slice(0, 200)}`,
+    );
   }
 }
 console.info(
