@@ -11,6 +11,8 @@ import { buildReapStatements, ROLE_SCHEMAS_SQL } from "../src/db-sweep/role-reap
 
 const url = process.env["NEON_TEST_BRANCH_URL"];
 if (!url) throw new Error("NEON_TEST_BRANCH_URL is unset");
+// Drops are irreversible; refuse anywhere but a CI runner's throwaway branch.
+if (process.env["GITHUB_ACTIONS"] !== "true") throw new Error("CI only (GITHUB_ACTIONS unset)");
 const want = Number(process.argv[2] ?? 5);
 
 const pg = buildPgClient(url);
