@@ -192,6 +192,64 @@ const collapseComments = (s: string): string => {
   return out;
 };
 
+// Statement-split check for the SHOW / EXPLAIN short-circuit, which skips
+// the parser and so its multi-statement reject (SK-SQLAL-009): without it
+// `SHOW x; RESET ROLE; SELECT * FROM other.t` drops back to the RLS-
+// bypassing owner. A lexer, not a regex — a `;` inside a string, quoted
+// identifier, dollar-quote or comment is not a separator. Unterminated
+// input fails closed.
+export function hasSecondStatement(sql: string): boolean {
+  const n = sql.length;
+  let afterSemi = false;
+  for (let i = 0; i < n; ) {
+    const c = sql[i] as string;
+    const two = sql.slice(i, i + 2);
+    if (/\s/.test(c)) {
+      i++;
+    } else if (two === "--") {
+      const nl = sql.indexOf("\n", i);
+      i = nl === -1 ? n : nl + 1;
+    } else if (two === "/*") {
+      // Block comments nest in Postgres (docs §4.1.5).
+      let depth = 0;
+      do {
+        const t = sql.slice(i, i + 2);
+        if (t === "/*") depth++;
+        else if (t === "*/") depth--;
+        i += t === "/*" || t === "*/" ? 2 : 1;
+      } while (depth > 0 && i < n);
+      if (depth > 0) return true;
+    } else if (afterSemi) {
+      return true;
+    } else if (c === ";") {
+      afterSemi = true;
+      i++;
+    } else if (c === "'" || c === '"') {
+      // E'…' strings take backslash escapes; '' / "" are doubled quotes.
+      const escapes = c === "'" && /[eE]/.test(sql[i - 1] ?? "") && !/\w/.test(sql[i - 2] ?? "");
+      for (i++; i < n; i++) {
+        if (escapes && sql[i] === "\\") i++;
+        else if (sql[i] === c && sql[i + 1] === c) i++;
+        else if (sql[i] === c) break;
+      }
+      if (i >= n) return true;
+      i++;
+    } else if (c === "$" && !/\w/.test(sql[i - 1] ?? "")) {
+      const tag = sql.slice(i).match(/^\$(?:[A-Za-z_][A-Za-z_0-9]*)?\$/)?.[0];
+      if (!tag) {
+        i++;
+        continue;
+      }
+      const end = sql.indexOf(tag, i + tag.length);
+      if (end === -1) return true;
+      i = end + tag.length;
+    } else {
+      i++;
+    }
+  }
+  return false;
+}
+
 // Embedded-verb mapping for the AST walk. Same buckets as the
 // leading-verb reject map but keyed by the AST `type` string
 // node-sql-parser produces.
@@ -268,7 +326,9 @@ export function validateSql(rawSql: string): SqlValidationResult {
   // SHOW + plain EXPLAIN are read-only by definition. node-sql-parser
   // refuses both ("not supported"); short-circuit instead of demanding
   // a parse.
-  if (leading === "show" || leading === "explain") return { ok: true };
+  if (leading === "show" || leading === "explain") {
+    return hasSecondStatement(sql) ? { ok: false, reason: "multi_statement" } : { ok: true };
+  }
 
   let asts: AstNode[];
   try {
