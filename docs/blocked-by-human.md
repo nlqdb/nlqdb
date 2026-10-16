@@ -9,25 +9,16 @@ Operator actions also get one metadata line in
 [`history/founder-actions-log.md`](./history/founder-actions-log.md) — never
 a secret value.
 
-## Turn on the tenant-role reaper (Neon 500/500 roles — hosted create down)
+## 🔒 Approve or reject the 2026-10-16 END_GOAL + GLOBAL-041 revision (PR #1185)
 
-⏱ ~10 min · blocked since 2026-10-15. Prod is at the Neon 500-roles cap, so
-every hosted create fails (422 `roles limit exceeded`) and CI `apps/api smoke`
-is red on every PR. Once the run-248 PR is deployed, the hourly
-`tenant_role_reap` job counts orphan roles; it drops them only after you opt
-in, because dropping prod roles is your call
-([`SK-HDC-024`](./features/hosted-db-create/decisions/SK-HDC-024-tenant-role-reap.md)).
+⏱ ~15 min · blocked since 2026-10-16. A SHOW/EXPLAIN cross-tenant validator
+fix ships in the same PR, so the security fix waits on this call.
 
-1. After :32 past the next hour, open
-   [Workers Logs for `nlqdb-api`](https://dash.cloudflare.com/?to=/:account/workers/services/view/nlqdb-api/production/observability/logs) and find
-   `"msg":"tenant_role_reap"`: `rolesTotal − rolesLive` = roles a drop frees.
-   If that is near 0, the cap is live tenants, not leaks — stop here and
-   comment the line on the run-248 PR.
-2. If that looks right: `cd apps/api && wrangler secret put TENANT_ROLE_REAP`
-   with value `1`.
-3. An hour later the log shows `reaped` > 0 (40 per hour). Re-run the
-   `apps/api smoke` job on any PR; it goes green once ≥ 1 role is free.
-4. Log the action in `history/founder-actions-log.md`, then delete this bullet.
+1. Read `docs/history/path-review-2026-10-16.md` on
+   [PR #1185](https://github.com/nlqdb/nlqdb/pull/1185).
+2. Approve it with one line in the PR body and mark the PR ready, **or** ask
+   for the validator fix to ship on its own.
+3. Delete this bullet.
 
 ## Cut rateme12 over to nlqdb, then recruit 10 builders
 

@@ -24,8 +24,8 @@ export function isSyntheticUserAgent(ua: string | null | undefined): boolean {
 // so their creates pollute the funnel counts otherwise). Same
 // preview-detection pair as `ask/frontier-router.ts` (SK-AUTH-018).
 // Deliberately never a host/IP heuristic: a false positive here would
-// silently erase a REAL stranger from the GTM numbers, which is worse
-// than counting one extra robot.
+// silently erase a REAL stranger from the GTM numbers — and, since the anon
+// sweep drops synthetic DBs at 24 h (SK-ANON-002), delete their DB.
 export function isSyntheticRequest(
   ua: string | null | undefined,
   env: { NODE_ENV?: string | undefined; MOCK_IDP?: string | undefined },

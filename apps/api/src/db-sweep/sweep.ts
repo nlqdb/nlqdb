@@ -6,7 +6,9 @@
 //   1. AGE — anon DBs whose `last_queried_at < now - 90 days`
 //      (`SK-ANON-002` retention promise; user-facing "72h to keep
 //      it" is the under-promise, server retention is the actual
-//      ceiling).
+//      ceiling), plus `synthetic` anon DBs (our own walkers,
+//      `synthetic-ua.ts`) 24h after create — no person owns them,
+//      and each one holds a Neon role (SK-HDC-024).
 //   2. CAP — when the total count of anon DBs exceeds
 //      `ANON_DB_COUNT_CAP`, evict oldest-by-`last_queried_at`
 //      until back under cap. Cap is on COUNT, not bytes — Neon Free
@@ -32,6 +34,9 @@ const ANON_TENANT_LIKE = "anon:%";
 
 // 90 days from `last_queried_at`. Promise is 72h; server keeps 90d.
 export const ANON_DB_TTL_SECONDS = 90 * 24 * 60 * 60;
+
+// Synthetic (walker-created) anon DBs: 24h from create.
+export const SYNTHETIC_DB_TTL_SECONDS = 24 * 60 * 60;
 
 // Hard cap on anon-DB row count in D1. Picked an order of magnitude
 // below Neon Free's per-branch limit so we have headroom for the
@@ -75,10 +80,10 @@ export async function sweepAnonDatabases(
     .prepare(
       `DELETE FROM databases
        WHERE tenant_id LIKE ?
-         AND last_queried_at < ?
+         AND (last_queried_at < ? OR (synthetic = 1 AND created_at < ?))
        RETURNING id, tenant_id`,
     )
-    .bind(ANON_TENANT_LIKE, now - ttl)
+    .bind(ANON_TENANT_LIKE, now - ttl, now - SYNTHETIC_DB_TTL_SECONDS)
     .all<SweepEvictedRow>();
   const evictedByAge = ageRes.results ?? [];
 

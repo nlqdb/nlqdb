@@ -32,6 +32,9 @@
   (or unsetting `MOCK_IDP`/`NODE_ENV=preview`) silently re-pollutes the
   counts — treat as a breaking change. Rows created before migration 0023
   default to organic; the 90-day anon sweep ages that backlog out.
+  The anon sweep also reads the flag (synthetic anon DBs dropped 24 h
+  after create, `SK-ANON-002`), so a false positive now deletes a real
+  stranger's DB, not just a count.
 - **Alternatives rejected:**
   - Host/IP heuristics for previews — previews are same-origin merged
     workers; a host list rots and misfires on real users.
