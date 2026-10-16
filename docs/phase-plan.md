@@ -182,8 +182,8 @@ LLM lane, wired in §10 above, turned on when §6 tripped —
 live 2026-08-14.)
 
 **Exit gate:** **Phase A of [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md)
-shipped, and nothing else** — first-insert inference ≥ 95 % over ≥ 200
-unseen-field structured inserts from rateme12's own writes, with 0 LLM calls
+shipped, and nothing else** — first-insert inference ≥ 95 % over rateme12's
+unseen-field structured inserts (import through 14 cutover days), with 0 LLM calls
 on the write path (defined there). No BIRD/Spider floor, no MCP-host count, no
 CSV user test, no TTFV — TTFV gates Phase 3.
 

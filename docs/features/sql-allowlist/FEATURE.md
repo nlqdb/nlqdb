@@ -108,7 +108,7 @@ when-to-load:
 - **Decision:** A statement that `node-sql-parser` parses into more than one sibling statement is rejected with `multi_statement`, before the per-statement walk.
 - **Core value:** Bullet-proof, Simple
 - **Why:** `SELECT 1; DELETE FROM x WHERE id=1` parses as two statements; the per-statement walk clears each (the DELETE *has* a WHERE), so a benign-looking lead statement smuggles a second one past the guardrails. A plan is exactly one statement — rejecting `>1` is fail-closed and matches the `architecture.md §3.6.5` "multi-statement rejected" contract that was previously only asserted in prose. Resolved per `GLOBAL-033` (security trade-off → fail-closed).
-- **Consequence in code:** `validateSql()` returns `{ ok:false, reason:"multi_statement" }` when `asts.length > 1`. (`WITH … SELECT` is a single statement and is unaffected.)
+- **Consequence in code:** `validateSql()` returns `{ ok:false, reason:"multi_statement" }` when `asts.length > 1`. (`WITH … SELECT` is a single statement and is unaffected.) `SHOW` / plain `EXPLAIN` skip the parser, so `hasSecondStatement` (a quote-, dollar-quote- and comment-aware lexer) applies the same rule there; before it, `SHOW x; RESET ROLE; SELECT * FROM other.t` passed and could drop back to the RLS-bypassing owner (fixed 2026-10-16). `tenant-isolation.integration.test.ts` pins the engine side: a tenant role cannot read another tenant's schema.
 - **Alternatives rejected:**
   - Trust the per-statement walk to catch everything — it only catches *rejected* patterns; two benign statements both pass.
   - A leading-`;`-count regex — string-level counting trips on semicolons inside string literals; the parser's statement split is authoritative.

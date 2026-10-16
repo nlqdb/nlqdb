@@ -77,9 +77,12 @@
     Every structured insert `rateme12.nlqdb.com` makes through `@nlqdb/sdk`
     — the ~32 K-server registry import included — that carries a table or
     field the schema has not seen. The whole population counts; there is no
-    sampling window. **Phase A exits when ≥ 95 % of ≥ 200 such inserts land
-    with no user action AND the synchronous write path makes 0 LLM calls**
-    (OTel: no `llm.*` span under an insert). A field is never pre-modeled to
+    sampling window. **Phase A exits when ≥ 95 % of such inserts — every one
+    from the registry import through 14 cutover days, n reported — land with
+    no user action AND the synchronous write path makes 0 LLM calls** (OTel:
+    no `llm.*` span under an insert). The former ≥ 200 floor is dropped
+    (2026-10-16): one app first-sees ~100 fields, and padding the count is
+    the synthetic sample rejected below. A field is never pre-modeled to
     make the number look good. The `/daily` loop's own CI writes
     (`dogfood-write.yml`) stay as a regression canary, not the sample.
   - **Phase gates.** [`phase-plan.md`](../phase-plan.md) **Phase 2 exits on
@@ -161,20 +164,32 @@
 Goal: KPI 1 ≥ 95 % on the rateme12 workload above, 0 LLM calls on the
 write path. Steps 1–9 below shipped the `/v1/ask` extend path (live,
 `SK-SCHEMA-008`/`-010`/`-011`); it stays as the chat write path. Remaining,
-in order (revised 2026-10-14):
+in order (revised 2026-10-14, 2026-10-16):
 
-10. **Deterministic structured insert.** `insert(table, rows)` on
-    `@nlqdb/sdk` (+ CLI / MCP twins, `GLOBAL-003`): types from the JSON
-    values; unseen table → `CREATE TABLE`, unseen key → `ADD COLUMN … NULL`
-    through steps 3–6 (compiler, validator, one transaction, `schema_hash`
-    rewrite) — no model call. Its `SK-SCHEMA` decision lands in
-    `schema-widening` with the first code PR and states how an app's
-    insert meets `SK-TRUST-001` (diff-then-confirm) — or amends it.
-11. **Async enrichment.** The LLM reviews newly inferred columns off the
-    write path and files typed proposals (retype / rename / enum) — the
-    first rows of the Phase B proposal pipeline.
-12. **rateme12 §5b on the structured insert**, registry import included,
-    then the cutover to real traffic (iteration brief).
+10. ✅ **Deterministic structured insert** (`SK-SCHEMA-012`, deployed
+    2026-10-15). Remaining: the live walk on prod; CLI / MCP twins are a
+    tracked `GLOBAL-003` gap that does not block step 13.
+11. **Keys and the change ledger** (revised 2026-10-16). `insert({ key })`
+    creates a unique index on first use and upserts (`ON CONFLICT … DO
+    UPDATE`); a row that fails (duplicate without `key`, value that won't
+    cast) is returned per row while the rest land (`END_GOAL.md` edge
+    states). One `dba_changes` table records every DDL the DBA emits —
+    insert widen, chat widen, index, later proposals — with its inverse
+    and origin; KPIs 1–2 read from it and `/app/dba` v0 renders it. Phase
+    B's `dba_proposals` is this table, not a second one.
+12. **Reads that don't spend the model.** SDK `ask()` makes one LLM call
+    (no summary unless asked); an additive widen re-plans only queries over
+    the widened table (amends `SK-SCHEMA-005` in that PR); `/v1/run` and
+    `/v1/insert` emit the same query event the workload analyser reads, so
+    an app's pinned SQL (`runSql` with `trace.sql`) stays visible to the
+    optimizer.
+13. **rateme12 §5b on `insert()`**, registry import included; hot reads
+    pinned via `runSql`. The schema-comparison rubric (iteration brief §7)
+    is written before cutover, then the cutover to real traffic.
+14. **Async enrichment.** Deterministic rules first — ISO-8601 text →
+    `timestamptz`, `*_id` matching a key → FK + index, low-cardinality
+    text → enum — filed as proposals into `dba_changes`; the LLM only
+    names things.
 
 Original steps:
 
@@ -185,7 +200,7 @@ Original steps:
 5. Single Neon transaction: widen DDL + `INSERT` commit or roll back together (`db-create/pg-client.ts`; `SK-HDC-010` 30 s timeout applies).
 6. Rewrite `schema_text` and `schema_hash` in D1 after commit (`db-registry.ts`); old plan-cache entries evict by miss (`SK-SCHEMA-005` stands).
 7. Diff preview + trace for the extend step on every surface (`GLOBAL-023`); `GLOBAL-003` parity — no new verb: SDK / CLI / MCP / `<nlq-data>` render the extend trace and the KPI counters.
-8. Dogfood workload: `/daily` writes through `@nlqdb/sdk` — now a regression canary; the sample moved to rateme12 (step 12).
+8. Dogfood workload: `/daily` writes through `@nlqdb/sdk` — now a regression canary; the sample moved to rateme12 (step 13).
 9. E2E walk (`tests/e2e`): fresh DB → first insert with an unseen field → row lands, schema shows the column, plan cache still hits for unchanged queries.
 
 ### Phase B — inspection + index + dashboard + apply (6–10 weeks)
@@ -194,7 +209,8 @@ Goal: KPIs 2 and 3 live; the DBA acts.
 
 1. **Collect:** per-tenant-schema `pg_stat_user_tables`, `pg_stat_user_indexes`, and `pg_stat_statements` (extension availability on Neon free verified first — `P2`), sampled by the scheduled worker into D1 (`apps/api/src/scheduled/**`).
 2. **Explain:** `EXPLAIN (FORMAT JSON)` on hot fingerprints, joined to SQL text through the plan cache key `(schema_hash, query_hash)`; seq-scan on large table, missing index, unused index, wrong type, cold table on the analytical engine are the v1 signals.
-3. **Propose:** recommendation generator → typed proposals (`create_index`, `drop_index`, `retype_column`, `drop_column`, `rename_column`, `move_to_engine`) in a D1 `dba_proposals` table with before/after diff, expected effect, and the inverse operation recorded at proposal time. Replaces the empty `pg_add_column_suggestion` row.
+3. **Propose:** recommendation generator → typed proposals (a rename is
+   proposed only when no recorded fingerprint reads the old name) (`create_index`, `drop_index`, `retype_column`, `drop_column`, `rename_column`, `move_to_engine`) in a D1 `dba_proposals` table with before/after diff, expected effect, and the inverse operation recorded at proposal time. Replaces the empty `pg_add_column_suggestion` row.
 4. **Apply / undo:** typed proposal → DDL compiler → execution under `SK-HDC-010` (600 s for `CREATE INDEX CONCURRENTLY`); undo = recorded inverse; logical changes bump `schema_hash`; every apply carries `Idempotency-Key` and an OTel span.
 5. **API:** `GET /v1/dba/proposals`, `POST /v1/dba/proposals/:id/apply`, `POST …/undo` via `@nlqdb/sdk` (`GLOBAL-001`), `nlq dba …` verbs, MCP `nlqdb_dba_*` tools — one PR per `GLOBAL-003`.
 6. **Dashboard:** `/app/dba` — where data lives (tables × engine), usage and cost bottom line, proposals with 1-click apply/undo, applied-history with the measured p95 delta (KPI 3). Honest progress per `P6`.

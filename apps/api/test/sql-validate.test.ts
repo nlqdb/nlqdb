@@ -96,6 +96,56 @@ describe("validateSql", () => {
     });
   });
 
+  // SK-SQLAL-009 on the SHOW / EXPLAIN short-circuit: a second statement
+  // could `RESET ROLE` back to the RLS-bypassing owner.
+  describe("SHOW / EXPLAIN carry exactly one statement", () => {
+    it.each([
+      "SHOW search_path; RESET ROLE; SELECT * FROM other_schema.t",
+      "EXPLAIN SELECT 1; RESET ROLE",
+      "SHOW x;SELECT 1",
+      "SHOW x; /* c */ SELECT 1",
+      "SHOW x; -- c\nSELECT 1",
+      "EXPLAIN SELECT 'a'; SELECT 1",
+      "EXPLAIN SELECT E'\\''; RESET ROLE",
+      "EXPLAIN SELECT $$x$$; RESET ROLE",
+      "EXPLAIN SELECT $t$ ; $t$; RESET ROLE",
+      'EXPLAIN SELECT "a;b"; RESET ROLE',
+      "SHOW x; ;",
+      // Unterminated quoting or comment fails closed.
+      "EXPLAIN SELECT 'a",
+      "EXPLAIN SELECT $$a",
+      "SHOW x /* open",
+    ])("rejects %j", (sql) => {
+      expect(validateSql(sql)).toEqual({ ok: false, reason: "multi_statement" });
+    });
+
+    it.each([
+      "SHOW search_path;",
+      "SHOW search_path ; -- trailing",
+      "SHOW x; /* a /* nested */ b */",
+      "EXPLAIN SELECT 'a;b' FROM t",
+      "EXPLAIN SELECT 'it''s; fine'",
+      "EXPLAIN SELECT E'\\\\'",
+      "EXPLAIN SELECT $$ ; $$",
+      "EXPLAIN SELECT $tag$ a;b $tag$",
+      'EXPLAIN SELECT "x;y" FROM t',
+      "EXPLAIN SELECT * FROM t WHERE id = $1",
+      "EXPLAIN SELECT 1 /* ; */",
+    ])("accepts %j", (sql) => {
+      expect(validateSql(sql)).toEqual({ ok: true });
+    });
+  });
+
+  it.each([
+    "SET ROLE neondb_owner",
+    "RESET ROLE",
+    "SET LOCAL ROLE x",
+    "RESET ALL",
+    "SET app.tenant_id = 'x'",
+  ])("rejects role / GUC re-arming %j", (sql) => {
+    expect(validateSql(sql).ok).toBe(false);
+  });
+
   // SK-SDK-015 — `/v1/run` checks the bound params against this count.
   describe("maxParam", () => {
     it("reports the highest $n, ignoring a $n inside a string literal", () => {

@@ -142,7 +142,7 @@ table + the header lines, no changelog):
   `freshness` = `max(0, 1 − days_since_last_success / 7)`. Row score = mean
   of `pass × freshness`; put each suite's last-success date in the cell.
 - **Phase gate:** Phase 2 exits on `GLOBAL-041` Phase A alone — state KPI 1
-  vs its ≥ 95 % floor over rateme12's unseen-field inserts (n/200), and
+  vs its ≥ 95 % floor over rateme12's unseen-field inserts (n so far), and
   `llm.*` spans under an insert (target 0). Also the love gate: days of
   rateme12 traffic on nlqdb (n/14) and returning builders (n/10).
 - **Surface integrity:** dead links on the deployed user-facing surfaces —
@@ -176,18 +176,21 @@ sequence** (founder steer 2026-10-14; rule 6 and a met draft still come
 first). A step spanning runs takes the next run too; a human-blocked step
 is skipped to the next.
 
-0. **Neon role cap.** Prod is at 500/500 roles (one per hosted DB, never
-   reaped), so hosted create fails and `apps/api smoke` is red on every PR.
-   Reap roles of deleted and test DBs, drop the role on DB delete, stop
-   minting one per ephemeral test DB (`hosted-db-create`). Number: smoke
-   green, prod create success 100 %.
-1. **Deterministic structured insert** (`GLOBAL-041` Phase A step 10,
-   rateme12 §6.1 R5). Number: `llm.*` spans under an insert 0, and the
-   insert E2E walk's inference rate.
-2. **rateme12 §5b steps 6 → 9**, in order, one per run — registry import
-   included. Number: §4 journeys wired to nlqdb n/5.
-3. **Cutover** (founder, `blocked-by-human.md`), then Phase A step 11
-   (async enrichment), then KPI 3 on rateme12's search route — the first
+Revised 2026-10-16 (`GLOBAL-041` steps 10–14). Steps 0 (Neon role cap,
+PR #1184) and the `insert()` build are done.
+
+1. **Live `insert()` walk on prod** — a rateme12-shaped stream through
+   `client.insert()` with the CI key. Number: unseen-field inserts landed
+   n/n, 0 `llm.*` spans.
+2. **Keys + the change ledger** (`GLOBAL-041` step 11). Number: import run
+   twice → row count unchanged; `dba_changes` rows = DDL statements emitted.
+3. **Reads off the model** (step 12). Number: LLM calls per non-empty
+   `ask()` 2 → 1; plans re-planned after an additive widen on another table 0.
+4. **rateme12 §5b steps 6 → 9** (step 13), in order, one per run — registry
+   import included, hot reads pinned via `runSql`, rubric before cutover.
+   Number: §4 journeys wired to nlqdb n/5.
+5. **Cutover** (founder, `blocked-by-human.md`), then deterministic
+   enrichment (step 14), then KPI 3 on rateme12's search route — the first
    applied index with a measured p95 delta. That is the moat.
 
 UI parity work on the clone is done; it is never a step.
