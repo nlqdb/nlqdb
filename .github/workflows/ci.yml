@@ -572,15 +572,6 @@ jobs:
           echo "id=$id" >> "$GITHUB_OUTPUT"
           echo "uri=$uri" >> "$GITHUB_OUTPUT"
 
-      # The branch copies prod's tenant roles; at Neon's 500 cap the suite's
-      # own `CREATE ROLE` fails (SK-HDC-024). Drop a few on this branch only.
-      - name: Free tenant roles on the ephemeral branch
-        if: steps.preflight.outputs.configured == 'true'
-        working-directory: apps/api
-        env:
-          NEON_TEST_BRANCH_URL: ${{ steps.neon.outputs.uri }}
-        run: bun scripts/ci-free-branch-roles.ts 5
-
       # Vitest is wrapped in a 3-attempt retry to absorb cold-compute
       # first-query flakes on freshly-provisioned Neon endpoints and
       # transient HTTP drops mid-test. Each integration test's

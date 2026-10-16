@@ -28,7 +28,7 @@ export const REAP_BATCH = 40;
 
 // Every `tenant_*` role with the schemas it holds a grant on (none → one
 // row with a null schema). One catalog read for the whole run.
-export const ROLE_SCHEMAS_SQL = `
+const ROLE_SCHEMAS_SQL = `
   SELECT r.rolname, n.nspname
   FROM pg_roles r
   LEFT JOIN pg_namespace n
