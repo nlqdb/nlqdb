@@ -579,6 +579,15 @@ jobs:
       # `test_e03_scope`) idempotently, so a retry starts from a clean state.
       # `memory-scoping.integration.test.ts` is E-03's security invariant
       # (SK-PIVOT-009) — it must run wherever the Neon branch exists.
+      # The branch copies prod's tenant roles; at Neon's 500 cap the suite's
+      # own `CREATE ROLE` fails (SK-HDC-024). Drop a few on this branch only.
+      - name: Free tenant roles on the ephemeral branch
+        if: steps.preflight.outputs.configured == 'true'
+        working-directory: apps/api
+        env:
+          NEON_TEST_BRANCH_URL: ${{ steps.neon.outputs.uri }}
+        run: bun scripts/ci-free-branch-roles.ts 5
+
       - name: Run integration smoke test
         if: steps.preflight.outputs.configured == 'true'
         working-directory: apps/api
