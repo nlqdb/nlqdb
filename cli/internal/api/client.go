@@ -200,7 +200,11 @@ func (c *Client) send(ctx context.Context, method, path string, body []byte, ide
 		if out == nil || len(data) == 0 {
 			return nil
 		}
-		if err := json.Unmarshal(data, out); err != nil {
+		// UseNumber: a row value decoded into `any` keeps its literal digits,
+		// so a bigint id isn't rounded through float64 on its way to --json.
+		dec := json.NewDecoder(bytes.NewReader(data))
+		dec.UseNumber()
+		if err := dec.Decode(out); err != nil {
 			return &APIError{
 				HTTPStatus: res.StatusCode,
 				Code:       "non_json_response",

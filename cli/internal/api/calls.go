@@ -39,6 +39,17 @@ func (c *Client) Remember(ctx context.Context, req RememberRequest) (*RememberRe
 	return &out, nil
 }
 
+// Insert hits POST /v1/insert (SK-SCHEMA-012) — rows land with no model call;
+// an unseen table or field is created in the same transaction. Auto-keyed like
+// every POST, so a retried timeout replays instead of landing twice.
+func (c *Client) Insert(ctx context.Context, req InsertRequest) (*InsertResult, error) {
+	var out InsertResult
+	if err := c.do(ctx, http.MethodPost, "/v1/insert", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // Connect hits POST /v1/db/connect (SK-CLI-019) — register an existing
 // hosted engine by its connection URL. The URL is a credential carried in
 // the request body; the CLI never persists it and the server never echoes

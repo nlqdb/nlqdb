@@ -106,6 +106,7 @@ describe("tool catalog meets the 2026-07-28 + Connectors-Directory bar", () => {
     "nlqdb_list_databases",
     "nlqdb_describe",
     "nlqdb_remember",
+    "nlqdb_insert",
     "nlqdb_connect_database",
   ];
 

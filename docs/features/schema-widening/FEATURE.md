@@ -15,7 +15,7 @@ when-to-load:
 # Feature: Schema Evolution
 
 **One-liner:** The logical schema is inferred from inserts and reads and evolves in both directions (add / drop / rename / retype / index) as typed, previewed, versioned operations the engine generates — never a user-authored migration. `schema_hash` is the version.
-**Status:** partial — Phase A: `/v1/ask` widen-on-write live since 2026-09-14 (`SK-SCHEMA-008`/`-010`/`-011`; history in `git log` runs 196–215). Step 10, the model-free `insert()` (`SK-SCHEMA-012`), is built on API + SDK; its `nlq insert` and MCP twins are the open `GLOBAL-003` gap. Phase B (`SK-SCHEMA-009`) next.
+**Status:** partial — Phase A: `/v1/ask` widen-on-write live since 2026-09-14 (`SK-SCHEMA-008`/`-010`/`-011`; history in `git log` runs 196–215). Step 10, the model-free `insert()` (`SK-SCHEMA-012`), ships on API, SDK, `nlq insert` and MCP `nlqdb_insert` (`GLOBAL-003`). Phase B (`SK-SCHEMA-009`) next.
 **Owners (code):** `apps/api/src/ask/extend.ts`, `apps/api/src/db-registry.ts`, `apps/api/src/ask/orchestrate.ts`, `apps/api/src/ask/types.ts`, `apps/api/src/ask/plan-cache.ts`, `packages/db/**`
 **Cross-refs:** docs/architecture.md §0.1 (on-ramp inversion bullets), §9 row "Schema mismatch" (line 936) · docs/phase-plan.md §1 (plan cache key — Phase 0 deliverable) · docs/performance.md §2.1 stage 4 / §2.2 stage 4 (hash compute budget — 1 ms p50 / 5 ms p99; folded into the parent span, no dedicated `nlqdb.ask.hash`) · [GLOBAL-004](../../decisions/GLOBAL-004-logical-schema-evolves.md) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 

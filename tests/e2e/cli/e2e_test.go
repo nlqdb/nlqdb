@@ -92,6 +92,35 @@ func mockHandler() http.Handler {
 		_ = json.NewEncoder(w).Encode(map[string]any{"keys": []any{}})
 	})
 
+	// SK-SCHEMA-012 — echoes the rows back as stored and reports one widen,
+	// so a script can assert both the human DDL block and the JSON envelope.
+	mux.HandleFunc("/v1/insert", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			DB    string           `json:"db"`
+			Table string           `json:"table"`
+			Rows  []map[string]any `json:"rows"`
+		}
+		dec := json.NewDecoder(r.Body)
+		dec.UseNumber() // echo ids digit-for-digit, so the script tests the CLI, not the mock
+		if r.Method != http.MethodPost || r.Header.Get("Idempotency-Key") == "" ||
+			dec.Decode(&body) != nil || body.DB == "" {
+			http.Error(w, `{"status":"invalid_body","message":"mock wants a keyed POST with db, table, rows"}`, http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"status":   "ok",
+			"rows":     body.Rows,
+			"rowCount": len(body.Rows),
+			"table":    body.Table,
+			"widen": map[string]any{
+				"tables":           []string{body.Table},
+				"ddl":              []string{"ALTER TABLE " + body.Table + " ADD COLUMN stars numeric NULL"},
+				"schema_rewritten": true,
+			},
+		})
+	})
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(os.Stderr, "mockHandler: unhandled %s %s\n", r.Method, r.URL.Path)
 		http.Error(w, `{"status":"not_found","message":"mock has no canned response for this path"}`, http.StatusNotFound)
