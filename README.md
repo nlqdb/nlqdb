@@ -187,7 +187,8 @@ Build order in [`GLOBAL-041`](./docs/decisions/GLOBAL-041-autonomous-dba.md).
   (`SK-SCHEMA-010`; the rate reads on `/app/admin`)
 - ~ Deterministic `insert(table, rows)` — types from the values, no LLM on the
   write path; the LLM's better types and names arrive later as proposals.
-  `POST /v1/insert` + SDK `insert()` built (`SK-SCHEMA-012`); `nlq` + MCP pending
+  `POST /v1/insert` on SDK `insert()`, `nlq insert` and MCP `nlqdb_insert`
+  (`SK-SCHEMA-012`)
 - ◯ rateme12 on nlqdb with real traffic, then ~10 hand-picked builders
 - ◯ Phase B — `pg_stat_*` + `EXPLAIN` collection → typed proposals (index /
   retype / drop / rename / move-to-engine) → `/app/dba` dashboard with

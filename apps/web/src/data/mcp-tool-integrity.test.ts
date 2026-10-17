@@ -81,6 +81,7 @@ describe("MCP tool-name integrity (SK-MCP-002)", () => {
     expect([...shippedTools].sort()).toEqual([
       "nlqdb_connect_database",
       "nlqdb_describe",
+      "nlqdb_insert",
       "nlqdb_list_databases",
       "nlqdb_query",
       "nlqdb_read",

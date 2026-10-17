@@ -127,6 +127,30 @@ func (r *RememberResult) IDString() string {
 	return s
 }
 
+// InsertRequest mirrors @nlqdb/sdk's `InsertRequest` (SK-SCHEMA-012).
+type InsertRequest struct {
+	DB    string           `json:"db"`
+	Table string           `json:"table"`
+	Rows  []map[string]any `json:"rows"`
+}
+
+// InsertResult mirrors the SDK's `InsertResult`: the rows as stored
+// (`RETURNING *`); `Widen` is present only when the insert created a table or column.
+type InsertResult struct {
+	Status   string           `json:"status"`
+	Rows     []map[string]any `json:"rows"`
+	RowCount int              `json:"rowCount"`
+	Table    string           `json:"table"`
+	Widen    *TraceWiden      `json:"widen,omitempty"`
+}
+
+// TraceWiden mirrors the SDK's `TraceWiden` — the DDL a write ran to widen the schema.
+type TraceWiden struct {
+	Tables          []string `json:"tables"`
+	DDL             []string `json:"ddl"`
+	SchemaRewritten bool     `json:"schema_rewritten"`
+}
+
 // ConnectRequest mirrors the SDK's connect shape for POST /v1/db/connect.
 // `ConnectionURL` is a credential — it rides the request body and is never
 // persisted by the CLI (sent and discarded; see cmd/db.go).

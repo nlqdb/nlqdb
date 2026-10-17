@@ -13,10 +13,14 @@ import {
   type HandlerContext,
   handleConnectDatabase,
   handleDescribe,
+  handleInsert,
   handleListDatabases,
   handleQuery,
   handleRead,
   handleRemember,
+  type InsertInput,
+  type InsertOutput,
+  insertInputShape,
   type ListDatabasesOutput,
   listDatabasesInputShape,
   type QueryInput,
@@ -176,6 +180,25 @@ export function createServer(opts: ServerOptions): McpServer {
       return runTool("nlqdb_remember", extra.signal, async (ctx) => {
         const result = await handleRemember(client, args, ctx);
         return formatResult<RememberOutput>(result);
+      });
+    },
+  );
+
+  registerTool(
+    "nlqdb_insert",
+    {
+      title: "Insert rows; unseen tables and fields are created",
+      description:
+        "Insert structured rows into a table with no data modelling: an unseen table or field is created in the same transaction, typed from the values, and the rows land exactly as sent — no model call. Returns the stored rows (generated ids included) and, when the schema widened, the DDL it ran. Use it whenever you hold the exact values; use nlqdb_query to write something described in words.",
+      inputSchema: insertInputShape,
+      // Additive only: adds rows, and tables/columns when unseen; never
+      // updates, deletes or drops (SK-SCHEMA-012).
+      annotations: { destructiveHint: false },
+    },
+    async (args: InsertInput, extra: ToolExtra) => {
+      return runTool("nlqdb_insert", extra.signal, async (ctx) => {
+        const result = await handleInsert(client, args, ctx);
+        return formatResult<InsertOutput>(result);
       });
     },
   );

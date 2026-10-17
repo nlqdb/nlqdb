@@ -67,6 +67,7 @@ describe("CLI-verb integrity (SK-WEB-008 / SK-CLI-002)", () => {
       "db",
       "grants",
       "help",
+      "insert",
       "keys",
       "login",
       "logout",

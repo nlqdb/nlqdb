@@ -4,7 +4,8 @@ Static Go binary, 3-char name, distributed via curl-pipe-sh, Homebrew
 tap, and an npm shim (`@nlqdb/cli`). Power-user surface for
 devs / agents who don't want a browser.
 
-Bootstrap slice ships: `nlq ask`, `nlq run`, `nlq new`, bare
+Bootstrap slice ships: `nlq ask`, `nlq run`, `nlq remember`,
+`nlq insert` (JSON rows, no model call), `nlq new`, bare
 `nlq "…"`, `nlq db list`, `nlq db create`, `nlq query`, `nlq use`,
 `nlq whoami`, `nlq logout`, `nlq mcp detect`, `nlq update`,
 `nlq keys list`, `nlq keys revoke <id>`,

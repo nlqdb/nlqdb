@@ -181,6 +181,9 @@ After connecting, the host lists these nlqdb tools:
   [What's live today](#whats-live-today) — live for signed-in keys; set
   `kind` and `tags` on every fact (they become your `GROUP BY` columns), and
   fall back to `nlqdb_query` if it answers `wrong_preset`.
+- `nlqdb_insert` — insert JSON rows into any table exactly as sent, no model
+  call; a table or field the database hasn't seen is created, typed from the
+  values.
 
 ## Step 4 — Verify
 

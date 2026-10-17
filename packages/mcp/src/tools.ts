@@ -165,6 +165,45 @@ export const rememberOutputShape = {
 
 export type RememberOutput = z.infer<z.ZodObject<typeof rememberOutputShape>>;
 
+// SK-SCHEMA-012 — the MCP twin of `client.insert()` (GLOBAL-003): exact rows,
+// no model call; an unseen table or field is created in the same transaction.
+export const insertInputShape = {
+  db: z.string().min(1).describe("Database id to write to (from nlqdb_list_databases)."),
+  table: z
+    .string()
+    .min(1)
+    .describe(
+      "Table to insert into. It need not exist: an unseen table is created, and its name is snake_cased like the columns.",
+    ),
+  rows: z
+    .array(z.record(z.string(), z.unknown()))
+    .min(1)
+    .max(1000)
+    .describe(
+      "Rows as JSON objects, up to 1 000 per call. Keys become lower_snake_case columns (serverId → server_id); a field the table hasn't seen is added, typed from the values (number → numeric, string → text, object/array → jsonb, boolean → boolean). A key a row omits takes the column default. No model call, so the values land exactly as sent — use this for structured writes, nlqdb_query for writes described in words.",
+    ),
+};
+
+export type InsertInput = z.infer<z.ZodObject<typeof insertInputShape>>;
+
+export const insertOutputShape = {
+  table: z.string(),
+  rowCount: z.number(),
+  rows: z
+    .array(z.record(z.string(), z.unknown()))
+    .describe("The landed rows as stored, generated `id` included."),
+  widen: z
+    .object({
+      tables: z.array(z.string()),
+      ddl: z.array(z.string()),
+      schema_rewritten: z.boolean(),
+    })
+    .optional()
+    .describe("Present only when the insert created a table or column — the DDL it ran."),
+};
+
+export type InsertOutput = z.infer<z.ZodObject<typeof insertOutputShape>>;
+
 export const connectDatabaseInputShape = {
   engine: z
     .enum(["clickhouse", "postgres"])
@@ -642,6 +681,28 @@ async function resolveMemoryDb(
     return { kind: "ok", dbId: created.dbId, created: true };
   } catch (err) {
     return { kind: "err", err };
+  }
+}
+
+export async function handleInsert(
+  client: NlqClient,
+  input: InsertInput,
+  ctx: HandlerContext = {},
+): Promise<ToolResult<InsertOutput>> {
+  try {
+    const opts: { signal?: AbortSignal } = {};
+    if (ctx.signal) opts.signal = ctx.signal;
+    const res = await client.insert({ db: input.db, table: input.table, rows: input.rows }, opts);
+    return {
+      ok: {
+        table: res.table,
+        rowCount: res.rowCount,
+        rows: res.rows,
+        ...(res.widen ? { widen: res.widen } : {}),
+      },
+    };
+  } catch (err) {
+    return { err: mapSdkError(err) };
   }
 }
 

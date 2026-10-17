@@ -160,6 +160,26 @@ func (w *Writer) WriteRemember(resp *api.RememberResult) error {
 	return nil
 }
 
+// WriteInsert renders `/v1/insert` responses (SK-SCHEMA-012). Human mode
+// confirms the landed rows and prints any DDL the insert ran — the record of
+// what changed; JSON mode passes the envelope through.
+func (w *Writer) WriteInsert(resp *api.InsertResult) error {
+	if w.Format == FormatJSON {
+		return w.JSON(resp)
+	}
+	fmt.Fprintf(w.Out, "✓ Inserted %d row(s) into %s.\n", resp.RowCount, resp.Table)
+	if resp.Widen != nil && len(resp.Widen.DDL) > 0 {
+		fmt.Fprintln(w.Out, "─ schema widened ─")
+		for _, ddl := range resp.Widen.DDL {
+			fmt.Fprintln(w.Out, indent(strings.TrimSpace(ddl), "  "))
+		}
+	}
+	if len(resp.Rows) > 0 {
+		writeRowsTable(w.Out, resp.Rows)
+	}
+	return nil
+}
+
 func (w *Writer) WriteDatabases(rows []api.DatabaseSummary) error {
 	if w.Format == FormatJSON {
 		return w.JSON(map[string]any{"databases": rows})
