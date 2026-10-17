@@ -18,6 +18,7 @@ shape that flows over the corresponding `POST /v1/<resource>` endpoint.
 
 - `POST /v1/ask` — the canonical NL→SQL endpoint. See [`NlqClient.ask`](/reference/sdk/type-aliases/nlqclient/).
 - `POST /v1/run` — raw-SQL escape hatch (`GLOBAL-015`). See [`NlqClient.runSql`](/reference/sdk/type-aliases/nlqclient/).
+- `POST /v1/insert` — insert JSON rows exactly as sent, no model call; an unseen table or field is created. See [`NlqClient.insert`](/reference/sdk/type-aliases/nlqclient/).
 - `POST /v1/databases` — create a database from a plain-English brief. See [`NlqClient.createDatabase`](/reference/sdk/type-aliases/nlqclient/).
 - `GET /v1/databases` — list databases. See [`NlqClient.listDatabases`](/reference/sdk/type-aliases/nlqclient/).
 - `POST /v1/keys`, `GET /v1/keys`, `DELETE /v1/keys/:id` — API-key lifecycle.
@@ -47,7 +48,7 @@ retryable and which need a human. `code` is the discriminant the SDK exposes as
 | `rate_limited` | 429 | Too many requests (`body.limit`, `body.count`). | Yes | Wait, honor `Retry-After`, then retry. |
 | `unauthorized` | 401 | Missing, invalid, or expired credential. | No | Sign in again, or mint a new key. |
 | `auth_unavailable` | 503 | The session store hit a transient blip while verifying the caller — not a signed-out session. | Yes | Retry shortly; you stay signed in. |
-| `forbidden` | 403 | A read-only key tried to write via `/v1/run` (`SK-APIKEYS-003`). | No | Use a write-capable key. |
+| `forbidden` | 403 | A read-only key tried to write via `/v1/run` or `/v1/insert` (`SK-APIKEYS-003`). | No | Use a write-capable key. |
 | `ambiguous_db` | 409 | 2+ databases match; confidence below the floor. | No | Pick from `body.candidate_dbs`, resend with `dbId`. |
 | `clarify_required` | 409 | Pinned `dbId` but the goal looks like a create (`body.pinned_db`). | No | Resend without `dbId` to create, or cancel. |
 | `invalid_engine` | 400 | `engine` isn't in the allowed set. | No | Use `postgres` or `clickhouse`. |
