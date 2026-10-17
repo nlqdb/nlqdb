@@ -110,7 +110,7 @@ func doInsert(ctx context.Context, cmd *cobra.Command, g *globalFlags, req api.I
 	client := api.New(g.apiURL, id)
 	resp, err := client.Insert(ctx, req)
 	if err != nil {
-		return renderInsertError(cmd, err)
+		return renderAPIError(cmd, err)
 	}
 	if err := state.Update(func(s *state.State) {
 		s.LastUsedAt = time.Now().Unix()
@@ -118,26 +118,4 @@ func doInsert(ctx context.Context, cmd *cobra.Command, g *globalFlags, req api.I
 		fmt.Fprintf(cmd.ErrOrStderr(), "⚠ state: %v\n", err)
 	}
 	return output.New(cmd.OutOrStdout(), cmd.ErrOrStderr(), formatFor(g)).WriteInsert(resp)
-}
-
-// renderInsertError adds the `/v1/insert`-specific surfaces on top of the shared `renderAPIError` mapper.
-func renderInsertError(cmd *cobra.Command, err error) error {
-	var apiErr *api.APIError
-	if !errors.As(err, &apiErr) {
-		printErr(cmd, "%v", err)
-		return err
-	}
-	switch apiErr.Code {
-	case "forbidden":
-		printErr(cmd, "this key is read-only — use an `sk_live_…` account key to insert.")
-		return err
-	case "invalid_body", "write_constraint", "invalid_value":
-		reason := apiErr.Message
-		if reason == "" {
-			reason = "the rows were rejected"
-		}
-		printErr(cmd, "insert rejected (%s).", reason)
-		return err
-	}
-	return renderAPIError(cmd, err)
 }

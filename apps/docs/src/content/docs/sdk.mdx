@@ -1,6 +1,6 @@
 ---
 title: SDK (TypeScript)
-description: "@nlqdb/sdk, the TypeScript client for nlqdb — install it, pick an auth mode, call ask and runSql, stream traces, and recover from errors via err.code."
+description: "@nlqdb/sdk, the TypeScript client for nlqdb — install it, pick an auth mode, call ask, insert and runSql, stream traces, and recover from errors via err.code."
 ---
 
 `@nlqdb/sdk` is the typed, zero-dependency HTTP client every other surface is built on
@@ -43,6 +43,24 @@ if (res.status === "ok") console.table(res.rows);
 
 `ask` runs the NL→SQL pipeline (`POST /v1/ask`). The response carries a `trace` block of
 per-step timings (`GLOBAL-023`); wire the `onTrace` callback to stream them into a UI.
+
+## Insert rows
+
+`insert` writes rows exactly as sent, with no model call (`POST /v1/insert`). Keys
+become lower_snake_case columns (`serverId` → `server_id`); a table or field the
+database hasn't seen is created in the same transaction, typed from the values.
+
+```ts
+const res = await client.insert({
+  db: "rateme",
+  table: "votes",
+  rows: [{ serverId: 42, stars: 5 }],
+});
+// res.rows: the stored rows, generated id included; res.widen?.ddl: any DDL it ran
+```
+
+Up to 1 000 rows per call. The same verb is `nlq insert` on the CLI and
+`nlqdb_insert` over MCP.
 
 ## Raw SQL escape hatch
 
