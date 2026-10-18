@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { type InsertResult, NlqdbApiError } from "@nlqdb/sdk";
+import { isSyntheticUserAgent } from "../../../apps/api/src/synthetic-ua.ts";
 
 import {
   BLOCKED_TABLE,
@@ -144,8 +145,7 @@ describe("errorCode", () => {
 });
 
 describe("CANARY_UA", () => {
-  it("carries the synthetic-walker token /v1/insert keeps out of inserts_infer_*", () => {
-    // apps/api/src/synthetic-ua.ts SYNTHETIC_UA_TOKEN
-    expect(CANARY_UA.toLowerCase()).toContain("nlqdb-stranger-test");
+  it("is a synthetic UA, so /v1/insert keeps it out of inserts_infer_*", () => {
+    expect(isSyntheticUserAgent(CANARY_UA)).toBe(true);
   });
 });
