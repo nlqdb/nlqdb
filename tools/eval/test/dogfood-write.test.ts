@@ -1,30 +1,30 @@
 import { describe, expect, it } from "bun:test";
-import { type AskResponse, NlqdbApiError } from "@nlqdb/sdk";
+import { type InsertResult, NlqdbApiError } from "@nlqdb/sdk";
+import { isSyntheticUserAgent } from "../../../apps/api/src/synthetic-ua.ts";
 
 import {
   BLOCKED_TABLE,
   blockedWrites,
-  buildGoal,
+  CANARY_UA,
   classifyWrite,
   DELTA_TABLE,
   deltaWrites,
   errorCode,
   parseLastChange,
   parseRows,
+  runWrite,
   TABLE,
 } from "../src/dogfood-write.ts";
 
-const ok = (res: Partial<AskResponse>) => ({ ok: true as const, res: res as AskResponse });
-const trace = (
-  widen?: { tables: string[]; ddl: string[]; schema_rewritten: boolean },
-  sql = `INSERT INTO "s"."${TABLE}" (run) VALUES (225)`,
-) => ({
-  sql,
-  plan_id: "p",
-  confidence: 1,
-  model: "m",
-  cache_hit: false,
-  ...(widen ? { widen } : {}),
+const landed = (widen?: InsertResult["widen"], rowCount = 1) => ({
+  ok: true as const,
+  res: {
+    status: "ok",
+    rows: [],
+    rowCount,
+    table: TABLE,
+    ...(widen ? { widen } : {}),
+  } as InsertResult,
 });
 
 describe("parseLastChange", () => {
@@ -49,16 +49,13 @@ describe("parseLastChange", () => {
   });
 });
 
-describe("buildGoal", () => {
-  it("names the table with a leading insert verb and fits the 2000-char cap", () => {
-    const goal = buildGoal({
-      date: "2026-09-27",
-      run: "225",
-      headline: "h",
-      details: "x".repeat(5000),
+describe("runWrite", () => {
+  it("lands the whole record as one row, run as a number, no length cap", () => {
+    const details = "x".repeat(5000);
+    expect(runWrite({ date: "2026-09-27", run: "225", headline: "h", details })).toEqual({
+      table: TABLE,
+      row: { run: 225, date: "2026-09-27", headline: "h", details },
     });
-    expect(goal.startsWith(`Log this daily run in the ${TABLE} table: run 225`)).toBe(true);
-    expect(goal.length).toBeLessThanOrEqual(2000);
   });
 });
 
@@ -74,16 +71,15 @@ describe("deltaWrites", () => {
     expect(deltaWrites("230", card("1/2", "RED"), card("2/3", "RED"))).toEqual([
       {
         table: DELTA_TABLE,
-        goal: `Log this scorecard delta in the ${DELTA_TABLE} table: run 230, row E1, metric "KPI 1", before "1/2", after "2/3".`,
+        row: { run: 230, row: "E1", metric: "KPI 1", before: "1/2", after: "2/3" },
       },
     ]);
     expect(deltaWrites("230", card("a", "b"), card("a", "b"))).toEqual([]);
     expect(deltaWrites("230", "", card("a", "b"))).toEqual([]);
   });
-  it("fits the 2000-char cap with long values on both sides", () => {
+  it("keeps long values whole", () => {
     const [w] = deltaWrites("230", card("x".repeat(3000), "b"), card("y".repeat(3000), "b"));
-    expect(w?.goal.length).toBeLessThanOrEqual(2000);
-    expect(w?.goal.endsWith('…".')).toBe(true);
+    expect(w?.row["after"]).toBe("y".repeat(3000));
   });
 });
 
@@ -96,7 +92,7 @@ describe("blockedWrites", () => {
     expect(blockedWrites("227", q("Old"), q("Old", "New"))).toEqual([
       {
         table: BLOCKED_TABLE,
-        goal: `Log this blocked-by-human item in the ${BLOCKED_TABLE} table: run 227, title "New", estimate "~5 min", blocked since 2026-09-18.`,
+        row: { run: 227, title: "New", estimate: "~5 min", blockedSince: "2026-09-18" },
       },
     ]);
     expect(blockedWrites("227", q("Old"), q("Old"))).toEqual([]);
@@ -104,123 +100,52 @@ describe("blockedWrites", () => {
 });
 
 describe("classifyWrite", () => {
-  const widened = trace({ tables: [TABLE], ddl: [], schema_rewritten: false });
-  it("HIT — preview widened, commit landed and rewrote the schema", () => {
-    const commit = ok({
-      status: "ok",
-      rowCount: 1,
-      trace: trace({ tables: [TABLE], ddl: ["CREATE TABLE"], schema_rewritten: true }),
-    });
-    expect(
-      classifyWrite(TABLE, ok({ status: "ok", requires_confirm: true, trace: widened }), commit),
-    ).toEqual({
+  const widen = { tables: [TABLE], ddl: ["ALTER TABLE"], schema_rewritten: true };
+  it("HIT — the insert widened and landed", () => {
+    expect(classifyWrite(landed(widen))).toEqual({
       inSample: true,
       hit: true,
       reason: "landed_widened",
     });
   });
 
-  it("a new column caught only at commit is still in the sample", () => {
-    const commit = ok({
-      status: "ok",
-      rowCount: 1,
-      trace: trace({ tables: [TABLE], ddl: ["ALTER TABLE"], schema_rewritten: true }),
-    });
-    expect(
-      classifyWrite(TABLE, ok({ status: "ok", requires_confirm: true, trace: trace() }), commit)
-        .hit,
-    ).toBe(true);
-  });
-
   it("not in sample — every field already seen", () => {
-    const commit = ok({ status: "ok", rowCount: 1, trace: trace() });
-    expect(
-      classifyWrite(TABLE, ok({ status: "ok", requires_confirm: true, trace: trace() }), commit),
-    ).toEqual({
-      inSample: false,
-      hit: false,
-      reason: "seen_fields",
-    });
+    expect(classifyWrite(landed())).toEqual({ inSample: false, hit: false, reason: "seen_fields" });
   });
 
-  it("a write aimed at another table, or a read, is a miss, never 'seen'", () => {
-    const hijack = trace(undefined, `INSERT INTO "s"."entities" (name) VALUES ('x')`);
-    const commit = ok({ status: "ok", rowCount: 1, trace: hijack });
-    expect(
-      classifyWrite(TABLE, ok({ status: "ok", requires_confirm: true, trace: hijack }), commit),
-    ).toEqual({ inSample: true, hit: false, reason: "wrong_target" });
-    const read = trace(undefined, `SELECT * FROM "s"."${TABLE}"`);
-    expect(classifyWrite(TABLE, ok({ status: "ok", rowCount: 1, trace: read })).reason).toBe(
-      "wrong_target",
-    );
-    const bare = trace(undefined, `insert into ${TABLE} (run) values (1)`);
-    expect(
-      classifyWrite(
-        TABLE,
-        ok({ status: "ok", requires_confirm: true, trace: bare }),
-        ok({ status: "ok", rowCount: 1, trace: bare }),
-      ).reason,
-    ).toBe("seen_fields");
-    const other = trace({ tables: ["runs"], ddl: ["CREATE TABLE"], schema_rewritten: true });
-    expect(
-      classifyWrite(
-        TABLE,
-        ok({ status: "ok", requires_confirm: true, trace: other }),
-        ok({ status: "ok", rowCount: 1, trace: other }),
-      ).reason,
-    ).toBe("widen_wrong_table:runs");
-  });
-
-  it("scores the blocked-items table on its own name", () => {
-    const sql = `INSERT INTO "s"."${BLOCKED_TABLE}" (title) VALUES ('t')`;
-    const grown = trace(
-      { tables: [BLOCKED_TABLE], ddl: ["CREATE TABLE"], schema_rewritten: true },
-      sql,
-    );
-    const pre = ok({ status: "ok", requires_confirm: true, trace: grown });
-    expect(
-      classifyWrite(BLOCKED_TABLE, pre, ok({ status: "ok", rowCount: 1, trace: grown })),
-    ).toEqual({ inSample: true, hit: true, reason: "landed_widened" });
-    const seen = ok({ status: "ok", rowCount: 1, trace: trace(undefined, sql) });
-    expect(classifyWrite(BLOCKED_TABLE, seen, seen).reason).toBe("seen_fields");
-    // The run-record table's verdict never credits a blocked-items write.
-    expect(classifyWrite(TABLE, pre, ok({ status: "ok", rowCount: 1, trace: grown })).reason).toBe(
-      `widen_wrong_table:${BLOCKED_TABLE}`,
-    );
-  });
-
-  it("errors and create-routing count as misses, never drop out", () => {
-    expect(classifyWrite(TABLE, { ok: false, code: "rate_limited" })).toEqual({
+  it("errors and an empty landing count as misses, never drop out", () => {
+    expect(classifyWrite({ ok: false, code: "write_constraint:not_null@estimate" })).toEqual({
       inSample: true,
       hit: false,
-      reason: "preview_error:rate_limited",
+      reason: "insert_error:write_constraint:not_null@estimate",
     });
-    expect(classifyWrite(TABLE, ok({ kind: "create", trace: trace() })).reason).toBe(
-      "classified_create",
-    );
-    const pre = ok({ status: "ok", requires_confirm: true, trace: widened });
-    expect(classifyWrite(TABLE, pre, { ok: false, code: "confirm_expired" }).reason).toBe(
-      "commit_error:confirm_expired",
-    );
-    expect(classifyWrite(TABLE, pre).reason).toBe("not_committed");
+    expect(classifyWrite(landed(widen, 0)).reason).toBe("not_landed");
   });
 });
 
 describe("errorCode", () => {
   const apiErr = (code: string, params?: Record<string, unknown>) =>
-    new NlqdbApiError("x", 502, code as never, "/v1/ask", { code: code as never, params });
+    new NlqdbApiError("x", 502, code as never, "/v1/insert", { code: code as never, params });
 
   it("names the declared cause and provider, so a miss says why (run 237)", () => {
     const err = apiErr("llm_failed", { reason: "circuit_open", provider: "groq", lane: "free" });
     expect(errorCode(err)).toBe("llm_failed:circuit_open@groq");
-    expect(classifyWrite(TABLE, { ok: false, code: errorCode(err) }).reason).toBe(
-      "preview_error:llm_failed:circuit_open@groq",
-    );
+  });
+
+  it("names a constraint's kind and column (run 251's two scorecard_deltas misses)", () => {
+    const err = apiErr("write_constraint", { kind: "not_null", column: "estimate" });
+    expect(errorCode(err)).toBe("write_constraint:not_null@estimate");
   });
 
   it("bare code when the envelope declares no cause; network errors keep their message", () => {
     expect(errorCode(apiErr("rate_limited"))).toBe("rate_limited");
     expect(errorCode(apiErr("llm_failed", { provider: "groq" }))).toBe("llm_failed");
     expect(errorCode(new Error("ECONNRESET"))).toBe("network:ECONNRESET");
+  });
+});
+
+describe("CANARY_UA", () => {
+  it("is a synthetic UA, so /v1/insert keeps it out of inserts_infer_*", () => {
+    expect(isSyntheticUserAgent(CANARY_UA)).toBe(true);
   });
 });

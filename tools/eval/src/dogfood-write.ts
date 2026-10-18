@@ -1,38 +1,37 @@
 // Phase A dogfood canary — GLOBAL-041 build-order step 8, a regression check
 // (the KPI 1 sample is rateme12's inserts). The daily loop's own outputs — its run record ("Last change"),
 // its scorecard row deltas and its new blocked-by-human items — go into the
-// hosted dogfood DB through `@nlqdb/sdk`, as the run wrote them, never
-// pre-modeled.
+// hosted dogfood DB through `@nlqdb/sdk` `insert()` (SK-SCHEMA-012), as the
+// run wrote them, never pre-modeled. No model on this write path: the canary
+// is the deployed `insert()`'s live walk on every merge (rateme12 §6.1 R5).
 //
 // Why CI and not the daily session: the session's credential classifier
 // denies materialising the prod `sk_mcp_` key into an outbound call (runs
 // 211-224). `secrets.NLQDB_API_KEY` crosses only the workflow boundary, so
 // `dogfood-write.yml` runs this on every merge that touches the scorecard or
 // the blocked-by-human queue.
-// Unlike `kpi1-live-walk.ts` (preview-only proxy) this COMMITS: a real write
-// into the real dogfood DB is what moves the prod
-// `asks_extend_ok/failed` counters.
 //
-// Skill cross-ref: docs/features/schema-widening/FEATURE.md SK-SCHEMA-010.
+// Skill cross-ref: docs/features/schema-widening/FEATURE.md SK-SCHEMA-012.
 
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
-import { type AskResponse, createClient, NlqdbApiError } from "@nlqdb/sdk";
+import { createClient, type FetchLike, type InsertResult, NlqdbApiError } from "@nlqdb/sdk";
 import { resolveTarget } from "./kpi1-live-walk.ts";
 
 export type RunRecord = { date: string; run: string; headline: string; details: string };
 
-// One goal-named table per output kind. Names, not shapes: every column is
-// left to widen-on-write to infer from the values (GLOBAL-041 — never pre-model).
+// One table per output kind. Names, not shapes: every column is left to
+// `insert()` to infer from the values (GLOBAL-041 — never pre-model).
 export const TABLE = "daily_runs";
 export const BLOCKED_TABLE = "blocked_items";
 export const DELTA_TABLE = "scorecard_deltas";
 
-// One write: the goal-named table and the NL goal that inserts the record.
-export type Write = { table: string; goal: string };
+// Carries the synthetic-walker token `/v1/insert` skips when it bumps
+// `inserts_infer_*` (apps/api/src/synthetic-ua.ts).
+export const CANARY_UA = "nlqdb-stranger-test/dogfood-canary (+https://nlqdb.com)";
 
-// SK-ASK-010 server cap on `goal`.
-const MAX_GOAL = 2000;
+// One write: the table and the one row it lands, keyed as the run wrote it.
+export type Write = { table: string; row: Record<string, unknown> };
 
 // Pure: the scorecard's single-entry `## Last change` record, or null when the
 // section is absent or not in the `**date (run N)** — **headline** body` form.
@@ -49,13 +48,10 @@ export function parseLastChange(md: string): RunRecord | null {
   return { date, run, headline: flat(headline), details: flat(details) };
 }
 
-const clip = (s: string, room: number) => (s.length > room ? `${s.slice(0, room - 1)}…` : s);
-
-// Pure: the write goal, a leading insert verb + pinned DB so it routes
-// `pinned_write` (SK-ASK-014). Only `details` is shortened to fit the cap.
-export function buildGoal(r: RunRecord): string {
-  const head = `Log this daily run in the ${TABLE} table: run ${r.run}, date ${r.date}, headline "${r.headline}", details "`;
-  return `${head}${clip(r.details, MAX_GOAL - head.length - 2)}".`;
+// Pure: the run record as one `daily_runs` row, whole — no length cap.
+export function runWrite(r: RunRecord): Write {
+  const { run, date, headline, details } = r;
+  return { table: TABLE, row: { run: Number(run), date, headline, details } };
 }
 
 type Row = { metric: string; value: string };
@@ -73,19 +69,16 @@ export function parseRows(md: string): Map<string, Row> {
   return rows;
 }
 
-// Pure: one write per scorecard row whose value this run changed. Before and
-// after share what room the cap leaves.
+// Pure: one write per scorecard row whose value this run changed.
 export function deltaWrites(run: string, before: string, after: string): Write[] {
   const prev = parseRows(before);
   const out: Write[] = [];
   for (const [id, { metric, value }] of parseRows(after)) {
     const old = prev.get(id)?.value;
     if (old === undefined || old === value) continue;
-    const head = `Log this scorecard delta in the ${DELTA_TABLE} table: run ${run}, row ${id}, metric "${metric}", before "`;
-    const room = Math.floor((MAX_GOAL - head.length - 14) / 2);
     out.push({
       table: DELTA_TABLE,
-      goal: `${head}${clip(old, room)}", after "${clip(value, room)}".`,
+      row: { run: Number(run), row: id, metric, before: old, after: value },
     });
   }
   return out;
@@ -111,82 +104,36 @@ export function blockedWrites(run: string, before: string, after: string): Write
     .filter((b) => !seen.has(b.title))
     .map((b) => ({
       table: BLOCKED_TABLE,
-      goal: clip(
-        `Log this blocked-by-human item in the ${BLOCKED_TABLE} table: run ${run}, title "${b.title}", estimate "${b.estimate}", blocked since ${b.since}.`,
-        MAX_GOAL,
-      ),
+      row: { run: Number(run), title: b.title, estimate: b.estimate, blockedSince: b.since },
     }));
 }
 
-export type WriteOutcome = { ok: true; res: AskResponse } | { ok: false; code: string };
+export type WriteOutcome = { ok: true; res: InsertResult } | { ok: false; code: string };
 
 export type WriteVerdict = { inSample: boolean; hit: boolean; reason: string };
 
-function widenOf(o: WriteOutcome | undefined): {
-  tables: string[];
-  rewritten: boolean;
-  sql: string;
-} {
-  const t = o?.ok ? o.res.trace : undefined;
-  return {
-    tables: t?.widen?.tables ?? [],
-    rewritten: t?.widen?.schema_rewritten ?? false,
-    sql: t?.sql ?? "",
-  };
-}
-
-// An INSERT into the goal-named table, schema-qualified and/or quoted or not.
-const insertsTable = (table: string) =>
-  new RegExp(`\\binsert\\s+into\\s+(?:"?\\w+"?\\.)?"?${table}"?(?![\\w"])`, "i");
-
-// Pure: is this write in the KPI 1 sample (it referenced an unseen table or
-// field), and did it land with no user action? An error, or a write the plan
-// aimed at any table but the goal-named `table`, is counted in-sample as a
-// miss — the verdict never inflates the rate by dropping a failure.
-export function classifyWrite(
-  table: string,
-  preview: WriteOutcome,
-  commit?: WriteOutcome,
-): WriteVerdict {
-  if (!preview.ok) return { inSample: true, hit: false, reason: `preview_error:${preview.code}` };
-  if ("kind" in preview.res) return { inSample: true, hit: false, reason: "classified_create" };
-  if (commit && !commit.ok)
-    return { inSample: true, hit: false, reason: `commit_error:${commit.code}` };
-  const pre = widenOf(preview);
-  const post = widenOf(commit ?? preview);
-  const widened = [...new Set([...pre.tables, ...post.tables])];
-  if (widened.length === 0) {
-    // No widen: only an INSERT into the goal-named table is "seen" — a read or
-    // any other statement that merely names it is a mis-route, kept as a miss.
-    return insertsTable(table).test(post.sql)
-      ? { inSample: false, hit: false, reason: "seen_fields" }
-      : { inSample: true, hit: false, reason: "wrong_target" };
-  }
-  if (!widened.includes(table)) {
-    return { inSample: true, hit: false, reason: `widen_wrong_table:${widened.join(",")}` };
-  }
-  const landed = commit?.ok && "rowCount" in commit.res && commit.res.rowCount > 0;
-  if (landed && post.rewritten) return { inSample: true, hit: true, reason: "landed_widened" };
-  return { inSample: true, hit: false, reason: landed ? "landed_no_rewrite" : "not_committed" };
+// Pure: is this write in the KPI 1 sample (it named an unseen table or field),
+// and did it land with no user action? An error counts in-sample as a miss —
+// the verdict never inflates the rate by dropping a failure.
+export function classifyWrite(o: WriteOutcome): WriteVerdict {
+  if (!o.ok) return { inSample: true, hit: false, reason: `insert_error:${o.code}` };
+  if (!o.res.widen) return { inSample: false, hit: false, reason: "seen_fields" };
+  return o.res.rowCount > 0
+    ? { inSample: true, hit: true, reason: "landed_widened" }
+    : { inSample: true, hit: false, reason: "not_landed" };
 }
 
 // Pure: the error's code plus the cause the envelope declares (bounded,
-// secret-free `params`, SK-LLM-051) — `llm_failed:circuit_open@groq`, so a
-// miss names why it missed instead of only that it did.
+// secret-free `params`, SK-LLM-051) — `write_constraint:not_null@estimate`, so
+// a miss names why it missed instead of only that it did.
 export function errorCode(err: unknown): string {
   if (!(err instanceof NlqdbApiError)) return `network:${(err as Error).message}`;
-  const { reason, provider } = err.body?.params ?? {};
-  const cause = typeof reason === "string" ? `:${reason}` : "";
-  const where = cause && typeof provider === "string" ? `@${provider}` : "";
+  const { reason, kind, provider, column } = err.body?.params ?? {};
+  const why = reason ?? kind;
+  const at = provider ?? column;
+  const cause = typeof why === "string" ? `:${why}` : "";
+  const where = cause && typeof at === "string" ? `@${at}` : "";
   return `${err.code}${cause}${where}`;
-}
-
-async function attempt(fn: () => Promise<AskResponse>): Promise<WriteOutcome> {
-  try {
-    return { ok: true, res: await fn() };
-  } catch (err) {
-    return { ok: false, code: errorCode(err) };
-  }
 }
 
 function fileAt(path: string, ref: string | null): string | null {
@@ -245,7 +192,7 @@ async function main(): Promise<void> {
   if (queueBefore === null)
     console.warn(`dogfood-write: no blocked queue at ${since} — skipping bullets.`);
   const writes: Write[] = [
-    ...(newRun ? [{ table: TABLE, goal: buildGoal(record) }] : []),
+    ...(newRun ? [runWrite(record)] : []),
     ...deltaWrites(record.run, cardBefore ?? "", cardNow),
     ...(queueBefore === null ? [] : blockedWrites(record.run, queueBefore, queueNow)),
   ];
@@ -255,17 +202,24 @@ async function main(): Promise<void> {
   }
 
   const { base, dbId } = resolveTarget(process.env);
-  const client = createClient({ apiKey, baseUrl: base });
+  // The walker UA keeps these writes out of the KPI-1 counters (GLOBAL-041:
+  // the canary is not the sample); the verdict below reads the response.
+  const fetch: FetchLike = (input, init) => {
+    const headers = new Headers(init?.headers);
+    headers.set("user-agent", CANARY_UA);
+    return globalThis.fetch(input, { ...init, headers });
+  };
+  const client = createClient({ apiKey, baseUrl: base, fetch });
 
-  // Sequential: each write plans against the schema the previous one widened.
-  for (const { table, goal } of writes) {
-    const preview = await attempt(() => client.ask({ goal, dbId }));
-    const needsConfirm =
-      preview.ok && "requires_confirm" in preview.res && preview.res.requires_confirm;
-    const commit = needsConfirm
-      ? await attempt(() => client.ask({ goal, dbId, confirm: true }))
-      : undefined;
-    const v = classifyWrite(table, preview, commit);
+  // Sequential: each write sees the schema the previous one widened.
+  for (const { table, row } of writes) {
+    let outcome: WriteOutcome;
+    try {
+      outcome = { ok: true, res: await client.insert({ db: dbId, table, rows: [row] }) };
+    } catch (err) {
+      outcome = { ok: false, code: errorCode(err) };
+    }
+    const v = classifyWrite(outcome);
 
     const line = `dogfood-write run ${record.run} → ${table} on ${dbId}: ${
       v.inSample ? (v.hit ? "KPI-1 HIT" : "KPI-1 MISS") : "not in sample"
