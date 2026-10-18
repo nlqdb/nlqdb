@@ -2,8 +2,9 @@
 # (the KPI 1 sample is rateme12's inserts). On every merge that touches the scorecard or the blocked-by-human
 # queue, write the daily run's outputs — its "Last change" record, its scorecard
 # row deltas and its new blocked-by-human items — into the hosted dogfood DB
-# through `@nlqdb/sdk` (preview → confirm), as the run wrote them — no field
-# pre-modeled. The write moves prod `asks_extend_ok/failed` (SK-SCHEMA-010). CI, not the daily session: the prod
+# through `@nlqdb/sdk` `insert()` (SK-SCHEMA-012, no model call), as the run
+# wrote them — no field pre-modeled. The write moves prod `inserts_infer_*` on
+# the dogfood DB's row. CI, not the daily session: the prod
 # key crosses only the workflow boundary (tools/eval/src/dogfood-write.ts).
 # Self-skips green when the secret is absent.
 #
