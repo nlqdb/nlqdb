@@ -3,8 +3,8 @@
 # queue, write the daily run's outputs — its "Last change" record, its scorecard
 # row deltas and its new blocked-by-human items — into the hosted dogfood DB
 # through `@nlqdb/sdk` `insert()` (SK-SCHEMA-012, no model call), as the run
-# wrote them — no field pre-modeled. The write moves prod `inserts_infer_*` on
-# the dogfood DB's row. CI, not the daily session: the prod
+# wrote them — no field pre-modeled. Its walker UA keeps it out of the KPI-1
+# `inserts_infer_*` counters (GLOBAL-041). CI, not the daily session: the prod
 # key crosses only the workflow boundary (tools/eval/src/dogfood-write.ts).
 # Self-skips green when the secret is absent.
 #

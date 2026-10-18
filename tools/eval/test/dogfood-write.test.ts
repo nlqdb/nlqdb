@@ -4,6 +4,7 @@ import { type InsertResult, NlqdbApiError } from "@nlqdb/sdk";
 import {
   BLOCKED_TABLE,
   blockedWrites,
+  CANARY_UA,
   classifyWrite,
   DELTA_TABLE,
   deltaWrites,
@@ -139,5 +140,12 @@ describe("errorCode", () => {
     expect(errorCode(apiErr("rate_limited"))).toBe("rate_limited");
     expect(errorCode(apiErr("llm_failed", { provider: "groq" }))).toBe("llm_failed");
     expect(errorCode(new Error("ECONNRESET"))).toBe("network:ECONNRESET");
+  });
+});
+
+describe("CANARY_UA", () => {
+  it("carries the synthetic-walker token /v1/insert keeps out of inserts_infer_*", () => {
+    // apps/api/src/synthetic-ua.ts SYNTHETIC_UA_TOKEN
+    expect(CANARY_UA.toLowerCase()).toContain("nlqdb-stranger-test");
   });
 });

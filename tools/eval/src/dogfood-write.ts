@@ -15,7 +15,7 @@
 
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
-import { createClient, type InsertResult, NlqdbApiError } from "@nlqdb/sdk";
+import { createClient, type FetchLike, type InsertResult, NlqdbApiError } from "@nlqdb/sdk";
 import { resolveTarget } from "./kpi1-live-walk.ts";
 
 export type RunRecord = { date: string; run: string; headline: string; details: string };
@@ -25,6 +25,10 @@ export type RunRecord = { date: string; run: string; headline: string; details: 
 export const TABLE = "daily_runs";
 export const BLOCKED_TABLE = "blocked_items";
 export const DELTA_TABLE = "scorecard_deltas";
+
+// Carries the synthetic-walker token `/v1/insert` skips when it bumps
+// `inserts_infer_*` (apps/api/src/synthetic-ua.ts).
+export const CANARY_UA = "nlqdb-stranger-test/dogfood-canary (+https://nlqdb.com)";
 
 // One write: the table and the one row it lands, keyed as the run wrote it.
 export type Write = { table: string; row: Record<string, unknown> };
@@ -198,7 +202,14 @@ async function main(): Promise<void> {
   }
 
   const { base, dbId } = resolveTarget(process.env);
-  const client = createClient({ apiKey, baseUrl: base });
+  // The walker UA keeps these writes out of the KPI-1 counters (GLOBAL-041:
+  // the canary is not the sample); the verdict below reads the response.
+  const fetch: FetchLike = (input, init) => {
+    const headers = new Headers(init?.headers);
+    headers.set("user-agent", CANARY_UA);
+    return globalThis.fetch(input, { ...init, headers });
+  };
+  const client = createClient({ apiKey, baseUrl: base, fetch });
 
   // Sequential: each write sees the schema the previous one widened.
   for (const { table, row } of writes) {
