@@ -204,7 +204,11 @@ review, **never self-executed**, the run still a null. One proposal, then
 back to nulls until it is answered.
 
 Write this run's delta (and any revert note) as the "Last change" record
-through the dogfood canary above. One lever per run.
+through the dogfood canary above: rewrite the scorecard's `## Last change`
+entry as `**date (run N)** — **headline**` every run, since the canary keys
+the run number and row deltas off it (runs 250–251 skipped it: their run
+records were never written and their row deltas filed under run 249).
+One lever per run.
 
 ### 3 — Ship
 
