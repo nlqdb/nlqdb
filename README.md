@@ -58,9 +58,9 @@ hosted server *and* both memory skills in a single step:
 
 On any other MCP host, [**connect your agent**](https://docs.nlqdb.com/agent-memory/)
 with one browser-OAuth approval; headless hosts skip the browser with
-`npx -y @nlqdb/mcp` (`0.1.1`) and an `sk_mcp_*` MCP key
-([MCP setup](https://docs.nlqdb.com/mcp/)). `@nlqdb/sdk` (`0.4.0`) and
-`@nlqdb/mcp` (`0.1.1`) are both published and importable from npm.
+`npx -y @nlqdb/mcp` and an `sk_mcp_*` MCP key
+([MCP setup](https://docs.nlqdb.com/mcp/)). `@nlqdb/sdk` and `@nlqdb/mcp`
+are both published and importable from npm.
 
 The 60-second walkthrough — plain HTML, CLI, and ten framework wrappers —
 lives at [`docs.nlqdb.com`](https://docs.nlqdb.com). Start with the
@@ -119,11 +119,11 @@ The hosted-premium model lane went live 2026-08-14. The full model strategy is i
 |---|---|---|
 | HTTP API (`POST /v1/ask`, `POST /v1/run`, `POST /v1/insert`) | ✓ shipped | `apps/api/src/ask/**` |
 | `<nlq-data>` + `<nlq-action>` elements | ✓ shipped (v0.1) | `packages/elements/**` |
-| `@nlqdb/sdk` (TypeScript) | ✓ shipped (incl. `runSql` + cross-tenant grant + pack-import runner verbs) — installable from npm (`0.4.0`) | `packages/sdk/**` |
+| `@nlqdb/sdk` (TypeScript) | ✓ shipped (incl. `runSql` + cross-tenant grant + pack-import runner verbs) — installable from npm; `insert()` and `runSql` `params` publish in `0.5.0` | `packages/sdk/**` |
 | Framework wrappers (React / Next / Vue / Nuxt / Svelte / SvelteKit / Astro / Solid + Swift) | ~ built + CI-tested; npm / SPM publish pending | `packages/{react,next,…}/**` |
 | Chat app `nlqdb.com/app` | ✓ shipped | `apps/web/**` |
 | Hosted MCP server `mcp.nlqdb.com/mcp` | ✓ shipped (host auto-detect pending) | `apps/mcp/**`, `packages/mcp/**` |
-| Local stdio MCP server `@nlqdb/mcp` | ✓ shipped (`0.1.1`) — `npx -y @nlqdb/mcp` with an `sk_mcp_*` key | `packages/mcp/**` |
+| Local stdio MCP server `@nlqdb/mcp` | ✓ shipped — `npx -y @nlqdb/mcp` with an `sk_mcp_*` key | `packages/mcp/**` |
 | Droppable agent artifacts (AGENTS.md · Claude Code skill **+ plugin** · Cursor rules · Codex config) | ✓ shipped — `/plugin marketplace add nlqdb/nlqdb` installs the server + skills in one step | `apps/web/public/agent-artifacts/**` |
 | `nlq` CLI (Go) | ✓ shipped (core verbs; device-login pending) | `cli/**` |
 
@@ -248,7 +248,7 @@ and shares the link — in under 60 seconds, no card, no config.
 ### Phase 2 — Distribution (agent + developer surfaces)
 
 - ✓ Hosted MCP server (`mcp.nlqdb.com/mcp`) — host auto-detect pending;
-  local stdio `@nlqdb/mcp@0.1.1` is on npm, so `npx -y @nlqdb/mcp` with an
+  local stdio `@nlqdb/mcp` is on npm, so `npx -y @nlqdb/mcp` with an
   `sk_mcp_*` key is a headless route in with no browser consent step
   (`/agents` now carries it; the per-host install panel is still OAuth-only).
   On Claude Code, `/plugin marketplace add nlqdb/nlqdb` installs the server +
@@ -256,8 +256,8 @@ and shares the link — in under 60 seconds, no card, no config.
 - ✓ CLI `nlq` (Go) — core verbs + raw-SQL escape hatch; device-login +
   chat REPL pending
 - ✓ `@nlqdb/sdk` — basic methods + `runSql` + cross-tenant grant +
-  pack-import runner verbs; published and importable from the registry
-  (`0.4.0`)
+  pack-import runner verbs; published and importable from the registry;
+  `insert()` and `runSql` `params` publish in `0.5.0`
 - ~ Framework wrappers + native Swift package — built + CI-tested; npm /
   SPM publish pending
 - ✓ Quality-eval harness (BIRD + Spider 2.0) — a CI regression alarm for
