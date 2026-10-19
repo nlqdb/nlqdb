@@ -147,50 +147,124 @@ const DISALLOWED_FUNCTIONS = new Set([
 // inner statement is DML). Rejected outright; plain EXPLAIN passes.
 // Matches `EXPLAIN ANALYZE …` and `EXPLAIN (ANALYZE …) …`. Postgres accepts
 // the British spelling `ANALYSE` as a keyword synonym (gram.y
-// `analyze_keyword: ANALYZE | ANALYSE`), so match both `analy[sz]e`.
-const EXPLAIN_ANALYZE = /^explain\s*(?:\(\s*[^)]*\banaly[sz]e\b|analy[sz]e\b)/i;
+// `analyze_keyword: ANALYZE | ANALYSE`), so match both `analy[sz]e`. A
+// quote in the option list is rejected too: `(U&"\0061nalyze")` names the
+// same option, and no legitimate option needs one.
+const EXPLAIN_ANALYZE = /^explain\s*(?:\(\s*[^)]*(?:\banaly[sz]e\b|["'])|analy[sz]e\b)/i;
 
-// Comment-blind view for the EXPLAIN_ANALYZE gate. Postgres treats a
-// `/* … */` or `-- …` comment between EXPLAIN and ANALYZE as whitespace,
-// so `EXPLAIN /*c*/ ANALYZE DELETE …` still executes the DELETE — but the
-// regex above sees the comment token and misses it, and the `explain`
-// short-circuit then allows the write (same comment-smuggle class as the
-// leading-verb gate). Block comments *nest* in Postgres (docs §4.1.5), so
-// a non-greedy `/\*…*?\*/` would stop at the first `*/` and leave a
-// dangling `*/` that hides `EXPLAIN /* /* */ */ ANALYZE …`; scan with a
-// depth counter instead. Anchored to `^explain`, this only ever *adds* a
-// reject, never masks a legit query.
+// The parts of Postgres's lexer (scan.l) every scanner here must agree
+// with — a disagreement lets text Postgres executes hide inside what the
+// validator reads as a comment or a string. Whitespace is these six
+// characters only; any non-ASCII character, and `$` after the first,
+// belongs to an identifier.
+const PG_SPACE = /[ \t\n\r\f\v]/;
+const IDENT_CONT = /[A-Za-z0-9_$\u0080-\uffff]/;
+const DOLLAR_TAG = /\$(?:[A-Za-z_\u0080-\uffff][A-Za-z_0-9\u0080-\uffff]*)?\$/y;
+
+// End of the comment starting at `i`: `i` when none starts there, -1 when
+// it never closes. `--` runs to \n or \r; `/* */` nests (docs §4.1.5).
+function commentEnd(s: string, i: number): number {
+  if (s.startsWith("--", i)) {
+    while (i < s.length && s[i] !== "\n" && s[i] !== "\r") i++;
+    return i;
+  }
+  if (!s.startsWith("/*", i)) return i;
+  for (let depth = 0; i < s.length; ) {
+    if (s.startsWith("/*", i)) {
+      depth++;
+      i += 2;
+    } else if (s.startsWith("*/", i)) {
+      i += 2;
+      if (--depth === 0) return i;
+    } else {
+      i++;
+    }
+  }
+  return -1;
+}
+
+// Comment-blind view for the EXPLAIN_ANALYZE gate: a comment between
+// EXPLAIN and ANALYZE is whitespace to Postgres, so `EXPLAIN /*c*/ ANALYZE
+// DELETE …` still executes the DELETE. Anchored to `^explain`, this only
+// ever *adds* a reject, never masks a legit query.
 const collapseComments = (s: string): string => {
   let out = "";
-  let depth = 0;
-  let line = false;
-  for (let i = 0; i < s.length; i++) {
-    if (line) {
-      if (s[i] === "\n") line = false;
-      out += s[i] === "\n" ? "\n" : " ";
-      continue;
-    }
-    const two = s.slice(i, i + 2);
-    if (depth > 0) {
-      if (two === "/*") depth++;
-      else if (two === "*/") depth--;
-      if (two === "/*" || two === "*/") i++;
-      out += " ";
-      continue;
-    }
-    if (two === "/*") {
-      depth++;
-      i++;
-      out += " ";
-    } else if (two === "--") {
-      line = true;
-      out += " ";
+  for (let i = 0; i < s.length; ) {
+    const end = commentEnd(s, i);
+    if (end === i) {
+      out += s[i++];
     } else {
-      out += s[i];
+      out += " ";
+      i = end === -1 ? s.length : end;
     }
   }
   return out;
 };
+
+// Statement-split check for the SHOW / EXPLAIN short-circuit, which skips
+// the parser and so its multi-statement reject (SK-SQLAL-009): without it
+// `SHOW x; RESET ROLE; SELECT * FROM other.t` drops back to the RLS-
+// bypassing owner. A lexer, not a regex — a `;` inside a string, quoted
+// identifier, dollar-quote or comment is not a separator. Unterminated
+// input fails closed, and so does a `$` or `'` right after a number or
+// `$n` (never valid SQL; Postgres versions lex it differently).
+export function hasSecondStatement(sql: string): boolean {
+  const n = sql.length;
+  let afterSemi = false;
+  for (let i = 0; i < n; ) {
+    const c = sql[i] as string;
+    const end = commentEnd(sql, i);
+    const tag = c === "$" ? dollarTag(sql, i) : undefined;
+    if (end === -1) return true;
+    if (end > i) {
+      i = end;
+    } else if (PG_SPACE.test(c)) {
+      i++;
+    } else if (afterSemi) {
+      return true;
+    } else if (c === ";") {
+      afterSemi = true;
+      i++;
+    } else if (tag) {
+      const close = sql.indexOf(tag, i + tag.length);
+      if (close === -1) return true;
+      i = close + tag.length;
+    } else if (c === "'" || c === '"') {
+      i = quotedEnd(sql, i, false);
+      if (i === -1) return true;
+    } else if (IDENT_CONT.test(c)) {
+      // A whole identifier / number / `$n` run, so a `$` inside it is never
+      // read as a dollar-quote (`é$$` is one identifier to Postgres).
+      let j = i + 1;
+      while (j < n && IDENT_CONT.test(sql[j] as string)) j++;
+      const run = sql.slice(i, j);
+      if (/^[0-9$]/.test(run) && (run.includes("$", 1) || sql[j] === "'")) return true;
+      i = (run === "e" || run === "E") && sql[j] === "'" ? quotedEnd(sql, j, true) : j;
+      if (i === -1) return true;
+    } else {
+      i++;
+    }
+  }
+  return false;
+}
+
+function dollarTag(sql: string, i: number): string | undefined {
+  DOLLAR_TAG.lastIndex = i;
+  return DOLLAR_TAG.exec(sql)?.[0];
+}
+
+// Index just past the '…' string or "…" identifier opening at `i`, -1 if
+// unclosed. A doubled quote is literal; an E'…' string (`escapes`) also
+// takes backslash escapes.
+function quotedEnd(sql: string, i: number, escapes: boolean): number {
+  const q = sql[i];
+  for (let j = i + 1; j < sql.length; j++) {
+    if (escapes && sql[j] === "\\") j++;
+    else if (sql[j] === q && sql[j + 1] === q) j++;
+    else if (sql[j] === q) return j + 1;
+  }
+  return -1;
+}
 
 // Embedded-verb mapping for the AST walk. Same buckets as the
 // leading-verb reject map but keyed by the AST `type` string
@@ -210,28 +284,20 @@ const EMBEDDED_REJECT: Record<string, SqlRejectReason> = {
 // parser path, this needs an instance-per-request (or a pool).
 const parser = new Parser();
 
-// Strip leading SQL comments (`-- …\n` line comments and `/* … */`
-// block comments, possibly nested inside whitespace) so the leading-
-// verb gate sees the actual first token, not a comment artifact.
+// Strip leading SQL comments (`commentEnd`'s rules, possibly nested
+// inside whitespace) so the leading-verb gate sees the actual first token,
+// not a comment artifact. An unclosed comment strips to "" (`empty`).
 // Exported so `/v1/run`'s pk_live gate uses the SAME normalization the
 // validator uses — `/* x */ INSERT ...` must reach both as `INSERT`,
 // otherwise pk_live could smuggle writes past the orchestrator gate
 // while the validator allows the verb.
 export function stripLeadingComments(sql: string): string {
-  let s = sql;
-  for (;;) {
-    const next = s.replace(/^\s+/, "");
-    if (next.startsWith("--")) {
-      const nl = next.indexOf("\n");
-      s = nl === -1 ? "" : next.slice(nl + 1);
-      continue;
-    }
-    if (next.startsWith("/*")) {
-      const end = next.indexOf("*/");
-      s = end === -1 ? "" : next.slice(end + 2);
-      continue;
-    }
-    return next;
+  for (let i = 0; ; ) {
+    while (i < sql.length && PG_SPACE.test(sql[i] as string)) i++;
+    const end = commentEnd(sql, i);
+    if (end === -1) return "";
+    if (end === i) return sql.slice(i);
+    i = end;
   }
 }
 
@@ -268,7 +334,9 @@ export function validateSql(rawSql: string): SqlValidationResult {
   // SHOW + plain EXPLAIN are read-only by definition. node-sql-parser
   // refuses both ("not supported"); short-circuit instead of demanding
   // a parse.
-  if (leading === "show" || leading === "explain") return { ok: true };
+  if (leading === "show" || leading === "explain") {
+    return hasSecondStatement(sql) ? { ok: false, reason: "multi_statement" } : { ok: true };
+  }
 
   let asts: AstNode[];
   try {

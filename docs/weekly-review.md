@@ -24,7 +24,7 @@ to `insert()` costs $0, but it is a daily call, so it is not made here.
 
 - **Engine:** R5 went from no insert path to API + SDK + `nlq insert` +
   MCP `nlqdb_insert` (#1183, #1186). §6.1 is 4/5 green. KPI 1's formal
-  sample stays 0/200 until §5b wires rateme12.
+  sample stays at n = 0 until §5b wires rateme12.
 - **Onboarding:** hosted create came back on 10-16 (#1182, #1184), after
   the Neon 500-role cap made it fail from 10-14.
 - **UX:** flat.

@@ -96,6 +96,80 @@ describe("validateSql", () => {
     });
   });
 
+  // SK-SQLAL-009 on the SHOW / EXPLAIN short-circuit: a second statement
+  // could `RESET ROLE` back to the RLS-bypassing owner.
+  describe("SHOW / EXPLAIN carry exactly one statement", () => {
+    it.each([
+      "SHOW search_path; RESET ROLE; SELECT * FROM other_schema.t",
+      "EXPLAIN SELECT 1; RESET ROLE",
+      "SHOW x;SELECT 1",
+      "SHOW x; /* c */ SELECT 1",
+      "SHOW x; -- c\nSELECT 1",
+      "EXPLAIN SELECT 'a'; SELECT 1",
+      "EXPLAIN SELECT E'\\''; RESET ROLE",
+      "EXPLAIN SELECT $$x$$; RESET ROLE",
+      "EXPLAIN SELECT $t$ ; $t$; RESET ROLE",
+      'EXPLAIN SELECT "a;b"; RESET ROLE',
+      "SHOW x; ;",
+      // Unterminated quoting or comment fails closed.
+      "EXPLAIN SELECT 'a",
+      "EXPLAIN SELECT $$a",
+      "SHOW x /* open",
+      // Postgres's lexer, not JS's: `--` ends at \r too, any non-ASCII
+      // char continues an identifier (`é$$` is not a dollar-quote, `éE'`
+      // not an E-string), NBSP is not whitespace. The first two read
+      // `other.t` on a real Postgres 16 with the earlier lexer.
+      "SHOW x --\r; RESET ROLE; SELECT * FROM other.t",
+      "EXPLAIN SELECT 1 AS é$$; RESET ROLE; SELECT * FROM other.t; --$$",
+      "EXPLAIN SELECT 1 AS éE'\\'; RESET ROLE; SELECT 1 --'",
+      "SHOW x;\u00a0RESET ROLE",
+      // A quote or dollar-quote right after a number or `$n` fails closed.
+      "EXPLAIN SELECT 1$$; RESET ROLE; $$",
+      "EXPLAIN SELECT 1E'\\'; RESET ROLE --'",
+    ])("rejects %j", (sql) => {
+      expect(validateSql(sql)).toEqual({ ok: false, reason: "multi_statement" });
+    });
+
+    it.each([
+      "SHOW search_path;",
+      "SHOW search_path ; -- trailing",
+      "SHOW x; /* a /* nested */ b */",
+      "EXPLAIN SELECT 'a;b' FROM t",
+      "EXPLAIN SELECT 'it''s; fine'",
+      "EXPLAIN SELECT E'\\\\'",
+      "EXPLAIN SELECT $$ ; $$",
+      "EXPLAIN SELECT $tag$ a;b $tag$",
+      'EXPLAIN SELECT "x;y" FROM t',
+      "EXPLAIN SELECT * FROM t WHERE id = $1",
+      "EXPLAIN SELECT 1 /* ; */",
+      "EXPLAIN SELECT 1 AS a$$b",
+      "SHOW x; -- c\r\n",
+      "EXPLAIN SELECT \"a\"E'\\\\' ;",
+    ])("accepts %j", (sql) => {
+      expect(validateSql(sql)).toEqual({ ok: true });
+    });
+  });
+
+  // A leading comment Postgres ends sooner than a naive strip (`--` at
+  // \r, a nested `/* */`) must not hide the statement Postgres runs.
+  it.each([
+    "--\rRESET ROLE;\nSHOW x",
+    "/* /* */ SHOW x '*/ RESET ROLE; SELECT * FROM other.t; --'",
+    "/* /* */ SELECT '*/ DROP TABLE t; --'",
+  ])("rejects a statement hidden past a leading comment %j", (sql) => {
+    expect(validateSql(sql).ok).toBe(false);
+  });
+
+  it.each([
+    "SET ROLE neondb_owner",
+    "RESET ROLE",
+    "SET LOCAL ROLE x",
+    "RESET ALL",
+    "SET app.tenant_id = 'x'",
+  ])("rejects role / GUC re-arming %j", (sql) => {
+    expect(validateSql(sql).ok).toBe(false);
+  });
+
   // SK-SDK-015 — `/v1/run` checks the bound params against this count.
   describe("maxParam", () => {
     it("reports the highest $n, ignoring a $n inside a string literal", () => {
@@ -139,6 +213,11 @@ describe("validateSql", () => {
       ["EXPLAIN ANALYSE DELETE FROM users", false],
       ["EXPLAIN (ANALYSE) UPDATE users SET name = 'x'", false],
       ["EXPLAIN /*c*/ ANALYSE DELETE FROM users", false],
+      // `--` ends at \r; a quoted option name can spell ANALYZE.
+      ["EXPLAIN --c\r ANALYZE DELETE FROM users", false],
+      ['EXPLAIN (U&"\\0061nalyze") DELETE FROM users', false],
+      ['EXPLAIN ("analyze") DELETE FROM users', false],
+      ["EXPLAIN (FORMAT JSON) SELECT * FROM users", true],
       // A comment that is NOT wedging ANALYZE must still pass.
       ["EXPLAIN /*c*/ SELECT * FROM users", true],
       ["EXPLAIN /* analyze the plan */ SELECT * FROM users", true],

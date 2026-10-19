@@ -51,7 +51,7 @@ Fixed rules per [`TEMPLATE.md §5`](./TEMPLATE.md#5-build-plan). Iteration speci
 
 ### 5b. The last mile — gated on §6.1, strictly after 5a step 5
 
-The `/daily` loop runs these steps in order, one per run, with no lever picker (`GLOBAL-041` revision 2026-10-14). Writes use the deterministic `insert()` (§6.1 R5); reads use `ask()`.
+The `/daily` loop runs these steps in order, one per run, with no lever picker (`GLOBAL-041` revision 2026-10-14). Writes use the deterministic `insert()` (§6.1 R5), with `key` wherever a journey re-writes the same thing (vote, submission, import). Hot reads (search, server page) run the SQL an `ask()` planned once, pinned via `runSql({ sql: trace.sql, params })`; `ask()` serves the rest.
 
 6. **Hosted DB through the public surface.** Create it from the app's own goal sentence (`createDatabase({ goal })` / `nlq new` / `/app` chat — whichever §6.1 R2 makes available). Record the `dbId`. The founder mints the clone's `sk_live_` into the repo secret `RATEME12_NLQDB_API_KEY`; `deploy-rateme12.yml` passes it to the Worker as `NLQDB_API_KEY`. Pin `@nlqdb/sdk` to a published version that carries `insert()` (≥ `0.5.0`; `0.4.0` lacks it) and confirm `apps/rateme12/node_modules/@nlqdb/sdk` resolves into `node_modules/.bun/@nlqdb+sdk@<pin>`, not `packages/sdk` (step 3). Never pre-model a field to make KPI 1 look good.
 7. **One vertical slice.** Wire one write (`client.insert()`) + its read (`client.ask()`) in `data.ts`, deploy, use it in the browser on the production URL. Log every `schema_mismatch` / `confirm_expired` / `rate_limited` as a §7 number.
@@ -88,6 +88,8 @@ Single source for these gaps — `CLAUDE.md` §1 points here; every engine PR na
 ## 7. Retrospective — filled at the end
 
 Fields per [`TEMPLATE.md §7`](./TEMPLATE.md#7-retrospective--filled-at-the-end).
+
+**Schema-comparison rubric** (fixed 2026-10-16, before cutover; scored per entity as better / equal / worse vs the real schema): natural key present and unique · relationships declared (FK, or at least an indexed `*_id`) · temporal values typed as timestamps · enum-like columns constrained or proposed · every §4 route's queries served by an index · no number or boolean stored as text.
 
 **Quarantine `PATHS.txt` (2026-10-07, §2; never opened):** `packages/db`, `apps/api/src` (whole backend — its query layer), `apps/web/src/lib/query.ts` + `query.test.ts`, `e2e/{identity,merge-log,moderation,near-duplicate,owner-aliases,ranking}-fixture.sql` (`moderation` added 2026-10-09, new upstream).
 

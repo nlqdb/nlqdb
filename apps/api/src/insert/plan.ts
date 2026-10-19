@@ -6,7 +6,7 @@
 // Types are the widest that never block a later write (END_GOAL row 3): a
 // number is `numeric`, a string `text`, an object/array `jsonb`; mixed types
 // in one new column fall back to `text` (or `jsonb` if any value is an
-// object). A tighter type is an async proposal (Phase A step 11), never a
+// object). A tighter type is an async proposal (Phase A step 14), never a
 // guess here. The one exception is the new table's `id` key: all-integer ids
 // get `bigint` (identity) and all-uuid ids `uuid`, the shapes `autoDefault`
 // already generates for (SK-HDC-015); with no `id` key the table gets a
