@@ -9,6 +9,22 @@ Operator actions also get one metadata line in
 [`history/founder-actions-log.md`](./history/founder-actions-log.md) — never
 a secret value.
 
+## Mint the rateme12 clone's `sk_live_` key
+
+⏱ ~3 min · blocked since 2026-10-19. `/daily` step 2 is at rateme12 §5b
+step 6, and keys mint only from a signed-in session (`POST /v1/keys`), so
+no agent can mint one. Steps 6 → 9 (journeys wired 0/5) wait on it. A key of
+its own revokes without touching the dogfood key.
+
+1. At <https://app.nlqdb.com/app/keys> mint an `sk_live_` key named
+   `rateme12`.
+2. Set it as the GitHub Actions repo secret `RATEME12_NLQDB_API_KEY`
+   (`gh secret set RATEME12_NLQDB_API_KEY -R nlqdb/nlqdb`). The next `/daily`
+   wires `deploy-rateme12.yml` to create the DB from its goal and pass the
+   key to the Worker as `NLQDB_API_KEY`.
+3. Add a line to `history/founder-actions-log.md` (no key value) and delete
+   this bullet.
+
 ## 🔒 Approve or reject the 2026-10-16 END_GOAL + GLOBAL-041 revision (PR #1185)
 
 ⏱ ~15 min · blocked since 2026-10-16. A SHOW/EXPLAIN cross-tenant validator
