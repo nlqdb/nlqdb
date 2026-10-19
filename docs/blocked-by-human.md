@@ -128,6 +128,38 @@ what it writes. One command.`
 2. Flip ledger row #27 to **in-flight**, note the listing URL, delete this
    bullet.
 
+## 🔒 Shared rules: what the server is missing for nlqdb
+
+⏱ ~5 min · decision · filed 2026-10-19. The move onto
+`mcp.hochly.com` (`rules://transition`) kept every rule below in this repo;
+each differs from the served version or looks shared. Default until answered:
+nlqdb keeps its own version.
+
+1. Decision records — `docs/decisions/` + `SK-*` (`CLAUDE.md` P1/P3) vs
+   `rules://workflow` "no decisions file". Recommend: amend
+   `rules/workflow.md` to "unless the repo's `CLAUDE.md` makes it a firm call".
+2. Mailbox — `docs/blocked-by-human.md`, ⏱ minutes, ranked by yield, 🔒 cap
+   3 (`GLOBAL-033`), no Answer field vs root file with Type/Answer. Recommend:
+   move the ⏱ + yield ranking to `rules/workflow.md`; nlqdb keeps its format.
+3. Work queue — `phase-plan.md` + rateme12 §6.1 table, no `docs/ROADMAP.md`;
+   PR template names the §6.1 row + KPI, not `Roadmap item:`. Recommend:
+   `rules/workflow.md` accepts "the queue the repo's `CLAUDE.md` names".
+4. Web-research first on ambiguity or an unfamiliar error (`CLAUDE.md` P2,
+   copied in 18 area `AGENTS.md`). Recommend: move to `rules/general.md`.
+5. Doc rules D1–D4: resolve open questions first, 20 KB cap (`CLAUDE.md`
+   P4). Recommend: move to `rules/structure.md`.
+6. Journey rules — keep intent across sign-in/OAuth, durable proof on reload,
+   proportionate undo, E2E walk + owner use (`CLAUDE.md` P6); "clean code
+   beats backward compatibility" (P5). Recommend: move to `rules/general.md`.
+7. Test seams as the smallest functional shape; a TODO has an owner
+   (`docs/guidelines.md` §4, §6). Recommend: move to `rules/guidelines.md`.
+8. Reviewers run on Opus or stronger (`.claude/commands/review.md`).
+   Recommend: move to `rules/scheduled-run.md`.
+9. `CLAUDE.md` shape — H1, ~280 lines, no Firm calls section vs
+   `rules://structure`. Recommend: keep until items 1–3 settle.
+
+Reply `ok` to take every recommendation, or name the lines to change.
+
 <!--
 Standing notes, not asks:
 - skillsclaude.org was dropped 2026-08-05 (VPN security flag, no reputation

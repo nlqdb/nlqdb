@@ -3,6 +3,15 @@
 Index for any agent editing this repo. Read fully **before** the first
 edit. Per-area `AGENTS.md` files narrow this guide to their directory.
 
+## Shared rules — read first
+
+Read every resource on https://mcp.hochly.com/mcp before anything else:
+Omer's rules for all his repos (rules://general is the baseline). A run
+that cannot reach the server says so and stops; it never improvises the
+rules. Send Authorization: Bearer $RULES_MCP_TOKEN (set in the run's
+environment); without it the server answers 404. This file adds only this
+repo's facts and firm calls.
+
 ## 1. What nlqdb is
 
 > *nlqdb — your autonomous DBA.*
@@ -63,10 +72,6 @@ web search for current best practices before jumping to a fix**. The fast
 wrong answer is more expensive than the slower right one. State the
 sources you checked when you propose the fix.
 
-**Also:** When selecting any 3rd party package, SDK, or API, always web-search for
-the latest stable version before using it — your knowledge cutoff is stale for
-any external dependency.
-
 ### P3. Decisions live in one place
 
 Each decision has one canonical home — cite it, never restate it.
@@ -97,13 +102,12 @@ Before documenting any decision or plan:
 - **D2. Never document ambiguity** — Vague or ambiguous decisions are worse than no documentation. If it's not clear enough to document, it's not ready.
 - **D3. Clarity always increases** — When documenting, **the next steps must be clearer than before**. Never document in a way that leaves the reader more confused.
 - **D4. No doc over 20 KB** — When a markdown file would cross 20 KB, split it before adding text and route from the §5 path map / §6 long-form index / feature index so agents land on the right shard. Edits to a file already over 20 KB must net-shrink it (revisit with D5; keep cross-refs in sync). **Exempt** (append-only by design): the acquisition tracker `docs/research/automated-icp-validation-plan.md` + its mirror ([GLOBAL-028](docs/decisions/GLOBAL-028-acquisition-progress-tracker.md)/[GLOBAL-029](docs/decisions/GLOBAL-029-acquisition-verification-tracker.md)) and the evidence log `docs/progress/quality-score-verification-log.md`.
-- **D5. Document only load-bearing decisions** — Keep docs simple. Never document a decision that could be undoubtedly inferred from `docs/guidelines.md` or the code itself, or whose cost to change is negligible. Document only what is both non-obvious *and* expensive to reverse — where a reader lacking the record would plausibly choose differently and pay for it. On every doc edit, find one section that fails this test and trim it off.
+- **D5. Document only load-bearing decisions** — Keep docs simple. Never document a decision that could be undoubtedly inferred from the shared rules, `docs/guidelines.md` or the code itself, or whose cost to change is negligible. Document only what is both non-obvious *and* expensive to reverse — where a reader lacking the record would plausibly choose differently and pay for it. On every doc edit, find one section that fails this test and trim it off.
 
 ### P5. Keep functions simple. Keep high level architecture simple.
 
-Simplify rather than complexify; reach each goal in the fewest steps. A fix or
-feature first looks for code to remove or simplify, never only to add — same
-for docs and comments. Clean code beats backward compatibility; we are still
+Simplify rather than complexify; reach each goal in the fewest steps. Clean
+code beats backward compatibility; we are still
 building. The no-patch-on-patch rule for the DBA architecture is stated once,
 in [`END_GOAL.md` § Architecture](docs/END_GOAL.md#architecture--simple-and-scalable).
 
@@ -117,12 +121,7 @@ identity or permission handoffs → visible progress → persistent proof of val
 - Minimize product-side clicks and decisions. Preserve the user's intent across
   sign-in, OAuth, redirects, refreshes, and retries, then resume automatically;
   never make them re-enter information the product already has.
-- Ask for the least permission only when it becomes necessary. If a useful
-  read-only path works without an account or third-party connection, use it
-  before presenting that wall.
-- Show honest progress in user-meaningful units (items found, processed,
-  skipped, and why), not a spinner or invented percentage. Errors state what
-  happened and the single next action without discarding completed work.
+- An error never discards completed work.
 - Completion must leave durable, inspectable evidence on reload. Reversible
   flows expose proportionate cleanup. Empty, partial, interrupted, denied, and
   retry states receive the same design care as the happy path.
@@ -227,7 +226,8 @@ supported; else read manually before editing.)
 | [`docs/runbook.md`](docs/runbook.md) | Operations: env, secrets, deploy, recovery; design-partner ref (§10). |
 | [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview script, inbound triage SLA. |
 | [`docs/performance.md`](docs/performance.md) | Span/metric/label catalog + perf goals. |
-| [`docs/guidelines.md`](docs/guidelines.md) | Code-review heuristics, the four habits. |
+| [`docs/guidelines.md`](docs/guidelines.md) | This repo's additions to `rules://guidelines`. |
+| [`docs/blocked-by-human.md`](docs/blocked-by-human.md) | The founder mailbox — open asks only. |
 | [`docs/progress.md`](docs/progress.md) | Platform integration tiers (P0–P3). |
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
 | [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — threat matrix + gap analysis. |

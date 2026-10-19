@@ -1,42 +1,31 @@
 # nlqdb — Development Guidelines
 
-Six habits that keep Phase 0 lean. Apply before writing non-trivial
-code; refer back during review.
+This repo's additions to the engineering bar, read alongside
+`rules://guidelines` (the shared rules, root `CLAUDE.md`). What that serves
+is not repeated here. Apply before writing non-trivial code; refer back
+during review.
 
 ---
 
 ## 1. Reach for a small mature package before building
 
-If the work is minimal logic, or well-trodden ground (routing, JWT
-signing, retry/backoff, OTel transport, CSV parsing), first look for
-a small, widely-used, actively-maintained package. Only DIY if
-nothing fits — or if every candidate brings in too much.
+Selection and hard-pass criteria: `rules://general` rule 6 and
+[`GLOBAL-016`](./decisions/GLOBAL-016-mature-packages-no-rc.md).
 
 **Lean is non-negotiable.** We'd rather write 30 lines than add a
 200 KB framework for one helper. The Workers Free-tier bundle
 ceiling is real (3 MiB compressed); the cognitive ceiling on
 "transitive deps a future maintainer must understand" is tighter.
 
-Hard-pass criteria:
-
-- RC / pre-1.0 on the critical path (we declined `@microlabs/otel-cf-workers@1.0.0-rc.x`).
-- Last release > 12 months ago, or open-PR backlog deeper than the
-  release cadence.
-- Pulls a heavy peer-dep tree we didn't already have.
-
 Examples that landed this way:
 
 - ✅ [Hono](https://hono.dev) for Workers routing — small, ubiquitous, type-safe.
 - ✅ `@neondatabase/serverless` for the Postgres HTTP driver.
-- ✅ `@opentelemetry/*` (stable releases, composed behind a thin in-house wrapper) instead of an RC Workers helper.
+- ✅ `@opentelemetry/*` (stable releases, composed behind a thin in-house wrapper) instead of the RC `@microlabs/otel-cf-workers@1.0.0-rc.x`.
 
 ## 2. Research before DIY
 
-If you decide to build it yourself, spend 10 minutes finding how the
-canonical implementations do it *before* writing any code. The
-answer is almost always free online.
-
-Sources, in order:
+Where to look for the canonical implementations, in order:
 
 1. The official spec (OTel Semantic Conventions, IETF RFCs, the
    product's own protocol docs).
@@ -45,9 +34,6 @@ Sources, in order:
    extraction).
 3. The most-starred TypeScript / Workers / Bun example matching the
    shape of the problem.
-
-A 10-minute Google search is cheaper than shipping a subtly wrong
-implementation and catching it in production.
 
 Concrete example in this repo: `detectOperation` in `@nlqdb/db`
 mirrors `@opentelemetry/instrumentation-pg`'s first-keyword
@@ -77,14 +63,8 @@ Symptoms of having lost the overview:
 Every exported function, hook, and config struct ships with DX as an
 explicit goal:
 
-- **Minimal required params.** Optional with sensible defaults. If
-  the caller passes five options to call you, your internals leaked.
-- **One way to do the common thing.** Multiple call shapes for one
-  concept is a footgun.
 - **Types that autocomplete.** Template literal types, narrow unions,
   branded IDs — not bare `string`.
-- **Errors that say what to do next.** `"NEON_API_KEY not set —
-  run scripts/bootstrap-dev.sh"` beats `"Error: missing"`.
 - **Idempotency + lifecycle clarity.** Setup functions document
   whether they cache / can be called twice safely.
 - **Test seams that don't leak production internals.** A test
@@ -103,36 +83,14 @@ Examples that pass:
 
 ## 5. Logs tell a story, not the novel
 
-An operator opening logs cold should be able to read down the
-timeline and answer: **what was attempted, where did we land, what
-failed and why**. Nothing more.
+On top of `rules://guidelines` § Logs:
 
-The non-negotiables:
-
-- **One useful line per decision point.** Not per iteration, not per
-  function entry. A failover happened? One line. A provider's API
-  key wasn't configured at boot? One line. The chain is exhausted?
-  One line with the per-attempt summary.
-- **Errors get structured context.** Not `Error: failed`. Include
-  the *what* (operation, provider, URL), the *why* (status code,
-  upstream message, truncated body), and any actionable next step.
-  `POST https://api.groq.com/v1/chat/completions → 429: rate limit
-  exceeded, retry in 60s` beats `http error`.
-- **Successes don't need logs.** Spans + metrics already tell that
-  story. If you're tempted to log "got response", it's because you
-  don't trust the trace — fix the trace.
 - **Hot paths log at most once per request, and only on failure.**
-  A `/v1/ask` that succeeds emits zero application logs. Spans cover
-  the timeline; metrics cover the rates.
-- **Never log secrets, full prompts, full result rows, or PII.**
-  Tenant IDs and request IDs only. Truncate any user input or
-  upstream body to ~200 chars before it lands in a log line — if
-  the truncation hides the issue, raise the cap deliberately, don't
-  log unbounded.
-- **Use levels honestly.** `info` = something an operator should
-  notice but not act on. `warn` = something they should look at this
-  week. `error` = something they should look at now. `debug` = off
-  in production, used during local development only.
+  A `/v1/ask` that succeeds emits zero application logs.
+- **Tenant IDs and request IDs only** — never full prompts or full
+  result rows. Truncate any user input or upstream body to ~200 chars
+  before it lands in a log line; if the truncation hides the issue,
+  raise the cap deliberately, don't log unbounded.
 
 Symptoms of getting this wrong:
 
@@ -146,43 +104,18 @@ Symptoms of getting this wrong:
   building a metric badly — emit a counter, not log lines.
 - "Just-in-case" debug noise left at `info` after a fix landed.
 
-A good rule of thumb: when you read your own logs after a quiet
-hour, you should see **exactly one entry per significant unexpected
-event** — and that entry should tell you what happened. If the logs
-during a quiet hour are empty, the system is healthy and the trace
-viewer is where you go for detail. If they're full of routine
-chatter, the chatter is hiding the actual signal next time something
-breaks.
-
 ## 6. Comments are a last resort
 
-Default to no comments. Good names and small functions are the
-documentation; a narrator on top of working code is noise. Reach for a
-comment only when the *why* would surprise a reader who only sees the
-code — a workaround for a specific bug, a non-obvious constraint, a
-choice that looks wrong without context.
-
-When you do leave one: **one sentence, explaining why we did this
-instead of the obvious alternative.** Not what the code does — that's
-the code's job. If the reason needs more than a sentence, it belongs
-in a feature / decision record (`SK-*` or `GLOBAL-*`), not inline.
-
-This subsumes JSDoc on internals: a function whose JSDoc explains
-*how to call it* has already failed DX. Make the call site obvious
-enough that no doc is needed.
-
-Symptoms of getting this wrong:
-
-- Block comments restating the function name or signature.
-- Line comments that paraphrase the next line of code.
-- TODOs without an owner or an issue link — they rot in place.
-- JSDoc on every export by reflex, before anyone has asked for it.
+On top of `rules://guidelines` § Comments: a reason that needs more
+than one sentence belongs in a feature / decision record (`SK-*` or
+`GLOBAL-*`), not inline. A TODO carries an owner or an issue link, or
+it rots in place.
 
 ---
 
 ## 7. Bullet-proof-by-design checklist
 
-We make bad states unreachable, not caught. Before shipping any user-visible feature, verify each row.
+How each edge case is unreachable here (`rules://guidelines` § Bad states unreachable). Before shipping any user-visible feature, verify each row.
 
 | Edge case | How it's unreachable |
 |---|---|
