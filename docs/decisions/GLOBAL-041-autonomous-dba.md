@@ -176,7 +176,7 @@ in order (revised 2026-10-14, 2026-10-16):
     states). One `dba_changes` table records every DDL the DBA emits —
     insert widen, chat widen, index, later proposals — with its inverse
     and origin; KPIs 1–2 read from it and `/app/dba` v0 renders it. Phase
-    B's `dba_proposals` is this table, not a second one.
+    B's proposals are rows of it, not a second table.
 12. **Reads that don't spend the model.** SDK `ask()` makes one LLM call
     (no summary unless asked); an additive widen re-plans only queries over
     the widened table (amends `SK-SCHEMA-005` in that PR); `/v1/run` and
@@ -209,8 +209,7 @@ Goal: KPIs 2 and 3 live; the DBA acts.
 
 1. **Collect:** per-tenant-schema `pg_stat_user_tables`, `pg_stat_user_indexes`, and `pg_stat_statements` (extension availability on Neon free verified first — `P2`), sampled by the scheduled worker into D1 (`apps/api/src/scheduled/**`).
 2. **Explain:** `EXPLAIN (FORMAT JSON)` on hot fingerprints, joined to SQL text through the plan cache key `(schema_hash, query_hash)`; seq-scan on large table, missing index, unused index, wrong type, cold table on the analytical engine are the v1 signals.
-3. **Propose:** recommendation generator → typed proposals (a rename is
-   proposed only when no recorded fingerprint reads the old name) (`create_index`, `drop_index`, `retype_column`, `drop_column`, `rename_column`, `move_to_engine`) in a D1 `dba_proposals` table with before/after diff, expected effect, and the inverse operation recorded at proposal time. Replaces the empty `pg_add_column_suggestion` row.
+3. **Propose:** recommendation generator → typed proposals (`create_index`, `drop_index`, `retype_column`, `drop_column`, `rename_column`, `move_to_engine`) as rows of the `dba_changes` ledger (Phase A step 11) with before/after diff, expected effect, and the inverse operation recorded at proposal time. A rename is proposed only when no recorded fingerprint reads the old name. Replaces the empty `pg_add_column_suggestion` row.
 4. **Apply / undo:** typed proposal → DDL compiler → execution under `SK-HDC-010` (600 s for `CREATE INDEX CONCURRENTLY`); undo = recorded inverse; logical changes bump `schema_hash`; every apply carries `Idempotency-Key` and an OTel span.
 5. **API:** `GET /v1/dba/proposals`, `POST /v1/dba/proposals/:id/apply`, `POST …/undo` via `@nlqdb/sdk` (`GLOBAL-001`), `nlq dba …` verbs, MCP `nlqdb_dba_*` tools — one PR per `GLOBAL-003`.
 6. **Dashboard:** `/app/dba` — where data lives (tables × engine), usage and cost bottom line, proposals with 1-click apply/undo, applied-history with the measured p95 delta (KPI 3). Honest progress per `P6`.

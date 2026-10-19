@@ -115,6 +115,17 @@ describe("validateSql", () => {
       "EXPLAIN SELECT 'a",
       "EXPLAIN SELECT $$a",
       "SHOW x /* open",
+      // Postgres's lexer, not JS's: `--` ends at \r too, any non-ASCII
+      // char continues an identifier (`é$$` is not a dollar-quote, `éE'`
+      // not an E-string), NBSP is not whitespace. The first two read
+      // `other.t` on a real Postgres 16 with the earlier lexer.
+      "SHOW x --\r; RESET ROLE; SELECT * FROM other.t",
+      "EXPLAIN SELECT 1 AS é$$; RESET ROLE; SELECT * FROM other.t; --$$",
+      "EXPLAIN SELECT 1 AS éE'\\'; RESET ROLE; SELECT 1 --'",
+      "SHOW x;\u00a0RESET ROLE",
+      // A quote or dollar-quote right after a number or `$n` fails closed.
+      "EXPLAIN SELECT 1$$; RESET ROLE; $$",
+      "EXPLAIN SELECT 1E'\\'; RESET ROLE --'",
     ])("rejects %j", (sql) => {
       expect(validateSql(sql)).toEqual({ ok: false, reason: "multi_statement" });
     });
@@ -131,9 +142,22 @@ describe("validateSql", () => {
       'EXPLAIN SELECT "x;y" FROM t',
       "EXPLAIN SELECT * FROM t WHERE id = $1",
       "EXPLAIN SELECT 1 /* ; */",
+      "EXPLAIN SELECT 1 AS a$$b",
+      "SHOW x; -- c\r\n",
+      "EXPLAIN SELECT \"a\"E'\\\\' ;",
     ])("accepts %j", (sql) => {
       expect(validateSql(sql)).toEqual({ ok: true });
     });
+  });
+
+  // A leading comment Postgres ends sooner than a naive strip (`--` at
+  // \r, a nested `/* */`) must not hide the statement Postgres runs.
+  it.each([
+    "--\rRESET ROLE;\nSHOW x",
+    "/* /* */ SHOW x '*/ RESET ROLE; SELECT * FROM other.t; --'",
+    "/* /* */ SELECT '*/ DROP TABLE t; --'",
+  ])("rejects a statement hidden past a leading comment %j", (sql) => {
+    expect(validateSql(sql).ok).toBe(false);
   });
 
   it.each([
@@ -189,6 +213,11 @@ describe("validateSql", () => {
       ["EXPLAIN ANALYSE DELETE FROM users", false],
       ["EXPLAIN (ANALYSE) UPDATE users SET name = 'x'", false],
       ["EXPLAIN /*c*/ ANALYSE DELETE FROM users", false],
+      // `--` ends at \r; a quoted option name can spell ANALYZE.
+      ["EXPLAIN --c\r ANALYZE DELETE FROM users", false],
+      ['EXPLAIN (U&"\\0061nalyze") DELETE FROM users', false],
+      ['EXPLAIN ("analyze") DELETE FROM users', false],
+      ["EXPLAIN (FORMAT JSON) SELECT * FROM users", true],
       // A comment that is NOT wedging ANALYZE must still pass.
       ["EXPLAIN /*c*/ SELECT * FROM users", true],
       ["EXPLAIN /* analyze the plan */ SELECT * FROM users", true],
