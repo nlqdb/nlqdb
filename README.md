@@ -256,8 +256,8 @@ and shares the link — in under 60 seconds, no card, no config.
 - ✓ CLI `nlq` (Go) — core verbs + raw-SQL escape hatch; device-login +
   chat REPL pending
 - ✓ `@nlqdb/sdk` — basic methods + `runSql` + cross-tenant grant +
-  pack-import runner verbs; published and importable from the registry
-  (`0.4.0`)
+  pack-import runner verbs; published and importable from the registry;
+  `insert()` and `runSql` `params` publish in `0.5.0`
 - ~ Framework wrappers + native Swift package — built + CI-tested; npm /
   SPM publish pending
 - ✓ Quality-eval harness (BIRD + Spider 2.0) — a CI regression alarm for
