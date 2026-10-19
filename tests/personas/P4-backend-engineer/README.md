@@ -19,6 +19,7 @@
 | 3 — `--json` envelope is the only output-shape switch (SK-CLI-004) — the contract every cron + CI pipeline depends on | CLI | Go `testscript` | [`tests/e2e/cli/scripts/p4_json_envelope.txtar`](../../e2e/cli/scripts/p4_json_envelope.txtar) |
 | 4 — `Idempotency-Key` header set on every mutation; same key reused across retries (GLOBAL-005 + SK-SDK-006) | SDK | vitest + cassette | [`tests/e2e/sdk/p4_backend_engineer.test.ts`](../../e2e/sdk/p4_backend_engineer.test.ts) |
 | 5 — transient 5xx is silently retried (GLOBAL-022); 401 is surfaced for the auth layer above the SDK to refresh (GLOBAL-009 lives at the auth-wrapper layer, not in the SDK's fetch loop) | SDK | vitest + cassette | [`tests/e2e/sdk/p4_backend_engineer.test.ts`](../../e2e/sdk/p4_backend_engineer.test.ts) |
+| 6 — `nlq insert` lands JSON rows (arg or stdin) with no data modelling; `--json` keeps a bigint id's digits (SK-SCHEMA-012) | CLI | Go `testscript` | [`tests/e2e/cli/scripts/p4_insert.txtar`](../../e2e/cli/scripts/p4_insert.txtar) |
 
 ## GLOBALs this journey verifies end-to-end
 

@@ -803,8 +803,8 @@ Runs as the `anon_db_sweep` row in `apps/api/src/scheduled/jobs.ts`
 
 ```
 1. SELECT all anonymous dbs (D1: WHERE adopted_at IS NULL).
-2. Drop any anonymous db where last_queried_at < now() - 90 days,
-   regardless of size. Order: oldest first; per-iteration COMMIT.
+2. Drop any anonymous db with last_queried_at < now() - 90 days
+   (synthetic: created_at < now() - 24 h), in one DELETE.
 3. After step 2, sum bytes across remaining anonymous dbs.
    If SUM > 300 MB → drop the OLDEST anonymous db; repeat until
    total ≤ 300 MB.

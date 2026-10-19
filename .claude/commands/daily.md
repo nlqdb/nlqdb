@@ -176,8 +176,9 @@ sequence** (founder steer 2026-10-14; rule 6 and a met draft still come
 first). A step spanning runs takes the next run too; a human-blocked step
 is skipped to the next.
 
-Revised 2026-10-16 (`GLOBAL-041` steps 10–14). Steps 0 (Neon role cap,
-PR #1184) and the `insert()` build are done.
+Revised 2026-10-16 (`GLOBAL-041` steps 10–14). Done: the Neon role cap
+(#1184), the `insert()` build and its CLI / MCP twins (#1186); the canary
+writes through `insert()` live (runs 252–253), but not a rateme12 shape.
 
 1. **Live `insert()` walk on prod** — a rateme12-shaped stream through
    `client.insert()` with the CI key. Number: unseen-field inserts landed
@@ -207,7 +208,11 @@ review, **never self-executed**, the run still a null. One proposal, then
 back to nulls until it is answered.
 
 Write this run's delta (and any revert note) as the "Last change" record
-through the dogfood canary above. One lever per run.
+through the dogfood canary above: rewrite the scorecard's `## Last change`
+entry as `**date (run N)** — **headline**` every run, since the canary keys
+the run number and row deltas off it (runs 250–251 skipped it: their run
+records were never written and their row deltas filed under run 249).
+One lever per run.
 
 ### 3 — Ship
 

@@ -1,0 +1,20 @@
+# P4 — Backend Engineer · `nlq insert` lands JSON rows with no data modelling (SK-SCHEMA-012).
+
+# A row as an argument: human output names the count and the DDL that widened the table.
+exec nlq --api-url=$MOCK_API --no-update-check insert --db db_e2e_p1 votes '{"serverId": 42, "stars": 5}'
+stdout '✓ Inserted 1 row\(s\) into votes\.'
+stdout 'ALTER TABLE votes ADD COLUMN stars numeric NULL'
+
+# An array on stdin with --json: the envelope passes through, big ids keep their digits.
+stdin rows.json
+exec nlq --api-url=$MOCK_API --no-update-check --json insert --db db_e2e_p1 servers
+stdout '"rowCount": 2'
+stdout '"id": 9007199254740993'
+stdout '"schema_rewritten": true'
+
+# Not an object or array of objects: refused before any request.
+! exec nlq --api-url=$MOCK_API --no-update-check insert --db db_e2e_p1 votes '[1, 2]'
+stderr 'row 1 is not a JSON object'
+
+-- rows.json --
+[{"id": 9007199254740993, "name": "fs"}, {"name": "git", "tags": ["vcs"]}]

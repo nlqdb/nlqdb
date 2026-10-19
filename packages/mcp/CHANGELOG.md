@@ -1,5 +1,11 @@
 # @nlqdb/mcp
 
+## 0.2.0
+
+### Minor Changes
+
+- bf06c96: Add `nlqdb_insert`: insert JSON rows exactly as sent, with no model call. A table or field the database hasn't seen is created in the same transaction, typed from the values (`SK-SCHEMA-012`).
+
 ## 0.1.1
 
 ### Patch Changes

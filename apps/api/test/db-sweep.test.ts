@@ -18,6 +18,7 @@ type Row = {
   tenant_id: string;
   last_queried_at: number;
   created_at: number;
+  synthetic?: 1;
 };
 
 function makeStubD1(initial: Row[]): D1Database {
@@ -48,7 +49,13 @@ function makeStubD1(initial: Row[]): D1Database {
         async all<T>() {
           if (sql.includes("DELETE FROM databases") && sql.includes("last_queried_at <")) {
             const cutoff = params[1] as number;
-            const evicted = rows.filter((r) => isAnon(r.tenant_id) && r.last_queried_at < cutoff);
+            const syntheticCutoff = params[2] as number;
+            const evicted = rows.filter(
+              (r) =>
+                isAnon(r.tenant_id) &&
+                (r.last_queried_at < cutoff ||
+                  (r.synthetic === 1 && r.created_at < syntheticCutoff)),
+            );
             rows = rows.filter((r) => !evicted.includes(r));
             return { results: evicted as unknown as T[], success: true, meta: {} };
           }
@@ -96,6 +103,36 @@ describe("sweepAnonDatabases — age", () => {
     const r = await sweepAnonDatabases(d1, { now: () => NOW * 1000 });
     expect(r.evictedByAge.map((x) => x.id)).toEqual(["db_anon_old"]);
     expect(r.evictedByCap).toEqual([]);
+  });
+
+  it("evicts synthetic anon rows 24h after create, however recently queried", async () => {
+    const DAY = 24 * 60 * 60;
+    const d1 = makeStubD1([
+      {
+        id: "db_bot_old",
+        tenant_id: "anon:a",
+        last_queried_at: NOW,
+        created_at: NOW - DAY - 1,
+        synthetic: 1,
+      },
+      {
+        id: "db_bot_new",
+        tenant_id: "anon:b",
+        last_queried_at: NOW,
+        created_at: NOW - 60,
+        synthetic: 1,
+      },
+      { id: "db_person", tenant_id: "anon:c", last_queried_at: NOW, created_at: NOW - DAY - 1 },
+      {
+        id: "db_authed_bot",
+        tenant_id: "user_1",
+        last_queried_at: NOW,
+        created_at: 0,
+        synthetic: 1,
+      },
+    ]);
+    const r = await sweepAnonDatabases(d1, { now: () => NOW * 1000 });
+    expect(r.evictedByAge.map((x) => x.id)).toEqual(["db_bot_old"]);
   });
 });
 

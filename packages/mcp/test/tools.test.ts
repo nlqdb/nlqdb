@@ -10,6 +10,7 @@ import {
   GENERIC_ERROR_MESSAGE,
   handleConnectDatabase,
   handleDescribe,
+  handleInsert,
   handleListDatabases,
   handleQuery,
   handleRead,
@@ -987,6 +988,49 @@ describe("handleRemember", () => {
       expect(result.err.code).toBe("invalid_body");
       expect(result.err.message).toBe("fact `payload.content` is required.");
     }
+  });
+});
+
+describe("handleInsert", () => {
+  it("passes db/table/rows to client.insert and returns the stored rows + widen DDL", async () => {
+    const client = stubClient({
+      insert: async (req) => {
+        expect(req).toEqual({ db: "db_x", table: "votes", rows: [{ serverId: 42, stars: 5 }] });
+        return {
+          status: "ok",
+          rows: [{ id: 1, server_id: 42, stars: 5 }],
+          rowCount: 1,
+          table: "votes",
+          widen: { tables: ["votes"], ddl: ["CREATE TABLE votes (…)"], schema_rewritten: true },
+        };
+      },
+    });
+    const result = await handleInsert(client, {
+      db: "db_x",
+      table: "votes",
+      rows: [{ serverId: 42, stars: 5 }],
+    });
+    expect(result).toEqual({
+      ok: {
+        table: "votes",
+        rowCount: 1,
+        rows: [{ id: 1, server_id: 42, stars: 5 }],
+        widen: { tables: ["votes"], ddl: ["CREATE TABLE votes (…)"], schema_rewritten: true },
+      },
+    });
+  });
+
+  it("maps a refused value to a tool error, not a throw", async () => {
+    const client = stubClient({
+      insert: async () => {
+        throw new NlqdbApiError("refused", 422, "write_constraint", "/v1/insert", {
+          code: "write_constraint",
+          message: "A row broke a constraint on votes.",
+        });
+      },
+    });
+    const result = await handleInsert(client, { db: "db_x", table: "votes", rows: [{ a: 1 }] });
+    expect("err" in result && result.err.code).toBe("write_constraint");
   });
 });
 

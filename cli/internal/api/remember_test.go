@@ -89,3 +89,42 @@ func TestRememberWrongPreset(t *testing.T) {
 		t.Errorf("Status = %q", apiErr.Code)
 	}
 }
+
+func TestInsertSendsRowsAndDecodesWiden(t *testing.T) {
+	var gotPath, gotKey string
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotKey = r.Header.Get("Idempotency-Key")
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"status":   "ok",
+			"rows":     []map[string]any{{"id": 1, "server_id": 42}},
+			"rowCount": 1,
+			"table":    "votes",
+			"widen": map[string]any{
+				"tables":           []string{"votes"},
+				"ddl":              []string{"CREATE TABLE votes (id bigint)"},
+				"schema_rewritten": true,
+			},
+		})
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, auth.Identity{Kind: auth.KindEnvKey, Token: "sk_live_x"})
+	resp, err := c.Insert(context.Background(), InsertRequest{
+		DB: "db_x", Table: "votes", Rows: []map[string]any{{"serverId": 42}},
+	})
+	if err != nil {
+		t.Fatalf("Insert: %v", err)
+	}
+	if gotPath != "/v1/insert" || gotKey == "" {
+		t.Errorf("path = %q, idempotency key = %q", gotPath, gotKey)
+	}
+	if gotBody["table"] != "votes" || len(gotBody["rows"].([]any)) != 1 {
+		t.Errorf("wire body = %v", gotBody)
+	}
+	if resp.RowCount != 1 || resp.Widen == nil || !resp.Widen.SchemaRewritten || resp.Widen.DDL[0] == "" {
+		t.Errorf("resp = %+v", resp)
+	}
+}
