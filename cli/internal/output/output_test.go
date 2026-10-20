@@ -226,3 +226,20 @@ func TestWriteKeysEmptyMessageGoesToStderr(t *testing.T) {
 		t.Errorf("expected empty-state hint on stderr: %q", errw.String())
 	}
 }
+
+func TestWriteInsertHumanNamesRefusedRows(t *testing.T) {
+	var out, errw bytes.Buffer
+	w := New(&out, &errw, FormatHuman)
+	resp := &api.InsertResult{
+		Status:   "ok",
+		RowCount: 1,
+		Table:    "servers",
+		Failed:   []api.FailedRow{{Index: 1, Field: "stars", Type: "numeric"}},
+	}
+	if err := w.WriteInsert(resp); err != nil {
+		t.Fatalf("WriteInsert: %v", err)
+	}
+	if !strings.Contains(out.String(), "row 2: stars isn't a valid numeric") {
+		t.Errorf("refused row not named:\n%s", out.String())
+	}
+}

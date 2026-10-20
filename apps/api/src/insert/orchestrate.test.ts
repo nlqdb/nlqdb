@@ -178,6 +178,64 @@ describe("orchestrateInsert", () => {
     expect(out).toMatchObject({ ok: false, widened: true, error: { code: "invalid_value" } });
   });
 
+  it("fails a value that won't cast on its row alone; the rest of the batch lands", async () => {
+    const cols = [
+      { table_name: "votes", column_name: "vote", data_type: "text" },
+      { table_name: "votes", column_name: "stars", data_type: "numeric" },
+    ];
+    const pg: PgClient = {
+      query: vi.fn(async (sql: string) =>
+        sql.includes("pg_input_is_valid")
+          ? { rows: [{ i: 1, c: "stars", type: "numeric" }], rowCount: 1 }
+          : { rows: cols, rowCount: cols.length },
+      ) as PgClient["query"],
+      transaction: vi.fn(async (s: PgTransactionStatement[]) => {
+        const insert = s.at(-1);
+        if (insert?.params?.includes("n/a")) {
+          throw Object.assign(new Error("bad"), { code: "22P02" });
+        }
+        return s.map((st) => ({ rows: [{ p: st.params }], rowCount: st.params?.length ? 2 : 0 }));
+      }),
+    };
+    const out = await orchestrateInsert(deps(pg), {
+      ...req,
+      rows: [
+        { vote: "up", stars: 4 },
+        { vote: "up", stars: "n/a" },
+        { vote: "down", stars: 2, note: "new" },
+      ],
+    });
+    expect(out).toMatchObject({ ok: true, widened: true, result: { rowCount: 2 } });
+    if (!out.ok) return;
+    expect(out.result.failed).toEqual([{ index: 1, field: "stars", type: "numeric" }]);
+    const retry = vi.mocked(pg.transaction).mock.calls[1]?.[0] as PgTransactionStatement[];
+    expect(retry.at(-1)?.params).not.toContain("n/a");
+    expect(retry.some((st) => st.sql.startsWith("ALTER TABLE"))).toBe(true);
+  });
+
+  it("keeps the whole-batch invalid_value when every row is refused or the probe finds none", async () => {
+    const refuse = async () => {
+      throw Object.assign(new Error("bad"), { code: "22P02" });
+    };
+    const cols = [{ table_name: "votes", column_name: "stars", data_type: "numeric" }];
+    const probe = (hits: { i: number; c: string; type: string }[]) =>
+      vi.fn(async (sql: string) =>
+        sql.includes("pg_input_is_valid")
+          ? { rows: hits, rowCount: hits.length }
+          : { rows: cols, rowCount: 1 },
+      ) as PgClient["query"];
+    const allBad = {
+      query: probe([{ i: 0, c: "stars", type: "numeric" }]),
+      transaction: vi.fn(refuse),
+    };
+    const none = { query: probe([]), transaction: vi.fn(refuse) };
+    for (const pg of [allBad, none]) {
+      const out = await orchestrateInsert(deps(pg), { ...req, rows: [{ stars: "n/a" }] });
+      expect(out).toMatchObject({ ok: false, error: { code: "invalid_value" } });
+      expect(pg.transaction).toHaveBeenCalledTimes(1);
+    }
+  });
+
   it("refuses BYO databases and unknown ids before touching Postgres", async () => {
     const pg = pgStub([]);
     const byo = await orchestrateInsert(

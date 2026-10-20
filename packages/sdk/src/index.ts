@@ -317,6 +317,9 @@ export type InsertResult = {
   widen?: TraceWiden;
   // The `CREATE UNIQUE INDEX` a `key`'s first use ran.
   index?: string;
+  // Rows refused because a value won't cast to its column's existing type
+  // (`index` = the row's position in `rows`); every other row landed.
+  failed?: { index: number; field: string; type: string }[];
 };
 
 // E-02 — the agent-memory write verb. `client.remember()` materialises a

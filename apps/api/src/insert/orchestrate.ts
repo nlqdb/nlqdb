@@ -2,13 +2,16 @@
 // Observe the DB's columns → `planInsert` → widen DDL (compiled, allow-listed)
 // + the INSERT in ONE Neon transaction → CAS-rewrite `schema_hash`
 // (SK-SCHEMA-011). There is no LLM dependency to inject: 0 `llm.*` spans
-// under an insert holds by construction.
+// under an insert holds by construction. A value that won't cast fails its
+// row alone (END_GOAL "Value doesn't fit"): the batch's refusal triggers one
+// read-only probe naming each such row, and the rest land.
 
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { classifyDataException } from "../ask/exec-classify.ts";
 import type { RateLimiter } from "../ask/rate-limit.ts";
 import { type AskError, type DbRecord, WriteConstraintError } from "../ask/types.ts";
 import { classifyWriteConstraint } from "../ask/write-constraint.ts";
+import { quoted } from "../db-create/compile-ddl.ts";
 import { compileWriteDdl } from "../db-create/compile-write-ddl.ts";
 import type { DdlValidationResult, PgClient } from "../db-create/types.ts";
 import {
@@ -39,7 +42,12 @@ export type InsertResult = {
   widen?: { tables: string[]; ddl: string[]; schema_rewritten: boolean };
   // The `CREATE UNIQUE INDEX` a keyed write ran on its key's first use.
   index?: string;
+  // Rows refused because a value won't cast to its column's existing type;
+  // every other row landed. `index` is the row's position in the request.
+  failed?: FailedRow[];
 };
+
+export type FailedRow = { index: number; field: string; type: string };
 
 export type InsertError =
   | AskError
@@ -74,6 +82,17 @@ const UNIQUES_SQL =
   "JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = k.attnum " +
   "WHERE n.nspname = $1 AND c.relname = $2 AND i.indisunique AND i.indpred IS NULL " +
   "AND i.indexprs IS NULL GROUP BY i.indexrelid";
+
+// Which (row, field) values won't cast to their stored column's type — the
+// soft-error check Postgres 16 added, so a bad value never aborts the probe.
+// One jsonb param keeps a 1 000-row batch under the bind limit. A column the
+// batch was about to add doesn't exist yet, so it never matches.
+const PROBE_SQL =
+  "SELECT p.i, p.c, format_type(a.atttypid, a.atttypmod) AS type " +
+  "FROM jsonb_to_recordset($1::text::jsonb) AS p(i int, c text, v text) " +
+  "JOIN pg_attribute a ON a.attrelid = to_regclass($2) AND a.attname = p.c " +
+  "AND a.attnum > 0 AND NOT a.attisdropped " +
+  "WHERE NOT pg_input_is_valid(p.v, format_type(a.atttypid, a.atttypmod)) ORDER BY p.i";
 
 // A concurrent insert widened the same table/column first (42P07 / 42701):
 // re-observe once and re-plan against the shape it left.
@@ -116,6 +135,36 @@ export async function orchestrateInsert(
   }
   const schemaName = db.id.startsWith("db_") ? db.id.slice(3) : db.id;
 
+  const out = await write(deps, req, db, schemaName, req.rows);
+  if (out.ok || out.error.code !== "invalid_value") return out;
+  const failed = await probeRows(deps.pg, schemaName, req.table, req.rows);
+  const refused = new Set(failed.map((f) => f.index));
+  if (refused.size === 0 || refused.size === req.rows.length) return out;
+  const rest = await write(
+    deps,
+    req,
+    db,
+    schemaName,
+    req.rows.filter((_, i) => !refused.has(i)),
+  );
+  if (rest.ok) rest.result.failed = failed;
+  return rest;
+}
+
+// Observe → plan → one transaction (re-planned once on a widen race) → CAS.
+async function write(
+  deps: InsertDeps,
+  req: InsertRequest,
+  db: DbRecord,
+  schemaName: string,
+  rows: Record<string, unknown>[],
+): Promise<InsertOutcome> {
+  const tracer = trace.getTracer("@nlqdb/api");
+  const fail = (error: InsertError, widened = false): InsertOutcome => ({
+    ok: false,
+    error,
+    widened,
+  });
   let exec: WidenExecResult | null = null;
   let planned: ReturnType<typeof planInsert> | null = null;
   let ddl: string[] = [];
@@ -152,14 +201,7 @@ export async function orchestrateInsert(
     });
     if (!observed) return fail({ code: "db_unreachable" });
 
-    planned = planInsert(
-      observed.schema,
-      schemaName,
-      req.table,
-      req.rows,
-      req.key,
-      observed.uniques,
-    );
+    planned = planInsert(observed.schema, schemaName, req.table, rows, req.key, observed.uniques);
     if (!planned.ok) return fail({ code: "invalid_body", reason: planned.reason });
     const { plan, inserts, widens, sequence, uniqueIndex } = planned.value;
     const [first, ...rest] = inserts;
@@ -258,4 +300,50 @@ export async function orchestrateInsert(
     schema_rewritten: schemaRewritten,
   };
   return { ok: true, result, widened: true };
+}
+
+// The refused rows of a batch Postgres rejected with a data exception, each
+// with the field and the column type it won't cast to. Arrays bind as
+// Postgres array literals, not text, so they aren't probed. Best-effort: a
+// failed probe (or a pre-16 Postgres) leaves the whole-batch error standing.
+async function probeRows(
+  pg: PgClient,
+  schemaName: string,
+  rawTable: string,
+  rows: Record<string, unknown>[],
+): Promise<FailedRow[]> {
+  const table = columnName(rawTable);
+  if (!table) return [];
+  const cells: { i: number; c: string; v: string }[] = [];
+  const fields = new Map<string, string>();
+  for (const [i, row] of rows.entries()) {
+    for (const [field, v] of Object.entries(row ?? {})) {
+      const c = columnName(field);
+      if (!c || v === null || v === undefined || Array.isArray(v)) continue;
+      fields.set(`${i}\0${c}`, field);
+      cells.push({ i, c, v: typeof v === "object" ? JSON.stringify(v) : String(v) });
+    }
+  }
+  return trace.getTracer("@nlqdb/api").startActiveSpan("db.query", async (span) => {
+    span.setAttribute("db.system", "postgresql");
+    span.setAttribute("db.operation", "SELECT");
+    try {
+      const { rows: bad } = await pg.query<{ i: number; c: string; type: string }>(PROBE_SQL, [
+        JSON.stringify(cells),
+        quoted(schemaName, table),
+      ]);
+      span.setAttribute("nlqdb.insert.rows_refused", new Set(bad.map((b) => b.i)).size);
+      return bad.map((b) => ({
+        index: b.i,
+        field: fields.get(`${b.i}\0${b.c}`) ?? b.c,
+        type: b.type,
+      }));
+    } catch (err) {
+      span.recordException(err as Error);
+      span.setStatus({ code: SpanStatusCode.ERROR });
+      return [];
+    } finally {
+      span.end();
+    }
+  });
 }
