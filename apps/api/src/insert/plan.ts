@@ -17,7 +17,7 @@
 // whose key exists updates the fields it names — a re-run import or a flipped
 // vote never duplicates, and a field a row omits keeps its stored value.
 
-import type { ColumnType, Table, WidenPlan } from "@nlqdb/db";
+import { type ColumnType, fingerprintSchema, type Table, type WidenPlan } from "@nlqdb/db";
 import { quoted, quoteIdent } from "../db-create/compile-ddl.ts";
 import type { PgTransactionStatement } from "../db-create/types.ts";
 
@@ -175,15 +175,17 @@ export function planInsert(
   }
   // A NULL never conflicts in a unique index, so a keyless row would insert a
   // duplicate instead of upserting. Two rows on one key would make Postgres
-  // update a row twice (21000); the later one wins, as a later call would.
+  // update a row twice (21000); they merge, the later one's fields winning,
+  // as two calls would.
   const byKey = new Map<string, Map<string, unknown>>();
   for (const [i, row] of named.entries()) {
     const missing = key.find((col) => row.get(col) === null || row.get(col) === undefined);
     if (missing)
       return { ok: false, reason: `Row ${i + 1} has no value for key field "${missing}".` };
     const id = JSON.stringify(key.map((col) => row.get(col)));
+    const prior = byKey.get(id);
     byKey.delete(id);
-    byKey.set(id, row);
+    byKey.set(id, prior ? new Map([...prior, ...row]) : row);
   }
   const landing = key.length > 0 ? [...byKey.values()] : named;
 
@@ -273,12 +275,20 @@ export function planInsert(
     cols.length === key.length && cols.every((c) => key.includes(c));
   const covered =
     uniqueKeys.some(sameSet) || (!existing && sameSet(plan.create_tables[0]?.primary_key ?? []));
+  // A name past Postgres's 63 bytes is cut and hash-suffixed: plain truncation
+  // could land two keys on one name, and `IF NOT EXISTS` would then skip the
+  // second key's index.
+  const fullName = `${table}_${key.join("_")}_key`;
+  const indexName =
+    fullName.length <= 63
+      ? fullName
+      : `${fullName.slice(0, 54)}_${fingerprintSchema(`${table}\0${key.join("\0")}`)}`;
   const uniqueIndex =
     key.length > 0 && !covered
       ? {
           lock: `LOCK TABLE ${quoted(schemaName, table)} IN SHARE ROW EXCLUSIVE MODE`,
           ddl:
-            `CREATE UNIQUE INDEX IF NOT EXISTS ${quoteIdent(`${table}_${key.join("_")}_key`.slice(0, 63))} ` +
+            `CREATE UNIQUE INDEX IF NOT EXISTS ${quoteIdent(indexName)} ` +
             `ON ${quoted(schemaName, table)} (${key.map(quoteIdent).join(", ")})`,
         }
       : undefined;

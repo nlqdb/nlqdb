@@ -200,19 +200,32 @@ describe("planInsert", () => {
       expect(out.ok && out.value.inserts[0]?.sql).toContain('ON CONFLICT ("id")');
     });
 
-    it("lands a repeated key once, the later row winning", () => {
+    it("lands a repeated key once, merged, the later row's fields winning", () => {
       const out = planInsert(
         votes,
         "s1",
         "votes",
         [
-          { server_id: 1, stars: 1 },
-          { server_id: 2, stars: 5 },
+          { server_id: 1, stars: 1, user_id: 7 },
+          { server_id: 2, stars: 5, user_id: 8 },
           { server_id: 1, stars: 3 },
         ],
         ["server_id"],
       );
-      expect(out.ok && out.value.inserts[0]?.params).toEqual([2, 5, 1, 3]);
+      expect(out.ok && out.value.inserts[0]?.params).toEqual([2, 5, 8, 1, 3, 7]);
+    });
+
+    it("hash-suffixes an index name past 63 bytes, so two cut keys never share one", () => {
+      const long = "a_very_long_table_name_for_ratings_by_server";
+      const name = (key: string[]) => {
+        const out = planInsert(none, "s1", long, [{ serverCategoryId: 1, userAccountId: 2 }], key);
+        return out.ok ? out.value.uniqueIndex?.ddl.match(/EXISTS "([^"]+)"/)?.[1] : undefined;
+      };
+      const a = name(["server_category_id", "user_account_id"]);
+      const b = name(["server_category_id"]);
+      expect(a?.length).toBeLessThanOrEqual(63);
+      expect(b?.length).toBeLessThanOrEqual(63);
+      expect(a).not.toBe(b);
     });
 
     it("gives each row shape its own INSERT, so an omitted field keeps its stored value", () => {
