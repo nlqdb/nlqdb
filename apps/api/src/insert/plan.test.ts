@@ -215,6 +215,24 @@ describe("planInsert", () => {
       expect(out.ok && out.value.inserts[0]?.params).toEqual([2, 5, 8, 1, 3, 7]);
     });
 
+    it("keeps a repeated key's earlier id when the later row's id is null", () => {
+      const out = planInsert(
+        votes,
+        "s1",
+        "votes",
+        [
+          { id: "00000000-0000-0000-0000-000000000007", server_id: 1, stars: 1 },
+          { id: null, server_id: 1, stars: 3 },
+        ],
+        ["server_id"],
+      );
+      expect(out.ok && out.value.inserts[0]?.params).toEqual([
+        "00000000-0000-0000-0000-000000000007",
+        1,
+        3,
+      ]);
+    });
+
     it("hash-suffixes an index name past 63 bytes, so two cut keys never share one", () => {
       const long = "a_very_long_table_name_for_ratings_by_server";
       const name = (key: string[]) => {

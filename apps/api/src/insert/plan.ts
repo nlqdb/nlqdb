@@ -174,20 +174,25 @@ export function planInsert(
     key.push(col);
   }
   // A NULL never conflicts in a unique index, so a keyless row would insert a
-  // duplicate instead of upserting. Two rows on one key would make Postgres
-  // update a row twice (21000); they merge, the later one's fields winning,
-  // as two calls would.
-  const byKey = new Map<string, Map<string, unknown>>();
-  for (const [i, row] of named.entries()) {
-    const missing = key.find((col) => row.get(col) === null || row.get(col) === undefined);
-    if (missing)
-      return { ok: false, reason: `Row ${i + 1} has no value for key field "${missing}".` };
-    const id = JSON.stringify(key.map((col) => row.get(col)));
-    const prior = byKey.get(id);
-    byKey.delete(id);
-    byKey.set(id, prior ? new Map([...prior, ...row]) : row);
+  // duplicate instead of upserting. A null `id` names no field: updating a
+  // stored row's id to a fresh DEFAULT would re-key it. Two rows on one key
+  // would make Postgres update a row twice (21000); they merge, the later
+  // one's fields winning, as two calls would.
+  let landing = named;
+  if (key.length > 0) {
+    const byKey = new Map<string, Map<string, unknown>>();
+    for (const [i, row] of named.entries()) {
+      const missing = key.find((col) => row.get(col) === null || row.get(col) === undefined);
+      if (missing)
+        return { ok: false, reason: `Row ${i + 1} has no value for key field "${missing}".` };
+      if (row.get("id") === null) row.delete("id");
+      const id = JSON.stringify(key.map((col) => row.get(col)));
+      const prior = byKey.get(id);
+      byKey.delete(id);
+      byKey.set(id, prior ? new Map([...prior, ...row]) : row);
+    }
+    landing = [...byKey.values()];
   }
-  const landing = key.length > 0 ? [...byKey.values()] : named;
 
   const plan: WidenPlan = { create_tables: [], add_columns: [] };
   const existing = observed.get(table);
@@ -223,12 +228,8 @@ export function planInsert(
   // mixed-shape batch. Keyed, one INSERT per row shape, so `DO UPDATE` sets
   // only the fields those rows name; it always sets something (the key, to
   // itself, at worst), so `RETURNING` hands back every row.
-  // A null `id` names no field: updating a stored row's id to a fresh DEFAULT
-  // would re-key it.
   const shapeOf = (row: Map<string, unknown>) =>
-    key.length > 0
-      ? columns.filter((c) => row.has(c) && !(c === "id" && row.get(c) === null))
-      : columns;
+    key.length > 0 ? columns.filter((c) => row.has(c)) : columns;
   const groups = new Map<string, { cols: string[]; rows: Map<string, unknown>[] }>();
   for (const row of landing) {
     const cols = shapeOf(row);
