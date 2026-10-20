@@ -25,17 +25,6 @@ its own revokes without touching the dogfood key.
 3. Add a line to `history/founder-actions-log.md` (no key value) and delete
    this bullet.
 
-## 🔒 Approve or reject the 2026-10-16 END_GOAL + GLOBAL-041 revision (PR #1185)
-
-⏱ ~15 min · blocked since 2026-10-16. A SHOW/EXPLAIN cross-tenant validator
-fix ships in the same PR, so the security fix waits on this call.
-
-1. Read `docs/history/path-review-2026-10-16.md` on
-   [PR #1185](https://github.com/nlqdb/nlqdb/pull/1185).
-2. Approve it with one line in the PR body and mark the PR ready, **or** ask
-   for the validator fix to ship on its own.
-3. Delete this bullet.
-
 ## Cut rateme12 over to nlqdb, then recruit 10 builders
 
 ⏱ ~1 h + ~5 h · blocked since 2026-10-14. Gated — opens when

@@ -132,6 +132,7 @@ type InsertRequest struct {
 	DB    string           `json:"db"`
 	Table string           `json:"table"`
 	Rows  []map[string]any `json:"rows"`
+	Key   []string         `json:"key,omitempty"`
 }
 
 // InsertResult mirrors the SDK's `InsertResult`: the rows as stored
@@ -142,6 +143,7 @@ type InsertResult struct {
 	RowCount int              `json:"rowCount"`
 	Table    string           `json:"table"`
 	Widen    *TraceWiden      `json:"widen,omitempty"`
+	Index    string           `json:"index,omitempty"`
 }
 
 // TraceWiden mirrors the SDK's `TraceWiden` — the DDL a write ran to widen the schema.

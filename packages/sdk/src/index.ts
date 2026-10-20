@@ -301,6 +301,10 @@ export type InsertRequest = {
   db: string;
   table: string;
   rows: Record<string, unknown>[];
+  // Upsert on these fields: a row whose key exists updates the fields it
+  // names, so a re-run import never duplicates. Its first use adds a unique
+  // index on them. Every row must carry every key field.
+  key?: string | string[];
 };
 
 export type InsertResult = {
@@ -311,6 +315,8 @@ export type InsertResult = {
   table: string;
   // Present only when the insert created a table or column.
   widen?: TraceWiden;
+  // The `CREATE UNIQUE INDEX` a `key`'s first use ran.
+  index?: string;
 };
 
 // E-02 — the agent-memory write verb. `client.remember()` materialises a
@@ -1118,7 +1124,8 @@ export type NlqClient = {
    * the same transaction, with no model call. Errors worth a branch:
    * `forbidden` (a read-only key), `invalid_body` (a row that isn't an object
    * or a field with no letters), `write_constraint` / `invalid_value` (the
-   * engine refused a value). Mutating: auto-keyed (`SK-SDK-006`).
+   * engine refused a value). With `key`, rows upsert on those fields.
+   * Mutating: auto-keyed (`SK-SDK-006`).
    */
   insert(
     req: InsertRequest,

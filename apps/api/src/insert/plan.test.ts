@@ -43,10 +43,10 @@ describe("planInsert", () => {
         { name: "note", type: "text" },
       ],
     });
-    expect(out.value.insert.sql).toBe(
+    expect(out.value.inserts[0]?.sql).toBe(
       'INSERT INTO "s1"."votes" ("server_id", "up", "score", "meta", "note") VALUES ($1, $2, $3, $4, $5) RETURNING *',
     );
-    expect(out.value.insert.params).toEqual(["a", true, 4.5, '{"k":1}', null]);
+    expect(out.value.inserts[0]?.params).toEqual(["a", true, 4.5, '{"k":1}', null]);
   });
 
   it("keys a new table on the app's own integer / uuid id", () => {
@@ -67,7 +67,7 @@ describe("planInsert", () => {
       { name: "b" },
       { id: null, name: "c" },
     ]);
-    expect(out.ok && out.value.insert.sql).toContain(
+    expect(out.ok && out.value.inserts[0]?.sql).toContain(
       "VALUES ($1, $2), (DEFAULT, $3), (DEFAULT, $4)",
     );
     // …after the id sequence is lifted past the explicit 7, so DEFAULT draws 8.
@@ -109,8 +109,8 @@ describe("planInsert", () => {
       ],
     });
     // A jsonb column takes any value as its JSON text; a missing field is DEFAULT.
-    expect(out.value.insert.sql).toMatch(/VALUES \(\$1, \$2, \$3\), \(\$4, DEFAULT, \$5\)/);
-    expect(out.value.insert.params).toEqual(["up", '"plain"', 2, "down", "heavy"]);
+    expect(out.value.inserts[0]?.sql).toMatch(/VALUES \(\$1, \$2, \$3\), \(\$4, DEFAULT, \$5\)/);
+    expect(out.value.inserts[0]?.params).toEqual(["up", '"plain"', 2, "down", "heavy"]);
   });
 
   it("binds a JSON array as is into a create-path text[] column", () => {
@@ -118,7 +118,7 @@ describe("planInsert", () => {
     // a malformed array literal (22P02), the driver's array binding is not.
     const observed: ObservedSchema = new Map([["posts", new Map([["tags", "ARRAY"]])]]);
     const out = planInsert(observed, "s1", "posts", [{ tags: ["a", "b"] }]);
-    expect(out.ok && out.value.insert.params).toEqual([["a", "b"]]);
+    expect(out.ok && out.value.inserts[0]?.params).toEqual([["a", "b"]]);
   });
 
   it("does not widen a write whose fields are all observed", () => {
@@ -139,5 +139,153 @@ describe("planInsert", () => {
   ])("rejects %s with a reason", (_label, table, rows) => {
     const out = planInsert(none, "s1", table, rows as Record<string, unknown>[]);
     expect(out.ok).toBe(false);
+  });
+
+  describe("with a key (GLOBAL-041 step 11)", () => {
+    const votes: ObservedSchema = new Map([
+      [
+        "votes",
+        new Map([
+          ["id", "uuid"],
+          ["server_id", "numeric"],
+          ["user_id", "numeric"],
+          ["stars", "numeric"],
+        ]),
+      ],
+    ]);
+
+    it("upserts on the key and indexes it on first use", () => {
+      const out = planInsert(
+        votes,
+        "s1",
+        "votes",
+        [{ serverId: 1, userId: 7, stars: 4 }],
+        ["serverId", "user_id"],
+      );
+      expect(out.ok).toBe(true);
+      if (!out.ok) return;
+      expect(out.value.uniqueIndex).toEqual({
+        lock: 'LOCK TABLE "s1"."votes" IN SHARE ROW EXCLUSIVE MODE',
+        ddl: 'CREATE UNIQUE INDEX IF NOT EXISTS "votes_server_id_user_id_key" ON "s1"."votes" ("server_id", "user_id")',
+      });
+      expect(out.value.inserts).toEqual([
+        {
+          sql:
+            'INSERT INTO "s1"."votes" ("server_id", "user_id", "stars") VALUES ($1, $2, $3) ' +
+            'ON CONFLICT ("server_id", "user_id") DO UPDATE SET "stars" = EXCLUDED."stars" RETURNING *',
+          params: [1, 7, 4],
+        },
+      ]);
+    });
+
+    it("adds no index when a unique index already covers the key, in any order", () => {
+      const out = planInsert(
+        votes,
+        "s1",
+        "votes",
+        [{ server_id: 1, user_id: 7 }],
+        ["server_id", "user_id"],
+        [["id"], ["user_id", "server_id"]],
+      );
+      expect(out.ok && out.value.uniqueIndex).toBeUndefined();
+      // Nothing but the key to set: it sets itself, so RETURNING still hands back the row.
+      expect(out.ok && out.value.inserts[0]?.sql).toContain(
+        'DO UPDATE SET "server_id" = EXCLUDED."server_id"',
+      );
+    });
+
+    it("adds no index when the key is a new table's primary key", () => {
+      const out = planInsert(none, "s1", "servers", [{ id: 1, name: "fs" }], ["id"]);
+      expect(out.ok && out.value.uniqueIndex).toBeUndefined();
+      expect(out.ok && out.value.inserts[0]?.sql).toContain('ON CONFLICT ("id")');
+    });
+
+    it("lands a repeated key once, merged, the later row's fields winning", () => {
+      const out = planInsert(
+        votes,
+        "s1",
+        "votes",
+        [
+          { server_id: 1, stars: 1, user_id: 7 },
+          { server_id: 2, stars: 5, user_id: 8 },
+          { server_id: 1, stars: 3 },
+        ],
+        ["server_id"],
+      );
+      expect(out.ok && out.value.inserts[0]?.params).toEqual([2, 5, 8, 1, 3, 7]);
+    });
+
+    it("keeps a repeated key's earlier id when the later row's id is null", () => {
+      const out = planInsert(
+        votes,
+        "s1",
+        "votes",
+        [
+          { id: "00000000-0000-0000-0000-000000000007", server_id: 1, stars: 1 },
+          { id: null, server_id: 1, stars: 3 },
+        ],
+        ["server_id"],
+      );
+      expect(out.ok && out.value.inserts[0]?.params).toEqual([
+        "00000000-0000-0000-0000-000000000007",
+        1,
+        3,
+      ]);
+    });
+
+    it("hash-suffixes an index name past 63 bytes, so two cut keys never share one", () => {
+      const long = "a_very_long_table_name_for_ratings_by_server";
+      const name = (key: string[]) => {
+        const out = planInsert(none, "s1", long, [{ serverCategoryId: 1, userAccountId: 2 }], key);
+        return out.ok ? out.value.uniqueIndex?.ddl.match(/EXISTS "([^"]+)"/)?.[1] : undefined;
+      };
+      const a = name(["server_category_id", "user_account_id"]);
+      const b = name(["server_category_id"]);
+      expect(a?.length).toBeLessThanOrEqual(63);
+      expect(b?.length).toBeLessThanOrEqual(63);
+      expect(a).not.toBe(b);
+    });
+
+    it("gives each row shape its own INSERT, so an omitted field keeps its stored value", () => {
+      const out = planInsert(
+        votes,
+        "s1",
+        "votes",
+        [{ server_id: 1, stars: 4 }, { server_id: 2, stars: 5, user_id: 7 }, { server_id: 3 }],
+        ["server_id"],
+      );
+      expect(out.ok).toBe(true);
+      if (!out.ok) return;
+      expect(out.value.inserts.map((i) => i.sql.match(/SET (.*) RETURNING/)?.[1])).toEqual([
+        '"stars" = EXCLUDED."stars"',
+        '"stars" = EXCLUDED."stars", "user_id" = EXCLUDED."user_id"',
+        '"server_id" = EXCLUDED."server_id"',
+      ]);
+      expect(out.value.inserts.every((i) => !i.sql.includes("DEFAULT"))).toBe(true);
+    });
+
+    it("never sets a stored row's id from a null id", () => {
+      const out = planInsert(
+        votes,
+        "s1",
+        "votes",
+        [{ id: null, server_id: 1, stars: 4 }],
+        ["server_id"],
+      );
+      expect(out.ok && out.value.inserts[0]?.sql).toBe(
+        'INSERT INTO "s1"."votes" ("server_id", "stars") VALUES ($1, $2) ' +
+          'ON CONFLICT ("server_id") DO UPDATE SET "stars" = EXCLUDED."stars" RETURNING *',
+      );
+    });
+
+    it.each([
+      ["a row missing a key field", [{ stars: 1 }], ["server_id"]],
+      ["a null key value", [{ server_id: null }], ["server_id"]],
+      ["a key field with no letters", [{ server_id: 1 }], ["42"]],
+      ["a key field named twice", [{ server_id: 1 }], ["serverId", "server_id"]],
+    ])("rejects %s with a reason", (_label, rows, key) => {
+      const out = planInsert(votes, "s1", "votes", rows as Record<string, unknown>[], key);
+      expect(out.ok).toBe(false);
+    });
   });
 });

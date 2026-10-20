@@ -1032,6 +1032,24 @@ describe("handleInsert", () => {
     const result = await handleInsert(client, { db: "db_x", table: "votes", rows: [{ a: 1 }] });
     expect("err" in result && result.err.code).toBe("write_constraint");
   });
+
+  it("passes `key` through and returns the first-use index", async () => {
+    const index =
+      'CREATE UNIQUE INDEX IF NOT EXISTS "votes_server_id_key" ON "x"."votes" ("server_id")';
+    const client = stubClient({
+      insert: async (req) => {
+        expect(req.key).toEqual(["server_id"]);
+        return { status: "ok", rows: [{ server_id: 42 }], rowCount: 1, table: "votes", index };
+      },
+    });
+    const result = await handleInsert(client, {
+      db: "db_x",
+      table: "votes",
+      rows: [{ server_id: 42 }],
+      key: ["server_id"],
+    });
+    expect("ok" in result && result.ok.index).toBe(index);
+  });
 });
 
 describe("handleConnectDatabase", () => {

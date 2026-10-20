@@ -3,22 +3,18 @@
 Why this file: the company is operated by agents; the human does only what
 agents cannot (accounts, credentials, console clicks, account-walled
 submissions, money). Those actions used to vanish on completion — queue
-bullets are deleted once done ([`blocked-by-human.md`](../blocked-by-human.md)
-charter, which now points here), so the only
-record was git archaeology. This log is the durable, chronological record,
+bullets are deleted once done ([`blocked-by-human.md`](../blocked-by-human.md)),
+leaving only git archaeology. This log is the durable, chronological record,
 kept so that (a) standing up another product with an agent is a **replay**,
 not a reconstruction, and (b) it seeds the founder-ops goal pack
 ([`SK-PIVOT-018`](../features/agent-memory-pivot/decisions/SK-PIVOT-018-goal-packs.md)).
 
 Rules: append-only, newest at the bottom of each era; **metadata only —
-never secret values** (credential *names* live in `.env.example`; the
-accounts table in [`runbook.md §3`](../runbook.md) stays the canonical
-account inventory, and the channel ledger
-[`research/acquisition-channels.md`](../research/acquisition-channels.md)
-the canonical *status* of anything submitted — this log records the action,
-never re-states the outcome). One line per action: date · action · surface ·
-what it unblocked · replay note. Decisions are excluded — they live in
-decision records; this file is operator actions only.
+never secret values**. Credential *names* live in `.env.example`, accounts in
+[`runbook.md §3`](../runbook.md), submission status in the channel ledger
+[`research/acquisition-channels.md`](../research/acquisition-channels.md);
+this log records the action, never the outcome. One line per action;
+decisions live in decision records.
 
 ## Era 0 — initial infrastructure (repo bootstrap; exact dates in `git log docs/runbook.md`)
 
@@ -184,3 +180,4 @@ well the queue bullet was prepared, not by the action itself.
 | Date | Action (surface) | Unblocked | Replay note |
 |---|---|---|---|
 | 2026-10-16 | On the founder's word, agent-performed with the operator's `CLOUDFLARE_API_TOKEN`: re-ran `Deploy API` on `main`, set `TENANT_ROLE_REAP=1` on `nlqdb-api`, deleted the 261 `synthetic` anon D1 rows (0 asks) | `SK-HDC-024` reaper drops orphan `tenant_*` roles (499/500 → ~18 live); hosted create off the 500-role cap | ~5 min; `wrangler secret put` refuses while a PR preview version is newest, so redeploy first |
+| 2026-10-19 | Merged PR #1185 (GitHub) | END_GOAL + `GLOBAL-041` 2026-10-16 revision locked; SHOW/EXPLAIN cross-tenant validator fix live | — |

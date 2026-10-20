@@ -174,6 +174,10 @@ func (w *Writer) WriteInsert(resp *api.InsertResult) error {
 			fmt.Fprintln(w.Out, indent(strings.TrimSpace(ddl), "  "))
 		}
 	}
+	if resp.Index != "" {
+		fmt.Fprintln(w.Out, "─ key indexed ─")
+		fmt.Fprintln(w.Out, indent(resp.Index, "  "))
+	}
 	if len(resp.Rows) > 0 {
 		writeRowsTable(w.Out, resp.Rows)
 	}

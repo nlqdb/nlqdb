@@ -182,6 +182,13 @@ export const insertInputShape = {
     .describe(
       "Rows as JSON objects, up to 1 000 per call. Keys become lower_snake_case columns (serverId → server_id); a field the table hasn't seen is added, typed from the values (number → numeric, string → text, object/array → jsonb, boolean → boolean). A key a row omits takes the column default. No model call, so the values land exactly as sent — use this for structured writes, nlqdb_query for writes described in words.",
     ),
+  key: z
+    .array(z.string().min(1))
+    .min(1)
+    .optional()
+    .describe(
+      'Fields that identify a row, e.g. ["server_id", "user_id"]. When set, a row whose key already exists is updated (only the fields it names) instead of duplicated, so re-running an import is safe. Every row must carry every key field; the first keyed write adds a unique index on them.',
+    ),
 };
 
 export type InsertInput = z.infer<z.ZodObject<typeof insertInputShape>>;
@@ -200,6 +207,7 @@ export const insertOutputShape = {
     })
     .optional()
     .describe("Present only when the insert created a table or column — the DDL it ran."),
+  index: z.string().optional().describe("The unique index a `key`'s first use created."),
 };
 
 export type InsertOutput = z.infer<z.ZodObject<typeof insertOutputShape>>;
@@ -692,13 +700,22 @@ export async function handleInsert(
   try {
     const opts: { signal?: AbortSignal } = {};
     if (ctx.signal) opts.signal = ctx.signal;
-    const res = await client.insert({ db: input.db, table: input.table, rows: input.rows }, opts);
+    const res = await client.insert(
+      {
+        db: input.db,
+        table: input.table,
+        rows: input.rows,
+        ...(input.key ? { key: input.key } : {}),
+      },
+      opts,
+    );
     return {
       ok: {
         table: res.table,
         rowCount: res.rowCount,
         rows: res.rows,
         ...(res.widen ? { widen: res.widen } : {}),
+        ...(res.index ? { index: res.index } : {}),
       },
     };
   } catch (err) {

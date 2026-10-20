@@ -169,7 +169,8 @@ in order (revised 2026-10-14, 2026-10-16):
 10. ✅ **Deterministic structured insert** (`SK-SCHEMA-012`, deployed
     2026-10-15; `nlq insert` + MCP `nlqdb_insert` 2026-10-17). Remaining:
     a rateme12-shaped live walk on prod.
-11. **Keys and the change ledger** (revised 2026-10-16). `insert({ key })`
+11. **Keys and the change ledger** (revised 2026-10-16; keyed upsert
+    shipped 2026-10-20 per `SK-SCHEMA-012`). `insert({ key })`
     creates a unique index on first use and upserts (`ON CONFLICT … DO
     UPDATE`); a row that fails (duplicate without `key`, value that won't
     cast) is returned per row while the rest land (`END_GOAL.md` edge

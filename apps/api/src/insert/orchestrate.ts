@@ -18,12 +18,14 @@ import {
   widenedSchema,
 } from "../db-create/widen-provision.ts";
 import { rewriteWidenedSchema } from "../db-registry.ts";
-import { type ObservedSchema, planInsert } from "./plan.ts";
+import { columnName, type ObservedSchema, planInsert, type UniqueKeys } from "./plan.ts";
 
 export type InsertRequest = {
   dbId: string;
   table: string;
   rows: Record<string, unknown>[];
+  // Upsert on these fields (GLOBAL-041 Phase A step 11); empty = plain insert.
+  key?: string[];
   userId: string;
   rateLimitBucketKey?: string;
 };
@@ -35,6 +37,8 @@ export type InsertResult = {
   // Same shape as `/v1/ask`'s `trace.widen` (SK-TRUST-002): present only when
   // the insert created a table or column.
   widen?: { tables: string[]; ddl: string[]; schema_rewritten: boolean };
+  // The `CREATE UNIQUE INDEX` a keyed write ran on its key's first use.
+  index?: string;
 };
 
 export type InsertError =
@@ -60,6 +64,16 @@ export type InsertDeps = {
 
 const OBSERVE_SQL =
   "SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = $1";
+
+// A keyed write's arbiter candidates: the table's plain-column, non-partial
+// unique indexes (its primary key included), each as its column names.
+const UNIQUES_SQL =
+  "SELECT array_agg(a.attname::text) AS cols FROM pg_index i " +
+  "JOIN pg_class c ON c.oid = i.indrelid JOIN pg_namespace n ON n.oid = c.relnamespace " +
+  "CROSS JOIN LATERAL unnest(i.indkey::int2[]) AS k(attnum) " +
+  "JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = k.attnum " +
+  "WHERE n.nspname = $1 AND c.relname = $2 AND i.indisunique AND i.indpred IS NULL " +
+  "AND i.indexprs IS NULL GROUP BY i.indexrelid";
 
 // A concurrent insert widened the same table/column first (42P07 / 42701):
 // re-observe once and re-plan against the shape it left.
@@ -121,7 +135,13 @@ export async function orchestrateInsert(
           cols.set(r.column_name, r.data_type);
           out.set(r.table_name, cols);
         }
-        return out;
+        const table = columnName(req.table);
+        let uniques: UniqueKeys = [];
+        if (req.key?.length && table && out.has(table)) {
+          const res = await deps.pg.query<{ cols: string[] }>(UNIQUES_SQL, [schemaName, table]);
+          uniques = res.rows.map((r) => r.cols);
+        }
+        return { schema: out, uniques };
       } catch (err) {
         span.recordException(err as Error);
         span.setStatus({ code: SpanStatusCode.ERROR });
@@ -132,28 +152,51 @@ export async function orchestrateInsert(
     });
     if (!observed) return fail({ code: "db_unreachable" });
 
-    planned = planInsert(observed, schemaName, req.table, req.rows);
+    planned = planInsert(
+      observed.schema,
+      schemaName,
+      req.table,
+      req.rows,
+      req.key,
+      observed.uniques,
+    );
     if (!planned.ok) return fail({ code: "invalid_body", reason: planned.reason });
-    const { plan, insert, widens } = planned.value;
+    const { plan, inserts, widens, sequence, uniqueIndex } = planned.value;
+    const [first, ...rest] = inserts;
+    if (!first) return fail({ code: "internal_error" });
 
-    let statements = [{ sql: "SET LOCAL statement_timeout = '30s'" }, insert];
+    let statements = [{ sql: "SET LOCAL statement_timeout = '30s'" }, first];
     ddl = [];
     if (widens) {
       const compiled = compileWriteDdl(plan, schemaName);
       if (!compiled.ok) return fail({ code: "internal_error" }, true);
       const validation = deps.validateCompiledDdl(compiled.statements);
       if (!validation.ok) return fail({ code: "internal_error" }, true);
-      const batch = await buildWidenBatch({ schemaName, tenantId: db.tenantId, plan, insert });
+      const batch = await buildWidenBatch({
+        schemaName,
+        tenantId: db.tenantId,
+        plan,
+        insert: first,
+      });
       if (!batch.ok) return fail({ code: "internal_error" }, true);
       statements = batch.statements;
       ddl = compiled.statements;
     }
-    if (planned.value.sequence) statements.splice(-1, 0, planned.value.sequence);
+    // The key's index and the sequence lift run right before the inserts.
+    const before = sequence ? [sequence] : [];
+    if (uniqueIndex) {
+      const { lock, ddl: index } = uniqueIndex;
+      if (!deps.validateCompiledDdl([lock, index]).ok)
+        return fail({ code: "internal_error" }, widens);
+      before.unshift({ sql: lock }, { sql: index });
+    }
+    statements.splice(-1, 0, ...before);
+    statements.push(...rest);
     exec = await executeWidenBatch({ pg: deps.pg }, statements);
     if (exec.ok || !RACED.has(exec.sqlState ?? "")) break;
   }
   if (!exec || !planned?.ok) return fail({ code: "internal_error" });
-  const { table, plan, widens } = planned.value;
+  const { table, plan, widens, inserts } = planned.value;
 
   if (!exec.ok) {
     const constraint = classifyWriteConstraint(exec.error)?.cause;
@@ -171,12 +214,15 @@ export async function orchestrateInsert(
     );
   }
 
-  const last = exec.results.at(-1);
+  const landed = exec.results.slice(-inserts.length);
   const result: InsertResult = {
-    rows: last?.rows ?? [],
-    rowCount: last?.rowCount ?? 0,
+    rows: landed.flatMap((r) => r.rows),
+    rowCount: landed.reduce((n, r) => n + r.rowCount, 0),
     table,
   };
+  // A first-use key index is DDL the response owns up to, but not a widen:
+  // `schema_hash` and the KPI-1 sample move only on a new table or field.
+  if (planned.value.uniqueIndex) result.index = planned.value.uniqueIndex.ddl;
   if (!widens) return { ok: true, result, widened: false };
 
   // Best-effort CAS (SK-SCHEMA-011): the rows already committed.

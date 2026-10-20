@@ -72,6 +72,7 @@ describe("deltaWrites", () => {
       {
         table: DELTA_TABLE,
         row: { run: 230, row: "E1", metric: "KPI 1", before: "1/2", after: "2/3" },
+        key: ["run", "row"],
       },
     ]);
     expect(deltaWrites("230", card("a", "b"), card("a", "b"))).toEqual([]);

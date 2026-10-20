@@ -59,8 +59,17 @@ const res = await client.insert({
 // res.rows: the stored rows, generated id included; res.widen?.ddl: any DDL it ran
 ```
 
-Up to 1 000 rows per call. The same verb is `nlq insert` on the CLI and
-`nlqdb_insert` over MCP.
+Pass `key` to upsert: a row whose key fields match a stored row updates the
+fields it names instead of adding a duplicate, so a re-run import or a changed
+vote is safe. Every row must carry every key field; the first keyed write adds
+a unique index on them (`res.index`).
+
+```ts
+await client.insert({ db: "rateme", table: "votes", rows, key: ["serverId", "userId"] });
+```
+
+Up to 1 000 rows per call. The same verb is `nlq insert` (`--key`) on the CLI and
+`nlqdb_insert` (`key`) over MCP.
 
 ## Raw SQL escape hatch
 

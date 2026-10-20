@@ -11,8 +11,13 @@
 // get `bigint` (identity) and all-uuid ids `uuid`, the shapes `autoDefault`
 // already generates for (SK-HDC-015); with no `id` key the table gets a
 // generated `id uuid`.
+//
+// A `key` (GLOBAL-041 Phase A step 11) makes the write an upsert: the key's
+// columns get a unique index on first use, in the same transaction, and a row
+// whose key exists updates the fields it names — a re-run import or a flipped
+// vote never duplicates, and a field a row omits keeps its stored value.
 
-import type { ColumnType, Table, WidenPlan } from "@nlqdb/db";
+import { type ColumnType, fingerprintSchema, type Table, type WidenPlan } from "@nlqdb/db";
 import { quoted, quoteIdent } from "../db-create/compile-ddl.ts";
 import type { PgTransactionStatement } from "../db-create/types.ts";
 
@@ -23,6 +28,10 @@ export const MAX_CELLS = 30_000;
 
 export type ObservedSchema = Map<string, Map<string, string>>; // table → column → pg data_type
 
+// The target table's unique indexes (plain-column, non-partial), each as its
+// column set — what `ON CONFLICT (cols)` can infer an arbiter from.
+export type UniqueKeys = string[][];
+
 export type InsertPlan = {
   table: string;
   plan: WidenPlan;
@@ -32,7 +41,12 @@ export type InsertPlan = {
   // Runs right before `insert` when a row names an integer `id`: moves the
   // id's sequence past it (see `SEQUENCE_SQL`). Absent otherwise.
   sequence?: PgTransactionStatement;
-  insert: PgTransactionStatement;
+  // A keyed write whose key no unique index covers yet: the table lock and
+  // the `CREATE UNIQUE INDEX` that run before the inserts. Absent otherwise.
+  uniqueIndex?: { lock: string; ddl: string };
+  // One INSERT; a keyed write gets one per row shape, so each row updates
+  // exactly the fields it names.
+  inserts: PgTransactionStatement[];
 };
 
 export type InsertPlanResult = { ok: true; value: InsertPlan } | { ok: false; reason: string };
@@ -108,6 +122,8 @@ export function planInsert(
   schemaName: string,
   rawTable: string,
   rows: Record<string, unknown>[],
+  rawKey: string[] = [],
+  uniqueKeys: UniqueKeys = [],
 ): InsertPlanResult {
   const table = columnName(rawTable);
   if (!table) return { ok: false, reason: "`table` must contain a letter." };
@@ -150,6 +166,34 @@ export function planInsert(
     return { ok: false, reason: `One call may write at most ${MAX_CELLS} values; split the call.` };
   }
 
+  const key: string[] = [];
+  for (const k of rawKey) {
+    const col = columnName(k);
+    if (!col) return { ok: false, reason: `Key field "${k.slice(0, 60)}" has no letters.` };
+    if (key.includes(col)) return { ok: false, reason: `Key field "${col}" is named twice.` };
+    key.push(col);
+  }
+  // A NULL never conflicts in a unique index, so a keyless row would insert a
+  // duplicate instead of upserting. A null `id` names no field: updating a
+  // stored row's id to a fresh DEFAULT would re-key it. Two rows on one key
+  // would make Postgres update a row twice (21000); they merge, the later
+  // one's fields winning, as two calls would.
+  let landing = named;
+  if (key.length > 0) {
+    const byKey = new Map<string, Map<string, unknown>>();
+    for (const [i, row] of named.entries()) {
+      const missing = key.find((col) => row.get(col) === null || row.get(col) === undefined);
+      if (missing)
+        return { ok: false, reason: `Row ${i + 1} has no value for key field "${missing}".` };
+      if (row.get("id") === null) row.delete("id");
+      const id = JSON.stringify(key.map((col) => row.get(col)));
+      const prior = byKey.get(id);
+      byKey.delete(id);
+      byKey.set(id, prior ? new Map([...prior, ...row]) : row);
+    }
+    landing = [...byKey.values()];
+  }
+
   const plan: WidenPlan = { create_tables: [], add_columns: [] };
   const existing = observed.get(table);
   const types = new Map<string, string>(existing ?? []);
@@ -179,25 +223,78 @@ export function planInsert(
     }
   }
 
-  // A key a row omits is `DEFAULT`, not NULL, so a generated `id` or a
-  // `created_at DEFAULT now()` still fills in a mixed-shape batch.
-  const params: unknown[] = [];
-  const tuples = named.map(
-    (row) =>
-      `(${columns
-        .map((col) => {
-          // A null `id` is no id: the key is NOT NULL, so it takes DEFAULT too.
-          if (!row.has(col) || (col === "id" && row.get(col) === null)) return "DEFAULT";
-          params.push(param(row.get(col), types.get(col)));
-          return `$${params.length}`;
-        })
-        .join(", ")})`,
-  );
-  const sql =
-    `INSERT INTO ${quoted(schemaName, table)} (${columns.map(quoteIdent).join(", ")}) ` +
-    `VALUES ${tuples.join(", ")} RETURNING *`;
+  // Unkeyed, one INSERT: a field a row omits is `DEFAULT`, not NULL, so a
+  // generated `id` or a `created_at DEFAULT now()` still fills in a
+  // mixed-shape batch. Keyed, one INSERT per row shape, so `DO UPDATE` sets
+  // only the fields those rows name; it always sets something (the key, to
+  // itself, at worst), so `RETURNING` hands back every row.
+  const shapeOf = (row: Map<string, unknown>) =>
+    key.length > 0 ? columns.filter((c) => row.has(c)) : columns;
+  const groups = new Map<string, { cols: string[]; rows: Map<string, unknown>[] }>();
+  for (const row of landing) {
+    const cols = shapeOf(row);
+    const group = groups.get(cols.join(","));
+    if (group) group.rows.push(row);
+    else groups.set(cols.join(","), { cols, rows: [row] });
+  }
+  const inserts = [...groups.values()].map(({ cols, rows: group }) => {
+    const params: unknown[] = [];
+    const tuples = group.map(
+      (row) =>
+        `(${cols
+          .map((col) => {
+            // A null `id` is no id: the key is NOT NULL, so it takes DEFAULT too.
+            if (!row.has(col) || (col === "id" && row.get(col) === null)) return "DEFAULT";
+            params.push(param(row.get(col), types.get(col)));
+            return `$${params.length}`;
+          })
+          .join(", ")})`,
+    );
+    const set = cols.filter((c) => !key.includes(c));
+    const upsert =
+      key.length === 0
+        ? ""
+        : ` ON CONFLICT (${key.map(quoteIdent).join(", ")}) DO UPDATE SET ${(set.length > 0
+            ? set
+            : key.slice(0, 1)
+          )
+            .map((c) => `${quoteIdent(c)} = EXCLUDED.${quoteIdent(c)}`)
+            .join(", ")}`;
+    const sql =
+      `INSERT INTO ${quoted(schemaName, table)} (${cols.map(quoteIdent).join(", ")}) ` +
+      `VALUES ${tuples.join(", ")}${upsert} RETURNING *`;
+    return { sql, params };
+  });
 
-  const ids = named.map((r) => r.get("id")).filter((v) => Number.isSafeInteger(v)) as number[];
+  // First use of a key: a unique index on exactly its columns, unless one
+  // exists (or the new table's primary key is the key). Two first uses would
+  // each take the index's SHARE lock, then deadlock on their INSERTs; a
+  // self-conflicting lock taken first queues them, and the later one's
+  // `IF NOT EXISTS` finds the index. Rows already duplicating the key fail it
+  // as `write_constraint` (unique).
+  const sameSet = (cols: string[]) =>
+    cols.length === key.length && cols.every((c) => key.includes(c));
+  const covered =
+    uniqueKeys.some(sameSet) || (!existing && sameSet(plan.create_tables[0]?.primary_key ?? []));
+  // A name past Postgres's 63 bytes is cut and hash-suffixed: plain truncation
+  // could land two keys on one name, and `IF NOT EXISTS` would then skip the
+  // second key's index.
+  const fullName = `${table}_${key.join("_")}_key`;
+  const indexName =
+    fullName.length <= 63
+      ? fullName
+      : `${fullName.slice(0, 54)}_${fingerprintSchema(`${table}\0${key.join("\0")}`)}`;
+  const uniqueIndex =
+    key.length > 0 && !covered
+      ? {
+          lock: `LOCK TABLE ${quoted(schemaName, table)} IN SHARE ROW EXCLUSIVE MODE`,
+          ddl:
+            `CREATE UNIQUE INDEX IF NOT EXISTS ${quoteIdent(indexName)} ` +
+            `ON ${quoted(schemaName, table)} (${key.map(quoteIdent).join(", ")})`,
+        }
+      : undefined;
+
+  const ids = landing.map((r) => r.get("id")).filter((v) => Number.isSafeInteger(v)) as number[];
   const maxId = Math.max(0, ...ids);
 
   return {
@@ -209,7 +306,8 @@ export function planInsert(
       ...(types.has("id") && maxId >= 1
         ? { sequence: { sql: SEQUENCE_SQL, params: [maxId, quoted(schemaName, table)] } }
         : {}),
-      insert: { sql, params },
+      ...(uniqueIndex ? { uniqueIndex } : {}),
+      inserts,
     },
   };
 }
