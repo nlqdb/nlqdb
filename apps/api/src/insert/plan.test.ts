@@ -233,6 +233,20 @@ describe("planInsert", () => {
       expect(out.value.inserts.every((i) => !i.sql.includes("DEFAULT"))).toBe(true);
     });
 
+    it("never sets a stored row's id from a null id", () => {
+      const out = planInsert(
+        votes,
+        "s1",
+        "votes",
+        [{ id: null, server_id: 1, stars: 4 }],
+        ["server_id"],
+      );
+      expect(out.ok && out.value.inserts[0]?.sql).toBe(
+        'INSERT INTO "s1"."votes" ("server_id", "stars") VALUES ($1, $2) ' +
+          'ON CONFLICT ("server_id") DO UPDATE SET "stars" = EXCLUDED."stars" RETURNING *',
+      );
+    });
+
     it.each([
       ["a row missing a key field", [{ stars: 1 }], ["server_id"]],
       ["a null key value", [{ server_id: null }], ["server_id"]],

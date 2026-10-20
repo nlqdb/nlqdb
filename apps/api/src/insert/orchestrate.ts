@@ -186,7 +186,8 @@ export async function orchestrateInsert(
     const before = sequence ? [sequence] : [];
     if (uniqueIndex) {
       const { lock, ddl: index } = uniqueIndex;
-      if (!deps.validateCompiledDdl([lock, index]).ok) return fail({ code: "internal_error" });
+      if (!deps.validateCompiledDdl([lock, index]).ok)
+        return fail({ code: "internal_error" }, widens);
       before.unshift({ sql: lock }, { sql: index });
     }
     statements.splice(-1, 0, ...before);

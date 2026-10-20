@@ -221,13 +221,20 @@ export function planInsert(
   // mixed-shape batch. Keyed, one INSERT per row shape, so `DO UPDATE` sets
   // only the fields those rows name; it always sets something (the key, to
   // itself, at worst), so `RETURNING` hands back every row.
-  const groups = new Map<string, Map<string, unknown>[]>();
+  // A null `id` names no field: updating a stored row's id to a fresh DEFAULT
+  // would re-key it.
+  const shapeOf = (row: Map<string, unknown>) =>
+    key.length > 0
+      ? columns.filter((c) => row.has(c) && !(c === "id" && row.get(c) === null))
+      : columns;
+  const groups = new Map<string, { cols: string[]; rows: Map<string, unknown>[] }>();
   for (const row of landing) {
-    const shape = key.length > 0 ? columns.filter((c) => row.has(c)).join(",") : "";
-    groups.set(shape, [...(groups.get(shape) ?? []), row]);
+    const cols = shapeOf(row);
+    const group = groups.get(cols.join(","));
+    if (group) group.rows.push(row);
+    else groups.set(cols.join(","), { cols, rows: [row] });
   }
-  const inserts = [...groups.values()].map((group) => {
-    const cols = key.length > 0 ? columns.filter((c) => group[0]?.has(c)) : columns;
+  const inserts = [...groups.values()].map(({ cols, rows: group }) => {
     const params: unknown[] = [];
     const tuples = group.map(
       (row) =>
