@@ -20,14 +20,20 @@ import (
 // (SK-SCHEMA-012, GLOBAL-003): structured rows land with no model call.
 func registerInsert(root *cobra.Command, g *globalFlags) {
 	var db string
+	var key []string
 	cmd := &cobra.Command{
-		Use:   "insert [--db <id>] <table> [<json>]",
+		Use:   "insert [--db <id>] [--key <field>...] <table> [<json>]",
 		Short: "Insert JSON rows; an unseen table or field is created (no LLM)",
 		Long: `Insert writes rows via POST /v1/insert. Pass one JSON object or an array
 of objects — as the second argument or on stdin. Keys map to snake_case
 columns (serverId → server_id); a table or field the database hasn't seen
 is created in the same transaction, typed from the values. No model call,
 no data modelling.
+
+--key makes the write an upsert: a row whose key fields match a stored row
+updates the fields it names instead of adding a duplicate, so re-running an
+import is safe. Every row must carry every key field; the first keyed write
+adds a unique index on them.
 
 DB resolution mirrors ` + "`nlq ask`" + `: --db pins one, else the active DB from
 ~/.config/nlqdb/state.json (` + "`nlq use <db>`" + ` switches it).
@@ -36,6 +42,7 @@ Examples:
   nlq insert votes '{"serverId": 42, "stars": 5}'
   nlq insert servers '[{"name": "fs"}, {"name": "git", "tags": ["vcs"]}]'
   cat servers.json | nlq insert --db registry servers
+  nlq insert --key server_id --key user_id votes '{"serverId": 42, "userId": 7, "stars": 4}'
 
 Pass --json for machine-readable output.`,
 		Args: cobra.RangeArgs(1, 2),
@@ -61,10 +68,11 @@ Pass --json for machine-readable output.`,
 			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), 120*time.Second)
 			defer cancel()
-			return doInsert(ctx, cmd, g, api.InsertRequest{DB: dbID, Table: table, Rows: rows})
+			return doInsert(ctx, cmd, g, api.InsertRequest{DB: dbID, Table: table, Rows: rows, Key: key})
 		},
 	}
 	cmd.Flags().StringVar(&db, "db", "", "database id to write to (default: active DB)")
+	cmd.Flags().StringSliceVar(&key, "key", nil, "upsert on this field (repeat or comma-separate for a composite key)")
 	root.AddCommand(cmd)
 }
 

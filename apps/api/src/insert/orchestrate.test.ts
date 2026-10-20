@@ -112,6 +112,52 @@ describe("orchestrateInsert", () => {
     expect(batch[1]?.params).toEqual([9, '"app1"."votes"']);
   });
 
+  it("upserts a keyed write: index first, one INSERT per row shape, every row returned", async () => {
+    const cols = [
+      { table_name: "votes", column_name: "id", data_type: "bigint" },
+      { table_name: "votes", column_name: "server_id", data_type: "numeric" },
+      { table_name: "votes", column_name: "stars", data_type: "numeric" },
+    ];
+    const pg: PgClient = {
+      query: vi.fn(async (sql: string) =>
+        sql.includes("pg_index")
+          ? { rows: [{ cols: ["id"] }], rowCount: 1 }
+          : { rows: cols, rowCount: cols.length },
+      ) as PgClient["query"],
+      transaction: vi.fn(async (s: PgTransactionStatement[]) =>
+        s.map((st) =>
+          st.sql.startsWith("INSERT")
+            ? { rows: [{ ok: st.params }], rowCount: 1 }
+            : { rows: [], rowCount: 0 },
+        ),
+      ),
+    };
+    const out = await orchestrateInsert(deps(pg, { validateCompiledDdl }), {
+      ...req,
+      rows: [{ id: 9, serverId: 1, stars: 4 }, { serverId: 2 }],
+      key: ["serverId"],
+    });
+    expect(out).toMatchObject({ ok: true, widened: false, result: { rowCount: 2 } });
+    if (!out.ok) return;
+    expect(out.result.index).toMatch(/^CREATE UNIQUE INDEX IF NOT EXISTS "votes_server_id_key"/);
+    expect(out.result.widen).toBeUndefined();
+    const batch = vi.mocked(pg.transaction).mock.calls[0]?.[0] as PgTransactionStatement[];
+    expect(batch.map((s) => s.sql.split(" ").slice(0, 2).join(" "))).toEqual([
+      "SET LOCAL",
+      "LOCK TABLE",
+      "CREATE UNIQUE",
+      "SELECT setval(seq::regclass,",
+      "INSERT INTO",
+      "INSERT INTO",
+    ]);
+  });
+
+  it("reads unique indexes only for a keyed write", async () => {
+    const pg = pgStub([{ table_name: "votes", column_name: "vote", data_type: "text" }]);
+    await orchestrateInsert(deps(pg), { ...req, rows: [{ vote: "up" }] });
+    expect(pg.query).toHaveBeenCalledTimes(1);
+  });
+
   it("re-observes and re-plans once when a concurrent insert widened first", async () => {
     let calls = 0;
     const pg = pgStub([], async (s) => {

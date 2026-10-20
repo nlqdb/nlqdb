@@ -184,3 +184,4 @@ well the queue bullet was prepared, not by the action itself.
 | Date | Action (surface) | Unblocked | Replay note |
 |---|---|---|---|
 | 2026-10-16 | On the founder's word, agent-performed with the operator's `CLOUDFLARE_API_TOKEN`: re-ran `Deploy API` on `main`, set `TENANT_ROLE_REAP=1` on `nlqdb-api`, deleted the 261 `synthetic` anon D1 rows (0 asks) | `SK-HDC-024` reaper drops orphan `tenant_*` roles (499/500 → ~18 live); hosted create off the 500-role cap | ~5 min; `wrangler secret put` refuses while a PR preview version is newest, so redeploy first |
+| 2026-10-19 | Merged PR #1185 (GitHub) | END_GOAL + `GLOBAL-041` 2026-10-16 revision locked; SHOW/EXPLAIN cross-tenant validator fix live | — |

@@ -2052,9 +2052,9 @@ app.post("/v1/run", requirePrincipal, async (c) => {
 });
 
 // `POST /v1/insert` — deterministic structured insert (SK-SCHEMA-012,
-// GLOBAL-041 Phase A step 10): `{ db, table, rows }` lands with no model call,
-// widening the table/columns it names in the same transaction. Account keys
-// only — pk_live and anon are read-only.
+// GLOBAL-041 Phase A step 10): `{ db, table, rows, key? }` lands with no model
+// call, widening the table/columns it names in the same transaction; a `key`
+// upserts (step 11). Account keys only — pk_live and anon are read-only.
 app.post("/v1/insert", requirePrincipal, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.insert", async (span) => {
@@ -2066,13 +2066,24 @@ app.post("/v1/insert", requirePrincipal, async (c) => {
         span.setAttribute("nlqdb.insert.outcome", "forbidden");
         return fail(c, "forbidden", { reason: "read_only_principal" });
       }
-      const raw = await parseJsonBody<{ db?: unknown; table?: unknown; rows?: unknown }>(c);
+      const raw = await parseJsonBody<{
+        db?: unknown;
+        table?: unknown;
+        rows?: unknown;
+        key?: unknown;
+      }>(c);
       if (!raw.ok) return fail(c, "invalid_json");
-      const { db, table, rows } = raw.body ?? {};
+      const { db, table, rows, key = [] } = raw.body ?? {};
       if (typeof db !== "string" || db.length === 0) return fail(c, "db_required");
       if (typeof table !== "string" || !Array.isArray(rows)) {
         return fail(c, "invalid_body", {
           reason: "Send `table` as a string and `rows` as an array of objects.",
+        });
+      }
+      const keys = typeof key === "string" ? [key] : key;
+      if (!Array.isArray(keys) || !keys.every((k) => typeof k === "string")) {
+        return fail(c, "invalid_body", {
+          reason: "Send `key` as a field name or an array of field names.",
         });
       }
       // GLOBAL-005 — the SDK re-sends a timed-out insert under the same key
@@ -2101,6 +2112,7 @@ app.post("/v1/insert", requirePrincipal, async (c) => {
           dbId: db,
           table,
           rows: rows as Record<string, unknown>[],
+          key: keys as string[],
           userId: principal.id,
           rateLimitBucketKey: rateLimitBucketKey(principal),
         },

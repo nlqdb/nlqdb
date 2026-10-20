@@ -31,7 +31,9 @@ export const DELTA_TABLE = "scorecard_deltas";
 export const CANARY_UA = "nlqdb-stranger-test/dogfood-canary (+https://nlqdb.com)";
 
 // One write: the table and the one row it lands, keyed as the run wrote it.
-export type Write = { table: string; row: Record<string, unknown> };
+// `key` upserts (GLOBAL-041 step 11), so a later push that re-sends a row
+// updates it instead of failing a unique constraint (#1185's two misses).
+export type Write = { table: string; row: Record<string, unknown>; key?: string[] };
 
 // Pure: the scorecard's single-entry `## Last change` record, or null when the
 // section is absent or not in the `**date (run N)** — **headline** body` form.
@@ -79,6 +81,7 @@ export function deltaWrites(run: string, before: string, after: string): Write[]
     out.push({
       table: DELTA_TABLE,
       row: { run: Number(run), row: id, metric, before: old, after: value },
+      key: ["run", "row"],
     });
   }
   return out;
@@ -212,10 +215,13 @@ async function main(): Promise<void> {
   const client = createClient({ apiKey, baseUrl: base, fetch });
 
   // Sequential: each write sees the schema the previous one widened.
-  for (const { table, row } of writes) {
+  for (const { table, row, key } of writes) {
     let outcome: WriteOutcome;
     try {
-      outcome = { ok: true, res: await client.insert({ db: dbId, table, rows: [row] }) };
+      outcome = {
+        ok: true,
+        res: await client.insert({ db: dbId, table, rows: [row], ...(key ? { key } : {}) }),
+      };
     } catch (err) {
       outcome = { ok: false, code: errorCode(err) };
     }
