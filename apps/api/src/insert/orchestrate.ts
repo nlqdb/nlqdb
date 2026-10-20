@@ -86,12 +86,15 @@ const UNIQUES_SQL =
 // Which (row, field) values won't cast to their stored column's type — the
 // soft-error check Postgres 16 added, so a bad value never aborts the probe.
 // One jsonb param keeps a 1 000-row batch under the bind limit. A column the
-// batch was about to add doesn't exist yet, so it never matches.
+// batch was about to add doesn't exist yet, so it never matches. A JSON
+// column binds every value as its JSON text (`plan.ts` `param`), so it always
+// fits and is skipped — probing the raw `"up"` would refuse a row that lands.
 const PROBE_SQL =
   "SELECT p.i, p.c, format_type(a.atttypid, a.atttypmod) AS type " +
   "FROM jsonb_to_recordset($1::text::jsonb) AS p(i int, c text, v text) " +
   "JOIN pg_attribute a ON a.attrelid = to_regclass($2) AND a.attname = p.c " +
   "AND a.attnum > 0 AND NOT a.attisdropped " +
+  "AND a.atttypid NOT IN ('json'::regtype, 'jsonb'::regtype) " +
   "WHERE NOT pg_input_is_valid(p.v, format_type(a.atttypid, a.atttypmod)) ORDER BY p.i";
 
 // A concurrent insert widened the same table/column first (42P07 / 42701):
