@@ -68,6 +68,11 @@ a unique index on them (`res.index`).
 await client.insert({ db: "rateme", table: "votes", rows, key: ["serverId", "userId"] });
 ```
 
+A value that won't fit its column's existing type (`"n/a"` into a number
+column) fails only its own row: the other rows land, and `res.failed` lists
+each refused row as `{ index, field, type }`, `index` being its position in
+`rows`. The column is never altered for it.
+
 Up to 1 000 rows per call. The same verb is `nlq insert` (`--key`) on the CLI and
 `nlqdb_insert` (`key`) over MCP.
 

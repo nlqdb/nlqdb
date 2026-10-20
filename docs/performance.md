@@ -137,7 +137,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.auth.verify`           | Internal JWT HMAC verify.                      |
 | `nlqdb.ratelimit.check`       | D1 UPSERT for the per-principal rate-limit window. `SK-MCP-009` keys buckets via `principal.ts::rateLimitBucketKey` — sk_live/sk_mcp get one bucket per `api_keys.id`; session/anon/pk_live key by `principal.id`. |
 | `nlqdb.ask`                   | Top-level wrapper for `/v1/ask` request.       |
-| `nlqdb.insert`                | `/v1/insert` (SK-SCHEMA-012): `nlqdb.insert.{outcome,widened,rows}`; one `db.query` (column read) + one `db.transaction` (`nlqdb.db.transaction.kind=widen`), never an `llm.*` child. |
+| `nlqdb.insert`                | `/v1/insert` (SK-SCHEMA-012): `nlqdb.insert.{outcome,widened,rows}`; one `db.query` (column read) + one `db.transaction` (`nlqdb.db.transaction.kind=widen`), never an `llm.*` child. A class-22 refusal adds one probe `db.query` (`nlqdb.insert.rows_refused`) and one retry `db.transaction`. |
 | `nlqdb.cache.plan.lookup`     | KV read for cached plan (label `hit=true/false`). |
 | `nlqdb.cache.plan.write`      | KV write of new plan.                          |
 | `nlqdb.cache.first_query.{lookup,commit}` | KV read/write of the `user.first_query` emit marker (`ask/orchestrate.ts`); emit-then-commit, both non-fatal (a failed commit re-emits next request). |
@@ -225,7 +225,7 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | `nlqdb.cron`            | bounded (~3)        | Cron job name on its spans (row above); a literal, never the cron string. |
 | `sized`                | 3                   | `standard` / `large` / `refused` — hosted-premium cost/token histograms (SK-PREMIUM-010). |
 | `nlqdb.llm.hedge_lost`  | 2 (boolean)         | Span-only on `llm.<op>` for a hedge-cancelled leg (SK-LLM-014); `hedge_lost=true`. Not a metric label. |
-| `llm.dispatch_lane` / `llm.billed_to` / `llm.byollm_provider` / `llm.byollm_source` / `llm.model_preset` / `llm.byollm_degraded` | 3 / 3 / ~5 / 2 / 3 / 1 | Ask-span only (SK-LLM-020, GLOBAL-026): lane `free`/`byollm`/`premium`; billed-to `platform`/`byollm`/`metered`; byollm slug (not the model); source `header`/`account` (SK-PREMIUM-012); preset `auto`/`fast`/`best`, stamped only when the request sent one (SK-PREMIUM-014 §6 demand signal); `byollm_degraded=gateway_unconfigured` stamped only when the ambient account lane fell back to the free chain because AI Gateway is unset (SK-LLM-021). Not metric labels. |
+| `llm.dispatch_lane` / `llm.billed_to` / `llm.byollm_provider` / `llm.byollm_source` / `llm.model_preset` / `llm.byollm_degraded` | 3 / 3 / ~5 / 2 / 3 / 1 | Ask-span only (SK-LLM-020, GLOBAL-026; values in `packages/llm`): preset stamped only when the request sent one (SK-PREMIUM-014); `byollm_degraded` only on a fall-back to the free chain (SK-LLM-021). Not metric labels. |
 
 **Cardinality rule:** total combined series < 8 k (Grafana Cloud free-tier
 ceiling 10 k, 2 k headroom). The bounds above are designed to fit; any new

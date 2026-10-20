@@ -208,6 +208,12 @@ export const insertOutputShape = {
     .optional()
     .describe("Present only when the insert created a table or column — the DDL it ran."),
   index: z.string().optional().describe("The unique index a `key`'s first use created."),
+  failed: z
+    .array(z.object({ index: z.number(), field: z.string(), type: z.string() }))
+    .optional()
+    .describe(
+      "Rows refused because a value won't cast to its column's type (`index` = position in `rows`); every other row landed.",
+    ),
 };
 
 export type InsertOutput = z.infer<z.ZodObject<typeof insertOutputShape>>;
@@ -716,6 +722,7 @@ export async function handleInsert(
         rows: res.rows,
         ...(res.widen ? { widen: res.widen } : {}),
         ...(res.index ? { index: res.index } : {}),
+        ...(res.failed?.length ? { failed: res.failed } : {}),
       },
     };
   } catch (err) {
