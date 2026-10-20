@@ -98,16 +98,17 @@ const PROBE_SQL =
 // re-observe once and re-plan against the shape it left.
 const RACED = new Set(["42P07", "42701", "42710"]);
 
+const fail = (error: InsertError, widened = false): InsertOutcome => ({
+  ok: false,
+  error,
+  widened,
+});
+
 export async function orchestrateInsert(
   deps: InsertDeps,
   req: InsertRequest,
 ): Promise<InsertOutcome> {
   const tracer = trace.getTracer("@nlqdb/api");
-  const fail = (error: InsertError, widened = false): InsertOutcome => ({
-    ok: false,
-    error,
-    widened,
-  });
 
   const decision = await tracer.startActiveSpan("nlqdb.ratelimit.check", async (span) => {
     try {
@@ -160,11 +161,6 @@ async function write(
   rows: Record<string, unknown>[],
 ): Promise<InsertOutcome> {
   const tracer = trace.getTracer("@nlqdb/api");
-  const fail = (error: InsertError, widened = false): InsertOutcome => ({
-    ok: false,
-    error,
-    widened,
-  });
   let exec: WidenExecResult | null = null;
   let planned: ReturnType<typeof planInsert> | null = null;
   let ddl: string[] = [];
