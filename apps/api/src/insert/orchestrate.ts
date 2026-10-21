@@ -21,6 +21,7 @@ import {
   widenedSchema,
 } from "../db-create/widen-provision.ts";
 import { rewriteWidenedSchema } from "../db-registry.ts";
+import { type DbaChange, indexChange, recordDbaChanges, widenChanges } from "../dba-changes.ts";
 import { columnName, type ObservedSchema, planInsert, type UniqueKeys } from "./plan.ts";
 
 export type InsertRequest = {
@@ -263,10 +264,20 @@ async function write(
     rowCount: landed.reduce((n, r) => n + r.rowCount, 0),
     table,
   };
+  // Every committed DDL statement goes to the change ledger with its inverse.
+  const changes: DbaChange[] = widens ? widenChanges(plan, schemaName, ddl) : [];
   // A first-use key index is DDL the response owns up to, but not a widen:
   // `schema_hash` and the KPI-1 sample move only on a new table or field.
-  if (planned.value.uniqueIndex) result.index = planned.value.uniqueIndex.ddl;
-  if (!widens) return { ok: true, result, widened: false };
+  const { uniqueIndex } = planned.value;
+  if (uniqueIndex) {
+    result.index = uniqueIndex.ddl;
+    changes.push(indexChange(schemaName, table, uniqueIndex));
+  }
+  const ledger = recordDbaChanges(deps.d1, db.id, "insert", changes);
+  if (!widens) {
+    await ledger;
+    return { ok: true, result, widened: false };
+  }
 
   // Best-effort CAS (SK-SCHEMA-011): the rows already committed.
   let schemaRewritten = false;
@@ -290,6 +301,7 @@ async function write(
       );
     }
   }
+  await ledger;
   result.widen = {
     tables: [
       ...new Set([

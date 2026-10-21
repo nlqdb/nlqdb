@@ -67,6 +67,7 @@ function makePg(opts?: { fail?: { code?: string; message?: string } }): {
 function makeD1(opts?: { changes?: number; throwOnRun?: boolean }): {
   d1: D1Database;
   bound: () => unknown[] | undefined;
+  ledger: () => unknown[] | undefined;
 } {
   let bound: unknown[] | undefined;
   const stmt = {
@@ -79,8 +80,15 @@ function makeD1(opts?: { changes?: number; throwOnRun?: boolean }): {
       return { meta: { changes: opts?.changes ?? 1 } };
     },
   };
-  const d1 = { prepare: () => stmt } as unknown as D1Database;
-  return { d1, bound: () => bound };
+  let ledger: unknown[] | undefined;
+  const d1 = {
+    prepare: () => stmt,
+    batch: async (stmts: unknown[]) => {
+      ledger = bound;
+      return stmts;
+    },
+  } as unknown as D1Database;
+  return { d1, bound: () => bound, ledger: () => ledger };
 }
 
 function passValidate(): DdlValidationResult {
@@ -120,6 +128,7 @@ describe("extendOnWrite", () => {
     expect(res.confidence).toBe(0.9);
     const batch = pg.batch();
     expect(batch?.at(-1)).toEqual({ sql: ARGS.writeSql });
+    expect(d1.ledger()?.slice(0, 4)).toEqual(["db_abc", "ask", "add_column", "events"]);
     expect(d1.bound()).toContain("hash-old");
     expect(d1.bound()).toContain("db_abc");
     expect(validateCompiledDdl).toHaveBeenCalledTimes(1);

@@ -10,6 +10,7 @@ import { extendSchema, writeColumns } from "../db-create/extend-schema.ts";
 import type { DdlValidationResult, PgClient } from "../db-create/types.ts";
 import { buildWidenBatch, executeWidenBatch, widenedSchema } from "../db-create/widen-provision.ts";
 import { rewriteWidenedSchema } from "../db-registry.ts";
+import { recordDbaChanges, widenChanges } from "../dba-changes.ts";
 import type { QueryResult } from "./types.ts";
 
 export type ExtendDeps = {
@@ -102,6 +103,13 @@ export async function extendOnWrite(deps: ExtendDeps, args: ExtendArgs): Promise
     rowCount: last?.rowCount ?? 0,
   };
 
+  const ledger = recordDbaChanges(
+    deps.d1,
+    args.dbId,
+    "ask",
+    widenChanges(plan, args.schemaName, compiled.statements),
+  );
+
   // Best-effort CAS (SK-SCHEMA-011): the write already committed. A lost race
   // or D1 blip leaves D1 one observation behind — never fail the absorb.
   let schemaRewritten = false;
@@ -127,5 +135,6 @@ export async function extendOnWrite(deps: ExtendDeps, args: ExtendArgs): Promise
     }
   }
 
+  await ledger;
   return { ok: true, result, schemaRewritten, model, confidence, widenDdl: compiled.statements };
 }

@@ -174,10 +174,12 @@ in order (revised 2026-10-14, 2026-10-16):
     creates a unique index on first use and upserts (`ON CONFLICT … DO
     UPDATE`); a row that fails (duplicate without `key`, value that won't
     cast) is returned per row while the rest land (`END_GOAL.md` edge
-    states). One `dba_changes` table records every DDL the DBA emits —
-    insert widen, chat widen, index, later proposals — with its inverse
-    and origin; KPIs 1–2 read from it and `/app/dba` v0 renders it. Phase
-    B's proposals are rows of it, not a second table.
+    states). One D1 `dba_changes` table (migration `0038`, shipped
+    2026-10-21) records every committed DDL statement — insert widen, chat
+    widen, key index, later proposals — with its inverse and origin,
+    written after commit by `apps/api/src/dba-changes.ts`. Remaining: KPIs
+    1–2 read from it and `/app/dba` v0 renders it. Phase B's proposals are
+    rows of it, not a second table.
 12. **Reads that don't spend the model.** SDK `ask()` makes one LLM call
     (no summary unless asked); an additive widen re-plans only queries over
     the widened table (amends `SK-SCHEMA-005` in that PR); `/v1/run` and
