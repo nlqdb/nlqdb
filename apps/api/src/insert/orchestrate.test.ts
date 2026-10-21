@@ -229,10 +229,56 @@ describe("orchestrateInsert", () => {
     });
     expect(out).toMatchObject({ ok: true, widened: true, result: { rowCount: 2 } });
     if (!out.ok) return;
-    expect(out.result.failed).toEqual([{ index: 1, field: "stars", type: "numeric" }]);
+    expect(out.result.failed).toEqual([
+      { index: 1, field: "stars", reason: "invalid_value", type: "numeric" },
+    ]);
     const retry = vi.mocked(pg.transaction).mock.calls[1]?.[0] as PgTransactionStatement[];
     expect(retry.at(-1)?.params).not.toContain("n/a");
     expect(retry.some((st) => st.sql.startsWith("ALTER TABLE"))).toBe(true);
+  });
+
+  it("fails a row that duplicates a unique value on its row alone; the rest land", async () => {
+    const cols = [{ table_name: "servers", column_name: "server_id", data_type: "text" }];
+    const pg: PgClient = {
+      query: vi.fn(async (sql: string) => {
+        if (sql.includes("indisunique")) return { rows: [{ cols: ["server_id"] }], rowCount: 1 };
+        if (sql.includes("jsonb_populate_record")) {
+          return { rows: [{ i: 2, u: 0 }], rowCount: 1 };
+        }
+        return { rows: cols, rowCount: cols.length };
+      }) as PgClient["query"],
+      transaction: vi.fn(async (s: PgTransactionStatement[]) => {
+        if (s.at(-1)?.params?.includes("s0")) {
+          throw Object.assign(new Error("dup"), { code: "23505" });
+        }
+        return s.map((st) => ({ rows: [], rowCount: st.params?.length ?? 0 }));
+      }),
+    };
+    const out = await orchestrateInsert(deps(pg), {
+      ...req,
+      table: "servers",
+      rows: [{ serverId: "s1" }, { serverId: "s2" }, { serverId: "s0" }],
+    });
+    expect(out).toMatchObject({ ok: true, result: { rowCount: 2 } });
+    if (!out.ok) return;
+    expect(out.result.failed).toEqual([{ index: 2, field: "serverId", reason: "duplicate" }]);
+    const probe = vi
+      .mocked(pg.query)
+      .mock.calls.find(([sql]) => sql.includes("jsonb_populate_record"));
+    expect(probe?.[0]).toContain('row_number() OVER (PARTITION BY (b.r)."server_id"');
+    expect(probe?.[1]).toEqual([
+      JSON.stringify([{ server_id: "s1" }, { server_id: "s2" }, { server_id: "s0" }]),
+    ]);
+    expect(vi.mocked(pg.transaction).mock.calls[1]?.[0].at(-1)?.params).toEqual(["s1", "s2"]);
+  });
+
+  it("keeps a keyed write's unique refusal whole: its duplicates upsert, so none is probed", async () => {
+    const pg = pgStub([], async () => {
+      throw Object.assign(new Error("dup"), { code: "23505" });
+    });
+    const out = await orchestrateInsert(deps(pg), { ...req, key: ["serverId"] });
+    expect(out).toMatchObject({ ok: false, error: { code: "write_constraint", kind: "unique" } });
+    expect(pg.transaction).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the whole-batch invalid_value when every row is refused or the probe finds none", async () => {

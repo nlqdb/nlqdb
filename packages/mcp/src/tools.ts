@@ -209,10 +209,17 @@ export const insertOutputShape = {
     .describe("Present only when the insert created a table or column — the DDL it ran."),
   index: z.string().optional().describe("The unique index a `key`'s first use created."),
   failed: z
-    .array(z.object({ index: z.number(), field: z.string(), type: z.string() }))
+    .array(
+      z.object({
+        index: z.number(),
+        field: z.string(),
+        reason: z.enum(["invalid_value", "duplicate"]),
+        type: z.string().optional(),
+      }),
+    )
     .optional()
     .describe(
-      "Rows refused because a value won't cast to its column's type (`index` = position in `rows`); every other row landed.",
+      "Rows refused, each alone (`index` = position in `rows`): `invalid_value` = `field` won't cast to the column's `type`; `duplicate` = the row repeats a unique value already stored or earlier in the batch. Every other row landed.",
     ),
 };
 

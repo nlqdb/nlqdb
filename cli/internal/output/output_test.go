@@ -234,12 +234,16 @@ func TestWriteInsertHumanNamesRefusedRows(t *testing.T) {
 		Status:   "ok",
 		RowCount: 1,
 		Table:    "servers",
-		Failed:   []api.FailedRow{{Index: 1, Field: "stars", Type: "numeric"}},
+		Failed: []api.FailedRow{
+			{Index: 1, Field: "stars", Reason: "invalid_value", Type: "numeric"},
+			{Index: 3, Field: "serverId", Reason: "duplicate"},
+		},
 	}
 	if err := w.WriteInsert(resp); err != nil {
 		t.Fatalf("WriteInsert: %v", err)
 	}
-	if !strings.Contains(out.String(), "row 2: stars isn't a valid numeric") {
+	if !strings.Contains(out.String(), "row 2: stars isn't a valid numeric") ||
+		!strings.Contains(out.String(), "row 4: serverId is already taken") {
 		t.Errorf("refused row not named:\n%s", out.String())
 	}
 }

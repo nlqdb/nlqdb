@@ -144,17 +144,19 @@ type InsertResult struct {
 	Table    string           `json:"table"`
 	Widen    *TraceWiden      `json:"widen,omitempty"`
 	Index    string           `json:"index,omitempty"`
-	// Failed lists rows refused because a value won't cast to its column's
-	// type; every other row landed.
+	// Failed lists rows refused alone — a value that won't cast, or a
+	// duplicate of a unique value; every other row landed.
 	Failed []FailedRow `json:"failed,omitempty"`
 }
 
-// FailedRow names one refused row: its position in the request, the field
-// and the column type the value won't cast to.
+// FailedRow names one refused row: its position in the request, the field,
+// and why — "invalid_value" (with the column type it won't cast to) or
+// "duplicate" (it repeats a unique value already stored or in the batch).
 type FailedRow struct {
-	Index int    `json:"index"`
-	Field string `json:"field"`
-	Type  string `json:"type"`
+	Index  int    `json:"index"`
+	Field  string `json:"field"`
+	Reason string `json:"reason"`
+	Type   string `json:"type,omitempty"`
 }
 
 // TraceWiden mirrors the SDK's `TraceWiden` — the DDL a write ran to widen the schema.

@@ -179,9 +179,13 @@ func (w *Writer) WriteInsert(resp *api.InsertResult) error {
 		fmt.Fprintln(w.Out, indent(resp.Index, "  "))
 	}
 	if len(resp.Failed) > 0 {
-		fmt.Fprintf(w.Out, "─ %d value(s) didn't fit; those rows didn't land ─\n", len(resp.Failed))
+		fmt.Fprintf(w.Out, "─ %d row(s) refused; every other row landed ─\n", len(resp.Failed))
 		for _, f := range resp.Failed {
-			fmt.Fprintf(w.Out, "  row %d: %s isn't a valid %s\n", f.Index+1, f.Field, f.Type)
+			if f.Reason == "duplicate" {
+				fmt.Fprintf(w.Out, "  row %d: %s is already taken\n", f.Index+1, f.Field)
+			} else {
+				fmt.Fprintf(w.Out, "  row %d: %s isn't a valid %s\n", f.Index+1, f.Field, f.Type)
+			}
 		}
 	}
 	if len(resp.Rows) > 0 {

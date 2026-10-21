@@ -2,16 +2,17 @@
 // Observe the DB's columns → `planInsert` → widen DDL (compiled, allow-listed)
 // + the INSERT in ONE Neon transaction → CAS-rewrite `schema_hash`
 // (SK-SCHEMA-011). There is no LLM dependency to inject: 0 `llm.*` spans
-// under an insert holds by construction. A value that won't cast fails its
-// row alone (END_GOAL "Value doesn't fit"): the batch's refusal triggers one
-// read-only probe naming each such row, and the rest land.
+// under an insert holds by construction. A value that won't cast, or a row
+// that duplicates a unique value, fails its row alone (GLOBAL-041 step 11):
+// the batch's refusal triggers one read-only probe naming each such row, and
+// the rest land.
 
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { classifyDataException } from "../ask/exec-classify.ts";
 import type { RateLimiter } from "../ask/rate-limit.ts";
 import { type AskError, type DbRecord, WriteConstraintError } from "../ask/types.ts";
 import { classifyWriteConstraint } from "../ask/write-constraint.ts";
-import { quoted } from "../db-create/compile-ddl.ts";
+import { quoted, quoteIdent } from "../db-create/compile-ddl.ts";
 import { compileWriteDdl } from "../db-create/compile-write-ddl.ts";
 import type { DdlValidationResult, PgClient } from "../db-create/types.ts";
 import {
@@ -43,12 +44,17 @@ export type InsertResult = {
   widen?: { tables: string[]; ddl: string[]; schema_rewritten: boolean };
   // The `CREATE UNIQUE INDEX` a keyed write ran on its key's first use.
   index?: string;
-  // Rows refused because a value won't cast to its column's existing type;
-  // every other row landed. `index` is the row's position in the request.
+  // Rows refused, each alone; every other row landed. `index` is the row's
+  // position in the request.
   failed?: FailedRow[];
 };
 
-export type FailedRow = { index: number; field: string; type: string };
+// `invalid_value`: `field` won't cast to the column's existing `type`.
+// `duplicate`: the row repeats a unique value (`field`, comma-joined for a
+// multi-column index) already stored or on an earlier row of the batch.
+export type FailedRow =
+  | { index: number; field: string; reason: "invalid_value"; type: string }
+  | { index: number; field: string; reason: "duplicate" };
 
 export type InsertError =
   | AskError
@@ -142,20 +148,35 @@ export async function orchestrateInsert(
   }
   const schemaName = db.id.startsWith("db_") ? db.id.slice(3) : db.id;
 
-  const out = await write(deps, req, db, schemaName, req.rows);
-  if (out.ok || out.error.code !== "invalid_value") return out;
-  const failed = await probeRows(deps.pg, schemaName, req.table, req.rows);
-  const refused = new Set(failed.map((f) => f.index));
-  if (refused.size === 0 || refused.size === req.rows.length) return out;
-  const rest = await write(
-    deps,
-    req,
-    db,
-    schemaName,
-    req.rows.filter((_, i) => !refused.has(i)),
-  );
-  if (rest.ok) rest.result.failed = failed;
-  return rest;
+  // Each failure class gets one probe and one re-run without the rows it
+  // names; a batch with both bad values and duplicates takes two. A keyed
+  // write's duplicates upsert, so its unique refusals aren't probed.
+  let live = req.rows.map((_, i) => i);
+  const failed: FailedRow[] = [];
+  let out = await write(deps, req, db, schemaName, req.rows);
+  for (let pass = 0; pass < 2 && !out.ok; pass++) {
+    const rows = live.map((i) => req.rows[i] as Record<string, unknown>);
+    const { error } = out;
+    const found =
+      error.code === "invalid_value"
+        ? await probeCasts(deps.pg, schemaName, req.table, rows)
+        : error.code === "write_constraint" && error.kind === "unique" && !req.key?.length
+          ? await probeDuplicates(deps.pg, schemaName, req.table, rows)
+          : [];
+    const refused = new Set(found.map((f) => f.index));
+    if (refused.size === 0 || refused.size === rows.length) break;
+    failed.push(...found.map((f) => ({ ...f, index: live[f.index] as number })));
+    live = live.filter((_, j) => !refused.has(j));
+    out = await write(
+      deps,
+      req,
+      db,
+      schemaName,
+      live.map((i) => req.rows[i] as Record<string, unknown>),
+    );
+  }
+  if (out.ok && failed.length) out.result.failed = failed.sort((a, b) => a.index - b.index);
+  return out;
 }
 
 // Observe → plan → one transaction (re-planned once on a widen race) → CAS.
@@ -319,7 +340,7 @@ async function write(
 // with the field and the column type it won't cast to. Arrays bind as
 // Postgres array literals, not text, so they aren't probed. Best-effort: a
 // failed probe (or a pre-16 Postgres) leaves the whole-batch error standing.
-async function probeRows(
+async function probeCasts(
   pg: PgClient,
   schemaName: string,
   rawTable: string,
@@ -349,6 +370,7 @@ async function probeRows(
       return bad.map((b) => ({
         index: b.i,
         field: fields.get(`${b.i}\0${b.c}`) ?? b.c,
+        reason: "invalid_value" as const,
         type: b.type,
       }));
     } catch (err) {
@@ -359,4 +381,83 @@ async function probeRows(
       span.end();
     }
   });
+}
+
+// The rows of a batch Postgres refused with a unique violation that repeat a
+// unique value — one already stored, or one an earlier row of the batch
+// carries (that earlier row lands). Each row is cast to the table's row type
+// by `jsonb_populate_record`, so equality is the column type's own; a column
+// the batch was about to add isn't in it, and a NULL never conflicts.
+// Best-effort, as `probeCasts`: a failed probe leaves the whole-batch error.
+async function probeDuplicates(
+  pg: PgClient,
+  schemaName: string,
+  rawTable: string,
+  rows: Record<string, unknown>[],
+): Promise<FailedRow[]> {
+  const table = columnName(rawTable);
+  if (!table) return [];
+  const fields = new Map<string, string>();
+  const records = rows.map((row, i) => {
+    const out: Record<string, unknown> = {};
+    for (const [field, v] of Object.entries(row ?? {})) {
+      const c = columnName(field);
+      if (!c) continue;
+      fields.set(`${i}\0${c}`, field);
+      out[c] = v;
+    }
+    return out;
+  });
+  return trace.getTracer("@nlqdb/api").startActiveSpan("db.query", async (span) => {
+    span.setAttribute("db.system", "postgresql");
+    span.setAttribute("db.operation", "SELECT");
+    try {
+      const uniques = await pg.query<{ cols: string[] }>(UNIQUES_SQL, [schemaName, table]);
+      const sets = uniques.rows.map((r) => r.cols);
+      if (sets.length === 0) return [];
+      const { rows: dup } = await pg.query<{ i: number; u: number }>(
+        duplicatesSql(quoted(schemaName, table), sets),
+        [JSON.stringify(records)],
+      );
+      span.setAttribute("nlqdb.insert.rows_refused", new Set(dup.map((d) => d.i)).size);
+      const seen = new Set<number>();
+      return dup.flatMap(({ i, u }) => {
+        if (seen.has(i)) return [];
+        seen.add(i);
+        const cols = sets[u] ?? [];
+        const field = cols.map((c) => fields.get(`${i}\0${c}`) ?? c).join(", ");
+        return [{ index: i, field, reason: "duplicate" as const }];
+      });
+    } catch (err) {
+      span.recordException(err as Error);
+      span.setStatus({ code: SpanStatusCode.ERROR });
+      return [];
+    } finally {
+      span.end();
+    }
+  });
+}
+
+// One read-only query over every unique column set `u` of the table: a row
+// whose set is fully non-NULL and either matches a stored row or repeats an
+// earlier row of the batch. Identifiers come from `pg_index` and are quoted;
+// the values travel as one jsonb param.
+function duplicatesSql(target: string, sets: string[][]): string {
+  const batch =
+    "WITH b AS (SELECT (x.ord - 1)::int AS i, p AS r " +
+    "FROM jsonb_array_elements($1::text::jsonb) WITH ORDINALITY AS x(v, ord) " +
+    `CROSS JOIN LATERAL jsonb_populate_record(NULL::${target}, x.v) AS p)`;
+  const arms = sets.map((cols, u) => {
+    const col = (c: string) => `(b.r).${quoteIdent(c)}`;
+    const picked = cols.map((c, k) => `${col(c)} AS k${k}`).join(", ");
+    const set = cols.map(col).join(", ");
+    const present = cols.map((c) => `${col(c)} IS NOT NULL`).join(" AND ");
+    const stored = cols.map((c, k) => `t.${quoteIdent(c)} = d.k${k}`).join(" AND ");
+    return (
+      `SELECT d.i, ${u} AS u FROM (SELECT b.i, ${picked}, ` +
+      `row_number() OVER (PARTITION BY ${set} ORDER BY b.i) AS n FROM b WHERE ${present}) d ` +
+      `WHERE d.n > 1 OR EXISTS (SELECT 1 FROM ${target} t WHERE ${stored})`
+    );
+  });
+  return `${batch} ${arms.join(" UNION ALL ")} ORDER BY 1, 2`;
 }
