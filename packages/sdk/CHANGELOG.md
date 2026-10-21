@@ -1,5 +1,13 @@
 # @nlqdb/sdk
 
+## 0.5.0
+
+### Minor Changes
+
+- b0e1c29: `insert()` takes `key` (and `nlqdb_insert` a `key` field): rows upsert on those fields, so a re-run import or a changed vote never duplicates. The key's first use adds a unique index, reported as `index` on the result.
+- a9eca70: `insert()` (and `nlqdb_insert`) returns `failed`: a row whose value won't cast to its column's existing type (`reason: "invalid_value"`, with `type`), or that repeats a unique value already stored or earlier in the batch (`reason: "duplicate"`), is refused alone and named as `{ index, field, reason }`, while the rest of the batch lands.
+- 81533af: Add `client.insert({ db, table, rows })`: write JSON rows with no model call. Keys become lower*snake_case columns (`serverId` → `server_id`), and a table or field the database hasn't seen is created in the same transaction, typed from the values (`SK-SCHEMA-012`). `runSql()` now takes `params`, bound to `$1…$n` by the database and never spliced into the SQL (`SK-SDK-015`). `ApiErrorCode` drops `create_requires_session`: an `sk_live*`/`sk*mcp*`key now goal-creates through`createDatabase({ goal })` (`SK-HDC-008`).
+
 ## 0.4.0
 
 ### Minor Changes

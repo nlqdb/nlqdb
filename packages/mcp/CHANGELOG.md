@@ -1,5 +1,12 @@
 # @nlqdb/mcp
 
+## 0.3.0
+
+### Minor Changes
+
+- b0e1c29: `insert()` takes `key` (and `nlqdb_insert` a `key` field): rows upsert on those fields, so a re-run import or a changed vote never duplicates. The key's first use adds a unique index, reported as `index` on the result.
+- a9eca70: `insert()` (and `nlqdb_insert`) returns `failed`: a row whose value won't cast to its column's existing type (`reason: "invalid_value"`, with `type`), or that repeats a unique value already stored or earlier in the batch (`reason: "duplicate"`), is refused alone and named as `{ index, field, reason }`, while the rest of the batch lands.
+
 ## 0.2.0
 
 ### Minor Changes
