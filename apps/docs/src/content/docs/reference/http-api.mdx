@@ -21,6 +21,7 @@ shape that flows over the corresponding `POST /v1/<resource>` endpoint.
 - `POST /v1/insert` — insert JSON rows exactly as sent, no model call; an unseen table or field is created. See [`NlqClient.insert`](/reference/sdk/type-aliases/nlqclient/).
 - `POST /v1/databases` — create a database from a plain-English brief. See [`NlqClient.createDatabase`](/reference/sdk/type-aliases/nlqclient/).
 - `GET /v1/databases` — list databases. See [`NlqClient.listDatabases`](/reference/sdk/type-aliases/nlqclient/).
+- `GET /v1/databases/:id/changes` — every schema change the DBA made on a database, newest first, each with its inverse. See [`NlqClient.listChanges`](/reference/sdk/type-aliases/nlqclient/).
 - `POST /v1/keys`, `GET /v1/keys`, `DELETE /v1/keys/:id` — API-key lifecycle.
 - `POST /v1/chat/messages` — chat-style transcript endpoint.
 

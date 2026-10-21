@@ -4153,6 +4153,20 @@ app.get("/v1/databases", requirePrincipal, async (c) => {
   return c.json({ databases });
 });
 
+// `GET /v1/databases/:id/changes` — the change ledger (GLOBAL-041 step 11):
+// every DDL statement the DBA committed on the DB, newest first, each with
+// its inverse. `/app/dba` renders it. Read-only; owner only.
+app.get("/v1/databases/:id/changes", requirePrincipal, async (c) => {
+  const tenantId = accountTenantIdFromPrincipal(c.var.principal);
+  if (!tenantId) {
+    return c.json({ error: "account_required" }, 403);
+  }
+  const { listDbaChanges } = await import("./dba-changes.ts");
+  const changes = await listDbaChanges(c.env.DB, c.req.param("id"), tenantId);
+  if (!changes) return c.json({ error: "db_not_found" }, 404);
+  return c.json({ changes });
+});
+
 // `POST /v1/databases` — explicit named-database creation from the
 // left-rail "+ New" affordance in the chat surface. Accepts
 // `{ name?, goal?, preset? }` (at least one required); uses the same

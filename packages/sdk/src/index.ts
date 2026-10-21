@@ -222,6 +222,18 @@ export type DatabaseSummary = {
   createdAt: number;
 };
 
+// One row of a DB's change ledger (`listChanges`, GLOBAL-041): a DDL statement
+// the DBA committed, with the statement that undoes it.
+export type DbaChange = {
+  id: number;
+  origin: "insert" | "ask";
+  kind: "create_table" | "add_column" | "create_index";
+  table: string;
+  ddl: string;
+  inverse: string;
+  createdAt: number;
+};
+
 // Body for `client.createDatabase()` — goal-first (`goal` drives the engine classifier) with an optional explicit `engine` override.
 export type CreateDatabaseRequest = {
   name?: string;
@@ -1071,6 +1083,12 @@ export type NlqClient = {
    */
   listDatabases(opts?: { signal?: AbortSignal }): Promise<{ databases: DatabaseSummary[] }>;
   /**
+   * `GET /v1/databases/:id/changes` — every schema change the DBA made on the
+   * DB, newest first, each with its inverse. `db_not_found` (404) when the
+   * caller doesn't own it. Read-only.
+   */
+  listChanges(dbId: string, opts?: { signal?: AbortSignal }): Promise<{ changes: DbaChange[] }>;
+  /**
    * `POST /v1/databases` — create a database. Goal-first: `goal` drives the
    * engine classifier; pass `engine` to override (`GLOBAL-015`). Rejects an
    * unknown engine with `invalid_engine` (400). Mutating: pass `idempotencyKey`
@@ -1635,6 +1653,10 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
       }),
     listDatabases: (callOpts) =>
       call<{ databases: DatabaseSummary[] }>("/v1/databases", { signal: callOpts?.signal }),
+    listChanges: (dbId, callOpts) =>
+      call<{ changes: DbaChange[] }>(`/v1/databases/${encodeURIComponent(dbId)}/changes`, {
+        signal: callOpts?.signal,
+      }),
     createDatabase: (req, callOpts) =>
       call<CreateDatabaseResult>("/v1/databases", {
         method: "POST",

@@ -177,9 +177,10 @@ in order (revised 2026-10-14, 2026-10-16):
     states). One D1 `dba_changes` table (migration `0038`, shipped
     2026-10-21) records every committed DDL statement — insert widen, chat
     widen, key index, later proposals — with its inverse and origin,
-    written after commit by `apps/api/src/dba-changes.ts`. Remaining: KPIs
-    1–2 read from it and `/app/dba` v0 renders it. Phase B's proposals are
-    rows of it, not a second table.
+    written after commit by `apps/api/src/dba-changes.ts`; `/app/dba` v0
+    renders it (`GET /v1/databases/:id/changes`, 2026-10-21). Remaining:
+    KPIs 1–2 read from it. Phase B's proposals are rows of it, not a
+    second table.
 12. **Reads that don't spend the model.** SDK `ask()` makes one LLM call
     (no summary unless asked); an additive widen re-plans only queries over
     the widened table (amends `SK-SCHEMA-005` in that PR); `/v1/run` and

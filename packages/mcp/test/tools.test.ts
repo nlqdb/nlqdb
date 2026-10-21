@@ -46,6 +46,7 @@ function stubClient(overrides: Partial<NlqClient> & { connect?: ConnectFn } = {}
       throw new Error("postChat not stubbed");
     },
     listDatabases: async () => ({ databases: [] }),
+    listChanges: async () => ({ changes: [] }),
     createDatabase: async () => {
       throw new Error("createDatabase not stubbed");
     },

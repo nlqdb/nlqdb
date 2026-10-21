@@ -1,0 +1,71 @@
+/* `/app/dba` v0 — the change ledger. Page shell and states reuse keys.css. */
+
+.dba__picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--fg-dim);
+}
+
+.dba__picker select {
+  max-width: 100%;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg-elev);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-md);
+  padding: 6px 8px;
+}
+
+.dba__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dba__row {
+  padding: 16px;
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-lg);
+  background: var(--bg-elev);
+  min-width: 0;
+}
+
+.dba__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-family: var(--sans);
+  font-size: 14px;
+}
+
+.dba__meta time {
+  color: var(--fg-dim);
+  font-size: 13px;
+}
+
+.dba__label {
+  margin: 12px 0 0;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+
+.dba__sql {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-size: 13px;
+  border-radius: var(--r-md);
+  background: var(--bg);
+}
+
+.dba__sql--inverse {
+  color: var(--fg-dim);
+}
