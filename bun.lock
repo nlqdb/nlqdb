@@ -238,7 +238,7 @@
     },
     "packages/mcp": {
       "name": "@nlqdb/mcp",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "bin": {
         "nlqdb-mcp": "bin/nlqdb-mcp.mjs",
       },
@@ -341,7 +341,7 @@
     },
     "packages/sdk": {
       "name": "@nlqdb/sdk",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "devDependencies": {
         "tsup": "^8.5.1",
         "typescript": "^5.6.0",

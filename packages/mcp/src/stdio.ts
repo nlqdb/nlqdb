@@ -6,7 +6,7 @@ import { createServer } from "./server.ts";
 // runtimes this module loads in. `scripts/sync-source-versions.mjs` rewrites it during
 // `changeset version`; a unit test pins it to package.json#version so the two can't drift silently.
 const PACKAGE_NAME = "@nlqdb/mcp";
-export const PACKAGE_VERSION = "0.2.0";
+export const PACKAGE_VERSION = "0.3.0";
 
 const KEY_PREFIXES = ["pk_live_", "sk_live_", "sk_mcp_", "nlqdb_"];
 
