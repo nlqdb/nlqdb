@@ -43,7 +43,7 @@ export type InsertPlan = {
   sequence?: PgTransactionStatement;
   // A keyed write whose key no unique index covers yet: the table lock and
   // the `CREATE UNIQUE INDEX` that run before the inserts. Absent otherwise.
-  uniqueIndex?: { lock: string; ddl: string };
+  uniqueIndex?: { name: string; lock: string; ddl: string };
   // One INSERT; a keyed write gets one per row shape, so each row updates
   // exactly the fields it names.
   inserts: PgTransactionStatement[];
@@ -287,6 +287,7 @@ export function planInsert(
   const uniqueIndex =
     key.length > 0 && !covered
       ? {
+          name: indexName,
           lock: `LOCK TABLE ${quoted(schemaName, table)} IN SHARE ROW EXCLUSIVE MODE`,
           ddl:
             `CREATE UNIQUE INDEX IF NOT EXISTS ${quoteIdent(indexName)} ` +

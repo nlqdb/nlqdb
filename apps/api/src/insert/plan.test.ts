@@ -165,6 +165,7 @@ describe("planInsert", () => {
       expect(out.ok).toBe(true);
       if (!out.ok) return;
       expect(out.value.uniqueIndex).toEqual({
+        name: "votes_server_id_user_id_key",
         lock: 'LOCK TABLE "s1"."votes" IN SHARE ROW EXCLUSIVE MODE',
         ddl: 'CREATE UNIQUE INDEX IF NOT EXISTS "votes_server_id_user_id_key" ON "s1"."votes" ("server_id", "user_id")',
       });

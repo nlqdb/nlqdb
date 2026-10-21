@@ -33,7 +33,10 @@ function pgStub(
 
 function deps(pg: PgClient, over: Partial<InsertDeps> = {}): InsertDeps {
   const run = vi.fn(async () => ({ meta: { changes: 1 } }));
-  const d1 = { prepare: () => ({ bind: () => ({ run }) }) } as unknown as D1Database;
+  const d1 = {
+    prepare: () => ({ bind: (...args: unknown[]) => ({ run, args }) }),
+    batch: vi.fn(async () => []),
+  } as unknown as D1Database;
   return {
     resolveDb: async () => db,
     rateLimiter: { check: async () => ({ allowed: true, count: 1, limit: 60, resetAt: 0 }) },
@@ -88,6 +91,25 @@ describe("orchestrateInsert", () => {
     );
     expect(created).toMatchObject({ ok: true, widened: true });
     expect(widened).toMatchObject({ ok: true, widened: true });
+  });
+
+  it("ledgers each committed DDL statement with its inverse, the key index included", async () => {
+    const pg = pgStub([{ table_name: "votes", column_name: "vote", data_type: "text" }]);
+    const observe = pg.query;
+    pg.query = vi.fn(async (sql: string, params?: unknown[]) =>
+      sql.includes("pg_index") ? { rows: [], rowCount: 0 } : observe(sql, params),
+    ) as PgClient["query"];
+    const d = deps(pg);
+    await orchestrateInsert(d, { ...req, key: ["vote"] });
+    const rows = vi.mocked(d.d1.batch).mock.calls[0]?.[0] as unknown as { args: unknown[] }[];
+    expect(rows.map((r) => r.args.slice(1, 4))).toEqual([
+      ["insert", "add_column", "votes"],
+      ["insert", "create_index", "votes"],
+    ]);
+    expect(rows.map((r) => r.args[5])).toEqual([
+      'ALTER TABLE "app1"."votes" DROP COLUMN "server_id";',
+      'DROP INDEX "app1"."votes_vote_key";',
+    ]);
   });
 
   it("writes an all-observed row without DDL and without widening", async () => {
