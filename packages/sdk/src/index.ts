@@ -317,9 +317,14 @@ export type InsertResult = {
   widen?: TraceWiden;
   // The `CREATE UNIQUE INDEX` a `key`'s first use ran.
   index?: string;
-  // Rows refused because a value won't cast to its column's existing type
-  // (`index` = the row's position in `rows`); every other row landed.
-  failed?: { index: number; field: string; type: string }[];
+  // Rows refused, each alone (`index` = the row's position in `rows`); every
+  // other row landed. `invalid_value`: `field` won't cast to the column's
+  // `type`. `duplicate`: the row repeats a unique value (`field`) already
+  // stored or on an earlier row of the batch.
+  failed?: (
+    | { index: number; field: string; reason: "invalid_value"; type: string }
+    | { index: number; field: string; reason: "duplicate" }
+  )[];
 };
 
 // E-02 — the agent-memory write verb. `client.remember()` materialises a

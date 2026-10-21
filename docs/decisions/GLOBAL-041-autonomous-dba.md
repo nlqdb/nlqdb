@@ -170,7 +170,7 @@ in order (revised 2026-10-14, 2026-10-16):
     2026-10-15; `nlq insert` + MCP `nlqdb_insert` 2026-10-17). Remaining:
     a rateme12-shaped live walk on prod.
 11. **Keys and the change ledger** (revised 2026-10-16; keyed upsert
-    and per-row cast failures shipped 2026-10-20 per `SK-SCHEMA-012`). `insert({ key })`
+    per-row cast failures 2026-10-20 and per-row duplicates 2026-10-21, per `SK-SCHEMA-012`). `insert({ key })`
     creates a unique index on first use and upserts (`ON CONFLICT … DO
     UPDATE`); a row that fails (duplicate without `key`, value that won't
     cast) is returned per row while the rest land (`END_GOAL.md` edge
