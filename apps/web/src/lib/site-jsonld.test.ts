@@ -14,6 +14,11 @@ describe("organizationJsonLd", () => {
     expect(ld.url).toBe("https://nlqdb.com/");
     expect(ld.logo).toBe("https://nlqdb.com/og-default.png");
     expect(ld.sameAs).toEqual(["https://github.com/nlqdb/nlqdb"]);
+    expect(ld.founder).toEqual({
+      "@type": "Person",
+      name: "Omer Hochman",
+      url: "https://omer.hochly.com/",
+    });
   });
 });
 
