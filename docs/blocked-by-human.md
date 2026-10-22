@@ -9,40 +9,53 @@ Operator actions also get one metadata line in
 [`history/founder-actions-log.md`](./history/founder-actions-log.md) — never
 a secret value.
 
-## Mint the rateme12 clone's `sk_live_` key
+## Pick the spike database and hand its connection string to CI
 
-⏱ ~3 min · blocked since 2026-10-19. `/daily` step 2 is at rateme12 §5b
-step 6, and keys mint only from a signed-in session (`POST /v1/keys`), so
-no agent can mint one. Steps 6 → 9 (journeys wired 0/5) wait on it. A key of
-its own revokes without touching the dogfood key.
+⏱ ~10 min · blocked since 2026-10-22. `/daily` step 2 starts with the
+2-week Postgres spike ([`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md));
+it needs a real-traffic database only you can pick and grant.
 
-1. At <https://app.nlqdb.com/app/keys> mint an `sk_live_` key named
-   `rateme12`.
-2. Set it as the GitHub Actions repo secret `RATEME12_NLQDB_API_KEY`
-   (`gh secret set RATEME12_NLQDB_API_KEY -R nlqdb/nlqdb`). The next `/daily`
-   wires `deploy-rateme12.yml` to create the DB from its goal and pass the
-   key to the Worker as `NLQDB_API_KEY`.
-3. Add a line to `history/founder-actions-log.md` (no key value) and delete
+1. Choose a real-traffic Postgres you own (Supabase / Neon / RDS — not the
+   rateme12 clone).
+2. Create a role with `pg_read_all_stats` and `CREATE` on the app schema.
+3. Make sure `pg_stat_statements` is enabled (and HypoPG, if the host
+   offers it).
+4. Set the connection string as the repo secret `SPIKE_PG_URL`
+   (`gh secret set SPIKE_PG_URL -R nlqdb/nlqdb`).
+5. Log a line in `history/founder-actions-log.md` (no secret) and delete
    this bullet.
 
-## Cut rateme12 over to nlqdb, then recruit 10 builders
+## Hand CI a Cloudflare API token scoped to rateme12's D1
 
-⏱ ~1 h + ~5 h · blocked since 2026-10-14. Gated — opens when
-`rateme12.nlqdb.com` serves all §4 journeys from nlqdb
-([iteration 001 §5b](./history/dogfood-iterations/001-rateme12.md#5b-the-last-mile--gated-on-61-strictly-after-5a-step-5)
-step 9 green). Love gate: [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md).
+⏱ ~5 min · blocked since 2026-10-22. The dogfood attaches nlqdb to the real
+rateme12's D1 ([`002-rateme12-attach.md`](./history/dogfood-iterations/002-rateme12-attach.md));
+only the account owner can mint the token.
 
-1. Point real rateme12 traffic at the nlqdb-backed build (§5b step 9b) and
-   use it yourself.
-2. DM ~10 P1 solo builders (no content, no SEO); each builds one small thing
-   on `@nlqdb/sdk`. Agents track week-2 returns on the scorecard.
-3. Delete this bullet once 10 have started.
+1. In the Cloudflare dashboard, create an API token scoped to rateme12's D1
+   database: D1 Read + Write, Account Analytics Read (exact scope names are
+   verified on first attach).
+2. Set it as the repo secret `RATEME12_D1_TOKEN`, plus the account id and
+   database id (`gh secret set RATEME12_D1_TOKEN -R nlqdb/nlqdb`;
+   `RATEME12_D1_ACCOUNT_ID`, `RATEME12_D1_DATABASE_ID` the same way).
+3. Log a line in `history/founder-actions-log.md` (no secret) and delete
+   this bullet.
+
+## Recruit 10 builders once rateme12's attach shows a measured delta
+
+⏱ ~5 h · blocked since 2026-10-14. Gated — opens when KPI B > 0 on
+rateme12's D1 (one applied change with a measured gain,
+[`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md)).
+
+1. DM ~10 P1 builders who already run a Postgres or D1 app (no content, no
+   SEO); each attaches it. Agents track week-2 returns on the scorecard.
+2. Delete this bullet once 10 have attached.
 
 ## Show HN launch sequence
 
-⏱ ~30 min · blocked since 2026-06-13. Gated on the `GLOBAL-041` love gate:
-rateme12 on nlqdb 14 consecutive days **and** ≥ 3 of the 10 builders back
-unprompted in week 2. Kit: [`research/launch-kit.md`](./research/launch-kit.md).
+⏱ ~30 min · blocked since 2026-06-13. Gated on the
+[`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md) love
+gate: ≥ 3 of the first ~10 founder-recruited builders return unprompted in
+their second week. Kit: [`research/launch-kit.md`](./research/launch-kit.md).
 
 1. Pick the angle (§2). Write the Show HN post + first comment in your own
    voice from the §3.1 fact sheet — never agent copy (the r/SQL lesson).

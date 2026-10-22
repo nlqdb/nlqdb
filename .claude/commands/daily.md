@@ -36,18 +36,18 @@ once a week and sets it — the founder may override it and a founder-written
 number is never overwritten.
 
 **The work under drive is the fixed
-[`GLOBAL-041`](../../docs/decisions/GLOBAL-041-autonomous-dba.md) Phase A
-sequence in step 2** (founder steer 2026-10-14): KPI 1 ≥ 95 % on
-rateme12's own structured inserts with 0 LLM calls on the write path, then
-real rateme12 traffic on nlqdb, then the love gate. Depth only — love over
-reach ([`END_GOAL.md`](../../docs/END_GOAL.md)).
+[`GLOBAL-043`](../../docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md)
+sequence in step 2** (founder steer 2026-10-22): the Postgres spike and the
+D1 attach on the real rateme12, each ending in a measured delta, then the
+deletion series, then the playbook. Depth only — love over reach
+([`END_GOAL.md`](../../docs/END_GOAL.md)).
 Onboarding, UX, and performance stay at their [`GLOBAL-025`](../../docs/decisions/GLOBAL-025-north-star.md) floors on every change.
 This loop's job is to advance the current
 [`GLOBAL-042`](../../docs/decisions/GLOBAL-042-dogfood-iteration-loop.md)
 dogfood iteration — read its brief
-[`001-rateme12.md`](../../docs/history/dogfood-iterations/001-rateme12.md)
-first; §6.1 is the engine work queue — and, when one ends, log its retro and clean up before the next.
-Acquisition, content and the EK track are paused (`GLOBAL-041`): no channel,
+[`002-rateme12-attach.md`](../../docs/history/dogfood-iterations/002-rateme12-attach.md)
+first (001, the migrate plan, is retired) — and, when one ends, log its retro and clean up before the next.
+Acquisition, content and the EK track are paused (`GLOBAL-043`): no channel,
 content or marketplace lever; existing pages stay live.
 
 ## Operating rules (non-negotiable)
@@ -64,9 +64,9 @@ content or marketplace lever; existing pages stay live.
    and new-test counts are never the number moved:** a test is evidence,
    not a delta. Name the scorecard row (or a named direct input to one) the
    fix moves.
-3. **Measure → change → re-measure.** Engine work: the KPI 1 counters
-   (`inserts_infer_ok` / `inserts_infer_failed`) over rateme12's writes, or
-   the step's E2E walk. **No live free-LLM probes inside a PR** — they burn
+3. **Measure → change → re-measure.** Engine work: KPIs A–C
+   (`GLOBAL-043`) on the attached DB — p95 per fingerprint before/after
+   apply (on D1 also rows read) — or the step's E2E walk. **No live free-LLM probes inside a PR** — they burn
    the shared daily quota (PR #1179 could not be re-walked); regression
    checks run on recorded fixtures, one budgeted live canary a day. UX-flow work: the stranger-test walkers
    (`scripts/stranger-test.sh`, `scripts/flow-005-walk.sh`). Δ ≥ 0 on the
@@ -84,9 +84,8 @@ content or marketplace lever; existing pages stay live.
    founder-minute; a new bullet opens with `⏱ estimate · blocked since date`
    and slots by rank. A fix that costs money is not a fix
    (`docs/cost-ladder.md`) — never propose spend as a resolution.
-5. **Monetization is settled** (`GLOBAL-041`): the shipped premium tier
-   stays as is; no pricing, meter or plan work for the DBA product before
-   Phase B ships. There is no access gate — the product is open pre-beta;
+5. **Monetization is settled** (`GLOBAL-043`): the shipped premium tier
+   stays as is; no pricing, meter or plan work for the DBA product. There is no access gate — the product is open pre-beta;
    the optional Become AI update list measures interest and never controls
    access (`GLOBAL-007`).
 6. **Red main is the run.** If `bun run typecheck && bun run check && bun run
@@ -106,7 +105,7 @@ content or marketplace lever; existing pages stay live.
    days-blocked count, and make sure its root blocker (if human-only) is in
    `blocked-by-human.md` at its yield rank with a days-blocked count. Never
    pick a dark metric as the lever.
-9. **Depth only** (`GLOBAL-041`): no lever adds or polishes breadth —
+9. **Depth only** (`GLOBAL-043`): no lever adds or polishes breadth —
    other-language SDKs, framework wrappers, premium tier, BIRD/Spider beyond
    the alarm. Existing surfaces get fixes only.
 
@@ -117,17 +116,14 @@ content or marketplace lever; existing pages stay live.
 Regenerate `docs/scorecard.md` (current-state tracker, ≤ 20 KB — the metrics
 table + the header lines, no changelog):
 
-- **Engine — the `GLOBAL-041` KPIs first:** (1) **first-insert inference
-  rate** — writes that reference an unseen table/field and land with no user
-  action, over all such writes (two non-saturating counters,
-  `SK-GTM-011` shape), read over **rateme12's structured inserts**
-  (`inserts_infer_*`; until they flow, report `asks_extend_*` and the
-  canary below);
-  (2) **evolution-without-user-action rate**;
-  (3) **optimizer yield**. Where the instrument doesn't exist yet, write
-  `unmeasured — build the instrument`; that gap is lever candidate #1.
-  BIRD/Spider: report only the regression-alarm state (last green / red,
-  `SK-QUAL-002`) — never a target, never a re-measure lever.
+- **Engine — the `GLOBAL-043` KPIs first:** (A) time-to-first-proposal
+  after attach; (B) proposals applied with a measured p95 improvement per
+  attached DB per 30 d (on D1 with the rows-read delta); (C) regressions
+  auto-reverted / applied. Read each on the Postgres spike DB and on
+  rateme12's D1. Where the instrument doesn't exist yet, write
+  `unmeasured — the spike builds the instrument`. BIRD/Spider: report only
+  the regression-alarm state (last green / red, `SK-QUAL-002`) — never a
+  target, never a re-measure lever.
 - **Funnel, bot-filtered** (exclude stranger-test bot traffic): visits
   (`bun scripts/rum-pull.ts` — CF RUM, 7d window, synthetic-client cut
   printed with every removed row; real-browser is a floor), registered
@@ -141,10 +137,8 @@ table + the header lines, no changelog):
   `e2e-opencheck`. Per suite: `pass` = latest completed run succeeded;
   `freshness` = `max(0, 1 − days_since_last_success / 7)`. Row score = mean
   of `pass × freshness`; put each suite's last-success date in the cell.
-- **Phase gate:** Phase 2 exits on `GLOBAL-041` Phase A alone — state KPI 1
-  vs its ≥ 95 % floor over rateme12's unseen-field inserts (n so far), and
-  `llm.*` spans under an insert (target 0). Also the love gate: days of
-  rateme12 traffic on nlqdb (n/14) and returning builders (n/10).
+- **Gates:** the spike's verdict (pending / pass / fail, the measured
+  delta) and the love gate — returning builders (n/10).
 - **Surface integrity:** dead links on the deployed user-facing surfaces —
   including cross-app hrefs (nlqdb.com → docs.nlqdb.com) — counted by
   sweeping built output; target 0.
@@ -157,7 +151,7 @@ table + the header lines, no changelog):
   then the top `blocked-by-human.md` **title** + its days-blocked. When a
   queue bullet carries a condition gate, also note progress (n/N green).
 
-**Dogfood canary (regression check, no longer the KPI 1 sample — `GLOBAL-041`).** Every run writes
+**Dogfood canary (regression check until the deletion series removes `insert()` — `GLOBAL-043`).** Every run writes
 its **run log**, its **"Last change" delta** and any **new blocked-by-human
 item** to the hosted dogfood nlqdb database through `@nlqdb/sdk` — not to
 markdown. Write the record as the run produced it; never pre-model a field
@@ -166,35 +160,31 @@ seen is a canary hit; one that errors or needs a manual step is a miss —
 record it in the scorecard. The DB id lives in the scorecard header. The prod key crosses only the CI
 boundary, so `dogfood-write.yml` writes on each merge to `main`, after the
 run: step 1 reads the verdicts of every Dogfood write run since the last
-scorecard update into the scorecard, and every MISS is inspected this run
-(`GLOBAL-025` KPI-1 alert).
+scorecard update into the scorecard, and every MISS is inspected this run.
 
 ### 2 — One lever, measured
 
 **No lever picker — the run takes the first unfinished step of this
-sequence** (founder steer 2026-10-14; rule 6 and a met draft still come
-first). A step spanning runs takes the next run too; a human-blocked step
-is skipped to the next.
+sequence** (founder steer 2026-10-22, [`GLOBAL-043`](../../docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md);
+rule 6 and a met draft still come first). A step spanning runs takes the
+next run too; a human-blocked step is skipped to the next. rateme12 is no
+longer migrated onto nlqdb: iteration 001 is retired and the clone gets no
+work; the real rateme12 is attached instead.
 
-Revised 2026-10-16 (`GLOBAL-041` steps 10–14). Done: the Neon role cap
-(#1184), the `insert()` build and its CLI / MCP twins (#1186); the canary
-writes through `insert()` live (runs 252–253), but not a rateme12 shape.
-
-1. **Live `insert()` walk on prod** — a rateme12-shaped stream through
-   `client.insert()` with the CI key. Number: unseen-field inserts landed
-   n/n, 0 `llm.*` spans.
-2. **Keys + the change ledger** (`GLOBAL-041` step 11). Number: import run
-   twice → row count unchanged; `dba_changes` rows = DDL statements emitted.
-3. **Reads off the model** (step 12). Number: LLM calls per non-empty
-   `ask()` 2 → 1; plans re-planned after an additive widen on another table 0.
-4. **rateme12 §5b steps 6 → 9** (step 13), in order, one per run — registry
-   import included, hot reads pinned via `runSql`, rubric before cutover.
-   Number: §4 journeys wired to nlqdb n/5.
-5. **Cutover** (founder, `blocked-by-human.md`), then deterministic
-   enrichment (step 14), then KPI 3 on rateme12's search route — the first
-   applied index with a measured p95 delta. That is the moat.
-
-UI parity work on the clone is done; it is never a step.
+1. **The Postgres spike and the D1 attach** — two tracks, runs may
+   alternate, each ends with a measured delta. *Spike* (market proof): attach
+   to the founder-picked real-traffic Postgres (`SPIKE_PG_URL`), proposals
+   from Tiers 0–2, apply ONE index, before/after p95 on its hot fingerprint,
+   recorded with its inverse. *Dogfood*: attach to the real rateme12's D1
+   (`RATEME12_D1_TOKEN`) per
+   [`002-rateme12-attach.md`](../../docs/history/dogfood-iterations/002-rateme12-attach.md).
+   Numbers: KPI A; KPI B = 1 applied index with its p95 delta (D1: and
+   rows read). The spike's pass/fail is the founder's call on that delta.
+2. **Deletion PR series** — only after the spike passes; one subsystem
+   per PR, deletion-only, CI green, in `GLOBAL-043`'s deletion list order.
+   Number: LOC removed, KPIs A–C unchanged.
+3. **Playbook proposal kinds** in `GLOBAL-043` order, Postgres and D1
+   each. Number: KPI B per kind; KPI C held at 100 %.
 
 **If every step is done or human-blocked, don't manufacture a lever:** record the finding
 and end the run with only the step-1 scorecard update — a null run is a
