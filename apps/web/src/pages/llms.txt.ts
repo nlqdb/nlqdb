@@ -4,6 +4,7 @@ import { COMPETITORS } from "../data/competitors";
 import { INTEGRATE } from "../data/integrate";
 import { SOLVE_ENTRIES } from "../data/solve";
 import { buildStdioClaudeCodeCommand } from "../lib/mcp-install.ts";
+import { FOUNDER_URL } from "../lib/site-jsonld.ts";
 
 // `llms.txt` — community spec (https://llmstxt.org) the LLM-IDE
 // ecosystem (Claude Desktop, Perplexity, Cursor, Windsurf, Cline,
@@ -183,7 +184,8 @@ export const GET: APIRoute = () => {
     `(source-available, self-hostable for any non-competing use), auto-converting to\n` +
     `Apache-2.0 two years after each release; no turnkey GA self-host container yet.\n\n` +
     `## Contact\n\n` +
-    `Email: hello@nlqdb.com\n`;
+    `Email: hello@nlqdb.com\n` +
+    `Founder: [Omer Hochman](${FOUNDER_URL})\n`;
 
   return new Response(body, {
     headers: { "content-type": "text/plain; charset=utf-8" },

@@ -16,6 +16,9 @@
 /** Site-relative fragment for the canonical Organization node's `@id`. */
 export const ORGANIZATION_ID_FRAGMENT = "#organization";
 
+/** The founder's canonical personal site — linked as `founder` so crawlers tie the person entity to the brand. */
+export const FOUNDER_URL = "https://omer.hochly.com/";
+
 export function organizationJsonLd(site: URL) {
   return {
     "@context": "https://schema.org",
@@ -25,6 +28,7 @@ export function organizationJsonLd(site: URL) {
     url: site.toString(),
     logo: new URL("/og-default.png", site).toString(),
     sameAs: ["https://github.com/nlqdb/nlqdb"],
+    founder: { "@type": "Person", name: "Omer Hochman", url: FOUNDER_URL },
   };
 }
 
