@@ -4158,12 +4158,10 @@ app.get("/v1/databases", requirePrincipal, async (c) => {
 // its inverse. `/app/dba` renders it. Read-only; owner only.
 app.get("/v1/databases/:id/changes", requirePrincipal, async (c) => {
   const tenantId = accountTenantIdFromPrincipal(c.var.principal);
-  if (!tenantId) {
-    return c.json({ error: "account_required" }, 403);
-  }
+  if (!tenantId) return fail(c, "account_required");
   const { listDbaChanges } = await import("./dba-changes.ts");
   const changes = await listDbaChanges(c.env.DB, c.req.param("id"), tenantId);
-  if (!changes) return c.json({ error: "db_not_found" }, 404);
+  if (!changes) return fail(c, "db_not_found");
   return c.json({ changes });
 });
 
