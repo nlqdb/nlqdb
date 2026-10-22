@@ -15,6 +15,14 @@ in that PR (or the founder amends this doc in that PR). A
 gap is a [`blocked-by-human.md`](blocked-by-human.md) decision (`GLOBAL-033`),
 never a licence to invent.
 
+## Mission
+
+Every company building an app walks the same expensive, trial-and-error road
+to a good database infrastructure: data model, indexing, sharding, scheduled
+jobs and more. nlqdb's job is to save that journey and encapsulate it, so a
+team gets that infrastructure while it builds the app — without giving up any
+of the security, performance and error handling it needs to operate at scale.
+
 ## Love over reach
 
 **100 users who love nlqdb beat 1 000 000 who like it.** Every trade between

@@ -32,7 +32,8 @@
 
 - **Core value:** Goal-first, Effortless UX, Bullet-proof, Simple, Honest latency
 
-- **Why:** Two prior bets produced no users. Live usage 2026-09-03: 133
+- **Why:** This bet serves the mission in
+  [`END_GOAL.md` § Mission](../END_GOAL.md#mission). Two prior bets produced no users. Live usage 2026-09-03: 133
   queries ever platform-wide, 0 in the last 10 days; memory tools 32
   lifetime writes / 22 recalls, all from 2 internal agents, none in 15
   days; ~3–4 genuine human pageloads a day; 0 registered strangers after
