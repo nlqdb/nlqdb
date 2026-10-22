@@ -22,6 +22,6 @@ What this direction changes, if anything, is open (questions 3–4).
 2. **"Data models"** means which of these: product shapes (relational,
    nested documents, time series, graphs/trees), or specific real products
    used as dogfood iterations after rateme12?
-3. **Moat wording:** does "data" replace GLOBAL-043's "the DBA that
-   optimizes" as the moat, or sit on top of it as its long-run payoff?
+3. **Moat wording:** does "data" replace GLOBAL-043's apply → verify →
+   revert loop as the moat, or sit on top of it as its long-run payoff?
 4. **First step:** which one iteration, after rateme12, tests this first?

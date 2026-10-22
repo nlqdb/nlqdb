@@ -11,6 +11,9 @@
 > the one channel that produces first users in days, not quarters — and the
 > instruments to measure them now exist (`/app/admin` GLOBAL-038 dashboard,
 > Sean-Ellis Q1 survey `SK-GTM-006`, first-touch attribution PR #745).
+> **Since `GLOBAL-043`:** §1 audits the retired hosted product — re-audit it
+> against the attach loop when the love gate opens; §2–§3 already describe
+> the attach loop.
 
 Per the reach-track hard rules and the
 [r/SQL lesson](../history/reddit-ai-voice-rejection.md): **everything below is
@@ -70,14 +73,12 @@ defend the thread (the r/SQL lesson generalizes: authentic voice is the
 channel). The product positioning itself is unchanged — surfaces keep the
 autonomous-DBA story; this is one post's framing.
 
-- **A. Your autonomous DBA** (the product lead): build a real app with no
-  data modeling — the first insert creates the schema, the DBA evolves and
-  optimizes it, every change previewed with 1-click undo; plain English is
-  the interface. Honesty gates: FSL-1.1, never "Apache-2.0 today"
-  (GLOBAL-019); demoable only once KPI B > 0 (`GLOBAL-043`).
-- **B. The interface angle — a backend that doesn't exist** — HTML
-  components asking for data in plain English; anon first answer in <60 s,
-  no signup.
+- **A. Your autonomous DBA** (the product lead): it attaches to the
+  Postgres or D1 you already run, proposes the index nobody added, applies
+  it on one click, measures p95 before/after and reverts a regression —
+  every change in a ledger with its inverse. Honesty gates: FSL-1.1, never
+  "Apache-2.0 today" (GLOBAL-019); demoable only once KPI B > 0
+  (`GLOBAL-043`).
 - **C. "Built and run ~almost entirely by Claude-code agents, on a $0
   stack"** — the company-process story (daily/weekly/reach/ek loops,
   scorecard, stranger-test walkers, decision records, free-tier
@@ -93,25 +94,24 @@ autonomous-DBA story; this is one post's framing.
 
 - **Norms** ([guidelines](https://news.ycombinator.com/showhn.html)): must be
   something people can try; no sign-up wall between the reader and the demo
-  (we're fine: anon first answer); submission URL **clean, no UTM** — HN
-  strips/punishes tracking params; attribution comes from the
+  (re-check at launch: anonymous mode is retired, `GLOBAL-043`); submission
+  URL **clean, no UTM** — HN strips/punishes tracking params; attribution comes from the
   `news.ycombinator.com` referrer host captured by #745. Post a first
   comment with backstory + what's different + technical detail; factual
   tone, zero marketing language; reply to everything for 24 h.
 - **Title shape** (≤ 80 chars, "Show HN: " prefix, no superlatives). Raw
   material: the 2026-06-13 archived draft title; angle-A variant naming
-  the autonomous DBA + Postgres + plain English.
+  the autonomous DBA + Postgres + attach.
 - **First-comment fact sheet:** why built (every developer still models,
-  migrates, indexes and watches the database by hand — `GLOBAL-041`); what's
-  different (schema inferred from inserts and reads, evolved and optimized by
-  the DBA, every change previewed and undoable; the LLM emits a typed plan,
-  never SQL); numbers we publish (BIRD 0.542 free-chain, target
-  0.65 — the public progress bar; persona-bench 0.96); stack ($0 Cloudflare
-  Workers + Neon); license FSL-1.1; the one command
-  (`claude mcp add --transport http nlqdb https://mcp.nlqdb.com/mcp`).
+  migrates, indexes and watches the database by hand — `GLOBAL-043`); what's
+  different (apply → verify → revert with a measured delta, not a
+  recommend-only advisor; never on the app's request path; no LLM in any
+  hot path); numbers we publish (KPIs A–C from the ledger); stack ($0
+  Cloudflare Workers); license FSL-1.1; the one command
+  (`npx nlqdb attach <connection-string>`).
 - **Timing:** weekday morning US (Tue–Thu); founder available 6–8 h.
 - **Launch-day watch:** CF analytics live; `/app/admin` signups-by-day;
-  anon-cap trips (KV `anon:global:hr:*`); `/v1/ask` error rate.
+  attach errors and KPI A on the new attaches.
 
 ### 3.2 lobste.rs + r/SideProject + r/Database (soft launch, days before)
 

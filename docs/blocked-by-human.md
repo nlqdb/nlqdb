@@ -40,39 +40,6 @@ only the account owner can mint the token.
 3. Log a line in `history/founder-actions-log.md` (no secret) and delete
    this bullet.
 
-## 🔒 Lock which `/v1/ask` pieces the deletion series removes
-
-⏱ ~10 min · blocked since 2026-10-22. [`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md)
-deletes "the NL-specific `/v1/ask` machinery" yet keeps the shipped premium
-tier (it meters `/v1/ask`) and an async LLM for proposal text. Checked
-`GLOBAL-043`, `GLOBAL-026`, `GLOBAL-004`: none says whether ask-pipeline,
-plan-cache, llm-router or frontier-keys go. Default until locked: all four
-stay unretired; nothing is deleted before the spike passes anyway.
-
-1. Pick one: (a) delete `/v1/ask` whole (ask-pipeline, plan-cache,
-   frontier-keys, the premium meter — amends "premium tier stays"); keep
-   llm-router only for async proposal text; (b) keep `/v1/ask` as the read
-   interface over attached databases, delete only its create / widen
-   branches; (c) decide after the spike.
-2. Amend `GLOBAL-043`'s deletion list (and `GLOBAL-004`'s `Status:` line)
-   to name the pieces, then delete this bullet.
-
-## 🔒 Lock when public copy switches to attach-first
-
-⏱ ~10 min · blocked since 2026-10-22. Public copy still sells the hosted,
-infer-from-inserts product: the README body below its intro, launch-kit
-angle A + its fact sheet, `apps/docs` `agent-memory.mdx`, the
-`architecture.md` §3.1 headline, and the registry descriptions here and in
-`research/acquisition-channels-mechanisms.md`. `GLOBAL-043` retires the path
-but sets no messaging date. Default until locked: copy stays — it is still
-true of what is live, and acquisition is paused.
-
-1. Pick one: (a) switch all copy now, the hosted product framed as "live
-   today"; (b) switch when the spike passes; (c) switch with the deletion PR
-   that removes `insert()`.
-2. Record the choice as a line in `GLOBAL-043`'s consequences, then delete
-   this bullet.
-
 ## Recruit 10 builders once rateme12's attach shows a measured delta
 
 ⏱ ~5 h · blocked since 2026-10-14. Gated — opens when KPI B > 0 on
