@@ -44,14 +44,17 @@ iterate → retro → cleanup loop stand.
      distribution bet.
   7. **Data tiers (Postgres).** Tier 0 catalog — schema, constraints, FKs
      without indexes, `pg_stats` selectivity, sizes, `pg_settings`. Tier 1
-     workload — `pg_stat_statements` fingerprints (calls, mean/total time,
-     rows, cache hits), `pg_stat_user_tables`/`_indexes` (seq vs idx scans,
+     workload — `pg_stat_statements` fingerprints (calls, mean/total/stddev
+     time, rows, cache hits), `pg_stat_user_tables`/`_indexes` (seq vs idx scans,
      dead tuples, unused indexes); cumulative, so snapshot-and-diff over
      days. Tier 2 what-if — `EXPLAIN` + HypoPG where the host has it
      (Supabase, Neon; not RDS), else `pg_stats` heuristics and the verify
      window judges. Tier 3 truth — re-read Tier 1 for the same fingerprints
      after apply → p95 delta → keep, or revert if it is > 10 % worse
-     (`GLOBAL-041` KPI 3's regression bound). The verify window is 72 h on
+     (`GLOBAL-041` KPI 3's regression bound). `pg_stat_statements` keeps
+     no percentiles, so the Postgres p95 is estimated per window as
+     mean + 1.65 σ from the diffed counters and labelled an estimate
+     ([pgMustard](https://www.pgmustard.com/blog/approximate-the-p99-of-a-query-with-pgstatstatements)). The verify window is 72 h on
      both engines until the spike measures when each engine's counters
      settle (Azure: 30 min–72 h). Roles: observe = `pg_read_all_stats` +
      `SELECT` on the app's tables (`pg_stats` and `EXPLAIN` cover only
