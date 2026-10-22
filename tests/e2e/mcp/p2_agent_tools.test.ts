@@ -17,6 +17,7 @@ function stubClient(overrides: Partial<NlqClient>): NlqClient {
     listChat: async () => ({ messages: [] }),
     postChat: notStubbed("postChat"),
     listDatabases: async () => ({ databases: [] }),
+    listChanges: async () => ({ changes: [] }),
     createDatabase: notStubbed("createDatabase"),
     deleteDatabase: notStubbed("deleteDatabase"),
     databases: { connect: notStubbed("databases.connect") },

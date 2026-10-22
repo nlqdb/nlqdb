@@ -22,6 +22,7 @@ when-to-load:
 - `packages/db/src/clickhouse-tinybird/pipe-management.ts` (Tinybird Pipes management API owner per `GLOBAL-021`)
 - `apps/api/src/scheduled/jobs.ts` — the `workload_analyser` row (SK-HDC-023 owns the trigger)
 - `apps/api/migrations/0008_workload_analyser_audit.sql`
+- `apps/api/src/dba-changes.ts`, `apps/web/src/pages/app/dba.astro`, `apps/web/src/components/dba/**` — the change ledger and `/app/dba` v0, read-only; Phase B adds proposals and apply/undo here. Surface gap (`GLOBAL-003`): `client.listChanges` and the web page have it; `nlq` and MCP don't yet.
 
 ## Decisions
 

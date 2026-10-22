@@ -314,6 +314,21 @@ describe("createClient", () => {
     expect(out.databases.map((d) => d.engine)).toEqual(["postgres", "clickhouse"]);
   });
 
+  it("listChanges: GETs the DB's change ledger", async () => {
+    let url = "";
+    const fakeFetch: FetchLike = async (input) => {
+      url = String(input);
+      return new Response(JSON.stringify({ changes: [{ id: 2, kind: "add_column" }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    const out = await client.listChanges("db_a b");
+    expect(url).toMatch(/\/v1\/databases\/db_a%20b\/changes$/);
+    expect(out.changes[0]?.kind).toBe("add_column");
+  });
+
   it("createClient: throws when both apiKey and withCredentials are set (defensive runtime guard)", () => {
     expect(() =>
       createClient({

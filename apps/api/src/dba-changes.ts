@@ -66,3 +66,27 @@ export async function recordDbaChanges(
     );
   }
 }
+
+// One ledger row as `GET /v1/databases/:id/changes` returns it (`/app/dba`).
+export type DbaChangeRow = DbaChange & { id: number; origin: "insert" | "ask"; createdAt: number };
+
+// The DB's ledger, newest first; null when the caller doesn't own the DB.
+export async function listDbaChanges(
+  d1: D1Database,
+  databaseId: string,
+  tenantId: string,
+  limit = 500,
+): Promise<DbaChangeRow[] | null> {
+  const [owned, rows] = await d1.batch<Record<string, unknown>>([
+    d1
+      .prepare("SELECT 1 AS ok FROM databases WHERE id = ? AND tenant_id = ?")
+      .bind(databaseId, tenantId),
+    d1
+      .prepare(
+        'SELECT id, origin, kind, table_name AS "table", ddl, inverse, created_at AS createdAt FROM dba_changes WHERE database_id = ? ORDER BY id DESC LIMIT ?',
+      )
+      .bind(databaseId, limit),
+  ]);
+  if (!owned?.results.length) return null;
+  return (rows?.results ?? []) as DbaChangeRow[];
+}

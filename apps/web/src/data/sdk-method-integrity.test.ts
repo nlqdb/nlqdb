@@ -85,6 +85,7 @@ describe("SDK-method integrity (SK-SDK-013)", () => {
       "getKeyStatus",
       "getModels",
       "insert",
+      "listChanges",
       "listChat",
       "listDatabases",
       "listGrants",

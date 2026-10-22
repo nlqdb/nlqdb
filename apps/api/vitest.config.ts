@@ -190,6 +190,7 @@ export default defineConfig(async () => {
               "test/run.test.ts",
               "test/insert.test.ts",
               "test/admin-metrics.test.ts",
+              "test/dba-changes.test.ts",
             ],
             setupFiles: ["./test/apply-migrations.ts"],
           },

@@ -24,6 +24,7 @@ interface Props {
     | "agents"
     | "chat"
     | "keys"
+    | "dba"
     | "billing"
     | "vs"
     | "solve"
@@ -123,6 +124,13 @@ const inContent = CONTENT.some((c) => c.key === current);
             aria-current={current === "keys" ? "page" : undefined}
           >
             API keys
+          </a>
+          <a
+            href={appHref("/app/dba/")}
+            class="topnav__avatar-item"
+            aria-current={current === "dba" ? "page" : undefined}
+          >
+            Schema changes
           </a>
           <a
             href={appHref("/app/billing/")}
