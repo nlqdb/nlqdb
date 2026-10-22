@@ -2,8 +2,9 @@
 
 **Status:** active · **Set by the founder:** 2026-10-22 · **Supersedes:**
 [`GLOBAL-041`](./GLOBAL-041-autonomous-dba.md) items 1–2 (host the DB, infer
-the schema from inserts), its Phase A/B/C plan and KPIs 1–2; the
-migrate-onto-nlqdb goal of
+the schema from inserts), its Phase A/B/C plan and KPIs 1–2;
+[`GLOBAL-004`](./GLOBAL-004-logical-schema-evolves.md) in part (inference
+from inserts); the migrate-onto-nlqdb goal of
 [`GLOBAL-042`](./GLOBAL-042-dogfood-iteration-loop.md) and its iteration 001.
 The mission ([`END_GOAL.md`](../END_GOAL.md#mission)) and GLOBAL-042's
 iterate → retro → cleanup loop stand.

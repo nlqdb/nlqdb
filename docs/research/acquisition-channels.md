@@ -1,6 +1,6 @@
 # Acquisition channels — canonical ledger
 
-Acquisition is **paused per `GLOBAL-041`** (existing
+Acquisition is **paused per `GLOBAL-043`** (existing
 pages stay live; the [`GLOBAL-038`](../decisions/GLOBAL-038-gtm-pmf-instrumentation.md)
 instrument keeps measuring). This file is the one place that answers *"which channels exist, which have we
 actually tried, and what did each yield?"* — the question the scorecard's

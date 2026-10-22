@@ -1,15 +1,16 @@
 # nlqdb — your autonomous DBA.
 
-> Build a real app from day one with no data modeling. nlqdb infers your schema from how you use it, evolves it, and keeps it optimized — and shows you every change before it lands.
+> nlqdb attaches to the Postgres or Cloudflare D1 database you already run, proposes the changes it needs, applies the ones you approve, measures them, and reverts any that regress.
 
 Why it exists: [the mission](docs/END_GOAL.md#mission) — encapsulate the trial-and-error journey every company walks to a good database infrastructure.
 
-Your app talks to its database in plain English — over HTTP, the SDK, the
-`nlq` CLI, or MCP from Claude, Cursor and Codex. The first insert creates the
-shape; later inserts and reads evolve it; the DBA builds the indexes and
-places data on the right engine, and every change is previewed, versioned and
-one click to undo. The LLM never emits SQL: it returns a typed plan, our
-compiler emits the parameterised statement, and you see the exact SQL every time.
+Where it is going ([`docs/END_GOAL.md`](docs/END_GOAL.md)): paste a
+connection string — on nlqdb.com, with the CLI, through the SDK, or from your
+coding agent over MCP — and the first proposals arrive within minutes, each
+with its expected effect, cost and inverse. Apply is one click; nlqdb then
+measures p95 on the same queries and keeps the change or reverts it, never on
+your app's request path. That loop is in its first spike
+([Roadmap](#roadmap)); what is live today is the hosted product below.
 
 **No backend to build.** You write HTML; each
 component asks for what it wants in plain English; nlqdb infers the schema,
@@ -150,8 +151,8 @@ that isn't.
 
 ## Roadmap
 
-The two sections below are the **live focus**; the numbered phases after
-them are the engine roadmap. Canonical plan + exit gates:
+The section below is the **live focus**; the numbered phases after it are
+the hosted product's roadmap, kept until the `GLOBAL-043` deletion series. Canonical plan + exit gates:
 [`docs/phase-plan.md`](./docs/phase-plan.md). Legend:
 **✓ shipped · ~ in progress · ◯ planned**.
 
@@ -171,52 +172,20 @@ them are the engine roadmap. Canonical plan + exit gates:
 >
 > Setup, branch naming, and the CLA are in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-### Now — Phase A: the schema infers itself (`GLOBAL-041`)
+### Now — attach to the database you already run (`GLOBAL-043`)
 
-The first insert creates the shape; later inserts and reads evolve it. KPI:
-first-insert inference rate ≥ 95 % at Phase A exit, measured on
-`rateme12.nlqdb.com`'s own writes, with no model call on the write path.
-Build order in [`GLOBAL-041`](./docs/decisions/GLOBAL-041-autonomous-dba.md).
+One loop — observe → propose → apply → verify → revert — on your Postgres
+(Supabase, Neon, RDS) or Cloudflare D1. Plan, KPIs and exit gate:
+[`GLOBAL-043`](./docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md).
 
-- ~ `kind=extend` typed plan — a write naming an unseen table or field widens
-  the schema in the same transaction as the insert, never a `schema_mismatch`
-  (live on prod with no user action — preview walk 10/10; the first 14-day
-  dogfood window closed 2026-10-10 at 2 HIT / 7 MISS, 9/200 — 6 of the 7
-  misses were the plan stage failing on long writes)
-- ~ Extend diff + trace on every surface — `trace.widen` live on SDK · MCP ·
-  `<nlq-data>`; CLI/web render pending
-- ✓ KPI counters `asks_extend_ok` / `asks_extend_failed` on the `/v1/ask` write path
-  (`SK-SCHEMA-010`; the rate reads on `/app/admin`)
-- ~ Deterministic `insert(table, rows)` — types from the values, no LLM on the
-  write path; the LLM's better types and names arrive later as proposals.
-  `POST /v1/insert` on SDK `insert()`, `nlq insert` and MCP `nlqdb_insert`
-  (`SK-SCHEMA-012`)
-- ◯ rateme12 on nlqdb with real traffic, then ~10 hand-picked builders
-- ◯ Phase B — `pg_stat_*` + `EXPLAIN` collection → typed proposals (index /
-  retype / drop / rename / move-to-engine) → `/app/dba` dashboard with
-  1-click apply + undo
-- ✓ Rails kept from the prior bet for the expert-knowledge app:
-  `agent_memory_v1` preset, `nlqdb_remember` / `nlqdb_read` MCP tools,
-  per-agent RLS isolation, the Claude Code plugin, `/agents`
-
-### Next — the expert-knowledge marketplace ("Become AI")
-
-Non-technical professionals turn their expertise into structured,
-queryable knowledge that AI agents pay to use. Decisions locked; build
-gated on Phase A (`SK-EKP-005`)
-([`docs/features/expert-knowledge-platform/`](./docs/features/expert-knowledge-platform/FEATURE.md)).
-
-- ◯ Interview authoring — answer questions about your craft, get queryable
-  rows (pilot: language tutor)
-- ✓ Cross-tenant read grants — mint/list/revoke control plane + live
-  fail-closed granted read on `/v1/ask` (schema-only plan, rows-only
-  egress, exactly-once per-query metering proven at the route boundary);
-  revoke-in-flight bound measured against live Postgres
-- ◯ One catalog — free packs + paid expert knowledge DBs
-- ~ Trust hardening — buyer queries schema-only end-to-end: knowledge-DB
-  asks skip narration by default and the granted cross-tenant read is
-  un-narrated (returned rows never reach an LLM); no-training
-  interview-provider pin pending
+- ~ `/app/dba` change ledger — every change with its inverse, newest first
+  (read-only v0)
+- ◯ Postgres spike — one index proposed, applied and measured (before/after
+  p95) on a real-traffic database
+- ◯ D1 attach on the real rateme12 — the dogfood
+- ◯ Four attach doors — nlqdb.com, `npx nlqdb attach`, `POST /v1/attach`, MCP
+- ◯ The playbook — unused-index drops, bloat, retypes, partitioning,
+  retention, placement
 
 ### Phase 0 — Foundations ✓
 

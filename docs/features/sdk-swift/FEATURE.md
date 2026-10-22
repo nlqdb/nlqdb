@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Swift SDK (`Nlqdb`)
 
 **One-liner:** Swift 6 Package — native iOS / macOS / Linux client for the nlqdb `/v1` API.
-**Status:** partial (Phase 2 — wire contract + retry envelope + SwiftUI view shipped; Apple-platform Xcode CI gated to release workflow)
+**Status:** Retired by GLOBAL-043 — deletion PR pending; no new work
 **Owners (code):** `packages/nlqdb-swift/**`
 **Cross-refs:** [`sdk/FEATURE.md`](../sdk/FEATURE.md) (canonical TS SDK — wire shape mirrored here) · [`docs/decisions/GLOBAL-001-sdk-only-http-client.md`](../../decisions/GLOBAL-001-sdk-only-http-client.md) · `docs/progress.md §0` (surface status matrix).
 

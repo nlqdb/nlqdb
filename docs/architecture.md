@@ -1,6 +1,6 @@
 # nlqdb — Architecture
 
-> nlqdb — your autonomous DBA. No data modeling: the schema is inferred from inserts and reads, evolved and optimized by the DBA; plain English is how your app talks to it.
+> nlqdb — your autonomous DBA. It attaches to the Postgres or D1 database a team already runs and proposes, applies, verifies and reverts changes on it ([`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md)).
 
 **Navigation:** [decisions.md](./decisions.md) (index of GLOBAL-NNN; bodies under [decisions/](./decisions/)) · [features/](./features/) for per-feature `FEATURE.md` decisions · [runbook.md](./runbook.md) for operations · [progress.md](./progress.md) for integration tiers
 
@@ -26,7 +26,7 @@ Acceptance criteria for every PR. Violations don't ship.
 - **Fast.** p50 query < 400ms (cache hit), p95 < 1.5s (cache miss), cold start < 800ms. CLI binary < 10MB raw / < 4MB gzipped, starts < 30ms (measured 5ms on the bootstrap PR — see `SK-CLI-001`).
 - **Goal-first, not DB-first.** No persona woke up wanting to "create a database." The DB is plumbing. See §0.1.
 - **Bullet-proof by design, not by handling.** Make bad states unreachable:
-  - The logical schema is inferred from inserts and reads and evolves in both directions — every change versioned, previewed, undoable; never a "schema mismatch" error (`GLOBAL-004`).
+  - Every change the DBA makes is a proposal with its inverse and its measurement — previewed, undoable (`GLOBAL-043`).
   - Every mutating call takes an `Idempotency-Key` — retries safe by construction.
   - Plans content-addressed by `(schema_hash, query_hash)` — no cache invalidation.
   - Destructive ops require diff preview + second confirm.
@@ -35,68 +35,33 @@ Acceptance criteria for every PR. Violations don't ship.
 
 ## 0.1 On-ramp inversion
 
-No persona's goal is "create a database." The DB is a side effect of what they're trying to build. Every surface is reframed so the user's first action is stating a goal; the DB materializes as a consequence.
-
-| Surface | Old (DB-first) | New (goal-first) |
-|---|---|---|
-| Marketing hero | "Name your database" | "What are you building?" |
-| Platform first run | "Create database" button | Single chat input, DB created silently |
-| CLI first command | `nlq db create orders` | `nlq new "an orders tracker"` |
-| MCP first call | `nlqdb_create_database("memory")` | `nlqdb_query("memory", "remember…")` (DB auto-created) |
-| `<nlq-data>` | `db="orders"` required | `goal="…"` leads; `db` inferred |
-| HTTP API | multiple setup steps | `POST /v1/ask { "goal": "…" }` returns session + DB |
-
-**Mechanism:** every entry point accepts a goal. The first call materializes a DB (slug + short hash), persists it under the caller's identity (or anonymous token), and returns a session containing the DB handle. The DB is always one flag away for power users — goal-first is the default, not the only way.
+Retired with the hosted wedge ([`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md)): the first action is attaching the database the team already runs ([`END_GOAL.md`](./END_GOAL.md) happy path, row 1). The goal-first surfaces below run until the deletion series removes them.
 
 ---
 
 ## 1. Vision
 
-**nlqdb — your autonomous DBA**, built for the [mission](./END_GOAL.md#mission): encapsulate the trial-and-error journey to a good database infrastructure. A developer builds a real app from day one **without doing data modeling** — the DBA infers, evolves and optimizes the schema, every change previewed with one-click apply and undo. NL→SQL is the interface the app addresses its data through — not the product. Canonical decision + build order: [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md).
-
-The developer still writes zero backend code — no ORM, no migration files, no `DATABASE_URL`. The four surfaces (Web, API, CLI, MCP) and the `<nlq-data>` element are projections of the same engine.
+**nlqdb — your autonomous DBA**, built for the [mission](./END_GOAL.md#mission). The product, flow by flow, is [`END_GOAL.md`](./END_GOAL.md); the decision is [`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md). Not a host, never on the app's request path.
 
 ---
 
 ## 2. System architecture
 
 ```
-                                    ┌──────────────────────────────────────┐
-                                    │          nlqdb Core Engine           │
-                                    │                                      │
-   ┌──────────────┐    HTTPS        │   ┌────────────────────────────┐    │
-   │ Marketing    │ ─────────────►  │   │  Edge Router (Cloudflare    │    │
-   │ Site         │                 │   │  Workers, < 50ms global)    │    │
-   │ (Astro)      │                 │   └──────────────┬─────────────┘    │
-   └──────────────┘                 │                  │                  │
-                                    │                  ▼                  │
-   ┌──────────────┐                 │   ┌────────────────────────────┐    │
-   │ Platform     │ ───── HTTPS ──► │   │  Auth & Quota (Better Auth │    │
-   │ Web App      │                 │   │  + Workers KV)              │    │
-   │ (Astro +     │                 │   └──────────────┬─────────────┘    │
-   │  React       │                 │                  │                  │
-   │  islands)    │                 │                  ▼                  │
-   └──────────────┘                 │   ┌────────────────────────────┐    │
-                                    │   │  Plan Cache (KV, content-  │    │
-   ┌──────────────┐                 │   │  addressed by schema_hash) │    │
-   │ CLI (`nlq`)  │ ─── HTTPS ───►  │   └──────┬──────────────┬──────┘    │
-   │ Go binary    │                 │          │ HIT          │ MISS      │
-   └──────────────┘                 │          ▼              ▼           │
-                                    │   ┌──────────┐   ┌──────────────┐  │
-   ┌──────────────┐                 │   │ Executor │   │ NL→Plan      │  │
-   │ MCP Server   │ ─── HTTPS ───►  │   │ (Engine  │   │ Compiler     │  │
-   │ (TypeScript) │                 │   │ adapter) │◄──┤ (LLM router) │  │
-   └──────────────┘                 │   └────┬─────┘   └──────────────┘  │
-                                    │        │                           │
-   ┌──────────────┐                 │        ▼                           │
-   │ <nlq-data>   │ ─── HTTPS ───►  │   ┌────────────────────────────┐  │
-   │ HTML element │                 │   │ Engines: Postgres, ClickHouse│ │
-   │ (any site)   │                 │   │ (Tinybird), Redis, ...      │  │
-   └──────────────┘                 │   └────────────────────────────┘  │
-                                    └──────────────────────────────────────┘
+ nlqdb.com · npx nlqdb · @nlqdb/sdk · MCP        attach · apply · reject
+                 │
+ Edge (Cloudflare Workers) — sealed secret + egress guard (GLOBAL-031/035)
+                 │
+ observe → propose → apply → verify → revert     deterministic, no LLM
+                 │
+ packages/db adapter seam — one observer + apply call per engine
+                 │
+ the team's Postgres (Supabase, Neon, RDS) or Cloudflare D1
+
+ every apply / reject / revert → dba_changes ledger → /app/dba
 ```
 
-Five surfaces, one edge router, one core engine. No parallel implementations.
+One loop for every engine and every principal. The hosted `/v1/ask` engine (§3.6) runs until the `GLOBAL-043` deletion series removes it.
 
 ### 2.1 Domains
 
@@ -456,7 +421,7 @@ Canonical roadmap (items per phase, exit gates, the §6 monetization + scaling t
 | LLM hallucinates column names → confident wrong answers | High | Static schema validation after plan gen; confidence gate; structured output. |
 | Free-tier abuse | Medium | Per-IP + per-account rate limits day 1; PoW on signup if needed; anomaly detection Phase 2. |
 | Vendor lock (Neon, Anthropic) | Medium | Adapter layer for each; quarterly "can we swap this in a week" drill. |
-| Someone ships a better text-to-SQL inside Postgres in 18 months | Real | The moat is **engine quality** per [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md) / [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md): NL→SQL scaffolding compounds with every model release, and a schema-inferring, self-optimizing, multi-engine DBA is not something a single-engine text-to-SQL feature can graft on. |
+| A host (Supabase, Neon, Cloudflare) ships its own recommender | Real | Recommend-only is table stakes; the moat is apply → verify → revert with a measured delta, across engines ([`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md)). |
 
 ---
 

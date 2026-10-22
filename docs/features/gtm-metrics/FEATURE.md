@@ -16,7 +16,7 @@ when-to-load:
 # Feature: GTM Metrics
 
 **One-liner:** Canonical GTM/PMF metric set — admin-gated live metrics endpoint, daily snapshots, and the `/app/admin` founder dashboard.
-**Status:** implemented (endpoint, snapshots, dashboard, unique-people counts, Sean-Ellis survey, attribution, paying-customer watchlist, per-surface ask counters, and Become AI interest; external sources remain out of scope).
+**Status:** Retired by GLOBAL-043 — deletion PR pending; no new work
 **Owners (code):** `apps/api/src/admin/**`, `apps/api/src/synthetic-ua.ts`, `apps/api/src/pmf-survey.ts`, `apps/api/migrations/0022_gtm_snapshots…0025_pmf_survey.sql` + `0027_customers_converted_at.sql`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`, `apps/web/src/lib/pmf-survey.ts`, `apps/web/src/components/chat/PmfSurveyCard.tsx`
 
 **Contribution to north-star:** Onboarding — the funnel/activation/retention numbers ARE the onboarding pillar's measurement ([`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)), now continuous; acquisition measurement is first-class ([`GLOBAL-038`](../../decisions/GLOBAL-038-gtm-pmf-instrumentation.md)). No pillar degrades: admin-only D1 reads, off every product request path.

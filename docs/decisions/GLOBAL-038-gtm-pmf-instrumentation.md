@@ -18,7 +18,7 @@
   product compass, but acquisition metrics are first-class measured
   numbers with a canonical live instrument. This GLOBAL sets the
   **instrument, not the operating focus**: the focus is set by
-  [`GLOBAL-041`](./GLOBAL-041-autonomous-dba.md), which paused acquisition
+  [`GLOBAL-043`](./GLOBAL-043-attach-first-autonomous-dba.md), which keeps acquisition paused
   (one exception, its love gate); the instrument keeps measuring regardless.
 - **Core value:** Free, Simple, Bullet-proof
 - **Why:** Until now every GTM number was a hand-pulled point-in-time

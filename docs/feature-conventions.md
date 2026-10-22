@@ -66,7 +66,9 @@ still-live substance forward), remove the old shard/entry, and repoint every
 reference so nothing cites the deleted ID. No tombstone stubs, no
 "replaced-by" status lines. Git history keeps the old body; a gap in the
 sequence just means a decision was removed. Whole abandoned bets move under
-`docs/archive/` (`git mv`, no live doc links into it).
+`docs/archive/` (`git mv`, no live doc links into it). One exception: a
+superseding GLOBAL may add a one-line `Status:` pointer on the GLOBAL it
+supersedes (in whole or in part), whose body stays as history.
 
 ## 3. FEATURE.md template
 
@@ -84,7 +86,7 @@ when-to-load:
 # Feature: <Name>
 
 **One-liner:** <what this feature is>
-**Status:** implemented (Slice N) | partial | planned (Phase X)
+**Status:** implemented (Slice N) | partial | planned (Phase X) | Retired by GLOBAL-NNN — deletion PR pending; no new work
 **Owners (code):** <paths>
 **Cross-refs:** docs/architecture.md §X · docs/runbook.md §Z · GLOBAL-NNN, GLOBAL-MMM (canonical text in docs/decisions/GLOBAL-NNN-<slug>.md; index in docs/decisions.md)
 

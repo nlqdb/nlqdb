@@ -63,7 +63,7 @@ when-to-load:
   - **D1** (when added) — same split; SQLite has no materialised views.
   - **Redis** (when added) — key-value with no fixed shape; "logical schema" = the key prefixes the planner has emitted commands against.
 - **Core value:** Bullet-proof, Simple, Honest latency
-- **Why:** Bumping `schema_hash` on physical reshape would cache-invalidate every optimizer tick. Hiding physical state, on the other hand, is the opposite of what the DBA sells (`GLOBAL-041`): the developer never *authors* layout, but always *sees* it and can undo any change.
+- **Why:** Bumping `schema_hash` on physical reshape would cache-invalidate every optimizer tick. Hiding physical state, on the other hand, is the opposite of what the DBA sells (`GLOBAL-043`): the developer never *authors* layout, but always *sees* it and can undo any change.
 - **Consequence in code:** `db.describe()` returns logical schema only. Physical state is on `meta` and in the optimizer's audit / proposal tables; the dashboard reads it from there. The optimizer is the only writer of physical reshapes.
 - **Alternatives rejected:**
   - Per-engine `schema_hash` rules — fragments `GLOBAL-004`; harder to audit.

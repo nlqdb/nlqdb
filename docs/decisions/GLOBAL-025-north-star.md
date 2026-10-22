@@ -4,18 +4,10 @@
   **every shipped feature must measurably advance at least one of them
   AND must not degrade any of the others**:
 
-  1. **Engine quality** — **the autonomous DBA**
-     ([`GLOBAL-041`](./GLOBAL-041-autonomous-dba.md)): schema inference +
-     evolution + optimizer. Measured by the three `GLOBAL-041` KPIs —
-     **first-insert inference rate**, **evolution-without-user-action
-     rate**, **optimizer yield** — whose definitions and floors live only in
-     that file (owners: [`schema-widening`](../features/schema-widening/FEATURE.md),
-     [`engine-migration`](../features/engine-migration/FEATURE.md)).
-     NL→SQL is the *interface* layer of the same pillar: an app whose data
-     was never modeled by hand addresses it through `/v1/ask`, so a wrong
-     answer fails the user the same way a failed insert does. Its accuracy
-     ([`quality-eval`](../features/quality-eval/FEATURE.md), BIRD-dev +
-     Spider 2.0-lite) is a **regression alarm, not a KPI**.
+  1. **Engine quality** — **the autonomous DBA attached to the team's own
+     database** ([`GLOBAL-043`](./GLOBAL-043-attach-first-autonomous-dba.md)).
+     Measured by KPIs A–C, whose definitions and targets live only in that
+     file (owner: [`engine-migration`](../features/engine-migration/FEATURE.md)).
   2. **Seamless onboarding** — a stranger reaches first answer in
      ≤ 60 s with no config. Measured by TTFV p50/p95, first-10-queries
      success rate, and the unguided user-test pass rate.
@@ -57,14 +49,11 @@
   - Every PR body names the pillar it advances and confirms none degrades
     (`CLAUDE.md` §8).
   - The KPI table below is the **single source of truth** for the
-    onboarding / UX / performance floors; the engine floors are
-    `GLOBAL-041`'s. Instruments live in
+    onboarding / UX / performance floors; the engine targets are
+    `GLOBAL-043`'s. Instruments live in
     [`onboarding/FEATURE.md`](../features/onboarding/FEATURE.md),
     [`trust-ux/FEATURE.md`](../features/trust-ux/FEATURE.md),
     [`docs/performance.md`](../performance.md).
-  - Phase exit gates in [`phase-plan.md`](../phase-plan.md) are the
-    `GLOBAL-041` phase gates: Phase 2 exits on Phase A alone; Phase 3 exits
-    on Phase B plus the floors below.
   - `/weekly` reads the KPI table; regression on any KPI by its `alert`
     delta is that week's worst finding; sustained degradation on any pillar
     triggers a revert of the slice that caused it, regardless of which
@@ -80,7 +69,7 @@
     *Amended in part by
     [`GLOBAL-038`](./GLOBAL-038-gtm-pmf-instrumentation.md): acquisition
     metrics are measured continuously on a canonical live instrument; the
-    four pillars above remain the product compass, and `GLOBAL-041` sets
+    four pillars above remain the product compass, and `GLOBAL-043` sets
     the operating focus.*
   - **OKRs instead of KPIs** — quarterly noise; KPIs with a measurement
     instrument are tighter and lighter.
@@ -92,27 +81,18 @@
 
 Columns: **Current** — the latest measured value, or `unmeasured` (the owning
 FEATURE.md ships the instrument; no dated deadline). **Floor** — the value
-below which the named phase does not roll over
-([`phase-plan.md`](../phase-plan.md)). **Alert** — the week-over-week delta
+the KPI must hold. **Alert** — the week-over-week delta
 that makes a KPI `/weekly`'s worst finding. **Owner** — the FEATURE.md that
 owns the measurement.
 
-### Engine quality — the autonomous DBA (`GLOBAL-041`)
+### Engine quality — the autonomous DBA (`GLOBAL-043`)
 
-Definitions and floors are canonical in `GLOBAL-041`; this table only
-routes.
-
-| KPI | Current | Floor | Alert | Owner |
-|---|---|---|---|---|
-| **1. First-insert inference rate** | unmeasured — instrument = rateme12's structured inserts (`GLOBAL-041`) | ≥ 95 % at Phase A exit (= Phase 2 exit) · ≥ 99 % at Phase B exit | any miss is inspected the same run | `schema-widening` |
-| **2. Evolution-without-user-action rate** | unmeasured — Phase B instrument | ≥ 90 % at Phase B exit | −5 pp wk/wk | `schema-widening` |
-| **3. Optimizer yield** | unmeasured — Phase B instrument | ≥ 1 applied / active DB / month; median p95 improvement ≥ 20 %; 0 un-undone regressions > 10 % | any un-undone regression | `engine-migration` |
-| Cross-engine dual-read equivalence | unmeasured — Phase C | 100 % | any divergence | `engine-migration` |
-| **BIRD-dev / Spider 2.0-lite accuracy** | last green run in `tools/eval/baseline-*.json` | **regression alarm only, not a KPI** — CI fails on > 5 pp drop vs last green on the fixed sample (`SK-QUAL-002`); no floor, no phase gate | a red alarm is a bug | `quality-eval` |
+KPIs A–C and the love gate are defined only in `GLOBAL-043`; current values
+are on [`scorecard.md`](../scorecard.md). Owner: `engine-migration`.
 
 ### Onboarding
 
-| KPI | Current | Floor (Phase 3 exit = `GLOBAL-041` Phase B) | Alert | Owner |
+| KPI | Current | Floor | Alert | Owner |
 |---|---|---|---|---|
 | TTFV — median seconds, landing → first answer | unmeasured (stranger N = 0) | ≤ 60 s | +10 s wk/wk | `onboarding` |
 | TTFV — p95 seconds, landing → first answer | unmeasured | ≤ 120 s | +20 s wk/wk | `onboarding` |
@@ -122,7 +102,7 @@ routes.
 
 ### UX
 
-| KPI | Current | Floor (Phase 3 exit) | Alert | Owner |
+| KPI | Current | Floor | Alert | Owner |
 |---|---|---|---|---|
 | Destructive-op retry rate | unmeasured | ≤ 5 % | regression blocks rollover | `trust-ux` |
 | Sean-Ellis "very disappointed" share | unmeasured (survey live, `SK-GTM-006`) | ≥ 40 % (PMF) | regression blocks rollover | `founder-playbook` |
@@ -135,7 +115,7 @@ Per-stage budgets and the span/metric catalog live in
 [`docs/performance.md`](../performance.md); the floors below are the
 headline user-visible numbers from `architecture.md §0`.
 
-| KPI | Current | Floor (Phase 3 exit) | Alert | Owner |
+| KPI | Current | Floor | Alert | Owner |
 |---|---|---|---|---|
 | p50 `/v1/ask` latency — cache hit | 16.4 ms wall-time p50, all routes (2026-07-27) | ≤ 250 ms | +50 ms wk/wk | `performance.md` |
 | p95 `/v1/ask` latency — cache miss | 1.48 s wall-time p95, all routes (2026-07-27) | ≤ 1.0 s | +200 ms wk/wk | `performance.md` |
@@ -145,8 +125,8 @@ headline user-visible numbers from `architecture.md §0`.
 
 ## How measurement is operationalized
 
-- **Engine KPI 1** reads the structured-insert counters over rateme12's
-  writes (`GLOBAL-041`). **Onboarding and UX KPIs** come from the
+- **Engine KPIs A–C** read the proposal ledger (`GLOBAL-043`).
+  **Onboarding and UX KPIs** come from the
   event pipeline (`packages/events`,
   [`GLOBAL-024`](./GLOBAL-024-demand-signal-telemetry.md)) plus the
   `nlqdb.surface` label; first-10-queries reads the D1 `first10_*` counters
@@ -155,8 +135,7 @@ headline user-visible numbers from `architecture.md §0`.
   `docs/performance.md`.
 - **Where the numbers surface:** `docs/scorecard.md` (regenerated by
   `/daily`) and `/app/admin` (`GLOBAL-038`).
-- **What floors do.** Phase rollover does not happen until the floor is
-  met. A floor miss is not a bug — it is the signal that the next slice is
+- **What floors do.** A floor miss is not a bug — it is the signal that the next slice is
   engine / onboarding / UX work, not a new surface.
 
 ## Mapping to existing decisions
@@ -174,5 +153,5 @@ mechanism) · [`GLOBAL-024`](./GLOBAL-024-demand-signal-telemetry.md) (the
 instrument) ·
 [`GLOBAL-026`](./GLOBAL-026-llm-strategy-byollm-hosted-premium.md) (LLM
 strategy for the interface layer) ·
-[`GLOBAL-041`](./GLOBAL-041-autonomous-dba.md) (the engine pillar's KPIs,
-phases and operating focus).
+[`GLOBAL-043`](./GLOBAL-043-attach-first-autonomous-dba.md) (the engine
+pillar's KPIs and operating focus).

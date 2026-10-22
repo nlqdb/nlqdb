@@ -6,21 +6,12 @@ run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 
 **Goal ([`GLOBAL-043`](decisions/GLOBAL-043-attach-first-autonomous-dba.md)):** attach, propose, apply, verify, revert — the Postgres spike (market proof) and [rateme12's D1 attached](history/dogfood-iterations/002-rateme12-attach.md) (dogfood); KPIs A–C below are the measure.
 
-**Q1–Q5 resolved 2026-09-05 → [`GLOBAL-041`](decisions/GLOBAL-041-autonomous-dba.md):**
-Phase 2 exits on Phase A alone; acquisition paused; BIRD/Spider = regression
-alarm only; premium tier stays. Retired rows dropped below.
-
 **Focus (founder-written 2026-10-22 — `/weekly` keeps it):** the `GLOBAL-043` sequence in `daily.md` step 2 — **the 2-week Postgres spike (one applied index, before/after p95 on its hot fingerprint) alongside the D1 attach on the real rateme12 → if the spike passes, the deletion PR series, one subsystem per PR → the playbook's proposal kinds, KPI B each.**
-`GLOBAL-041` sequence in `daily.md` step 2 — **Neon role cap (500/500,
-smoke red) → deterministic `insert()` (0 LLM calls on the write path) →
-rateme12 §5b journeys wired 0/5 → cutover (n/14 days) → returning builders
-(n/10).** KPI 1 is now read on rateme12's own inserts; the run-log windows
-below are history.
 
-**Worst number today (run 258, 2026-10-21) — KPI 1 formal sample n = 0, owned by the engine lane (`schema-widening`).** No rateme12 write reaches `insert()` until §5b steps 6 → 9 wire the clone, and step 6 waits on the founder-minted key.
+**Worst number today (2026-10-22) — KPIs A–C unmeasured: no database is attached yet, owned by the engine lane (`engine-migration`).** The spike waits on the top `blocked-by-human` bullet.
 **This run's lever:** none yet under the new sequence — see [`GLOBAL-043`](decisions/GLOBAL-043-attach-first-autonomous-dba.md) and `daily.md` step 2.
-**Dogfood canary (regression check, not the KPI-1 sample):** on each merge, `dogfood-write.yml` waits for its commit's Deploy API run, then writes the run record, changed scorecard rows and new blocked-by-human bullets to `db_agent_memory_v1_3a8a72` at the CI boundary, through `insert()` (0 LLM calls). It sends the synthetic-walker UA, so it never moves the admin KPI-1 `inserts_infer_*` counters. **Window 3 (from run 252, `insert()` path): 18/20 landed, 2 MISS** (both #1185-merge re-sends, inspected run 254). Run 257's merge landed 2/2, both on seen fields ([39621627517](https://github.com/nlqdb/nlqdb/actions/runs/39621627517)). The session still never holds the prod key.
-**Top `blocked-by-human` bullet:** **Pick the spike database and hand its connection string to CI** (0 d). Queue **depth 8**. Open PRs: 1 draft, not adoptable. #1191 merged and Release npm passed, so `@nlqdb/sdk` 0.5.0 with `insert()` is published. #1179 (7 d) has an un-draft probe that is a live free-LLM call, which rule 3 forbids, on a write path `insert()` replaced.
+**Dogfood canary (regression check until the deletion series removes `insert()`, `GLOBAL-043`):** on each merge, `dogfood-write.yml` waits for its commit's Deploy API run, then writes the run record, changed scorecard rows and new blocked-by-human bullets to `db_agent_memory_v1_3a8a72` at the CI boundary, through `insert()` (0 LLM calls). **Window 3 (from run 252, `insert()` path): 18/20 landed, 2 MISS** (both #1185-merge re-sends, inspected run 254). Run 257's merge landed 2/2, both on seen fields ([39621627517](https://github.com/nlqdb/nlqdb/actions/runs/39621627517)). The session still never holds the prod key.
+**Top `blocked-by-human` bullet:** **Pick the spike database and hand its connection string to CI** (0 d). Queue **depth 10**. Open PRs: 1 draft, not adoptable. #1191 merged and Release npm passed, so `@nlqdb/sdk` 0.5.0 with `insert()` is published. #1179 (7 d) has an un-draft probe that is a live free-LLM call, which rule 3 forbids, on a write path `insert()` replaced.
 **Dark (rule 8, reported not pulled):** engine **#8 BIRD 0.5382** (64 d) / **#9 Spider 0.2222** (71 d, async multi-window resume); rows **#4/#5** stranger-dependent (N=0 until launch); row **#15** opencheck lane (remedy costs money ⇒ rule 4).
 **Anti-rut (rule 7):** suspended while the `daily.md` step-2 sequence runs.
 **Rule 6:** `main` (`33ac0dd`) is green: CI, Dogfood write and every deploy workflow passed on their latest `main` runs.
@@ -35,14 +26,14 @@ below are history.
 | 5 | Session retention (≥ 2 queries) | 1 DB with `first10_asks ≥ 2` (07-12; founder-owned) | share with ≥ 2 asks |
 | | **Distribution** — count *and* yield | | |
 | 6 | Indexable surfaces | **112** content pages (`/solve` **41** + `/vs` 31 + `/blog` 40; unchanged this run — CTR lever, not a new page). Unpublished blog drafts **0** (queue drained) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
-| 7 | Surface yield | posts **40**. **GSC live 09-17** (28d 08-20→09-17): **967 impr / 30 query rows, 8 clicks** (pos 21.0). CTR lane exhausted: page-1 zero-click pages already carry hand-written SERP meta; the rest is position/authority-gated (launch-gated). Paused lane (`GLOBAL-041`) | `gsc-pull.ts` + `rum-pull.ts` |
+| 7 | Surface yield | posts **40**. **GSC live 09-17** (28d 08-20→09-17): **967 impr / 30 query rows, 8 clicks** (pos 21.0). CTR lane exhausted: page-1 zero-click pages already carry hand-written SERP meta; the rest is position/authority-gated (launch-gated). Paused lane (`GLOBAL-043`) | `gsc-pull.ts` + `rum-pull.ts` |
 | | **Engine — `GLOBAL-043` KPIs first** (headline) then the interface KPI | | `GLOBAL-043` roadmap |
 | EA | KPI A — time to first proposal after attach | **unmeasured — the spike builds the instrument** | < 5 min (`GLOBAL-043`) |
 | EB | KPI B — proposals applied with a measured p95 gain / attached DB / 30 d | **unmeasured — the spike builds the instrument** (on D1 also the rows-read delta) | ≥ 1 with a delta the founder would pay for (`GLOBAL-043`) |
 | EC | KPI C — regressions auto-reverted / regressions applied | **unmeasured — the spike builds the instrument** | 100 %, 0 user action |
 | | Retired by `GLOBAL-043`: E1 (KPI 1 first-insert inference), E2 (KPI 2 evolution), E3 (KPI 3, now KPI B) | | |
-| | **Engine — interface KPI (regression alarm only, `GLOBAL-041`/`SK-QUAL-002`)** — BIRD 07-26 · Spider 07-19 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
-| 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **33 d old, staleness trigger fired**, but **dark (rule 8)**: resume is async multi-window and `main` moved since the 07-27 checkpoint | regression alarm only (`SK-QUAL-002`, `GLOBAL-041`) — no target, no floor |
+| | **Engine — interface KPI (regression alarm until deleted, `GLOBAL-043`/`SK-QUAL-002`)** — BIRD 07-26 · Spider 07-19 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
+| 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **33 d old, staleness trigger fired**, but **dark (rule 8)**: resume is async multi-window and `main` moved since the 07-27 checkpoint | regression alarm only (`SK-QUAL-002`, `GLOBAL-043`) — no target, no floor |
 | 9 | Spider raw EX | **0.2222** (30/135, 07-19 canonical on `04fa3d0`, **40 d old**). 07-27 re-dispatch exited **partial** (`SK-QUAL-013` budget-stop) | regression alarm only — no target. No baseline file (BIRD-only, `SK-QUAL-018`) — this row is source of truth |
 | 10 | persona-bench free-chain EX | 0.9565 (22/23, 07-09, [run 29049936004](https://github.com/nlqdb/nlqdb/actions/runs/29049936004)) | full-chain ICP EX; the GLOBAL-026 bet; N=23 ±1 noisy |
 | 11 | free-vs-frontier delta | **BIRD agentic-frontier: 18.66 pts** (free 50.67 % → agentic 69.33 %, 150-q smoke, 07-06, `SK-QUAL-022`) | diagnostic only (`SK-QUAL-004`); no floor |
@@ -51,9 +42,9 @@ below are history.
 | 13 | nlqdb-api wall-time p50 / p95 | **p50 16.4 ms / p95 1.48 s** (07-27, carried) | mcp-server p50 691.3 ms / p95 1.30 s. `/ask`-only split needs Grafana `metrics:read` |
 | 14 | $ spend | ~$0 | free tiers. **Premium meter live 08-14** but $0 while no paying customer; premium chain routes free-tier / BYOLLM lanes at $0 |
 | | **E2E** — 4 manual `workflow_dispatch` suites | | mean(`pass × freshness`); freshness decays 1.0→0 over 7d |
-| 15 | E2E manual-suite freshness | **0.00 today** — sdk/examples/mcp last success **09-08** (35 d ago ⇒ freshness 0: [sdk #41](https://github.com/nlqdb/nlqdb/actions/runs/34240215865) / [examples #19](https://github.com/nlqdb/nlqdb/actions/runs/34240219429) / [mcp #42](https://github.com/nlqdb/nlqdb/actions/runs/34240222183)); opencheck **0** (07-17, dark — costs money, rule 4). Worst number today; not a DBA lever (step-2 lever order), so re-dispatch is only a candidate when no KPI-1 lever is pullable | Never dispatch opencheck alongside another lane consumer. Triage: `e2e-coverage/opencheck-operations.md` |
+| 15 | E2E manual-suite freshness | **0.00 today** — sdk/examples/mcp last success **09-08** (35 d ago ⇒ freshness 0: [sdk #41](https://github.com/nlqdb/nlqdb/actions/runs/34240215865) / [examples #19](https://github.com/nlqdb/nlqdb/actions/runs/34240219429) / [mcp #42](https://github.com/nlqdb/nlqdb/actions/runs/34240222183)); opencheck **0** (07-17, dark — costs money, rule 4). Worst number today; not a DBA lever (step-2 lever order), so re-dispatch is only a candidate when no roadmap-item lever is pullable | Never dispatch opencheck alongside another lane consumer. Triage: `e2e-coverage/opencheck-operations.md` |
 | | **Phase plan** — [`phase-plan.md`](phase-plan.md) exit gates | | no gate, no phase rollover |
-| 16 | Phase 2 exit gate = `GLOBAL-041` Phase A | **Gate RED — §6.1 readiness 5/5 green (R5 on its first live merge, run 253); rateme12 sample n = 0.** The retired run-log sample ended at 2 HIT / 10 MISS; the proxy walk reads 100 % (10/10, run 224). Love gate: 0/14 days, 0/10 builders. | ≥ 95 % of rateme12's unseen-field `insert()`s with 0 `llm.*` spans; nothing else gates Phase 2 |
+| 16 | Exit gate = the `GLOBAL-043` spike's measured delta | **not started** — waits on the spike DB. Love gate: 0/10 builders. | pass = one applied index with a before/after p95 delta the founder would pay for |
 | 17 | Dead + redirecting links, built surfaces | **0 dead / 0 redirecting internal + 0 dead cross-app** — swept run 166; docs-only diffs since | target 0. Standing blind spots: external inbound links to bare paths, `www.`/`http://` host un-redirected (GSC still indexes `http://` `/solve/count-consecutive-days-streak-in-sql/`; fix is a zone Redirect Rule ⇒ console) |
 | | **Product-readiness** — client-blocking gaps | | |
 | 18 | Live-surface claim integrity | **1** (found run 232): `docs.nlqdb.com/sdk` and `SK-SDK-012` advertise `runSql({ dryRun })` / `nlq run --dry-run`, but neither the SDK, `/v1/run` nor the CLI implements it. The `SK-SDK-013` guard checks method names only, so it passes. Package entrypoints stay ✓ (#826, 07-29) | target 0 |
@@ -63,14 +54,14 @@ below are history.
 | 21 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub. MCP official registry published 07-22; Glama crawl-listed; Smithery/PulseMCP 0. First-touch attribution live since 07-19; `source_json` non-null **0**, for want of strangers, not instrument | → ≥ 5 live. Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
 | | **Dogfood iteration** — [`GLOBAL-042`](decisions/GLOBAL-042-dogfood-iteration-loop.md) loop | | brief: [`002-rateme12-attach.md`](history/dogfood-iterations/002-rateme12-attach.md) |
 | 22 | Dogfood 002 — rateme12 attached (D1) | **unmeasured — the attach builds the instrument** (001, the migrate plan, retired 2026-10-22) | KPI A–C on rateme12's D1 |
-| | **Human queue** — the one non-automatable actor | **depth 7**. Head: **mint the rateme12 clone's `sk_live_` key** (2 d; §5b steps 6 → 9 wait on it). #2 rateme12 cutover + 10 builders (6 d, gated on §5b step 9). #3 **Show HN launch** (129 d, gated on the love gate). #4 email-router deploy+walk (PR #1134; human-only Worker deploy; since 09-18, 32 d). #5 Anthropic connector (money-gated, 07-21). #6 PulseMCP + mcp.directory (09-01). #7 nlqdb-memory → cc-marketplace (09-04). | [`blocked-by-human.md`](blocked-by-human.md). Open PRs at step 0: **0 non-draft + 2 drafts** (#1191, 2 d; #1179, 7 d). After this run: **1 non-draft** (run 257). |
+| | **Human queue** — the one non-automatable actor | **depth 10**. Head: **pick the spike database** (0 d). #2 rateme12 D1 token (0 d). #3 🔒 `/v1/ask` deletion scope. #4 🔒 public-copy switch date. #5 recruit 10 builders (gated on KPI B > 0 on rateme12). #6 **Show HN launch** (gated on the love gate). #7 email-router deploy+walk. #8 Anthropic connector (gated on the attach MCP tools). #9 PulseMCP + mcp.directory (gated likewise). #10 nlqdb-memory → cc-marketplace (parked on the spike). | [`blocked-by-human.md`](blocked-by-human.md). Open PRs at step 0: **0 non-draft + 2 drafts** (#1191, 2 d; #1179, 7 d). After this run: **1 non-draft** (run 257). |
 
 ## Shipped distribution
 
 **41 canonical `/solve` pages** + **40 `/blog` posts** + **31 `/vs` pages** live under `nlqdb.com/`
 (`SK-SOLVE-001` / `SK-BLOG-001` / `SK-CMP-001`). The registries are `apps/web/src/data/{solve,blog,competitors}.ts`.
 
-- **This run (256):** no distribution change; the lane is paused (`GLOBAL-041`). Earlier runs: `git log`.
+- **This run (256):** no distribution change; the lane is paused (`GLOBAL-043`). Earlier runs: `git log`.
 
 ## Last change
 
