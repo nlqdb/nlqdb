@@ -7,6 +7,9 @@ edit. Per-area `AGENTS.md` files narrow this guide to their directory.
 
 > *nlqdb — your autonomous DBA.*
 
+It exists for the [mission](docs/END_GOAL.md#mission): encapsulate the
+trial-and-error journey every company walks to a good database infrastructure.
+
 Build a real app from day one with **no data modeling** — the DBA infers the
 schema from inserts and reads, evolves it, optimizes it, and shows it in a
 dashboard with 1-click apply/undo. NL→SQL is the interface, not the product.

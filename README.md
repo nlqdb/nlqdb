@@ -2,6 +2,8 @@
 
 > Build a real app from day one with no data modeling. nlqdb infers your schema from how you use it, evolves it, and keeps it optimized — and shows you every change before it lands.
 
+Why it exists: [the mission](docs/END_GOAL.md#mission) — encapsulate the trial-and-error journey every company walks to a good database infrastructure.
+
 Your app talks to its database in plain English — over HTTP, the SDK, the
 `nlq` CLI, or MCP from Claude, Cursor and Codex. The first insert creates the
 shape; later inserts and reads evolve it; the DBA builds the indexes and
