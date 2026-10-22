@@ -2,8 +2,9 @@
 
 **Status:** active · **Set by the founder:** 2026-10-22 · **Supersedes:**
 [`GLOBAL-041`](./GLOBAL-041-autonomous-dba.md) items 1–2 (host the DB, infer
-the schema from inserts), its Phase A/B/C plan and KPIs 1–2; the
-migrate-onto-nlqdb goal of
+the schema from inserts), its Phase A/B/C plan and KPIs 1–2;
+[`GLOBAL-004`](./GLOBAL-004-logical-schema-evolves.md) in part (inference
+from inserts); the migrate-onto-nlqdb goal of
 [`GLOBAL-042`](./GLOBAL-042-dogfood-iteration-loop.md) and its iteration 001.
 The mission ([`END_GOAL.md`](../END_GOAL.md#mission)) and GLOBAL-042's
 iterate → retro → cleanup loop stand.
@@ -161,16 +162,7 @@ iterate → retro → cleanup loop stand.
     expert-knowledge rails, ICP-mining / GTM / PMF, marketing content pages,
     other-language SDKs and framework wrappers, the rateme12 clone
     (`apps/rateme12`) — one per PR. The dogfood canary stays a regression
-    check until `insert()` goes. For `/v1/ask` that means its NL→SQL
-    pipeline and plan cache; `packages/llm` (frontier lane included) stays
-    for the async LLM of item 3. Whether the hosted-premium lane, which
-    meters `/v1/ask` today, moves to that async LLM or retires with it is a
-    money bet, parked until the series reaches `/v1/ask` — a 🔒 bullet then
-    ([`GLOBAL-033`](./GLOBAL-033-resolution-defaults.md)).
-  - **Public copy describes what is live:** a surface naming the attach loop
-    labels it in progress until it ships; each deletion PR also removes the
-    copy describing what it deletes; launch material is written for the
-    attach loop, since Show HN waits on the love gate.
+    check until `insert()` goes.
   - **Kept and reused:** the `dba_changes` ledger (migration `0038`), the
     `libpg_query` DDL validator, the BYO egress guard + sealed secrets
     (`GLOBAL-031`, `GLOBAL-035`), `packages/db` adapters, OTel, the job
