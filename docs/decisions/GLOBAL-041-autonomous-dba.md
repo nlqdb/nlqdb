@@ -2,7 +2,7 @@
 
 **Status:** superseded by [`GLOBAL-043`](./GLOBAL-043-attach-first-autonomous-dba.md) (2026-10-22)
 
-> Kept as history: nlqdb now attaches to the database a team already has, so the host-and-infer wedge, the Phase A/B/C plan and KPIs 1–2 below no longer bind — read `GLOBAL-043`.
+> Kept as history: nlqdb now attaches to the database a team already has, so the host-and-infer wedge, the Phase A/B/C plan and the KPIs below no longer bind (KPI 3 became `GLOBAL-043` KPI B) — read `GLOBAL-043`.
 
 - **Decision:** nlqdb's product bet is **"nlqdb — your autonomous DBA."** A
   developer builds a real app from day one **without doing data modeling**.

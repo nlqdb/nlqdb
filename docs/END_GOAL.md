@@ -54,7 +54,7 @@ call behind the `packages/db` seam, nothing else.
 
 | # | Sees | Does | Latency |
 |---|------|------|---------|
-| 1 | One attach, four doors: the nlqdb.com form, `npx nlqdb attach <connection-string>`, `POST /v1/attach` via `@nlqdb/sdk`, or an MCP tool call. D1 attaches with a Cloudflare API token + account and database id. The permissions it needs are named up front: observe = `pg_read_all_stats`, apply = membership in the tables' owner role | pastes a connection string, once | seconds |
+| 1 | One attach, four doors: the nlqdb.com form, `npx nlqdb attach <connection-string>`, `POST /v1/attach` via `@nlqdb/sdk`, or an MCP tool call. D1 attaches with a Cloudflare API token + account and database id. The permissions it needs are named up front: observe = `pg_read_all_stats` + `SELECT` on the app's tables, apply = membership in the tables' owner role | pastes a connection string, once | seconds |
 | 2 | First proposals: catalog findings (FKs without indexes, sizes, settings) at once; workload findings from `pg_stat_statements` after a snapshot window | waits, or leaves — nothing to configure | KPI A < 5 min |
 | 3 | One proposal: the diff, the fingerprint it targets, expected effect (HypoPG what-if, or selectivity heuristics where the host lacks it), the inverse, and its cost — build time, size, write overhead | reads one card | — |
 | 4 | **Apply** queues it for a low-load window and builds it (`CONCURRENTLY` on Postgres); **reject** asks for a reason and records it | one click | the window |
@@ -80,7 +80,7 @@ string — and every other band is secondary to row 1.
 | No `pg_stat_statements` | Extension not enabled | Catalog-tier proposals only, and the one statement (or host toggle) that enables it | Enable it; workload proposals follow after a snapshot window |
 | No HypoPG | Host lacks it (RDS) | The expected effect from `pg_stats` selectivity, labelled as an estimate; the verify window decides | Apply; the measurement keeps or reverts it |
 | Read-only role | The role can observe but does not own the tables | Every proposal as a copy-paste migration with its inverse — never a silent skip | Run it by hand, or grant the owner role |
-| Regression in the window | p95 on the fingerprint worsens | Auto-reverted; both measurements on the ledger row | Nothing — the old plan is back |
+| Regression in the window | p95 on the fingerprint worsens by > 10 % | Auto-reverted; both measurements on the ledger row | Nothing — the old plan is back |
 | An agent's apply regresses | An agent principal approved it | Auto-reverted exactly like a human's; both measurements in the ledger, the agent's principal named | Restrict that agent's category in `/app/dba` |
 | Too big to build | A D1 index can't finish inside D1's 30 s statement cap | The proposal says so and offers the DDL for a maintenance window | Run it in that window |
 | Nothing to improve | Healthy DB | "Nothing worth changing yet — watching" and what was checked; never an invented proposal | Leave it attached |

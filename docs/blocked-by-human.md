@@ -84,7 +84,10 @@ retry storm and two inbound-mail-loss paths stay open.
 
 ⏱ ~20 min · blocked since 2026-07-21. Needs a **Team/Enterprise** Claude.ai org
 with Owner or Directory-management access. If reaching it means paying, it
-waits per [`cost-ladder.md`](./cost-ladder.md). Ledger row #9.
+waits per [`cost-ladder.md`](./cost-ladder.md). Ledger row #9. Gated: the
+copy below pitches the retired hosted product — submit once the attach MCP
+tools ship ([`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md)),
+with the copy rewritten to match.
 
 1. Open <https://claude.ai/admin-settings/directory/submissions/new>, remote-MCP
    path.
@@ -105,6 +108,8 @@ waits per [`cost-ladder.md`](./cost-ladder.md). Ledger row #9.
 ⏱ ~10 min · blocked since 2026-09-01. Both were expected to pick nlqdb up by
 crawl from the official registry; re-checked live, both still show 0 results.
 Lowest-yield directories — do these only when the queue head is parked.
+Gated like the connector directory above: the description pitches the
+retired hosted product.
 
 1. <https://pulsemcp.com/submit> (account-walled) — server
    `https://mcp.nlqdb.com/mcp`, name `nlqdb`, homepage
@@ -122,7 +127,10 @@ what it writes. One command.`
 
 ## `nlqdb-memory` → cc-marketplace
 
-⏱ ~10 min · blocked since 2026-09-04. Ledger row #27. Exact payload is parked in
+⏱ ~10 min · blocked since 2026-09-04. Ledger row #27. Parked until the
+spike's verdict: on a pass agent-memory is deleted
+([`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md)), and
+so is this bullet. Exact payload is parked in
 [`acquisition-channels-mechanisms.md` §Row #27](./research/acquisition-channels-mechanisms.md#row-27)
 — copy it verbatim. Either path works.
 

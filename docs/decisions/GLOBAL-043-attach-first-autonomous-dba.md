@@ -50,11 +50,18 @@ iterate → retro → cleanup loop stand.
      days. Tier 2 what-if — `EXPLAIN` + HypoPG where the host has it
      (Supabase, Neon; not RDS), else `pg_stats` heuristics and the verify
      window judges. Tier 3 truth — re-read Tier 1 for the same fingerprints
-     after apply → p95 delta → keep or revert. Sampled queries from the optional
-     SDK/MCP path add what a string cannot: real parameters, app latency. Roles: observe =
-     `pg_read_all_stats`; apply = membership in the role that owns the
-     tables (Postgres lets only a table's owner create or drop its
-     indexes), `CREATE INDEX CONCURRENTLY`. **D1:** Tier 1 = the sampled
+     after apply → p95 delta → keep, or revert if it is > 10 % worse
+     (`GLOBAL-041` KPI 3's regression bound). The verify window is 72 h on
+     both engines until the spike measures when each engine's counters
+     settle (Azure: 30 min–72 h). Roles: observe = `pg_read_all_stats` +
+     `SELECT` on the app's tables (`pg_stats` and `EXPLAIN` cover only
+     readable tables); apply = membership in the role that owns the tables
+     (Postgres lets only a table's owner create or drop its indexes),
+     `CREATE INDEX CONCURRENTLY`. That membership could also `ALTER`,
+     `TRUNCATE` or `DROP`; nlqdb runs under it only a proposal's DDL or its
+     stored inverse, each passing the kept `libpg_query` validator against
+     that proposal kind's verb set (index kinds: `CREATE`/`DROP INDEX`).
+     **D1:** Tier 1 = the sampled
      `d1QueriesAdaptiveGroups` analytics (query, rows read/written, time,
      [docs](https://developers.cloudflare.com/d1/observability/metrics-analytics/));
      Tiers 0/2 = `PRAGMA index_list`/`table_info` + `EXPLAIN QUERY PLAN`, no
