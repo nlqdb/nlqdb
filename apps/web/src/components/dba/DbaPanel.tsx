@@ -57,6 +57,10 @@ function DbaPanelInner({ apiBase }: DbaPanelProps) {
     const url = new URL(location.href);
     url.searchParams.set("db", id);
     history.replaceState(null, "", url);
+    // Show the picked DB as loading at once; the old DB's rows never sit under the new name.
+    setState((s) =>
+      s.kind === "ready" ? { ...s, db: s.dbs.find((d) => d.id === id) ?? s.db, changes: null } : s,
+    );
     setDbId(id);
   }
 
