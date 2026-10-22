@@ -17,7 +17,10 @@ tier-2 → tier-3) and a KV pointer that skips exhausted tiers. This doc is also
 **progress tracker + larger vision** for the founder's *"seamless, approachable
 value"* plan (scorecard row of the same name) — the approachable on-ramp half
 (two-door home + BYO connect) is tracked below alongside the value half.
-**Status:** Retired by GLOBAL-043 — deletion PR pending; no new work
+**Status:** scaffold only — **gated OFF** (`HAS_FRONTIER_API_KEYS = false`). The
+value lane is **0% live**; the approachability half is largely shipped (see the
+tracker). Stays at a deliberately very low score until the lane is enabled **and**
+live (per the founder's instruction for the scorecard row).
 **Owners (code):** `packages/llm/src/frontier/**`, `packages/llm/src/chains/frontier.ts`; wiring in `apps/api/src/ask/model-picker.ts` (gated).
 **Cross-refs:** [`llm-router/FEATURE.md`](../llm-router/FEATURE.md) (the lane sits alongside free/BYOLLM/hosted-premium, `SK-LLM-016`/`SK-LLM-017`) · [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) (LLM strategy) · [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) (engine-quality KPI: the free-vs-frontier delta) · [`byo-connect/FEATURE.md`](../byo-connect/FEATURE.md) + `web-app` `SK-WEB-031`/`SK-WEB-019` (approachability half).
 

@@ -31,7 +31,7 @@ grep -rn 'GLOBAL-007' docs/features/
 | [GLOBAL-001](./decisions/GLOBAL-001-sdk-only-http-client.md) | SDK is the only HTTP client | every surface | active |
 | [GLOBAL-002](./decisions/GLOBAL-002-behavior-parity.md) | Behavior parity across surfaces | every surface | active |
 | [GLOBAL-003](./decisions/GLOBAL-003-all-surfaces-one-pr.md) | New capabilities ship to all surfaces in one PR | every surface | active |
-| [GLOBAL-004](./decisions/GLOBAL-004-logical-schema-evolves.md) | The logical schema is inferred and evolves in both directions; physical layout reshapes freely | schema-widening, plan-cache, db-adapter, multi-engine-adapter, engine-migration | active |
+| [GLOBAL-004](./decisions/GLOBAL-004-logical-schema-evolves.md) | The logical schema is inferred and evolves in both directions; physical layout reshapes freely | schema-widening, plan-cache, db-adapter, multi-engine-adapter, engine-migration | superseded in part by [GLOBAL-043](./decisions/GLOBAL-043-attach-first-autonomous-dba.md) |
 | [GLOBAL-005](./decisions/GLOBAL-005-idempotency-key.md) | Every mutation accepts `Idempotency-Key` | every mutating endpoint | active |
 | [GLOBAL-006](./decisions/GLOBAL-006-plan-cache-content-addressing.md) | Plans content-addressed by `(schema_hash, query_hash)` | plan-cache, ask-pipeline | active |
 | [GLOBAL-007](./decisions/GLOBAL-007-no-login-wall.md) | No login wall before first value; no access gate, ever | auth, web-app, cli, ask-pipeline | active |

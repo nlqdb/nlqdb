@@ -170,7 +170,8 @@ supported; else read manually before editing.)
 | `apps/api/src/run/**`, the `POST /v1/run` raw-SQL escape hatch (`GLOBAL-015`) | `docs/features/sdk/FEATURE.md` (`SK-SDK-009`) + `docs/features/cli/FEATURE.md` + `docs/features/sql-allowlist/FEATURE.md` |
 | write/DDL diff preview, `confidence`, response `trace` block | `docs/features/trust-ux/FEATURE.md` |
 | `packages/errors/**`, `apps/api/src/error-envelope.ts`, any error copy or new error code | `docs/features/error-taxonomy/FEATURE.md` |
-| `apps/api/src/db-create/**`, `apps/api/src/ask/sql-validate-ddl.ts`, `apps/api/src/scheduled/**` (cron job table) | retired (`GLOBAL-043`) — `docs/features/hosted-db-create/FEATURE.md` |
+| `apps/api/src/db-create/**` | retired (`GLOBAL-043`) — `docs/features/hosted-db-create/FEATURE.md` |
+| `apps/api/src/ask/sql-validate-ddl.ts`, `apps/api/src/scheduled/**` (cron job table) — kept by `GLOBAL-043` | `docs/features/hosted-db-create/FEATURE.md` |
 | `apps/api/src/ask/plan-cache.ts`, plan storage | `docs/features/plan-cache/FEATURE.md` |
 | `packages/llm/**`, model routing, prompts | `docs/features/llm-router/FEATURE.md` |
 | `tools/eval/**`, `.github/workflows/quality-eval-*.yml` (BIRD/Spider NL-accuracy harness) | retired (`GLOBAL-043`) — `docs/features/quality-eval/FEATURE.md` |
@@ -183,11 +184,11 @@ supported; else read manually before editing.)
 | `packages/otel/**`, new spans / metrics | `docs/features/observability/FEATURE.md` · `docs/features/byo-otel/FEATURE.md` |
 | `apps/api/src/stripe/**`, Stripe webhooks | `docs/features/stripe-billing/FEATURE.md` |
 | `apps/api/src/byollm-account.ts`, `apps/api/src/ask/byollm.ts`, `apps/api/src/llm-router.ts`, `model` preset / BYOLLM / hosted-premium meter | `docs/features/premium-tier/FEATURE.md` |
-| `packages/llm/src/frontier/**` (founder-funded lane) | retired (`GLOBAL-043`) — `docs/features/frontier-keys/FEATURE.md` |
+| `packages/llm/src/frontier/**` (founder-funded lane) | `docs/features/frontier-keys/FEATURE.md` |
 | `apps/events-worker/**`, `packages/events/**`, `apps/api/src/events-feature.ts`, `apps/api/src/ask/demand-signal.ts` | `docs/features/events-pipeline/FEATURE.md` |
 | `apps/api/src/workload-analyser/**`, optimizer proposals / dashboard / apply surfaces, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql` | `docs/features/engine-migration/FEATURE.md` + `GLOBAL-043` |
 | rate-limit middleware (`apps/api/src/{ask/rate-limit,anon-rate-limit,anon-global-cap}.ts`, `principal.ts` `rateLimitBucketKey`) | `docs/features/rate-limit/FEATURE.md` |
-| `apps/api/src/{principal,anon-rate-limit,anon-global-cap,turnstile}.ts`, `apps/web/src/lib/{anon,anon-adopt,handoff,prompt-storage,turnstile,api}.ts`, `apps/web/src/components/CreateForm.tsx` | retired (`GLOBAL-043`) — `docs/features/anonymous-mode/FEATURE.md` |
+| `apps/api/src/{anon-rate-limit,anon-global-cap,turnstile}.ts`, `apps/web/src/lib/{anon,anon-adopt,handoff,prompt-storage,turnstile}.ts`, `apps/web/src/components/CreateForm.tsx` | retired (`GLOBAL-043`) — `docs/features/anonymous-mode/FEATURE.md` |
 | `apps/api/src/admin/**`, `apps/api/src/pmf-survey.ts`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`, `apps/web/src/{lib/pmf-survey.ts,components/chat/PmfSurveyCard.tsx}` | retired (`GLOBAL-043`) — `docs/features/gtm-metrics/FEATURE.md` |
 | `cli/**` | `docs/features/cli/FEATURE.md` |
 | `packages/elements/**` | `docs/features/elements/FEATURE.md` |

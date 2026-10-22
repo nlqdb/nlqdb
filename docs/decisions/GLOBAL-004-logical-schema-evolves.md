@@ -1,5 +1,7 @@
 # GLOBAL-004 — The logical schema is inferred and evolves in both directions; physical layout reshapes freely
 
+**Status:** superseded in part by [`GLOBAL-043`](./GLOBAL-043-attach-first-autonomous-dba.md) item 1 (2026-10-22) — schema inference from inserts is retired with the hosted path; the rule below binds the existing `schema_hash` / plan-cache code until its deletion PR.
+
 - **Decision:** The *logical* schema (tables and fields a query references)
   is inferred from inserts and reads and evolves in **both directions** —
   add, drop, rename, retype — as usage changes. Every logical change is a
