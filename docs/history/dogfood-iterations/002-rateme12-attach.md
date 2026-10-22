@@ -34,7 +34,7 @@ until the first attach** (introspect the GraphQL schema then, record it in
 | 3 truth | Tier 1 re-read for the same query text after apply | — |
 
 **Apply:** `CREATE INDEX IF NOT EXISTS` + `PRAGMA optimize` over the same
-REST endpoint (D1 Write). D1 caps a statement at 30 s and runs
+REST endpoint (D1 Edit). D1 caps a statement at 30 s and runs
 single-threaded ([limits](https://developers.cloudflare.com/d1/platform/limits/)),
 so a proposal is gated by table size: an index that cannot build in 30 s
 says so and offers its DDL for a maintenance window. **Undo:** `DROP INDEX`

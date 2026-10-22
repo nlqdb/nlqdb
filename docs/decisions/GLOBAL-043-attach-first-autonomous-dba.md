@@ -6,7 +6,7 @@ the schema from inserts), its Phase A/B/C plan and KPIs 1–2; the
 migrate-onto-nlqdb goal of
 [`GLOBAL-042`](./GLOBAL-042-dogfood-iteration-loop.md) and its iteration 001.
 The mission ([`END_GOAL.md`](../END_GOAL.md#mission)) and GLOBAL-042's
-iterate → measure → retro loop stand.
+iterate → retro → cleanup loop stand.
 
 - **Decision:** nlqdb is the autonomous DBA that **attaches** to the
   database a team already has and acts on it safely through one
@@ -31,9 +31,9 @@ iterate → measure → retro loop stand.
      `POST /v1/proposals/:id/apply|reject` via `@nlqdb/sdk`; MCP
      `nlqdb_list_proposals`, `nlqdb_apply_proposal`,
      `nlqdb_reject_proposal` ([`GLOBAL-003`](./GLOBAL-003-all-surfaces-one-pr.md)).
-     An agent may approve within the categories the owner enabled for
-     one-click apply — the human's ceiling, never above; the owner can
-     restrict agent approvals per category in `/app/dba`. A reject records
+     An agent may approve any proposal the owner could apply with one
+     click — the human's ceiling, never above; the owner can restrict
+     agent approvals per category in `/app/dba`. A reject records
      the reason given, for the playbook to learn from async.
   6. **Four onboarding doors, one first proposal within minutes:** (a) paste
      a connection string at nlqdb.com; (b) `npx nlqdb attach <connection-string>`;
@@ -44,16 +44,27 @@ iterate → measure → retro loop stand.
      distribution bet.
   7. **Data tiers (Postgres).** Tier 0 catalog — schema, constraints, FKs
      without indexes, `pg_stats` selectivity, sizes, `pg_settings`. Tier 1
-     workload — `pg_stat_statements` fingerprints (calls, mean/total time,
-     rows, cache hits), `pg_stat_user_tables`/`_indexes` (seq vs idx scans,
+     workload — `pg_stat_statements` fingerprints (calls, mean/total/stddev
+     time, rows, cache hits), `pg_stat_user_tables`/`_indexes` (seq vs idx scans,
      dead tuples, unused indexes); cumulative, so snapshot-and-diff over
      days. Tier 2 what-if — `EXPLAIN` + HypoPG where the host has it
      (Supabase, Neon; not RDS), else `pg_stats` heuristics and the verify
      window judges. Tier 3 truth — re-read Tier 1 for the same fingerprints
-     after apply → p95 delta → keep or revert. Sampled queries from the optional
-     SDK/MCP path add what a string cannot: real parameters, app latency. Roles: observe =
-     `pg_read_all_stats`; apply = `CREATE` / index ownership,
-     `CREATE INDEX CONCURRENTLY`. **D1:** Tier 1 = the sampled
+     after apply → p95 delta → keep, or revert if it is > 10 % worse
+     (`GLOBAL-041` KPI 3's regression bound). `pg_stat_statements` keeps
+     no percentiles, so the Postgres p95 is estimated per window as
+     mean + 1.65 σ from the diffed counters and labelled an estimate
+     ([pgMustard](https://www.pgmustard.com/blog/approximate-the-p99-of-a-query-with-pgstatstatements)). The verify window is 72 h on
+     both engines until the spike measures when each engine's counters
+     settle (Azure: 30 min–72 h). Roles: observe = `pg_read_all_stats` +
+     `SELECT` on the app's tables (`pg_stats` and `EXPLAIN` cover only
+     readable tables); apply = membership in the role that owns the tables
+     (Postgres lets only a table's owner create or drop its indexes),
+     `CREATE INDEX CONCURRENTLY`. That membership could also `ALTER`,
+     `TRUNCATE` or `DROP`; nlqdb runs under it only a proposal's DDL or its
+     stored inverse, each passing the kept `libpg_query` validator against
+     that proposal kind's verb set (index kinds: `CREATE`/`DROP INDEX`).
+     **D1:** Tier 1 = the sampled
      `d1QueriesAdaptiveGroups` analytics (query, rows read/written, time,
      [docs](https://developers.cloudflare.com/d1/observability/metrics-analytics/));
      Tiers 0/2 = `PRAGMA index_list`/`table_info` + `EXPLAIN QUERY PLAN`, no
@@ -69,7 +80,8 @@ iterate → measure → retro loop stand.
      [`GLOBAL-025`](./GLOBAL-025-north-star.md)):
      **KPI A** time-to-first-proposal after attach, target < 5 min.
      **KPI B** proposals applied with a measured p95 improvement, per
-     attached DB per 30 d (the former KPI 3). **KPI C** regressions
+     attached DB per 30 d (the former KPI 3), target > 0 on every attached
+     DB with a workload. **KPI C** regressions
      auto-reverted / regressions applied, target 100 % with 0 user action.
      KPIs 1–2 (first-insert inference, evolution) are retired. **Love
      gate:** ≥ 3 of the first ~10 founder-recruited builders return
