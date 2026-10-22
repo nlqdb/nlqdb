@@ -186,7 +186,7 @@ We make bad states unreachable, not caught. Before shipping any user-visible fea
 
 | Edge case | How it's unreachable |
 |---|---|
-| Schema mismatch | The write itself evolves the schema (`GLOBAL-041` Phase A: unseen field → `ADD COLUMN … NULL` in the insert's transaction); logical changes bump `schema_hash`. |
+| Schema mismatch | Hosted path only, until the `GLOBAL-043` deletion series: the write itself evolves the schema (unseen field → `ADD COLUMN … NULL` in the insert's transaction); logical changes bump `schema_hash`. |
 | Cache invalidation | Plan cache keyed by `(schema_hash, query_hash)`. Old keys LRU. |
 | Signup race | Idempotent on email. Second signup = sign-in. |
 | Double-charge | `Idempotency-Key` required on mutations; Stripe webhooks deduped. |

@@ -13,14 +13,7 @@ when-to-load:
 knowledge into a well-designed, queryable database schema any AI agent can
 use as a skill — and earns when agents/consumers pay to query it, with nlqdb
 taking a small, plainly-disclosed fee.
-**Status:** planned — first app built **on** the autonomous DBA (dogfood,
-founder decision 2026-09-04). Decisions locked 2026-08-05; **build gated on
-Phase A widen-on-write (`GLOBAL-041`)**; the `/ek` loop is paused until then.
-Shipped rails: EK-06 grant control plane (`/v1/grants` mint/list/revoke,
-SDK `mintGrant`/`listGrants`/`revokeGrant`, CLI `nlq grants list/revoke`,
-session-only); the private `experts` repo (pilot interview CLI + methodology
-spec, boundary guard) per SK-EKP-003. No MCP/elements grant surface by
-design: a control-plane action never rides a bearer.
+**Status:** Retired by GLOBAL-043 — deletion PR pending; no new work
 
 **Relationship to `GLOBAL-041`.** EK is the first real application built on
 the autonomous DBA. Its data layer — packs, interview transcripts, grants —

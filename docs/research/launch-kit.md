@@ -59,7 +59,7 @@ framing — instead of a surprise in the comments.
 
 ## 2. Angles (candidate hooks — founder picks; all verified true)
 
-Lead positioning is **nlqdb — your autonomous DBA** (`GLOBAL-041`);
+Lead positioning is **nlqdb — your autonomous DBA** (`GLOBAL-043`);
 an angle that leads elsewhere needs a deliberate exception, not drift.
 **That exception exists (founder, 2026-08-08):** the Show HN may **lead
 with the C story** — the agent-operated, $0-stack company — carrying angle
@@ -74,7 +74,7 @@ autonomous-DBA story; this is one post's framing.
   data modeling — the first insert creates the schema, the DBA evolves and
   optimizes it, every change previewed with 1-click undo; plain English is
   the interface. Honesty gates: FSL-1.1, never "Apache-2.0 today"
-  (GLOBAL-019); demoable only once Phase A is live (KPI 1 measured).
+  (GLOBAL-019); demoable only once KPI B > 0 (`GLOBAL-043`).
 - **B. The interface angle — a backend that doesn't exist** — HTML
   components asking for data in plain English; anon first answer in <60 s,
   no signup.

@@ -1,7 +1,7 @@
 # Reach track — search-moment interception + coding-agent injection
 
-Marketing lane — **paused per `GLOBAL-041`**: the
-`/reach` loop is deleted, existing pages stay live. Decision record
+Marketing lane — **paused per `GLOBAL-043`**; the `/reach` loop is
+deleted. Decision record
 [SK-PIVOT-015](../../features/agent-memory-pivot/decisions/SK-PIVOT-015-reach-track.md).
 
 ## The thesis (why this track exists)

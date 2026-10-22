@@ -11,10 +11,10 @@ when-to-load:
 
 # Feature: Engine Migration
 
-**One-liner:** Phase 3 reshape loop — daily workload analyser creates Tinybird Pipes for hot ClickHouse fingerprints and writes advisory audit rows for hot Postgres ones; cross-engine migration still planned.
-**Status:** partial — intra-engine reshape live (`SK-MIGRATE-001..006`); optimizer proposals + dashboard + 1-click apply/undo are `GLOBAL-041` Phase B; cross-engine migration (PG ↔ ClickHouse) is Phase C.
+**One-liner:** Reshape loop — daily workload analyser creates Tinybird Pipes for hot ClickHouse fingerprints and writes advisory audit rows for hot Postgres ones; cross-engine migration still planned.
+**Status:** partial — intra-engine reshape live (`SK-MIGRATE-001..006`); the attach loop's proposals, apply / verify / revert and KPIs A–C are `GLOBAL-043` roadmap item 1; engine placement is its last playbook kind.
 **Owners (code):** `apps/api/src/workload-analyser/**`, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql`
-**Cross-refs:** `multi-engine-adapter/FEATURE.md` `SK-MULTIENG-003` (the rule this feature operationalises) · `events-pipeline/FEATURE.md` `SK-EVENTS-009` (the `query_log` Data Source the analyser reads) · `plan-cache/FEATURE.md` `SK-PLAN-002` (cache key must outlive reshape) · `docs/phase-plan.md §5` (Migration Orchestrator + Workload Analyzer) · `docs/phase-plan.md §5` (Phase 3 exit criteria — auto-migration is the gate) · `docs/performance.md §3.1` (`nlqdb.workload_analyser.*` spans)
+**Cross-refs:** `multi-engine-adapter/FEATURE.md` `SK-MULTIENG-003` (the rule this feature operationalises) · `events-pipeline/FEATURE.md` `SK-EVENTS-009` (the `query_log` Data Source the analyser reads) · `plan-cache/FEATURE.md` `SK-PLAN-002` (cache key must outlive reshape) · `GLOBAL-043` (roadmap + exit gate) · `docs/performance.md §3.1` (`nlqdb.workload_analyser.*` spans)
 
 ## Touchpoints — read this feature before editing
 
@@ -22,7 +22,7 @@ when-to-load:
 - `packages/db/src/clickhouse-tinybird/pipe-management.ts` (Tinybird Pipes management API owner per `GLOBAL-021`)
 - `apps/api/src/scheduled/jobs.ts` — the `workload_analyser` row (SK-HDC-023 owns the trigger)
 - `apps/api/migrations/0008_workload_analyser_audit.sql`
-- `apps/api/src/dba-changes.ts`, `apps/web/src/pages/app/dba.astro`, `apps/web/src/components/dba/**` — the change ledger and `/app/dba` v0, read-only; Phase B adds proposals and apply/undo here. Surface gap (`GLOBAL-003`): `client.listChanges` and the web page have it; `nlq` and MCP don't yet.
+- `apps/api/src/dba-changes.ts`, `apps/web/src/pages/app/dba.astro`, `apps/web/src/components/dba/**` — the change ledger and `/app/dba` v0, read-only; `GLOBAL-043` adds proposals, apply / reject and revert here. Surface gap (`GLOBAL-003`): `client.listChanges` and the web page have it; `nlq` and MCP don't yet.
 
 ## Decisions
 
@@ -53,8 +53,8 @@ when-to-load:
 
 - **Decision:** The workload analyser emits typed proposals for every engine — `create_index`, `drop_index`, `retype_column`, `drop_column`, `rename_column`, `move_to_engine`, `clickhouse_pipe_create` — each carrying its reasoning, expected impact (affected fingerprints, predicted p95 delta) and its **recorded inverse**. Proposals land in the optimizer dashboard; apply is one click, undo is the inverse, both under `SK-HDC-010` timeouts with an `Idempotency-Key` (`GLOBAL-005`) and an OTel span (`GLOBAL-014`). Logical proposals bump `schema_hash` (`SK-SCHEMA-009`); physical ones never do. Auto-apply is an **opt-in policy added later**, defaulting to physical, non-destructive proposals only.
 - **Core value:** Bullet-proof, Honest latency, Effortless UX
-- **Why:** An advisor tab nobody reads is what every DB host already ships (`GLOBAL-041`); the value is in acting — previewed and undoable. Recording the inverse before apply is what makes Postgres DDL from an automated path safe.
-- **Consequence in code:** `proposal.kind` is the discriminant of one typed union compiled by one DDL compiler (mirrors `compile-ddl.ts`); adding a kind = a union member, a compiler arm and an inverse. The first Postgres kind is `create_index` (replacing the empty advisory audit row the v1 cron wrote). Reviewers reject any apply path without a recorded inverse. KPI 3 (`GLOBAL-041`, optimizer yield) is measured from the applied-history table.
+- **Why:** An advisor tab nobody reads is what every DB host already ships (`GLOBAL-043`); the value is in acting — previewed and undoable. Recording the inverse before apply is what makes Postgres DDL from an automated path safe.
+- **Consequence in code:** `proposal.kind` is the discriminant of one typed union compiled by one DDL compiler (mirrors `compile-ddl.ts`); adding a kind = a union member, a compiler arm and an inverse. The first Postgres kind is `create_index` (replacing the empty advisory audit row the v1 cron wrote). Reviewers reject any apply path without a recorded inverse. KPI B (`GLOBAL-043`) is measured from the applied-history table.
 - **Alternatives rejected:**
   - Advisory-only Postgres (the v1 rule) — surfaced nothing anyone acted on.
   - Auto-apply everything from the cron — destructive logical changes need the one-click gate until the KPI-3 regression floor is proven.
@@ -96,7 +96,7 @@ when-to-load:
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
-- **GLOBAL-041** — Autonomous DBA; this feature is the optimizer (Phase B) and engine placement (Phase C).
+- **GLOBAL-043** — Attach-first: the autonomous DBA acts on the database a team already has; this feature owns the loop's proposals, apply / revert and KPIs A–C.
 - **GLOBAL-004** — The logical schema is inferred and evolves in both directions; physical layout reshapes freely.
   - *In this feature:* `SK-MIGRATE-004` is the assertion that the cron honours the rule on every Pipe creation — `schema_hash` is re-read after the reshape and equality is asserted. Drift aborts the reshape.
 - **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`.

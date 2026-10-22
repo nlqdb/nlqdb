@@ -19,10 +19,7 @@ agents" is nlqdb's lead wedge. Replaced by the autonomous-DBA bet
 (`GLOBAL-041`); its worksheets, research and positioning decisions are
 archived. What survives is the set of rails the expert-knowledge platform
 builds on.
-**Status:** prior bet — rails maintained only as far as EK needs them
-(`agent_memory_v1` seed, `buildRememberInsert`, pack-runner, RLS); no new
-slices. `/reach` continues as the marketing lane on
-[`docs/research/reach/INDEX.md`](../../research/reach/INDEX.md).
+**Status:** Retired by GLOBAL-043 — deletion PR pending; no new work
 **Owners (code):** `apps/api/src/db-create/presets/agent-memory-v1.ts`,
 `apps/api/src/memory/**`, `apps/api/src/pack-runner/**`,
 `tools/docs-memory/**`, `packages/mcp/src/server.ts` (`nlqdb_remember` /

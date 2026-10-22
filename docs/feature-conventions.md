@@ -66,7 +66,9 @@ still-live substance forward), remove the old shard/entry, and repoint every
 reference so nothing cites the deleted ID. No tombstone stubs, no
 "replaced-by" status lines. Git history keeps the old body; a gap in the
 sequence just means a decision was removed. Whole abandoned bets move under
-`docs/archive/` (`git mv`, no live doc links into it).
+`docs/archive/` (`git mv`, no live doc links into it). One exception: a
+superseding GLOBAL may add a one-line `Status:` pointer on the GLOBAL it
+supersedes, whose body stays as history.
 
 ## 3. FEATURE.md template
 

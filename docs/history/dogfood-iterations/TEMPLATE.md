@@ -5,9 +5,12 @@ Copy this file to `NNN-<slug>.md` to open an iteration of
 §1, §4, §5 are the iteration's own judgment; §2, §3, §6–§8 are mechanics every
 iteration runs the same way — instantiate them, do not rewrite them. The file
 is the execution brief; the retro (§7) is appended when the iteration ends.
+Since [`GLOBAL-043`](../../decisions/GLOBAL-043-attach-first-autonomous-dba.md),
+§1–§6 are the retired migrate-onto-nlqdb shape of iteration 001: a new brief
+takes its §1–§5 from [`002`](./002-rateme12-attach.md) and only §7–§8 from here.
 
 **Status:** brief (not started) → running → retro written → cleaned up ·
-**Governs:** `GLOBAL-042` · **Measures:** [`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md) Phase A KPI 1
+**Governs:** `GLOBAL-042` · **Measures:** `GLOBAL-043` KPIs A–C
 
 ## 1. Goal
 
@@ -93,7 +96,7 @@ not fix** inside the iteration.
 - **Dates / wall-clock hours.**
 - **Quarantine list** (`PATHS.txt`, verbatim).
 - **What went right.** / **What went wrong.**
-- **Numbers:** inserts attempted / landed; unseen-field writes hit / missed (KPI 1 rate); `schema_mismatch`, `confirm_expired`, `rate_limited` counts; manual steps (list each); tables and columns nlqdb created; p50/p95 insert latency as seen by the app.
+- **Numbers:** `GLOBAL-043` KPIs A–C; manual steps (list each); every change nlqdb applied or reverted, with its before/after.
 - **Post-hoc schema comparison** (read only now): nlqdb's schema vs the real one — as good / better / worse, and why, per table.
 - **Decisions to rethink** (GLOBAL / SK-IDs by ID) — edited per P1/P3.
 - **The one change for iteration NNN+1.**

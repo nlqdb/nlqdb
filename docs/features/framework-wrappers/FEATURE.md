@@ -17,7 +17,7 @@ when-to-load:
 # Feature: Framework wrappers
 
 **One-liner:** Per-framework typed wrappers over `<nlq-data>` + `<nlq-action>` — React, Next, Vue, Nuxt, Svelte, SvelteKit, Astro, Solid.
-**Status:** partial (Phase 2 — drop-in components shipped; idiomatic data composables tracked under Open questions)
+**Status:** Retired by GLOBAL-043 — deletion PR pending; no new work
 **Owners (code):** `packages/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}/**`
 **Cross-refs:** [`elements/FEATURE.md`](../elements/FEATURE.md) (the underlying `<nlq-data>` web component) · [`sdk/FEATURE.md`](../sdk/FEATURE.md) (server-side calls inside framework adapters) · `docs/progress.md §0` (surface status matrix) · `docs/architecture.md §3.1` (matrix row per surface).
 

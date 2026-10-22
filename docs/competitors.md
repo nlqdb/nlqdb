@@ -1,6 +1,6 @@
 # Competitor Landscape
 
-A scan of the products nlqdb competes with, directly or adjacently, by category (the summary table ranks threat vectors). Pricing/features are each vendor's public positioning and change often — treat as order-of-magnitude. nlqdb sits between four adjacent categories — managed Postgres, text-to-SQL, AI BI, and agent memory — and no entrant occupies its own: the autonomous DBA that infers, evolves and optimizes the schema from usage (`GLOBAL-041`).
+A scan of the products nlqdb competes with, directly or adjacently, by category (the summary table ranks threat vectors). Pricing/features are each vendor's public positioning and change often — treat as order-of-magnitude. nlqdb sits between four adjacent categories — managed Postgres, text-to-SQL, AI BI, and agent memory — and no entrant occupies its own: the autonomous DBA that attaches to a team's own database and applies, verifies and reverts changes on it (`GLOBAL-043`).
 
 ---
 

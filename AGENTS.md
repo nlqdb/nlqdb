@@ -32,8 +32,7 @@ Numbers: [`docs/scorecard.md`](docs/scorecard.md).
 Four pillars per
 [`GLOBAL-025`](docs/decisions/GLOBAL-025-north-star.md): **engine
 quality** (`GLOBAL-043`), **onboarding**, **UX**, **performance**. Every PR
-advances ≥ 1 AND degrades 0 — §8 item 7. The bet: **great on free LLMs ⇒ invincible on
-frontier LLMs** — scaffolding compounds with the model; LLM strategy per
+advances ≥ 1 AND degrades 0 — §8 item 7. LLM strategy per
 [`GLOBAL-026`](docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
 
 ## 2. Six behavioral principles (non-negotiable)
@@ -171,42 +170,42 @@ supported; else read manually before editing.)
 | `apps/api/src/run/**`, the `POST /v1/run` raw-SQL escape hatch (`GLOBAL-015`) | `docs/features/sdk/FEATURE.md` (`SK-SDK-009`) + `docs/features/cli/FEATURE.md` + `docs/features/sql-allowlist/FEATURE.md` |
 | write/DDL diff preview, `confidence`, response `trace` block | `docs/features/trust-ux/FEATURE.md` |
 | `packages/errors/**`, `apps/api/src/error-envelope.ts`, any error copy or new error code | `docs/features/error-taxonomy/FEATURE.md` |
-| `apps/api/src/db-create/**`, `apps/api/src/ask/sql-validate-ddl.ts`, `apps/api/src/scheduled/**` (cron job table) | `docs/features/hosted-db-create/FEATURE.md` |
+| `apps/api/src/db-create/**`, `apps/api/src/ask/sql-validate-ddl.ts`, `apps/api/src/scheduled/**` (cron job table) | retired (`GLOBAL-043`) — `docs/features/hosted-db-create/FEATURE.md` |
 | `apps/api/src/ask/plan-cache.ts`, plan storage | `docs/features/plan-cache/FEATURE.md` |
 | `packages/llm/**`, model routing, prompts | `docs/features/llm-router/FEATURE.md` |
-| `tools/eval/**`, `.github/workflows/quality-eval-*.yml` (BIRD/Spider NL-accuracy harness) | `docs/features/quality-eval/FEATURE.md` |
+| `tools/eval/**`, `.github/workflows/quality-eval-*.yml` (BIRD/Spider NL-accuracy harness) | retired (`GLOBAL-043`) — `docs/features/quality-eval/FEATURE.md` |
 | `apps/api/src/ask/sql-validate.ts`, SQL allowlist | `docs/features/sql-allowlist/FEATURE.md` |
 | `packages/db/**` | `docs/features/db-adapter/FEATURE.md` |
 | `apps/api/src/db-connect/**`, `apps/api/src/ask/build-deps.ts`, `packages/db/src/clickhouse-byo.ts` (BYO — egress + sealed-secret; security-sensitive) | `docs/features/byo-connect/FEATURE.md` |
 | `packages/db/src/clickhouse-tinybird/**`, `packages/db/src/introspect-clickhouse.ts` (non-Postgres engines) | `docs/features/multi-engine-adapter/FEATURE.md` |
-| anything touching `schema_hash`, schema inference / evolution (`GLOBAL-041` Phase A) | `docs/features/schema-widening/FEATURE.md` |
+| anything touching `schema_hash`, schema inference / evolution, `apps/api/src/insert/**` | retired (`GLOBAL-043`) — `docs/features/schema-widening/FEATURE.md` |
 | any `POST`/`PATCH`/`DELETE` handler | `docs/features/idempotency/FEATURE.md` |
 | `packages/otel/**`, new spans / metrics | `docs/features/observability/FEATURE.md` · `docs/features/byo-otel/FEATURE.md` |
 | `apps/api/src/stripe/**`, Stripe webhooks | `docs/features/stripe-billing/FEATURE.md` |
 | `apps/api/src/byollm-account.ts`, `apps/api/src/ask/byollm.ts`, `apps/api/src/llm-router.ts`, `model` preset / BYOLLM / hosted-premium meter | `docs/features/premium-tier/FEATURE.md` |
-| `packages/llm/src/frontier/**` (founder-funded lane) | `docs/features/frontier-keys/FEATURE.md` |
+| `packages/llm/src/frontier/**` (founder-funded lane) | retired (`GLOBAL-043`) — `docs/features/frontier-keys/FEATURE.md` |
 | `apps/events-worker/**`, `packages/events/**`, `apps/api/src/events-feature.ts`, `apps/api/src/ask/demand-signal.ts` | `docs/features/events-pipeline/FEATURE.md` |
 | `apps/api/src/workload-analyser/**`, optimizer proposals / dashboard / apply surfaces, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql` | `docs/features/engine-migration/FEATURE.md` + `GLOBAL-043` |
 | rate-limit middleware (`apps/api/src/{ask/rate-limit,anon-rate-limit,anon-global-cap}.ts`, `principal.ts` `rateLimitBucketKey`) | `docs/features/rate-limit/FEATURE.md` |
-| `apps/api/src/{principal,anon-rate-limit,anon-global-cap,turnstile}.ts`, `apps/web/src/lib/{anon,anon-adopt,handoff,prompt-storage,turnstile,api}.ts`, `apps/web/src/components/CreateForm.tsx` | `docs/features/anonymous-mode/FEATURE.md` |
-| `apps/api/src/admin/**`, `apps/api/src/pmf-survey.ts`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`, `apps/web/src/{lib/pmf-survey.ts,components/chat/PmfSurveyCard.tsx}` | `docs/features/gtm-metrics/FEATURE.md` |
+| `apps/api/src/{principal,anon-rate-limit,anon-global-cap,turnstile}.ts`, `apps/web/src/lib/{anon,anon-adopt,handoff,prompt-storage,turnstile,api}.ts`, `apps/web/src/components/CreateForm.tsx` | retired (`GLOBAL-043`) — `docs/features/anonymous-mode/FEATURE.md` |
+| `apps/api/src/admin/**`, `apps/api/src/pmf-survey.ts`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`, `apps/web/src/{lib/pmf-survey.ts,components/chat/PmfSurveyCard.tsx}` | retired (`GLOBAL-043`) — `docs/features/gtm-metrics/FEATURE.md` |
 | `cli/**` | `docs/features/cli/FEATURE.md` |
 | `packages/elements/**` | `docs/features/elements/FEATURE.md` |
 | `packages/sdk/**` | `docs/features/sdk/FEATURE.md` |
-| `packages/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}/**` | `docs/features/framework-wrappers/FEATURE.md` |
-| `packages/nlqdb-swift/**` | `docs/features/sdk-swift/FEATURE.md` |
+| `packages/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}/**` | retired (`GLOBAL-043`) — `docs/features/framework-wrappers/FEATURE.md` |
+| `packages/nlqdb-swift/**` | retired (`GLOBAL-043`) — `docs/features/sdk-swift/FEATURE.md` |
 | `packages/mcp/**`, `apps/mcp/**` | `docs/features/mcp-server/FEATURE.md` |
 | `apps/web/**` (onboarding, anonymous mode) | `docs/features/web-app/FEATURE.md` |
-| `apps/web/src/data/competitors.ts`, `apps/web/src/pages/vs/**`, `apps/web/src/pages/llms.txt.ts` | `docs/features/comparison-pages/FEATURE.md` |
-| `apps/web/src/data/solve.ts`, `apps/web/src/pages/solve/**` | `docs/features/solve-pages/FEATURE.md` |
-| `apps/web/src/data/blog.ts`, `apps/web/src/pages/blog/**`, `apps/web/src/lib/inline-md.ts` | `docs/features/blog/FEATURE.md` |
-| prior bet — rails only: `apps/api/src/db-create/presets/agent-memory-v1.ts`, `apps/api/src/memory/**`, `tools/docs-memory/**`, `nlqdb_remember`/`nlqdb_recall` MCP tools | `docs/features/agent-memory-pivot/FEATURE.md` (kept only as far as expert-knowledge-platform needs them) |
-| expert-knowledge platform ("Become AI" marketplace): `docs/features/expert-knowledge-platform/**`, `apps/api/src/grants.ts` + `/v1/grants` routes (EK-06 grant control plane; the product surface lives partly in a private repo per `SK-EKP-003`) | `docs/features/expert-knowledge-platform/FEATURE.md` |
+| `apps/web/src/data/competitors.ts`, `apps/web/src/pages/vs/**`, `apps/web/src/pages/llms.txt.ts` | retired (`GLOBAL-043`) — `docs/features/comparison-pages/FEATURE.md` |
+| `apps/web/src/data/solve.ts`, `apps/web/src/pages/solve/**` | retired (`GLOBAL-043`) — `docs/features/solve-pages/FEATURE.md` |
+| `apps/web/src/data/blog.ts`, `apps/web/src/pages/blog/**`, `apps/web/src/lib/inline-md.ts` | retired (`GLOBAL-043`) — `docs/features/blog/FEATURE.md` |
+| `apps/api/src/db-create/presets/agent-memory-v1.ts`, `apps/api/src/memory/**`, `tools/docs-memory/**`, `nlqdb_remember`/`nlqdb_recall` MCP tools | retired (`GLOBAL-043`) — `docs/features/agent-memory-pivot/FEATURE.md` |
+| expert-knowledge platform ("Become AI" marketplace): `docs/features/expert-knowledge-platform/**`, `apps/api/src/grants.ts` + `/v1/grants` routes | retired (`GLOBAL-043`) — `docs/features/expert-knowledge-platform/FEATURE.md` |
 | `apps/web/src/onboarding/**`, signup flow, first-query path | `docs/features/onboarding/FEATURE.md` |
 | `apps/docs/**`, `docs.nlqdb.com` Starlight site | `docs/features/docs-site/FEATURE.md` |
 | `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `docs/features/ci-permissions/FEATURE.md` |
 | `tests/{personas,opencheck,e2e}/**`, `examples/**/e2e/**`, `.github/workflows/{e2e*,_e2e-*}.yml`, `packages/nlqdb-{rb/spec,rs/tests}/e2e/**` | `docs/features/e2e-coverage/FEATURE.md` |
-| `apps/api/src/icp-*.ts`, `docs/research/automated-icp-validation-plan*.md`, `docs/research/icp-evidence-*.md` | `docs/features/icp-mining/FEATURE.md` |
+| `apps/api/src/icp-*.ts`, `docs/research/automated-icp-validation-plan*.md`, `docs/research/icp-evidence-*.md` | retired (`GLOBAL-043`) — `docs/features/icp-mining/FEATURE.md` |
 | `tools/stranger-test/**`, `scripts/stranger-test.sh`, `scripts/flow-005-walk.sh`, `scripts/flow-005-stdio-walk.sh` | `docs/features/stranger-test/FEATURE.md` |
 
 ## 6. Long-form reference docs (load on demand)
@@ -217,7 +216,7 @@ supported; else read manually before editing.)
 | [`docs/END_GOAL.md`](docs/END_GOAL.md) | The finished product, flow by flow — **top-ranked**: outranks P1–P6 and every decision doc. |
 | [`docs/feature-conventions.md`](docs/feature-conventions.md) | How `docs/features/` is structured. Read before adding/editing a feature. |
 | [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, tech-stack rationale, risks. |
-| [`docs/phase-plan.md`](docs/phase-plan.md) | **Canonical phase plan** — per-phase items, exit gates, the §6 monetization + scaling trigger. |
+| [`docs/phase-plan.md`](docs/phase-plan.md) | Roadmap pointer (`GLOBAL-043`) + the §6 monetization + scaling trigger. |
 | [`docs/runbook.md`](docs/runbook.md) | Operations: env, secrets, deploy, recovery; design-partner ref (§10). |
 | [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview script, inbound triage SLA. |
 | [`docs/performance.md`](docs/performance.md) | Span/metric/label catalog + perf goals. |
@@ -226,9 +225,9 @@ supported; else read manually before editing.)
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
 | [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — threat matrix + gap analysis. |
 | [`docs/history/`](docs/history/) | Lessons learnt + [`founder-actions-log.md`](docs/history/founder-actions-log.md) (every human operator action) — one doc per topic. |
-| [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits, marketing, Phase 1 exit, open questions. |
+| [`docs/research/`](docs/research/) | Strategic research. |
 | [`docs/research/acquisition-channels.md`](docs/research/acquisition-channels.md) + [`-mechanisms.md`](docs/research/acquisition-channels-mechanisms.md) | Acquisition-channel ledger + its mechanism-notes shard. |
-| [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature (e.g. semantic-layer; the founder's data-moat direction). Promote once decisions are firm. |
+| [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature. |
 
 Each `FEATURE.md`'s `Status:` line is the canonical feature status.
 
@@ -259,8 +258,9 @@ lint` / `format` check 0 files (exit 1) — pass explicit paths. CI is unaffecte
 5. Every mutating endpoint accepts `Idempotency-Key` (`GLOBAL-005`).
 6. New capability added → SDK + CLI + MCP + elements all updated, or
    gap tracked in the affected feature (`GLOBAL-003`).
-7. PR body names the `GLOBAL-025` KPI advanced **and** the §6.1 readiness
-   row it moves (or `none`); no other KPI degrades. The
+7. PR body names the `GLOBAL-025` KPI advanced **and** the `GLOBAL-043`
+   roadmap item it moves (1 spike/attach, 2 deletion, 3 playbook) or `none`;
+   no other KPI degrades. The
    [PR template](.github/pull_request_template.md) pre-fills the line.
 
 ## 9. Workflow

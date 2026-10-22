@@ -14,9 +14,9 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
   it claims.
 - `docs/blocked-by-human.md`.
 - [`.claude/commands/daily.md`](daily.md) — the prompt under audit.
-- [`GLOBAL-041`](../../docs/decisions/GLOBAL-041-autonomous-dba.md) — the
-  KPIs, floors and phase gates the week is measured against.
-- [`GLOBAL-042`](../../docs/decisions/GLOBAL-042-dogfood-iteration-loop.md) + the current iteration brief [`001-rateme12.md`](../../docs/history/dogfood-iterations/001-rateme12.md) — the goal; did the week move its §6.1 readiness table?
+- [`GLOBAL-043`](../../docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md) — the
+  KPIs A–C, love gate and roadmap the week is measured against; the dogfood
+  brief is [`002-rateme12-attach.md`](../../docs/history/dogfood-iterations/002-rateme12-attach.md).
 
 ## The audit — eight checks, worst finding first
 
@@ -46,7 +46,7 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
 7. **Public-roadmap truth (`README.md § Roadmap`).** The README is the one
    roadmap strangers read, and no daily loop owns it. Each week: tick/untick
    markers against shipped reality, and confirm the "Now"/"Next" sections
-   still name the live focus (`GLOBAL-041` Phase A). A marker claiming ✓
+   still name the live focus (`GLOBAL-043` roadmap). A marker claiming ✓
    for something dark is a P6 honesty bug, same class as a phantom
    capability.
 
@@ -66,9 +66,9 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
    agent-movable number + a one-line why, chosen from the audit. If the
    founder wrote one this week, keep theirs — never overwrite a founder
    edit. **Default: the number of the first unfinished step in `daily.md`
-   step 2's fixed sequence** (role cap → structured insert → rateme12 §5b →
-   cutover → KPI 3 on rateme12); once the founder's builders are recruited,
-   **returning builders in week 2 (n/10)** — the love gate (`GLOBAL-041`).
+   step 2's fixed sequence** (`GLOBAL-043` roadmap items 1 → 2 → 3); once the
+   founder's builders are recruited, **returning builders in week 2 (n/10)** —
+   the love gate (`GLOBAL-043`).
    Agent-movable means **movable at $0** (`docs/cost-ladder.md` — no spend
    while there are no paying customers): a focus whose only lever needs
    founder spend or founder-held credentials is not agent-movable. Pick
@@ -76,7 +76,7 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
    dark** (levers exhausted or externally blocked) — a focus no daily run
    can pull scatters the week into meta work and measurement churn.
    Acquisition numbers are never the focus while the lane is paused
-   (`GLOBAL-041`), except the love-gate count above.
+   (`GLOBAL-043`), except the love-gate count above.
 2. **Overwrite `docs/weekly-review.md`** (current-state, ≤ 4 KB, no
    accretion): one short paragraph per check, worst finding first, each
    naming its evidence (PR #s, scorecard rows, URLs).
