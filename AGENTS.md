@@ -10,37 +10,28 @@ edit. Per-area `AGENTS.md` files narrow this guide to their directory.
 It exists for the [mission](docs/END_GOAL.md#mission): encapsulate the
 trial-and-error journey every company walks to a good database infrastructure.
 
-Build a real app from day one with **no data modeling** — the DBA infers the
-schema from inserts and reads, evolves it, optimizes it, and shows it in a
-dashboard with 1-click apply/undo. NL→SQL is the interface, not the product.
-Bet: [`GLOBAL-041`](docs/decisions/GLOBAL-041-autonomous-dba.md).
+nlqdb attaches to the database a team already has (Postgres; D1 second)
+and runs one deterministic loop — observe → propose → apply → verify →
+revert — never on the app's request path, no LLM in any hot path. Bet:
+[`GLOBAL-043`](docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md).
 
 ### Build for this
 
-An agent will build **rateme12.nlqdb.com** on nlqdb's public surfaces only
-(`@nlqdb/sdk`, `nlq`, MCP), schema inferred from the app's own writes, judged
-as good as or better than the hand-made one —
-[`GLOBAL-042`](docs/decisions/GLOBAL-042-dogfood-iteration-loop.md), measured
-by `GLOBAL-041` KPI 1 (first-insert inference ≥ 95 %). Every engine PR asks:
-does this bring the readiness table in
-[`001-rateme12.md` §6.1](docs/history/dogfood-iterations/001-rateme12.md#61-readiness-gate--all-five-green-before-5b-step-6)
-closer to green? Name the row in the PR body. That table is the work queue —
-each row carries its owner feature doc and today-status. What those rows add
-up to, flow by flow, is [`docs/END_GOAL.md`](docs/END_GOAL.md) — the
-top-ranked doc: it outranks P1–P6 and every decision doc; whatever contradicts
-it is the bug, fixed in the same PR.
-
-No LLM on the write path; depth only. Acquisition paused but for ~10
-founder-recruited builders after the rateme12 cutover; Show HN waits on the
-love gate (`GLOBAL-041`). The moat: the DBA **optimizing for real, with
-observability** (KPI 3 + dashboard). Numbers:
-[`docs/scorecard.md`](docs/scorecard.md).
+The work queue is `GLOBAL-043`'s roadmap, run by `/daily` step 2: a 2-week
+spike on a founder-picked Postgres that applies one index and measures its
+p95, alongside attaching to the real rateme12's D1
+([`002`](docs/history/dogfood-iterations/002-rateme12-attach.md)). Every
+engine PR names the KPI (A, B or C) it moves. What the loop adds up to,
+flow by flow, is [`docs/END_GOAL.md`](docs/END_GOAL.md) — the top-ranked doc:
+it outranks P1–P6 and every decision doc; whatever contradicts it is the
+bug, fixed in the same PR. Depth only; Show HN waits on the love gate.
+Numbers: [`docs/scorecard.md`](docs/scorecard.md).
 
 ### North-star — what every PR moves
 
 Four pillars per
 [`GLOBAL-025`](docs/decisions/GLOBAL-025-north-star.md): **engine
-quality** (`GLOBAL-041`), **onboarding**, **UX**, **performance**. Every PR
+quality** (`GLOBAL-043`), **onboarding**, **UX**, **performance**. Every PR
 advances ≥ 1 AND degrades 0 — §8 item 7. The bet: **great on free LLMs ⇒ invincible on
 frontier LLMs** — scaffolding compounds with the model; LLM strategy per
 [`GLOBAL-026`](docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
@@ -195,7 +186,7 @@ supported; else read manually before editing.)
 | `apps/api/src/byollm-account.ts`, `apps/api/src/ask/byollm.ts`, `apps/api/src/llm-router.ts`, `model` preset / BYOLLM / hosted-premium meter | `docs/features/premium-tier/FEATURE.md` |
 | `packages/llm/src/frontier/**` (founder-funded lane) | `docs/features/frontier-keys/FEATURE.md` |
 | `apps/events-worker/**`, `packages/events/**`, `apps/api/src/events-feature.ts`, `apps/api/src/ask/demand-signal.ts` | `docs/features/events-pipeline/FEATURE.md` |
-| `apps/api/src/workload-analyser/**`, optimizer proposals / dashboard / apply surfaces, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql` | `docs/features/engine-migration/FEATURE.md` + `GLOBAL-041` |
+| `apps/api/src/workload-analyser/**`, optimizer proposals / dashboard / apply surfaces, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql` | `docs/features/engine-migration/FEATURE.md` + `GLOBAL-043` |
 | rate-limit middleware (`apps/api/src/{ask/rate-limit,anon-rate-limit,anon-global-cap}.ts`, `principal.ts` `rateLimitBucketKey`) | `docs/features/rate-limit/FEATURE.md` |
 | `apps/api/src/{principal,anon-rate-limit,anon-global-cap,turnstile}.ts`, `apps/web/src/lib/{anon,anon-adopt,handoff,prompt-storage,turnstile,api}.ts`, `apps/web/src/components/CreateForm.tsx` | `docs/features/anonymous-mode/FEATURE.md` |
 | `apps/api/src/admin/**`, `apps/api/src/pmf-survey.ts`, `apps/web/src/pages/app/admin.astro`, `apps/web/src/components/admin/**`, `apps/web/src/lib/attribution.ts`, `apps/web/src/{lib/pmf-survey.ts,components/chat/PmfSurveyCard.tsx}` | `docs/features/gtm-metrics/FEATURE.md` |

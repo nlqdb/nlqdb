@@ -1,9 +1,8 @@
 # End goal — nlqdb, finished
 
-The autonomous DBA as the user meets it — every phase the docs plan, no phase
-labels in the flow. Shaping every row:
-[`GLOBAL-041`](decisions/GLOBAL-041-autonomous-dba.md),
-[`GLOBAL-042`](decisions/GLOBAL-042-dogfood-iteration-loop.md),
+The autonomous DBA as the user meets it, attached to the database they
+already run — no phase labels in the flow. Shaping every row:
+[`GLOBAL-043`](decisions/GLOBAL-043-attach-first-autonomous-dba.md),
 [`GLOBAL-025`](decisions/GLOBAL-025-north-star.md).
 
 ## How agents use this doc
@@ -34,63 +33,70 @@ never visits, signups or impressions.
 
 ## Architecture — simple and scalable
 
-The DBA loop — infer → evolve → optimize → show/apply/undo (`GLOBAL-041`) —
+The DBA loop — observe → propose → apply → verify → revert (`GLOBAL-043`) —
 runs on one design, never on patches. **Patch-on-patch**: a fix or feature that
 adds a conditional, layer, flag, table or special case on top of existing
 machinery instead of changing the machinery. Faced with one: stop, re-derive
 the simplest design that serves the whole loop, implement that, delete what it
 replaces. **Scalable**: that one design holds at 1 table and 1 000 tables,
-1 tenant and 10 k tenants — no per-scale rewrite, no per-tenant branch.
+1 tenant and 10 k tenants, Postgres and D1 — no per-scale rewrite, no
+per-tenant or per-engine branch; an engine adds an observer and an apply
+call behind the `packages/db` seam, nothing else.
 
 ## Personas & entry points
 
-- **Solo builder** ([P1](research/personas.md)) — enters at `npm i @nlqdb/sdk`, not a migration file. Wins: production traffic, no `CREATE TABLE`.
-- **The building agent** (`GLOBAL-042`) — builds on public surfaces only, first [rateme12](history/dogfood-iterations/001-rateme12.md). Wins: the inferred schema beats the hand-made one.
-- **The fixer** — any agent that changes nlqdb so a build on it can proceed, including `/daily` and the next dogfood iteration's one change. Before it designs, it re-reads this doc and holds the whole loop and the four pillars in [`GLOBAL-025`](decisions/GLOBAL-025-north-star.md): engine quality, onboarding, UX, performance. The change advances at least one and leaves the other three at their floors; which pillar moves, and the floor that would show a drop, are named before code. It designs for leverage: what already exists, which category this issue is an instance of, what the next one of that kind will cost, then the simplest change to the machinery the loop already runs on. Category and N+1 are written before code; the three-line verdict is reconciled against the diff. A fix that only covers the symptom in front of it is the patch-on-patch defined above.
-- **Operator of a live DB** — the same person weeks on, at `/app/dba`. Wins: a click applies a proposal and p95 drops, a click undoes it.
+- **Solo builder / small team** ([P1](research/personas.md)) — already on Supabase, Neon, RDS or D1, app shipped, tables growing. Enters by pasting a connection string. Wins: the index nobody added, applied and measured, without becoming a DBA.
+- **The coding agent** — Claude Code or Cursor, which just created the database. Enters through MCP. Wins: attaches the DB, lists proposals, applies what its app needs under the owner's ceiling.
+- **The fixer** — any agent that changes nlqdb, including `/daily`. Before it designs, it re-reads this doc and holds the whole loop and the four pillars in [`GLOBAL-025`](decisions/GLOBAL-025-north-star.md): engine quality, onboarding, UX, performance. The change advances at least one and leaves the other three at their floors; which pillar moves, and the floor that would show a drop, are named before code. It designs for leverage: what already exists, which category this issue is an instance of, what the next one of that kind will cost, then the simplest change to the machinery the loop already runs on. Category and N+1 are written before code; the three-line verdict is reconciled against the diff. A fix that only covers the symptom in front of it is the patch-on-patch defined above.
+- **Operator of a live DB** — the same person weeks on, at `/app/dba`. Wins: every change the DBA made, each with its measurement and its undo.
 
 ## The happy path
 
 | # | Sees | Does | Latency |
 |---|------|------|---------|
-| 1 | `createDatabase({ goal })` returns a `dbId` and the schema nlqdb wrote — no surface has a `CREATE TABLE` verb | `npm i @nlqdb/sdk`, mints `sk_live_` (`SK-CLI-006`), pastes one goal sentence | `SK-HDC-010` |
-| 2 | First write: `requires_confirm` with a `diff` and `trace.sql` — one payload on every surface (`SK-TRUST-001`, `GLOBAL-003`). Confirmed, the row is in the database and `/app` shows the DBA's table, trace present, never tier-gated (`SK-TRUST-002`) | confirms, reads back | miss, then hit ([`performance.md` §1](performance.md)) |
-| 3 | A write with a never-seen field: `insert()` infers the **added column** from the value — no model call on the write — and the row lands in the same commit (`SK-SCHEMA-008`); old-shape queries still answer, only what changed re-plans (`SK-SCHEMA-005`). Rows carrying a `key` upsert, so a re-run import or a flipped vote never duplicates. A better type or name arrives later as a proposal (row 5), never as a blocked write | keeps writing app data | one round trip |
-| 4 | `/app/dba` — every schema change the DBA made, newest first, each with its inverse; tables × engine, usage and cost, proposals, applied history with each fingerprint's p95 7 days after vs before | opens one page | page-load |
-| 5 | A drop / rename / retype proposal: diff, expected effect, inverse recorded up front (`SK-MIGRATE-003`); apply bumps `schema_hash` (`SK-SCHEMA-009`) under `GLOBAL-014` + `GLOBAL-005`, **undo** replays the inverse, and a change that made things worse is already undone | **apply** or **undo**, once | `SK-HDC-010` |
-| 6 | A `move_to_engine` proposal (`SK-MULTIENG-003`) — dual-read verified, reversible after cutover; the trace names the index or Pipe serving each query (`SK-MIGRATE-005`) | applies; queries keep their shape | cache-hit SLO |
-| 7 | One model picker everywhere: the free chain, their own key at 0 % markup, or hosted premium with allowance and spend cap (`SK-PREMIUM-008`, `-009`, `-011`) | picks a model, or keeps the default | — |
-| 8 | A whole product built this way — `rateme12.nlqdb.com`, every read and write through `@nlqdb/sdk`, schema inferred from its inserts, serving real rateme12 traffic | writes app code, no DDL | — |
-| 9 | nlqdb.com: one input and starter goals (`SK-ONBOARD-008`), an anonymous DB, the chat; sign-in adopts it and its history (`SK-ANON-001`) | asks, signs in for a key | `GLOBAL-025` TTFV |
+| 1 | One attach, four doors: the nlqdb.com form, `npx nlqdb attach <connection-string>`, `POST /v1/attach` via `@nlqdb/sdk`, or an MCP tool call. D1 attaches with a Cloudflare API token + account and database id. The permissions it needs are named up front: observe = `pg_read_all_stats` + `SELECT` on the app's tables, apply = membership in the tables' owner role | pastes a connection string, once | seconds |
+| 2 | First proposals: catalog findings (FKs without indexes, sizes, settings) at once; workload findings from `pg_stat_statements` after a snapshot window | waits, or leaves — nothing to configure | KPI A < 5 min |
+| 3 | One proposal: the diff, the fingerprint it targets, expected effect (HypoPG what-if, or selectivity heuristics where the host lacks it), the inverse, and its cost — build time, size, write overhead | reads one card | — |
+| 4 | **Apply** queues it for a low-load window and builds it (`CONCURRENTLY` on Postgres); **reject** asks for a reason and records it | one click | the window |
+| 5 | The verify window: before/after p95 on the same fingerprint, from the same counters — on D1 also rows read, the billed cost | watches, or doesn't | 30 min–72 h |
+| 6 | Kept with its measured delta, or auto-reverted on regression with both measurements shown; **undo** replays the inverse at any time | nothing, or one click | one round trip |
+| 7 | `/app/dba` — every change, newest first: who decided (person, agent, policy), diff, inverse, before/after, cost; proposals waiting; per-category auto-apply (off by default) and agent-approval limits (default: the owner's one-click ceiling) | opens one page | page-load |
+| 8 | The agent door: the coding agent attaches the DB it just created with one MCP call; `nlqdb_list_proposals`, `nlqdb_apply_proposal`, `nlqdb_reject_proposal` | one tool call | KPI A |
+| 9 | The coding agent lists proposals, applies the index its app needs, and the verify window judges it like any other apply | one tool call | the window |
+| 10 | The playbook keeps growing on the same card: unused-index drops, bloat and autovacuum, retypes and enums, partitioning, retention, then placement | applies, or rejects | — |
 
-**Not in this flow:** no wizard, plan-picker or verification wall
-(`SK-ONBOARD-001`), no advisory-only tab, no approval queue.
+**Not in this flow:** no migration onto nlqdb, nothing of nlqdb in the app's
+request path, no change applied without a click (until the owner opts a category
+in), no advisory-only tab — every proposal can be applied from where it is
+shown.
 
-**Surface feel:** nlqdb.com has one primary action, the goal input; every
-other band and the Content menu are secondary to row 9 (`SK-WEB-031`).
+**Surface feel:** nlqdb.com has one primary action — paste a connection
+string — and every other band is secondary to row 1.
 
 ## Empty, error, and edge states
 
 | State | Trigger | Sees | Can do |
 |-------|---------|------|--------|
-| Empty | New DB, no rows | The schema nlqdb wrote; reads answer 0 rows, not an error | Write a row |
-| Unseen field | A write names a table or column that never existed | The diff with the added column, not an error; cached plans still hit | Confirm, or re-preview if expired |
-| Value doesn't fit | A value can't cast to its column's existing type (`"n/a"` into `numeric`) | That row alone fails, naming the column; the batch's other rows land, and a retype proposal is filed. The write path never alters an existing column | Fix the value, or apply the proposal |
-| Ambiguous goal | Plan confidence below its floor | `clarify_required` lists the readings (`SK-TRUST-003`, `GLOBAL-040`); nothing ran | Pick one, no retyping |
-| Ceiling reached | Per-key limit, premium allowance, or free storage ([`cost-ladder.md`](cost-ladder.md)) | `rate_limited` with when to retry (`SK-RL-001`), or the ceiling named | Retry, upgrade, delete |
-| Bad proposal | An applied change regresses p95 past KPI 3's tolerance | The auto-undone row, both measurements on it | Nothing — the old plan is back |
+| No `pg_stat_statements` | Extension not enabled | Catalog-tier proposals only, and the one statement (or host toggle) that enables it | Enable it; workload proposals follow after a snapshot window |
+| No HypoPG | Host lacks it (RDS) | The expected effect from `pg_stats` selectivity, labelled as an estimate; the verify window decides | Apply; the measurement keeps or reverts it |
+| Read-only role | The role can observe but does not own the tables | Every proposal as a copy-paste migration with its inverse — never a silent skip | Run it by hand, or grant the owner role |
+| Regression in the window | p95 on the fingerprint worsens by > 10 % | Auto-reverted; both measurements on the ledger row | Nothing — the old plan is back |
+| An agent's apply regresses | An agent principal approved it | Auto-reverted exactly like a human's; both measurements in the ledger, the agent's principal named | Restrict that agent's category in `/app/dba` |
+| Too big to build | A D1 index can't finish inside D1's 30 s statement cap | The proposal says so and offers the DDL for a maintenance window | Run it in that window |
+| Nothing to improve | Healthy DB | "Nothing worth changing yet — watching" and what was checked; never an invented proposal | Leave it attached |
+| Can't connect | Bad string, network, egress guard, or revoked role | Which one, in one sentence (`GLOBAL-035`); no partial state | Fix and retry the same attach |
 
 ## Done looks like
 
-- [ ] Every row above works on `nlqdb.com`, `/app`, `@nlqdb/sdk`, `nlq` and MCP inside the [`performance.md` §1](performance.md) SLOs, and a stranger gets a first answer with no account, card or config.
-- [ ] The `GLOBAL-041` and `GLOBAL-025` KPIs stand at their floors.
-- [ ] Builders we never met come back unprompted: the `GLOBAL-041` love gate (≥ 3 of the first 10 hand-recruited builders return in week 2) opened, and the share keeps rising.
-- [ ] `rateme12.nlqdb.com` runs on zero hand-written DDL, its retro rating the inferred schema **as good as or better than** the hand-made one it never saw first (`GLOBAL-042` 2–3).
-- [ ] Every DBA change — widen, drop, rename, retype, index, engine move — is previewed, versioned, undoable; dual reads agree 100 %.
+- [ ] Every row above works on nlqdb.com, `/app/dba`, `@nlqdb/sdk`, the CLI and MCP (`GLOBAL-003`), Postgres and D1, inside the [`performance.md` §1](performance.md) SLOs.
+- [ ] KPI A < 5 min, KPI B > 0 on every attached DB with a workload, KPI C = 100 % (`GLOBAL-043`); the other `GLOBAL-025` KPIs at their floors.
+- [ ] The real rateme12's D1 is attached and its ledger shows applied changes with measured deltas ([`002-rateme12-attach.md`](history/dogfood-iterations/002-rateme12-attach.md)).
+- [ ] The love gate opened: ≥ 3 of the first 10 hand-recruited builders came back unprompted in week 2, and the share keeps rising.
+- [ ] Every change — index, drop, retype, partition, retention, placement — is a proposal with its inverse, its measurement and who decided.
 
 ## Non-goals
 
-- **Not an NL→SQL product, not a recommend-only advisor** (`GLOBAL-041`).
-- **No model call on the structured write path.** The LLM judges and proposes; it never sits between an app and its insert.
-- **No user-authored migrations, ever.** The engine emits every DDL statement; no file, folder or CLI verb writes one.
-- **No undo after a committed user write.** Diff-then-confirm is that action (`SK-TRUST-001`); undo belongs to DBA proposals, whose inverse is recorded first.
+- **Not a database host, not an NL→SQL product, not a recommend-only advisor** (`GLOBAL-043`).
+- **No LLM in any hot path.** The LLM explains and names, async; it never decides an apply or a revert.
+- **Never on the app's request path.** An outage of nlqdb never takes the app down.
+- **No change without its inverse and its measurement**, whoever decided it.

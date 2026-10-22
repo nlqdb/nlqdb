@@ -9,40 +9,55 @@ Operator actions also get one metadata line in
 [`history/founder-actions-log.md`](./history/founder-actions-log.md) — never
 a secret value.
 
-## Mint the rateme12 clone's `sk_live_` key
+## Pick the spike database and hand its connection string to CI
 
-⏱ ~3 min · blocked since 2026-10-19. `/daily` step 2 is at rateme12 §5b
-step 6, and keys mint only from a signed-in session (`POST /v1/keys`), so
-no agent can mint one. Steps 6 → 9 (journeys wired 0/5) wait on it. A key of
-its own revokes without touching the dogfood key.
+⏱ ~10 min · blocked since 2026-10-22. `/daily` step 2 starts with the
+2-week Postgres spike ([`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md));
+it needs a real-traffic database only you can pick and grant.
 
-1. At <https://app.nlqdb.com/app/keys> mint an `sk_live_` key named
-   `rateme12`.
-2. Set it as the GitHub Actions repo secret `RATEME12_NLQDB_API_KEY`
-   (`gh secret set RATEME12_NLQDB_API_KEY -R nlqdb/nlqdb`). The next `/daily`
-   wires `deploy-rateme12.yml` to create the DB from its goal and pass the
-   key to the Worker as `NLQDB_API_KEY`.
-3. Add a line to `history/founder-actions-log.md` (no key value) and delete
+1. Choose a real-traffic Postgres you own (Supabase / Neon / RDS — not the
+   rateme12 clone).
+2. Create a role with `pg_read_all_stats`, granted membership in the role
+   that owns the app's tables (only a table's owner can add its indexes).
+3. Make sure `pg_stat_statements` is enabled (and HypoPG, if the host
+   offers it).
+4. Set the connection string as the repo secret `SPIKE_PG_URL`
+   (`gh secret set SPIKE_PG_URL -R nlqdb/nlqdb`).
+5. Log a line in `history/founder-actions-log.md` (no secret) and delete
    this bullet.
 
-## Cut rateme12 over to nlqdb, then recruit 10 builders
+## Hand CI a Cloudflare API token for rateme12's D1
 
-⏱ ~1 h + ~5 h · blocked since 2026-10-14. Gated — opens when
-`rateme12.nlqdb.com` serves all §4 journeys from nlqdb
-([iteration 001 §5b](./history/dogfood-iterations/001-rateme12.md#5b-the-last-mile--gated-on-61-strictly-after-5a-step-5)
-step 9 green). Love gate: [`GLOBAL-041`](./decisions/GLOBAL-041-autonomous-dba.md).
+⏱ ~5 min · blocked since 2026-10-22. The dogfood attaches nlqdb to the real
+rateme12's D1 ([`002-rateme12-attach.md`](./history/dogfood-iterations/002-rateme12-attach.md));
+only the account owner can mint the token.
 
-1. Point real rateme12 traffic at the nlqdb-backed build (§5b step 9b) and
-   use it yourself.
-2. DM ~10 P1 solo builders (no content, no SEO); each builds one small thing
-   on `@nlqdb/sdk`. Agents track week-2 returns on the scorecard.
-3. Delete this bullet once 10 have started.
+1. In the Cloudflare dashboard, create an API token limited to rateme12's
+   account: D1 Edit, Account Analytics Read (D1 Edit is account-wide, so it
+   reaches every D1 database in that account; exact scopes are verified on
+   first attach).
+2. Set it as the repo secret `RATEME12_D1_TOKEN`, plus the account id and
+   database id (`gh secret set RATEME12_D1_TOKEN -R nlqdb/nlqdb`;
+   `RATEME12_D1_ACCOUNT_ID`, `RATEME12_D1_DATABASE_ID` the same way).
+3. Log a line in `history/founder-actions-log.md` (no secret) and delete
+   this bullet.
+
+## Recruit 10 builders once rateme12's attach shows a measured delta
+
+⏱ ~5 h · blocked since 2026-10-14. Gated — opens when KPI B > 0 on
+rateme12's D1 (one applied change with a measured gain,
+[`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md)).
+
+1. DM ~10 P1 builders who already run a Postgres or D1 app (no content, no
+   SEO); each attaches it. Agents track week-2 returns on the scorecard.
+2. Delete this bullet once 10 have attached.
 
 ## Show HN launch sequence
 
-⏱ ~30 min · blocked since 2026-06-13. Gated on the `GLOBAL-041` love gate:
-rateme12 on nlqdb 14 consecutive days **and** ≥ 3 of the 10 builders back
-unprompted in week 2. Kit: [`research/launch-kit.md`](./research/launch-kit.md).
+⏱ ~30 min · blocked since 2026-06-13. Gated on the
+[`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md) love
+gate: ≥ 3 of the first ~10 founder-recruited builders return unprompted in
+their second week. Kit: [`research/launch-kit.md`](./research/launch-kit.md).
 
 1. Pick the angle (§2). Write the Show HN post + first comment in your own
    voice from the §3.1 fact sheet — never agent copy (the r/SQL lesson).
@@ -69,7 +84,10 @@ retry storm and two inbound-mail-loss paths stay open.
 
 ⏱ ~20 min · blocked since 2026-07-21. Needs a **Team/Enterprise** Claude.ai org
 with Owner or Directory-management access. If reaching it means paying, it
-waits per [`cost-ladder.md`](./cost-ladder.md). Ledger row #9.
+waits per [`cost-ladder.md`](./cost-ladder.md). Ledger row #9. Gated: the
+copy below pitches the retired hosted product — submit once the attach MCP
+tools ship ([`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md)),
+with the copy rewritten to match.
 
 1. Open <https://claude.ai/admin-settings/directory/submissions/new>, remote-MCP
    path.
@@ -90,6 +108,8 @@ waits per [`cost-ladder.md`](./cost-ladder.md). Ledger row #9.
 ⏱ ~10 min · blocked since 2026-09-01. Both were expected to pick nlqdb up by
 crawl from the official registry; re-checked live, both still show 0 results.
 Lowest-yield directories — do these only when the queue head is parked.
+Gated like the connector directory above: the description pitches the
+retired hosted product.
 
 1. <https://pulsemcp.com/submit> (account-walled) — server
    `https://mcp.nlqdb.com/mcp`, name `nlqdb`, homepage
@@ -107,7 +127,10 @@ what it writes. One command.`
 
 ## `nlqdb-memory` → cc-marketplace
 
-⏱ ~10 min · blocked since 2026-09-04. Ledger row #27. Exact payload is parked in
+⏱ ~10 min · blocked since 2026-09-04. Ledger row #27. Parked until the
+spike's verdict: on a pass agent-memory is deleted
+([`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md)), and
+so is this bullet. Exact payload is parked in
 [`acquisition-channels-mechanisms.md` §Row #27](./research/acquisition-channels-mechanisms.md#row-27)
 — copy it verbatim. Either path works.
 

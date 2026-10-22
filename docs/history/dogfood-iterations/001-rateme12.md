@@ -1,6 +1,11 @@
 # Dogfood iteration 001 — rateme12 on nlqdb
 
-**Status:** running (§5a done 2026-10-14 — the last 2 parity gaps declared out of scope; §6.1 5/5 green 2026-10-19; §5b step 6 open) · **Governs:** [`GLOBAL-042`](../../decisions/GLOBAL-042-dogfood-iteration-loop.md) · **Measures:** [`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md) Phase A KPI 1
+> **Retired 2026-10-22 ([`GLOBAL-043`](../../decisions/GLOBAL-043-attach-first-autonomous-dba.md)) — the migrate plan ended; successor [002](./002-rateme12-attach.md).**
+> **Built:** the clone (13/13 routes, `rateme12.nlqdb.com`); deterministic `insert()` with keyed upsert and per-row failures (0 LLM calls); widen-on-write; the `dba_changes` ledger with inverses; `/app/dba` v0.
+> **Measured:** the CI dogfood canary only (window 3: 18/20 landed). Real rateme12 writes through nlqdb: **n = 0** — §5b step 6 never ran, held on a key and a cutover.
+> **Lesson:** DBA value gated on migrating an app onto nlqdb never got measured. 002 attaches to rateme12's live D1 instead. The brief below is history.
+
+**Status:** retired 2026-10-22 (was: §5a done 2026-10-14; §6.1 5/5 green 2026-10-19; §5b step 6 open) · **Governs:** [`GLOBAL-042`](../../decisions/GLOBAL-042-dogfood-iteration-loop.md) · **Measures:** [`GLOBAL-041`](../../decisions/GLOBAL-041-autonomous-dba.md) Phase A KPI 1
 Instantiates [`TEMPLATE.md`](./TEMPLATE.md) — the mechanics (§2 quarantine, §3 token handling, §5 fixed rules, §7 retro fields, §8 cleanup) live there and are not repeated here. The retro (§7) is appended to this file when the iteration ends.
 
 ## 1. Goal

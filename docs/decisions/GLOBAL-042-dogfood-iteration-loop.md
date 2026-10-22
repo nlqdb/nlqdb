@@ -1,6 +1,8 @@
 # GLOBAL-042 — The agent builds a real product on nlqdb, in cleaned-up iterations
 
-**Status:** active · **Set by the founder:** 2026-09-06
+**Status:** goal and iteration 001 superseded by [`GLOBAL-043`](./GLOBAL-043-attach-first-autonomous-dba.md) (2026-10-22); the iterate → retro → cleanup loop stays · **Set by the founder:** 2026-09-06
+
+> Kept as history: the target is no longer an app migrated onto nlqdb with an inferred schema — nlqdb attaches to the real rateme12 ([`002-rateme12-attach.md`](../history/dogfood-iterations/002-rateme12-attach.md)), measured by `GLOBAL-043`'s KPIs.
 
 - **Decision:** The agent's daily work is optimized toward one goal: **the
   agent itself uses nlqdb to build a real product**, iteration after
