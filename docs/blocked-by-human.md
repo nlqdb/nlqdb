@@ -17,7 +17,8 @@ it needs a real-traffic database only you can pick and grant.
 
 1. Choose a real-traffic Postgres you own (Supabase / Neon / RDS — not the
    rateme12 clone).
-2. Create a role with `pg_read_all_stats` and `CREATE` on the app schema.
+2. Create a role with `pg_read_all_stats`, granted membership in the role
+   that owns the app's tables (only a table's owner can add its indexes).
 3. Make sure `pg_stat_statements` is enabled (and HypoPG, if the host
    offers it).
 4. Set the connection string as the repo secret `SPIKE_PG_URL`
@@ -25,15 +26,16 @@ it needs a real-traffic database only you can pick and grant.
 5. Log a line in `history/founder-actions-log.md` (no secret) and delete
    this bullet.
 
-## Hand CI a Cloudflare API token scoped to rateme12's D1
+## Hand CI a Cloudflare API token for rateme12's D1
 
 ⏱ ~5 min · blocked since 2026-10-22. The dogfood attaches nlqdb to the real
 rateme12's D1 ([`002-rateme12-attach.md`](./history/dogfood-iterations/002-rateme12-attach.md));
 only the account owner can mint the token.
 
-1. In the Cloudflare dashboard, create an API token scoped to rateme12's D1
-   database: D1 Read + Write, Account Analytics Read (exact scope names are
-   verified on first attach).
+1. In the Cloudflare dashboard, create an API token limited to rateme12's
+   account: D1 Edit, Account Analytics Read (D1 Edit is account-wide, so it
+   reaches every D1 database in that account; exact scopes are verified on
+   first attach).
 2. Set it as the repo secret `RATEME12_D1_TOKEN`, plus the account id and
    database id (`gh secret set RATEME12_D1_TOKEN -R nlqdb/nlqdb`;
    `RATEME12_D1_ACCOUNT_ID`, `RATEME12_D1_DATABASE_ID` the same way).
