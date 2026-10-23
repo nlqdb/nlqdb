@@ -9,7 +9,7 @@ connection string — on nlqdb.com, with the CLI, through the SDK, or from your
 coding agent over MCP — and the first proposals arrive within minutes, each
 with its expected effect, cost and inverse. Apply is one click; nlqdb then
 measures p95 on the same queries and keeps the change or reverts it, never on
-your app's request path. That loop is in its first spike
+your app's request path. That loop is being built
 ([Roadmap](#roadmap)); what is live today is the hosted product below.
 
 **No backend to build.** You write HTML; each
@@ -180,10 +180,11 @@ One loop — observe → propose → apply → verify → revert — on your Pos
 
 - ~ `/app/dba` change ledger — every change with its inverse, newest first
   (read-only v0)
+- ◯ Attach product on synthetic databases — observer, `create_index`
+  proposal, apply → verify → auto-revert, the four doors, tested in CI
 - ◯ Postgres spike — one index proposed, applied and measured (before/after
   p95) on a real-traffic database
 - ◯ D1 attach on the real rateme12 — the dogfood
-- ◯ Four attach doors — nlqdb.com, `npx nlqdb attach`, `POST /v1/attach`, MCP
 - ◯ The playbook — unused-index drops, bloat, retypes, partitioning,
   retention, placement
 

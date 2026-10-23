@@ -1,6 +1,6 @@
 # /review — PR review + merge loop
 
-Read [`GLOBAL-043`](../../docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md) first; a PR body must name the roadmap item it moves (1 spike/attach, 2 deletion, 3 playbook) or `none` (`CLAUDE.md` §8 item 7) — check the claim against the diff.
+Read [`GLOBAL-043`](../../docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md) first; a PR body must name the roadmap item it moves (1a attach build, 1b spike/attach, 2 deletion, 3 playbook) or `none` (`CLAUDE.md` §8 item 7) — check the claim against the diff.
 
 Criterion 1 is the user experience **measured against [`docs/END_GOAL.md`](../../docs/END_GOAL.md)**: which step of which flow does this PR move closer to its written state, and does it move any other step away? A PR that contradicts a flow there does not merge — fix it in the PR, or the founder amends the flow in the same PR.
 

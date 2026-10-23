@@ -55,7 +55,7 @@ and the proposal's cost line names the write overhead.
 ([#32323](https://github.com/cloudflare/cloudflare-docs/pull/32323)).
 D1 is the dogfood engine; Postgres is the market.
 
-## 3. Build plan — one `/daily` run per step, alternating with the Postgres spike
+## 3. Build plan — built on a throwaway D1 first (`GLOBAL-043` roadmap 1a), then run here
 
 1. **Observer:** Tier 0 + Tier 1 snapshot of rateme12's D1 behind the
    `packages/db` adapter seam (the same seam the Postgres observer uses —

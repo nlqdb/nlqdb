@@ -17,9 +17,10 @@ revert — never on the app's request path, no LLM in any hot path. Bet:
 
 ### Build for this
 
-The work queue is `GLOBAL-043`'s roadmap, run by `/daily` step 2: a 2-week
-spike on a founder-picked Postgres that applies one index and measures its
-p95, alongside attaching to the real rateme12's D1
+The work queue is `GLOBAL-043`'s roadmap, run by `/daily` step 2: build the
+attach product end to end on synthetic databases (1a), then a 2-week spike on
+a founder-picked Postgres that applies one index and measures its p95,
+alongside attaching to the real rateme12's D1 (1b)
 ([`002`](docs/history/dogfood-iterations/002-rateme12-attach.md)). Every
 engine PR names the KPI (A, B or C) it moves. What the loop adds up to,
 flow by flow, is [`docs/END_GOAL.md`](docs/END_GOAL.md) — the top-ranked doc:
@@ -260,7 +261,7 @@ lint` / `format` check 0 files (exit 1) — pass explicit paths. CI is unaffecte
 6. New capability added → SDK + CLI + MCP + elements all updated, or
    gap tracked in the affected feature (`GLOBAL-003`).
 7. PR body names the `GLOBAL-025` KPI advanced **and** the `GLOBAL-043`
-   roadmap item it moves (1 spike/attach, 2 deletion, 3 playbook) or `none`;
+   roadmap item it moves (1a attach build, 1b spike/attach, 2 deletion, 3 playbook) or `none`;
    no other KPI degrades. The
    [PR template](.github/pull_request_template.md) pre-fills the line.
 

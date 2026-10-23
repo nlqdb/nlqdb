@@ -6,7 +6,7 @@ run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 
 **Goal ([`GLOBAL-043`](decisions/GLOBAL-043-attach-first-autonomous-dba.md)):** attach, propose, apply, verify, revert — the Postgres spike (market proof) and [rateme12's D1 attached](history/dogfood-iterations/002-rateme12-attach.md) (dogfood); KPIs A–C below are the measure.
 
-**Focus (founder-written 2026-10-22 — `/weekly` keeps it):** the `GLOBAL-043` sequence in `daily.md` step 2 — **the 2-week Postgres spike (one applied index, before/after p95 on its hot fingerprint) alongside the D1 attach on the real rateme12 → if the spike passes, the deletion PR series, one subsystem per PR → the playbook's proposal kinds, KPI B each.**
+**Focus (founder-written 2026-10-22, re-sequenced 2026-10-23 — `/weekly` keeps it):** the `GLOBAL-043` sequence in `daily.md` step 2 — **build the attach product on synthetic databases (1a) → the 2-week Postgres spike (one applied index, before/after p95 on its hot fingerprint) alongside the D1 attach on the real rateme12 → if the spike passes, the deletion PR series, one subsystem per PR → the playbook's proposal kinds, KPI B each.**
 
 **Worst number today (2026-10-23) — KPIs A–C unmeasured: no database is attached yet, owned by the engine lane (`engine-migration`).** Both step-2 tracks wait on founder secrets (`SPIKE_PG_URL`, `RATEME12_D1_TOKEN`): neither is set as a repo secret yet.
 **This run's lever:** none. Run 259 is a null run (`daily.md` step 2): both tracks are human-blocked, and the deletion series and playbook wait on the spike.
@@ -28,9 +28,9 @@ run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 | 6 | Indexable surfaces | **112** content pages (`/solve` **41** + `/vs` 31 + `/blog` 40; unchanged this run — CTR lever, not a new page). Unpublished blog drafts **0** (queue drained) | leading input to rows #1–#3; `llms.txt` + sitemap auto-aggregate |
 | 7 | Surface yield | posts **40**. **GSC live 09-17** (28d 08-20→09-17): **967 impr / 30 query rows, 8 clicks** (pos 21.0). CTR lane exhausted: page-1 zero-click pages already carry hand-written SERP meta; the rest is position/authority-gated (launch-gated). Paused lane (`GLOBAL-043`) | `gsc-pull.ts` + `rum-pull.ts` |
 | | **Engine — `GLOBAL-043` KPIs first** (headline) then the interface KPI | | `GLOBAL-043` roadmap |
-| EA | KPI A — time to first proposal after attach | **unmeasured — the spike builds the instrument** | < 5 min (`GLOBAL-043`) |
-| EB | KPI B — proposals applied with a measured p95 gain / attached DB / 30 d | **unmeasured — the spike builds the instrument** (on D1 also the rows-read delta) | ≥ 1 with a delta the founder would pay for (`GLOBAL-043`) |
-| EC | KPI C — regressions auto-reverted / regressions applied | **unmeasured — the spike builds the instrument** | 100 %, 0 user action |
+| EA | KPI A — time to first proposal after attach | **unmeasured — item 1a builds the instrument** | < 5 min (`GLOBAL-043`) |
+| EB | KPI B — proposals applied with a measured p95 gain / attached DB / 30 d | **unmeasured — item 1a builds the instrument** (on D1 also the rows-read delta) | ≥ 1 with a delta the founder would pay for (`GLOBAL-043`) |
+| EC | KPI C — regressions auto-reverted / regressions applied | **unmeasured — item 1a builds the instrument** | 100 %, 0 user action |
 | | Retired by `GLOBAL-043`: E1 (KPI 1 first-insert inference), E2 (KPI 2 evolution), E3 (KPI 3, now KPI B) | | |
 | | **Engine — interface KPI (regression alarm until deleted, `GLOBAL-043`/`SK-QUAL-002`)** — BIRD 07-26 · Spider 07-19 | | baseline `tools/eval/baseline-2026-06-15.json` (`SK-QUAL-018`) |
 | 8 | BIRD raw EX | **0.5382** (268/500, 07-26 canonical on `d961475`, [run 30212657876](https://github.com/nlqdb/nlqdb/actions/runs/30212657876)) — **89 d old, staleness trigger fired**, but **dark (rule 8)**: resume is async multi-window and `main` moved since the 07-27 checkpoint | regression alarm only (`SK-QUAL-002`, `GLOBAL-043`) — no target, no floor |

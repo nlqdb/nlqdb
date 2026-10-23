@@ -87,8 +87,8 @@ iterate → retro → cleanup loop stand.
      KPIs 1–2 (first-insert inference, evolution) are retired. **Love
      gate:** ≥ 3 of the first ~10 founder-recruited builders return
      unprompted in their second week; Show HN waits on it.
-  10. **The decisive test is a 2-week spike** on a real-traffic Postgres the
-      founder picks: proposals from Tiers 0–2, ONE index applied, before/after
+  10. **The decisive test is a 2-week spike**, run on the roadmap item 1a
+      product, on a real-traffic Postgres the founder picks: proposals from Tiers 0–2, ONE index applied, before/after
       p95 on its hot fingerprint, recorded with its inverse. **Pass** = a
       measured delta the founder would pay for ⇒ the deletion PR series
       starts. **Fail** = evidence, nothing deleted. The D1 dogfood runs
@@ -145,10 +145,22 @@ iterate → retro → cleanup loop stand.
 
 - **Consequence in code & docs:**
   - **Roadmap — the `/daily` step-2 sequence**, each item with its number:
-    1. **Postgres spike** (market proof; `SPIKE_PG_URL`) **and D1 attach on
-       the real rateme12** (dogfood; `RATEME12_D1_TOKEN`) — runs may
-       alternate; each ends with a measured delta. Numbers: KPI A on attach;
-       KPI B = 1 applied index with its before/after p95.
+    1. **Attach.**
+       - **1a — build the attach product on synthetic databases** (no
+         founder secret). One slice per run, in order: Postgres attach +
+         Tier 0 proposals; Tier 1 workload → `create_index` proposal;
+         apply → verify → auto-revert, in the ledger; the four doors
+         (item 6); the D1 observer + apply. Each slice is tested in CI
+         against a Postgres with `pg_stat_statements` preloaded (HypoPG
+         where installable) under a seeded workload, and the D1 slice
+         against a throwaway D1 in nlqdb's own Cloudflare account. Numbers:
+         KPIs A–C on the synthetic DB, labelled synthetic.
+       - **1b — real-traffic proof:** the Postgres spike (market proof;
+         `SPIKE_PG_URL`, item 10) and the D1 attach on the real rateme12
+         (dogfood; `RATEME12_D1_TOKEN`). A track starts once its secret is
+         set and 1a's slices for its engine are merged; until then runs
+         take 1a. Numbers: KPI A on attach; KPI B = 1 applied index with
+         its before/after p95.
     2. **Deletion PR series** — one subsystem per PR, deletion-only, CI
        green. Number: LOC removed, KPIs A–C unchanged.
     3. **Playbook proposal kinds** in item 8's order, Postgres and D1 each.
