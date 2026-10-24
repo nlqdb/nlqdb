@@ -10,8 +10,8 @@ here.
 [performance.md](./performance.md) (SLOs and budgets).
 
 **The roadmap is [`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md)'s
-three items** (`/daily` step 2): 1 the Postgres spike + the D1 attach on
-rateme12, 2 the deletion PR series, 3 the playbook's proposal kinds. **Exit
+three items** (`/daily` step 2): 1a the attach product built on synthetic
+databases, 1b the Postgres spike + the D1 attach on rateme12, 2 the deletion PR series, 3 the playbook's proposal kinds. **Exit
 gate:** the spike's measured delta (`GLOBAL-043` item 10) — pass starts item
 2, fail deletes nothing. Onboarding / UX / performance floors:
 [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md); LLM strategy:

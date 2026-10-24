@@ -11,8 +11,8 @@ a secret value.
 
 ## Pick the spike database and hand its connection string to CI
 
-⏱ ~10 min · blocked since 2026-10-22. `/daily` step 2 starts with the
-2-week Postgres spike ([`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md));
+⏱ ~10 min · blocked since 2026-10-22. `/daily` step 2's item 1b is the
+2-week Postgres spike, run once item 1a's Postgres slices land ([`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md));
 it needs a real-traffic database only you can pick and grant.
 
 1. Choose a real-traffic Postgres you own (Supabase / Neon / RDS — not the

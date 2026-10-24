@@ -37,8 +37,9 @@ number is never overwritten.
 
 **The work under drive is the fixed
 [`GLOBAL-043`](../../docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md)
-sequence in step 2** (founder steer 2026-10-22): the Postgres spike and the
-D1 attach on the real rateme12, each ending in a measured delta, then the
+sequence in step 2** (founder steer 2026-10-22, re-sequenced 2026-10-23):
+build the attach product on synthetic databases, then the Postgres spike and
+the D1 attach on the real rateme12, each ending in a measured delta, then the
 deletion series, then the playbook. Depth only — love over reach
 ([`END_GOAL.md`](../../docs/END_GOAL.md)).
 Onboarding, UX, and performance stay at their [`GLOBAL-025`](../../docs/decisions/GLOBAL-025-north-star.md) floors on every change.
@@ -120,8 +121,9 @@ table + the header lines, no changelog):
   after attach; (B) proposals applied with a measured p95 improvement per
   attached DB per 30 d (on D1 with the rows-read delta); (C) regressions
   auto-reverted / applied. Read each on the Postgres spike DB and on
-  rateme12's D1. Where the instrument doesn't exist yet, write
-  `unmeasured — the spike builds the instrument`. BIRD/Spider: report only
+  rateme12's D1; until they attach, on the step-2 item 1a synthetic DB,
+  labelled synthetic. Where the instrument doesn't exist yet, write
+  `unmeasured — item 1a builds the instrument`. BIRD/Spider: report only
   the regression-alarm state (last green / red, `SK-QUAL-002`) — never a
   target, never a re-measure lever.
 - **Funnel, bot-filtered** (exclude stranger-test bot traffic): visits
@@ -167,12 +169,16 @@ scorecard update into the scorecard, and every MISS is inspected this run.
 **No lever picker — the run takes the first unfinished step of this
 sequence** (founder steer 2026-10-22, [`GLOBAL-043`](../../docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md);
 rule 6 and a met draft still come first). A step spanning runs takes the
-next run too; a human-blocked step is skipped to the next. rateme12 is no
-longer migrated onto nlqdb: iteration 001 is retired and the clone gets no
-work; the real rateme12 is attached instead.
+next run too; a human-blocked step is skipped to the next.
 
-1. **The Postgres spike and the D1 attach** — two tracks, runs may
-   alternate, each ends with a measured delta. *Spike* (market proof): attach
+1a. **Build the attach product on synthetic databases** — needs no
+   founder secret. The next unmerged slice of
+   `GLOBAL-043`'s roadmap item 1a, one per run, tested in CI against a seeded
+   Postgres with `pg_stat_statements` (and a throwaway D1 for the D1 slice).
+   Number: KPI A, B or C on the synthetic DB, labelled synthetic.
+1b. **The Postgres spike and the D1 attach** — each track starts once its
+   secret is set and 1a's slices for its engine are merged, and then outranks
+   1a; runs may alternate, each ends with a measured delta. *Spike* (market proof): attach
    to the founder-picked real-traffic Postgres (`SPIKE_PG_URL`), proposals
    from Tiers 0–2, apply ONE index, before/after p95 on its hot fingerprint,
    recorded with its inverse. *Dogfood*: attach to the real rateme12's D1
