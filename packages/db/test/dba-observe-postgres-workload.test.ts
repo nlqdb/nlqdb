@@ -83,6 +83,33 @@ describe("observePostgresWorkload", () => {
     expect(p?.evidence.workload).toMatchObject({ fingerprint: "42", calls: 50 });
   });
 
+  it("reads a varchar column's `::text` relabel as an equality the table check confirms", async () => {
+    const { query, sqls } = stub(seqScan(`((u.email)::text = $1)`), {
+      ...bigTable,
+      known_columns: 1,
+    });
+    const [p] = await observePostgresWorkload(query, "app", [window("SELECT 1")]);
+    expect(p?.columns).toEqual(["email"]);
+    expect(sqls).toHaveLength(2);
+  });
+
+  it("scales a parallel scan's per-process rows back before judging selectivity", async () => {
+    // 200 rows per process x (2 workers + 0.4 leader) = 480 of 10 000: 4.8 % ≤ 5 %.
+    const gather = (planRows: number) => ({
+      "Node Type": "Gather",
+      "Workers Planned": 2,
+      Plans: [{ ...seqScan("(u.a = $1)", planRows), "Parallel Aware": true }],
+    });
+    const table = { ...bigTable, known_columns: 1 };
+    expect(
+      await observePostgresWorkload(stub(gather(200), table).query, "app", [window("SELECT 1")]),
+    ).toHaveLength(1);
+    // 250 x 2.4 = 600: 6 % — unselective, though 250 alone would read 2.5 %.
+    expect(
+      await observePostgresWorkload(stub(gather(250), table).query, "app", [window("SELECT 1")]),
+    ).toEqual([]);
+  });
+
   it.each([
     ["an OR filter", seqScan("((u.a = $1) OR (u.b = $2))"), bigTable],
     ["a non-equality filter", seqScan("(u.a > $1)"), bigTable],
@@ -108,7 +135,11 @@ describe("observePostgresWorkload", () => {
   it("skips a fingerprint that fails to plan and keeps going", async () => {
     let n = 0;
     const query: PostgresQueryFn = async (sql) => {
-      if (sql.startsWith("EXPLAIN") && n++ === 0) throw new Error("relation does not exist");
+      if (sql.startsWith("EXPLAIN") && n++ === 0)
+        throw Object.assign(new Error("relation does not exist"), {
+          severity: "ERROR",
+          code: "42P01",
+        });
       if (sql.startsWith("EXPLAIN"))
         return { rows: [{ "QUERY PLAN": [{ Plan: seqScan("(u.a = $1)") }] }] };
       return { rows: [{ ...bigTable, known_columns: 1 }] };
@@ -118,5 +149,14 @@ describe("observePostgresWorkload", () => {
       window("SELECT a FROM users WHERE a = $1"),
     ]);
     expect(proposals.map((p) => p.columns)).toEqual([["a"]]);
+  });
+
+  it("throws on a failure the server didn't answer, rather than report nothing to change", async () => {
+    const query: PostgresQueryFn = async () => {
+      throw Object.assign(new Error("write CONNECTION_CLOSED"), { code: "CONNECTION_CLOSED" });
+    };
+    await expect(
+      observePostgresWorkload(query, "app", [window("SELECT a FROM users WHERE a = $1")]),
+    ).rejects.toThrow(/CONNECTION_CLOSED/);
   });
 });

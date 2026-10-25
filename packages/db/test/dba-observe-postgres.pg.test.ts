@@ -75,8 +75,9 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
   });
 
   // The synthetic app's workload: two hot lookups on unindexed columns, and
-  // two decoys an index wouldn't help — a filter keeping 25 % of its table,
-  // and a lookup already served by comments_user_id_idx.
+  // three decoys an index on the column wouldn't help — a filter keeping 25 %
+  // of its table, a lookup already served by comments_user_id_idx, and a
+  // bigint compared as text.
   const HOT = [
     "SELECT id FROM dba_synth.posts WHERE title = $1",
     "SELECT id FROM dba_synth.users WHERE email = $1",
@@ -90,6 +91,9 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
         `r${i % 4}`,
       ]);
       await conn.query("SELECT body FROM dba_synth.comments WHERE user_id = $1", [1 + (i % 2000)]);
+      await conn.query("SELECT id FROM dba_synth.posts WHERE author_id::text = $1", [
+        String(1 + (i % 2000)),
+      ]);
     }
     return statementWindow(before, await snapshotPostgresStatements(conn.query));
   }

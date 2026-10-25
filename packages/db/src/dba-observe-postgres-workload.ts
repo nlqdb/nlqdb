@@ -124,8 +124,14 @@ const EXPLAINABLE = /^\s*(SELECT|UPDATE|DELETE|WITH)\b/i;
 
 const IDENT = String.raw`(?:[A-Za-z_][\w$]*|"(?:[^"]|"")+")`;
 const VALUE = String.raw`(?:\$\d+|\(\$\d+\)::[^()]+?|'(?:[^']|'')*'(?:::[\w ]+)?|-?\d+(?:\.\d+)?)`;
-// One `(alias.column = value)` term of a VERBOSE plan's Filter.
-const EQUALITY_TERM = new RegExp(String.raw`\(${IDENT}\.(${IDENT}) = ${VALUE}\)`, "g");
+// One `(alias.column = value)` term of a VERBOSE plan's Filter. A varchar
+// column (Rails' and Django's string) plans relabelled as
+// `((alias.column)::text = value)`, which a plain index on it still serves;
+// the table check confirms that column really is varchar.
+const EQUALITY_TERM = new RegExp(
+  String.raw`\((?:${IDENT}\.(${IDENT})|\(${IDENT}\.(${IDENT})\)::text) = ${VALUE}\)`,
+  "g",
+);
 
 const unquote = (ident: string): string =>
   ident.startsWith('"') ? ident.slice(1, -1).replaceAll('""', '"') : ident;
@@ -135,17 +141,26 @@ type PlanNode = {
   "Relation Name"?: string;
   Schema?: string;
   "Plan Rows"?: number;
+  "Parallel Aware"?: boolean;
+  "Workers Planned"?: number;
   Filter?: string;
   Plans?: PlanNode[];
 };
 
-type SeqScanFilter = { table: string; columns: string[]; planRows: number };
+type SeqScanFilter = {
+  table: string;
+  columns: string[];
+  // The columns the filter compares as `(column)::text`.
+  textCast: string[];
+  planRows: number;
+};
 
 // The plan's seq scans on `schema` whose filter is only an AND of plain
 // equalities: with any other term (a range, an OR) `Plan Rows` would credit
 // the equality columns with selectivity they don't have alone.
-function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = []) {
+function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = [], workers = 0) {
   const filter = node.Filter;
+  const planWorkers = node["Workers Planned"] ?? workers;
   if (
     node["Node Type"] === "Seq Scan" &&
     node.Schema === schema &&
@@ -153,18 +168,26 @@ function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = [
     filter &&
     filter.replace(EQUALITY_TERM, "").replace(/\bAND\b|[()\s]/g, "") === ""
   ) {
-    const columns = [
-      ...new Set([...filter.matchAll(EQUALITY_TERM)].map((m) => unquote(m[1] as string))),
-    ];
+    const terms = [...filter.matchAll(EQUALITY_TERM)];
+    const columns = [...new Set(terms.map((m) => unquote((m[1] ?? m[2]) as string)))];
+    // A parallel scan's `Plan Rows` is per process: scale it back by Postgres'
+    // own divisor (costsize.c `get_parallel_divisor`, leader participating).
+    const divisor = node["Parallel Aware"] ? planWorkers + Math.max(0, 1 - 0.3 * planWorkers) : 1;
     if (columns.length > 0) {
-      out.push({ table: node["Relation Name"], columns, planRows: node["Plan Rows"] ?? 0 });
+      out.push({
+        table: node["Relation Name"],
+        columns,
+        textCast: terms.filter((m) => m[2]).map((m) => unquote(m[2] as string)),
+        planRows: (node["Plan Rows"] ?? 0) * divisor,
+      });
     }
   }
-  for (const child of node.Plans ?? []) seqScanFilters(child, schema, out);
+  for (const child of node.Plans ?? []) seqScanFilters(child, schema, out, planWorkers);
   return out;
 }
 
-// The table's size, whether every column exists, and whether a valid,
+// The table's size, whether every column exists (a `::text`-compared one as
+// varchar), and whether a valid,
 // non-partial btree / hash index's first n key columns are exactly the n
 // columns (in any order) — the same coverage rule as Tier 0's FK check.
 const TABLE_CHECK_SQL = `
@@ -173,7 +196,9 @@ SELECT GREATEST(c.reltuples, 0)::float8 AS row_estimate,
        pg_catalog.pg_total_relation_size(c.oid)::float8 AS table_bytes,
        (SELECT count(*) FROM pg_catalog.pg_attribute a
          WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
-           AND a.attname IN (SELECT name FROM cols))::int AS known_columns,
+           AND a.attname IN (SELECT name FROM cols)
+           AND (a.attname NOT IN (SELECT json_array_elements_text($4::text::json))
+                OR a.atttypid = 'pg_catalog.varchar'::pg_catalog.regtype))::int AS known_columns,
        CASE WHEN EXISTS (
          SELECT 1 FROM pg_catalog.pg_index i
          JOIN pg_catalog.pg_class ic ON ic.oid = i.indexrelid
@@ -192,8 +217,10 @@ WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind = 'r' AND NOT c.relisparti
 
 // Turn the window's hot fingerprints into Tier 1 proposals, heaviest first;
 // one proposal per (table, column set). A fingerprint that doesn't plan under
-// the observer's role (search_path, a dropped table, Postgres < 16) is skipped
-// and counted on the span, never guessed at; a catalog query failure throws.
+// the observer's role (search_path, a dropped table, a missing privilege,
+// Postgres < 16) is skipped and counted on the span, never guessed at; a
+// failure the server didn't answer (a lost connection) or a catalog query
+// failure throws (`GLOBAL-012`) rather than read as "nothing to change".
 export function observePostgresWorkload(
   query: PostgresQueryFn,
   schema: string,
@@ -211,7 +238,9 @@ export function observePostgresWorkload(
         const { rows } = await query(`EXPLAIN (GENERIC_PLAN, VERBOSE, FORMAT JSON) ${w.query}`, []);
         const raw = Object.values(rows[0] ?? {})[0];
         plan = (typeof raw === "string" ? JSON.parse(raw) : raw)[0].Plan;
-      } catch {
+      } catch (err) {
+        // postgres.js and Neon both set `severity` on an error the server sent.
+        if (!(err as { severity?: unknown }).severity) throw err;
         unplanned++;
         continue;
       }
@@ -222,6 +251,7 @@ export function observePostgresWorkload(
           schema,
           scan.table,
           JSON.stringify(scan.columns),
+          JSON.stringify(scan.textCast),
         ]);
         const t = rows[0];
         if (!t || Number(t["covered"]) === 1) continue;

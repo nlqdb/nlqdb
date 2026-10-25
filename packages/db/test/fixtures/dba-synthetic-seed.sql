@@ -7,7 +7,9 @@ DROP SCHEMA IF EXISTS dba_synth CASCADE;
 CREATE SCHEMA dba_synth;
 SET search_path = dba_synth;
 
-CREATE TABLE users (id bigint PRIMARY KEY, email text NOT NULL);
+-- varchar, as Rails and Django ship a string column: its filter plans as
+-- `((users.email)::text = $1)`.
+CREATE TABLE users (id bigint PRIMARY KEY, email varchar(255) NOT NULL);
 CREATE TABLE posts (
   id bigint PRIMARY KEY,
   author_id bigint NOT NULL REFERENCES users (id),
