@@ -19,7 +19,10 @@ CREATE TABLE comments (
 );
 -- Already indexed: comments.user_id must not be proposed.
 CREATE INDEX comments_user_id_idx ON comments (user_id);
--- Composite FK, covered only by a wrong-order index: still unindexed for the FK.
+-- The app's own partial index under the conventional name: it doesn't cover
+-- the FK, and the proposal's name must not collide with it.
+CREATE INDEX posts_author_id_idx ON posts (author_id) WHERE author_id > 1000;
+-- Composite FK with only a (region) index, which doesn't lead with tenant_id.
 CREATE TABLE tenants_regions (tenant_id bigint, region text, PRIMARY KEY (tenant_id, region));
 CREATE TABLE deployments (
   id bigint PRIMARY KEY,

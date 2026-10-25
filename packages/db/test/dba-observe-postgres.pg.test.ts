@@ -39,8 +39,8 @@ describe.skipIf(!url)("observePostgresCatalog on the seeded synthetic DB", () =>
     // biome-ignore lint/suspicious/noConsole: the KPI A reading belongs in the CI log
     console.log(`KPI A (synthetic, Tier 0): attach → first proposal ${kpiAMs.toFixed(1)} ms`);
 
-    // comments.user_id is indexed and deployments' (region) index doesn't cover
-    // its composite FK, so three proposals, largest table first.
+    // comments.user_id is indexed; posts' partial index and deployments'
+    // (region) index don't cover their FKs, so three proposals, largest first.
     expect(proposals.map((p) => `${p.table}(${p.columns.join(",")})`)).toEqual([
       "comments(post_id)",
       "posts(author_id)",
@@ -54,5 +54,11 @@ describe.skipIf(!url)("observePostgresCatalog on the seeded synthetic DB", () =>
     expect(await observePostgresCatalog(conn.query, SCHEMA)).toEqual([]);
     for (const p of proposals) await conn.query(p.inverse, []);
     expect(await observePostgresCatalog(conn.query, SCHEMA)).toHaveLength(3);
+    // The inverses dropped only nlqdb's indexes, never the app's own.
+    const { rows } = await conn.query(
+      "SELECT 1 FROM pg_catalog.pg_indexes WHERE schemaname = $1 AND indexname = 'posts_author_id_idx'",
+      [SCHEMA],
+    );
+    expect(rows).toHaveLength(1);
   });
 });

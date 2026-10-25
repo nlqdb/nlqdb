@@ -47,8 +47,8 @@ describe("observePostgresCatalog", () => {
     expect(proposals[1]).toMatchObject({
       kind: "create_index",
       tier: 0,
-      ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS "deployments_tenant_id_region_idx" ON "app"."deployments" ("tenant_id", "region")',
-      inverse: 'DROP INDEX CONCURRENTLY IF EXISTS "app"."deployments_tenant_id_region_idx"',
+      ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS "nlqdb_deployments_tenant_id_region" ON "app"."deployments" ("tenant_id", "region")',
+      inverse: 'DROP INDEX CONCURRENTLY IF EXISTS "app"."nlqdb_deployments_tenant_id_region"',
       evidence: { rowEstimate: 10, tableBytes: 1_000 },
     });
   });
@@ -84,7 +84,7 @@ describe("observePostgresCatalog", () => {
 
 describe("indexName", () => {
   it("keeps short names readable and long names within Postgres's 63 bytes, unique", () => {
-    expect(indexName("posts", ["author_id"])).toBe("posts_author_id_idx");
+    expect(indexName("posts", ["author_id"])).toBe("nlqdb_posts_author_id");
     const long = "t".repeat(60);
     const a = indexName(long, ["first_column"]);
     const b = indexName(long, ["second_column"]);

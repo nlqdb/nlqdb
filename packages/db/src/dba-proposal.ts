@@ -24,6 +24,9 @@ export type Proposal = CreateIndexProposal;
 
 // Postgres truncates identifiers past 63 bytes, so two long names could
 // collide silently; past the limit keep a prefix and a hash of the full name.
+// The `nlqdb_` prefix keeps the name out of the app's own namespace: with
+// `IF NOT EXISTS`, a user index of the same name would make the apply a no-op
+// and the inverse would drop the user's index.
 const PG_MAX_IDENT_BYTES = 63;
 
 // Double-quote an identifier, escaping embedded quotes (same rule as
@@ -41,7 +44,7 @@ function fnv1a(text: string): string {
 }
 
 export function indexName(table: string, columns: string[]): string {
-  const full = `${table}_${columns.join("_")}_idx`;
+  const full = `nlqdb_${table}_${columns.join("_")}`;
   const bytes = new TextEncoder().encode(full);
   if (bytes.length <= PG_MAX_IDENT_BYTES) return full;
   // 54 bytes of prefix + "_" + 8 hex = 63. Decode drops a split multibyte tail.
