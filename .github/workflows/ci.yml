@@ -264,6 +264,31 @@ jobs:
           bun run build
           test -f dist/index.js || (echo "::error::dist/index.js not produced"; exit 1)
 
+  # GLOBAL-043 roadmap item 1a: the DBA loop runs against a seeded synthetic
+  # Postgres with pg_stat_statements preloaded. The `*.pg.test.ts` files skip
+  # without PG_TEST_URL, so test-pkgs stays Postgres-free.
+  test-dba-postgres:
+    name: packages/db DBA loop vs synthetic Postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Start Postgres 16 (pg_stat_statements preloaded)
+        run: |
+          docker run -d --name pg -p 5432:5432 -e POSTGRES_PASSWORD=pg postgres:16 \
+            -c shared_preload_libraries=pg_stat_statements
+          # TCP readiness: the image's init server listens on the socket only.
+          for _ in $(seq 60); do docker exec pg pg_isready -h 127.0.0.1 -U postgres && exit 0; sleep 1; done
+          docker logs pg; exit 1
+
+      - name: Test
+        working-directory: packages/db
+        env:
+          PG_TEST_URL: postgres://postgres:pg@127.0.0.1:5432/postgres
+        run: bunx vitest run --reporter=verbose test/*.pg.test.ts
+
   test-tools:
     name: tools/${{ matrix.tool }} (typecheck + bun test)
     runs-on: ubuntu-latest

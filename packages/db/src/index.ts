@@ -73,6 +73,9 @@ export {
   redactConnectionUrl,
   UNPARSEABLE_CONNECTION_URL,
 } from "./connection-url.ts";
+export { observePostgresCatalog } from "./dba-observe-postgres.ts";
+export type { CreateIndexProposal, Proposal } from "./dba-proposal.ts";
+export { createIndexProposal, indexName } from "./dba-proposal.ts";
 export type { DohResolverOptions } from "./doh-resolver.ts";
 export { createDohResolver } from "./doh-resolver.ts";
 export type { DnsResolver, EgressGuardResult } from "./egress-guard.ts";
