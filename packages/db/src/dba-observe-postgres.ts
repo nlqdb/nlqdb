@@ -18,7 +18,7 @@
 // `CONCURRENTLY`, so they need a multi-statement proposal kind of their own.
 
 import { dbDurationMs } from "@nlqdb/otel";
-import { SpanStatusCode, trace } from "@opentelemetry/api";
+import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import { createIndexProposal, type Proposal } from "./dba-proposal.ts";
 import type { PostgresQueryFn } from "./postgres.ts";
 
@@ -53,56 +53,69 @@ ORDER BY c.relname, con.conname, k.ord`;
 // where a missing FK index costs the most. A healthy schema returns `[]`
 // ("nothing worth changing yet"), never an invented proposal. One `db.observe`
 // span per call (`GLOBAL-014`); throws on a query failure (`GLOBAL-012`).
-export async function observePostgresCatalog(
+export function observePostgresCatalog(
   query: PostgresQueryFn,
   schema: string,
 ): Promise<Proposal[]> {
-  const tracer = trace.getTracer("@nlqdb/db");
-  return tracer.startActiveSpan(
+  return withObserveSpan("observe_catalog", schema, async () => {
+    const { rows } = await query(UNINDEXED_FOREIGN_KEYS_SQL, [schema]);
+    const byConstraint = new Map<string, { row: (typeof rows)[number]; columns: string[] }>();
+    for (const row of rows) {
+      // Constraint names are unique per table, not per schema.
+      const key = `${String(row["table_name"])}\0${String(row["constraint_name"])}`;
+      const entry = byConstraint.get(key) ?? { row, columns: [] };
+      entry.columns.push(String(row["column_name"]));
+      byConstraint.set(key, entry);
+    }
+    const all = [...byConstraint.values()].map(({ row, columns }) => {
+      const table = String(row["table_name"]);
+      return createIndexProposal({
+        tier: 0,
+        schema,
+        table,
+        columns,
+        reason: `Foreign key ${table}(${columns.join(", ")}) → ${String(row["ref_table"])} has no index: joins on it and deletes on ${String(row["ref_table"])} scan all of ${table}.`,
+        evidence: {
+          rowEstimate: Number(row["row_estimate"]),
+          tableBytes: Number(row["table_bytes"]),
+        },
+      });
+    });
+    // FKs on the same column set (in any order) need one index, not two.
+    const proposals = [
+      ...new Map(all.map((p) => [`${p.table}\0${[...p.columns].sort()}`, p])).values(),
+    ];
+    proposals.sort(
+      (a, b) =>
+        b.evidence.tableBytes - a.evidence.tableBytes ||
+        a.table.localeCompare(b.table) ||
+        a.columns.join().localeCompare(b.columns.join()),
+    );
+    return proposals;
+  });
+}
+
+// The one `db.observe` span every Postgres observer runs under (`GLOBAL-014`):
+// its proposal count, any extra attributes the observer returns, and the error
+// it throws (`GLOBAL-012`).
+export function withObserveSpan(
+  operation: string,
+  schema: string,
+  observe: (span: Span) => Promise<Proposal[]>,
+): Promise<Proposal[]> {
+  return trace.getTracer("@nlqdb/db").startActiveSpan(
     "db.observe",
     {
       attributes: {
         "db.system": "postgresql",
-        "db.operation.name": "observe_catalog",
+        "db.operation.name": operation,
         "db.namespace": schema,
       },
     },
     async (span) => {
       const startedAt = performance.now();
       try {
-        const { rows } = await query(UNINDEXED_FOREIGN_KEYS_SQL, [schema]);
-        const byConstraint = new Map<string, { row: (typeof rows)[number]; columns: string[] }>();
-        for (const row of rows) {
-          // Constraint names are unique per table, not per schema.
-          const key = `${String(row["table_name"])}\0${String(row["constraint_name"])}`;
-          const entry = byConstraint.get(key) ?? { row, columns: [] };
-          entry.columns.push(String(row["column_name"]));
-          byConstraint.set(key, entry);
-        }
-        const all = [...byConstraint.values()].map(({ row, columns }) => {
-          const table = String(row["table_name"]);
-          return createIndexProposal({
-            tier: 0,
-            schema,
-            table,
-            columns,
-            reason: `Foreign key ${table}(${columns.join(", ")}) → ${String(row["ref_table"])} has no index: joins on it and deletes on ${String(row["ref_table"])} scan all of ${table}.`,
-            evidence: {
-              rowEstimate: Number(row["row_estimate"]),
-              tableBytes: Number(row["table_bytes"]),
-            },
-          });
-        });
-        // FKs on the same column set (in any order) need one index, not two.
-        const proposals = [
-          ...new Map(all.map((p) => [`${p.table}\0${[...p.columns].sort()}`, p])).values(),
-        ];
-        proposals.sort(
-          (a, b) =>
-            b.evidence.tableBytes - a.evidence.tableBytes ||
-            a.table.localeCompare(b.table) ||
-            a.columns.join().localeCompare(b.columns.join()),
-        );
+        const proposals = await observe(span);
         span.setAttribute("nlqdb.dba.proposals", proposals.length);
         return proposals;
       } catch (err) {
@@ -110,7 +123,7 @@ export async function observePostgresCatalog(
         span.setStatus({ code: SpanStatusCode.ERROR });
         throw err;
       } finally {
-        dbDurationMs().record(performance.now() - startedAt, { operation: "observe_catalog" });
+        dbDurationMs().record(performance.now() - startedAt, { operation });
         span.end();
       }
     },

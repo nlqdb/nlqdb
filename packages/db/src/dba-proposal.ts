@@ -19,8 +19,13 @@ export type CreateIndexProposal = {
   inverse: string;
   // One sentence a user can read on the proposal card.
   reason: string;
-  // What the observer saw — the card's cost line (`END_GOAL.md` row 3).
-  evidence: { rowEstimate: number; tableBytes: number };
+  // What the observer saw — the card's cost line (`END_GOAL.md` row 3). Tier 1
+  // adds the fingerprint it would speed up, over the observed window.
+  evidence: {
+    rowEstimate: number;
+    tableBytes: number;
+    workload?: { fingerprint: string; calls: number; meanMs: number; p95EstimateMs: number };
+  };
 };
 
 export type Proposal = CreateIndexProposal;
