@@ -86,9 +86,8 @@ content or marketplace lever; existing pages stay live.
    and slots by rank. A fix that costs money is not a fix
    (`docs/cost-ladder.md`) — never propose spend as a resolution.
 5. **Monetization is settled** (`GLOBAL-043`): the shipped premium tier
-   stays as is; no pricing, meter or plan work for the DBA product. There is no access gate — the product is open pre-beta;
-   the optional Become AI update list measures interest and never controls
-   access (`GLOBAL-007`).
+   stays as is; no pricing, meter or plan work for the DBA product. There is no access gate — the product is open pre-beta
+   (`GLOBAL-007`).
 6. **Red main is the run.** If `bun run typecheck && bun run check && bun run
    test` is red before you change anything, fixing it IS this run's lever.
    Same for the `deploy-*` workflows: check each one's latest run on `main`

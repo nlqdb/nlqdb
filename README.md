@@ -180,7 +180,7 @@ One loop — observe → propose → apply → verify → revert — on your Pos
 
 - ~ `/app/dba` change ledger — every change with its inverse, newest first
   (read-only v0)
-- ◯ Attach product on synthetic databases — observer, `create_index`
+- ~ Attach product on synthetic databases — observer, `create_index`
   proposal, apply → verify → auto-revert, the four doors, tested in CI
 - ◯ Postgres spike — one index proposed, applied and measured (before/after
   p95) on a real-traffic database
