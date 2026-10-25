@@ -1,5 +1,5 @@
 -- Synthetic attach target for the GLOBAL-043 item-1a slices: a small app
--- schema an agent might ship — PKs and FKs, no secondary indexes. Each run
+-- schema an agent might ship — PKs, FKs and a few non-covering indexes. Each run
 -- drops and recreates `dba_synth`, so the seed is idempotent.
 DROP SCHEMA IF EXISTS dba_synth CASCADE;
 CREATE SCHEMA dba_synth;
@@ -31,6 +31,17 @@ CREATE TABLE deployments (
   FOREIGN KEY (tenant_id, region) REFERENCES tenants_regions (tenant_id, region)
 );
 CREATE INDEX deployments_region_only_idx ON deployments (region);
+-- Neither covers its FK: an INCLUDE column isn't a key column, and BRIN can't
+-- serve the equality lookup.
+CREATE TABLE memberships (
+  user_id bigint NOT NULL,
+  tenant_id bigint NOT NULL,
+  region text NOT NULL,
+  FOREIGN KEY (tenant_id, region) REFERENCES tenants_regions (tenant_id, region),
+  FOREIGN KEY (user_id) REFERENCES users (id)
+);
+CREATE INDEX memberships_tenant_incl_region_idx ON memberships (tenant_id) INCLUDE (region);
+CREATE INDEX memberships_user_brin_idx ON memberships USING brin (user_id);
 -- Partitioned: Postgres can't build an index on the parent `CONCURRENTLY`, so
 -- its FK is not a Tier 0 proposal yet; nor is the partition's cloned FK.
 CREATE TABLE events (
@@ -43,5 +54,6 @@ INSERT INTO users SELECT g, 'u' || g || '@example.com' FROM generate_series(1, 2
 INSERT INTO posts SELECT g, 1 + g % 2000, 'post ' || g FROM generate_series(1, 20000) g;
 INSERT INTO comments SELECT g, 1 + g % 20000, 1 + g % 2000, 'c' FROM generate_series(1, 50000) g;
 INSERT INTO tenants_regions SELECT g, 'r' || (g % 4) FROM generate_series(1, 100) g;
+INSERT INTO memberships SELECT 1 + g % 2000, 1 + g % 100, 'r' || ((1 + g % 100) % 4) FROM generate_series(1, 100) g;
 INSERT INTO deployments SELECT g, 1 + g % 100, 'r' || ((1 + g % 100) % 4) FROM generate_series(1, 1000) g;
 ANALYZE;

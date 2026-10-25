@@ -39,13 +39,15 @@ describe.skipIf(!url)("observePostgresCatalog on the seeded synthetic DB", () =>
     // biome-ignore lint/suspicious/noConsole: the KPI A reading belongs in the CI log
     console.log(`KPI A (synthetic, Tier 0): attach → first proposal ${kpiAMs.toFixed(1)} ms`);
 
-    // comments.user_id is indexed; posts' partial index and deployments'
-    // (region) index don't cover their FKs; partitioned events is skipped.
-    // So three proposals, largest first.
+    // comments.user_id is indexed; posts' partial index, deployments' (region)
+    // index and memberships' INCLUDE and BRIN indexes don't cover their FKs;
+    // partitioned events is skipped. So five proposals, largest first.
     expect(proposals.map((p) => `${p.table}(${p.columns.join(",")})`)).toEqual([
       "comments(post_id)",
       "posts(author_id)",
       "deployments(tenant_id,region)",
+      "memberships(tenant_id,region)",
+      "memberships(user_id)",
     ]);
     expect(kpiAMs).toBeLessThan(5 * 60_000);
 
@@ -56,7 +58,7 @@ describe.skipIf(!url)("observePostgresCatalog on the seeded synthetic DB", () =>
     // A taken name fails loud rather than no-op under an inverse it doesn't own.
     await expect(conn.query(proposals[0]?.ddl as string, [])).rejects.toThrow(/already exists/);
     for (const p of proposals) await conn.query(p.inverse, []);
-    expect(await observePostgresCatalog(conn.query, SCHEMA)).toHaveLength(3);
+    expect(await observePostgresCatalog(conn.query, SCHEMA)).toHaveLength(5);
     // The inverses dropped only nlqdb's indexes, never the app's own.
     const { rows } = await conn.query(
       "SELECT 1 FROM pg_catalog.pg_indexes WHERE schemaname = $1 AND indexname = 'posts_author_id_idx'",

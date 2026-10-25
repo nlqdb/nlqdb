@@ -71,6 +71,16 @@ describe("observePostgresCatalog", () => {
     expect(await observePostgresCatalog(query, "public")).toHaveLength(1);
   });
 
+  it("proposes one index for two FKs on the same columns in a different order", async () => {
+    const { query } = stubQuery([
+      fkRow("d", "d_ab_fkey", "a", "p", 5),
+      fkRow("d", "d_ab_fkey", "b", "p", 5),
+      fkRow("d", "d_ba_fkey", "b", "q", 5),
+      fkRow("d", "d_ba_fkey", "a", "q", 5),
+    ]);
+    expect(await observePostgresCatalog(query, "public")).toHaveLength(1);
+  });
+
   it("returns no proposal for a healthy schema", async () => {
     expect(await observePostgresCatalog(stubQuery([]).query, "public")).toEqual([]);
   });

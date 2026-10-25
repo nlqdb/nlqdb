@@ -10,8 +10,9 @@
 // whole schema, never one per table.
 //
 // An index "covers" the FK when its first n key columns are exactly the n FK
-// columns in any order (an equality lookup can use any permutation). Partial
-// and invalid (failed `CONCURRENTLY`) indexes don't count. Child partitions are
+// columns in any order (an equality lookup can use any permutation). Only
+// btree / hash serve that lookup; `INCLUDE` columns aren't key columns (hence
+// `indnkeyatts`). Partial and invalid (failed `CONCURRENTLY`) indexes don't count. Child partitions are
 // skipped: their FKs are clones of the parent's, the same as `introspect-postgres.ts`.
 // Partitioned parents are skipped too: Postgres can't build their index
 // `CONCURRENTLY`, so they need a multi-statement proposal kind of their own.
@@ -39,7 +40,11 @@ JOIN pg_catalog.pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = k.att
 WHERE n.nspname = $1 AND con.contype = 'f' AND c.relkind = 'r' AND NOT c.relispartition
   AND NOT EXISTS (
     SELECT 1 FROM pg_catalog.pg_index i
+    JOIN pg_catalog.pg_class ic ON ic.oid = i.indexrelid
+    JOIN pg_catalog.pg_am am ON am.oid = ic.relam
     WHERE i.indrelid = con.conrelid AND i.indisvalid AND i.indpred IS NULL
+      AND am.amname IN ('btree', 'hash')
+      AND i.indnkeyatts >= cardinality(con.conkey)
       AND (i.indkey::int2[])[0:cardinality(con.conkey) - 1] @> con.conkey
   )
 ORDER BY c.relname, con.conname, k.ord`;
@@ -88,8 +93,10 @@ export async function observePostgresCatalog(
             },
           });
         });
-        // Two FKs on the same columns (to different tables) need one index, not two.
-        const proposals = [...new Map(all.map((p) => [p.ddl, p])).values()];
+        // FKs on the same column set (in any order) need one index, not two.
+        const proposals = [
+          ...new Map(all.map((p) => [`${p.table}\0${[...p.columns].sort()}`, p])).values(),
+        ];
         proposals.sort(
           (a, b) =>
             b.evidence.tableBytes - a.evidence.tableBytes ||
