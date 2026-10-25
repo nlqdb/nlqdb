@@ -2,18 +2,25 @@
 // synthetic app schema (`GLOBAL-043` roadmap item 1a). Runs only when
 // `PG_TEST_URL` is set — CI's `test-dba-postgres` job starts Postgres 16 with
 // `pg_stat_statements` preloaded; the unit env has no Postgres and skips it.
-// It also prints KPI A on the synthetic DB: attach → first proposal, in ms.
+// It also prints KPI A on the synthetic DB (attach → first proposal, in ms) and
+// the Tier 1 hot fingerprints' p95 estimate before / after their index.
 
 import { readFileSync } from "node:fs";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { observePostgresCatalog } from "../src/index.ts";
+import {
+  type FingerprintWindow,
+  observePostgresCatalog,
+  observePostgresWorkload,
+  snapshotPostgresStatements,
+  statementWindow,
+} from "../src/index.ts";
 import { type ByoPostgresConnection, openByoPostgres } from "../src/postgres-byo.ts";
 
 const url = process.env["PG_TEST_URL"];
 const SCHEMA = "dba_synth";
 
-describe.skipIf(!url)("observePostgresCatalog on the seeded synthetic DB", () => {
+describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () => {
   let conn: ByoPostgresConnection;
 
   beforeAll(async () => {
@@ -65,5 +72,55 @@ describe.skipIf(!url)("observePostgresCatalog on the seeded synthetic DB", () =>
       [SCHEMA],
     );
     expect(rows).toHaveLength(1);
+  });
+
+  // The synthetic app's workload: two hot lookups on unindexed columns, and
+  // two decoys an index wouldn't help — a filter keeping 25 % of its table,
+  // and a lookup already served by comments_user_id_idx.
+  const HOT = [
+    "SELECT id FROM dba_synth.posts WHERE title = $1",
+    "SELECT id FROM dba_synth.users WHERE email = $1",
+  ];
+  async function runWorkload(): Promise<FingerprintWindow[]> {
+    const before = await snapshotPostgresStatements(conn.query);
+    for (let i = 0; i < 300; i++) {
+      await conn.query(HOT[0] as string, [`post ${1 + ((i * 37) % 20000)}`]);
+      await conn.query(HOT[1] as string, [`u${1 + ((i * 7) % 2000)}@example.com`]);
+      await conn.query("SELECT count(*) FROM dba_synth.memberships WHERE region = $1", [
+        `r${i % 4}`,
+      ]);
+      await conn.query("SELECT body FROM dba_synth.comments WHERE user_id = $1", [1 + (i % 2000)]);
+    }
+    return statementWindow(before, await snapshotPostgresStatements(conn.query));
+  }
+  const hot = (window: FingerprintWindow[], sql: string) =>
+    window.find((w) => w.query === sql) as FingerprintWindow;
+
+  it("proposes an index for each hot seq-scanned lookup, and it cuts that fingerprint's p95", async () => {
+    await conn.query("SELECT pg_stat_statements_reset()", []);
+    const before = await runWorkload();
+    const proposals = await observePostgresWorkload(conn.query, SCHEMA, before);
+    expect(proposals.map((p) => `${p.table}(${p.columns.join(",")}) t${p.tier}`)).toEqual([
+      "posts(title) t1",
+      "users(email) t1",
+    ]);
+    expect(proposals[0]?.evidence.workload).toMatchObject({
+      fingerprint: hot(before, HOT[0] as string).fingerprint,
+      calls: 300,
+    });
+
+    for (const p of proposals) await conn.query(p.ddl, []);
+    const after = await runWorkload();
+    for (const sql of HOT) {
+      const [b, a] = [hot(before, sql), hot(after, sql)];
+      // biome-ignore lint/suspicious/noConsole: the p95 reading belongs in the CI log
+      console.log(
+        `Tier 1 (synthetic) ${sql}: p95 est ${b.p95EstimateMs.toFixed(3)} → ${a.p95EstimateMs.toFixed(3)} ms`,
+      );
+      expect(a.p95EstimateMs).toBeLessThan(b.p95EstimateMs);
+    }
+    // Served now: the next window proposes nothing.
+    expect(await observePostgresWorkload(conn.query, SCHEMA, after)).toEqual([]);
+    for (const p of proposals) await conn.query(p.inverse, []);
   });
 });

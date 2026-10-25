@@ -1,6 +1,8 @@
 -- Synthetic attach target for the GLOBAL-043 item-1a slices: a small app
 -- schema an agent might ship — PKs, FKs and a few non-covering indexes. Each run
 -- drops and recreates `dba_synth`, so the seed is idempotent.
+-- Tier 1 reads the workload from pg_stat_statements (preloaded by CI).
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 DROP SCHEMA IF EXISTS dba_synth CASCADE;
 CREATE SCHEMA dba_synth;
 SET search_path = dba_synth;

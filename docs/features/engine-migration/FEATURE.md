@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Engine Migration
 
 **One-liner:** Reshape loop — daily workload analyser creates Tinybird Pipes for hot ClickHouse fingerprints and writes advisory audit rows for hot Postgres ones; cross-engine migration still planned.
-**Status:** partial — intra-engine reshape live (`SK-MIGRATE-001..006`); the attach loop is `GLOBAL-043` roadmap item 1 — its Postgres Tier 0 observer ships (unindexed FKs → `create_index` proposals with inverses); Tier 1, apply / verify / revert and the doors follow; engine placement is its last playbook kind.
+**Status:** partial — intra-engine reshape live (`SK-MIGRATE-001..006`); the attach loop is `GLOBAL-043` roadmap item 1 — its Postgres Tier 0 observer (unindexed FKs) and Tier 1 observer (`pg_stat_statements` windows → selective seq-scanned equality filters, with a mean + 1.65 σ p95 estimate per fingerprint) ship as `create_index` proposals with inverses; apply / verify / revert and the doors follow; engine placement is its last playbook kind.
 **Owners (code):** `apps/api/src/workload-analyser/**`, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql`
 **Cross-refs:** `multi-engine-adapter/FEATURE.md` `SK-MULTIENG-003` (the rule this feature operationalises) · `events-pipeline/FEATURE.md` `SK-EVENTS-009` (the `query_log` Data Source the analyser reads) · `plan-cache/FEATURE.md` `SK-PLAN-002` (cache key must outlive reshape) · `GLOBAL-043` (roadmap + exit gate) · `docs/performance.md §3.1` (`nlqdb.workload_analyser.*` spans)
 

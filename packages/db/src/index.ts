@@ -74,6 +74,16 @@ export {
   UNPARSEABLE_CONNECTION_URL,
 } from "./connection-url.ts";
 export { observePostgresCatalog } from "./dba-observe-postgres.ts";
+export type {
+  FingerprintWindow,
+  StatementCounters,
+  StatementSnapshot,
+} from "./dba-observe-postgres-workload.ts";
+export {
+  observePostgresWorkload,
+  snapshotPostgresStatements,
+  statementWindow,
+} from "./dba-observe-postgres-workload.ts";
 export type { CreateIndexProposal, Proposal } from "./dba-proposal.ts";
 export { createIndexProposal, indexName } from "./dba-proposal.ts";
 export type { DohResolverOptions } from "./doh-resolver.ts";

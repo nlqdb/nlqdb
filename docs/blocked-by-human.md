@@ -9,6 +9,19 @@ Operator actions also get one metadata line in
 [`history/founder-actions-log.md`](./history/founder-actions-log.md) — never
 a secret value.
 
+## Approve the held `Deploy API` run on `main`
+
+⏱ ~2 min · blocked since 2026-10-25. `Deploy API` #672 (`c89bbdd`, run 260's
+merge) sits at `action_required` with no job started, so production serves
+the 10-22 build and every later deploy will hold the same way — the 09-08
+gate again (`history/founder-actions-log.md`, 2026-09-14).
+
+1. Open [run 40182391434](https://github.com/nlqdb/nlqdb/actions/runs/40182391434)
+   and approve it.
+2. If it re-holds on the next merge, set Settings → Actions → General back to
+   auto-run for `main`.
+3. Log a line in `history/founder-actions-log.md` and delete this bullet.
+
 ## Pick the spike database and hand its connection string to CI
 
 ⏱ ~10 min · blocked since 2026-10-22. `/daily` step 2's item 1b is the
