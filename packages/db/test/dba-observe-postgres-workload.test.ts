@@ -86,6 +86,7 @@ describe("observePostgresWorkload", () => {
   it.each([
     ["an OR filter", seqScan("((u.a = $1) OR (u.b = $2))"), bigTable],
     ["a non-equality filter", seqScan("(u.a > $1)"), bigTable],
+    ["an equality ANDed with a range", seqScan("((u.a = $1) AND (u.b > $2))"), bigTable],
     ["an unselective filter", seqScan("(u.a = $1)", 2_000), bigTable],
     ["an already covered column set", seqScan("(u.a = $1)"), { ...bigTable, covered: 1 }],
     ["another schema", { ...seqScan("(u.a = $1)"), Schema: "other" }, bigTable],

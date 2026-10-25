@@ -14,8 +14,7 @@
 // attached schema with a selective AND of equality filters, and no valid btree
 // / hash index already leads with those columns.
 
-import { dbDurationMs } from "@nlqdb/otel";
-import { SpanStatusCode, trace } from "@opentelemetry/api";
+import { withObserveSpan } from "./dba-observe-postgres.ts";
 import { createIndexProposal, type Proposal } from "./dba-proposal.ts";
 import type { PostgresQueryFn } from "./postgres.ts";
 
@@ -142,7 +141,9 @@ type PlanNode = {
 
 type SeqScanFilter = { table: string; columns: string[]; planRows: number };
 
-// The plan's seq scans on `schema` whose filter is an AND of plain equalities.
+// The plan's seq scans on `schema` whose filter is only an AND of plain
+// equalities: with any other term (a range, an OR) `Plan Rows` would credit
+// the equality columns with selectivity they don't have alone.
 function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = []) {
   const filter = node.Filter;
   if (
@@ -150,7 +151,7 @@ function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = [
     node.Schema === schema &&
     node["Relation Name"] &&
     filter &&
-    !/\bOR\b/.test(filter)
+    filter.replace(EQUALITY_TERM, "").replace(/\bAND\b|[()\s]/g, "") === ""
   ) {
     const columns = [
       ...new Set([...filter.matchAll(EQUALITY_TERM)].map((m) => unquote(m[1] as string))),
@@ -192,90 +193,64 @@ WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind = 'r' AND NOT c.relisparti
 // Turn the window's hot fingerprints into Tier 1 proposals, heaviest first;
 // one proposal per (table, column set). A fingerprint that doesn't plan under
 // the observer's role (search_path, a dropped table, Postgres < 16) is skipped
-// and counted on the span, never guessed at. One `db.observe` span per call
-// (`GLOBAL-014`); a catalog query failure throws (`GLOBAL-012`).
-export async function observePostgresWorkload(
+// and counted on the span, never guessed at; a catalog query failure throws.
+export function observePostgresWorkload(
   query: PostgresQueryFn,
   schema: string,
   window: FingerprintWindow[],
 ): Promise<Proposal[]> {
-  const tracer = trace.getTracer("@nlqdb/db");
-  return tracer.startActiveSpan(
-    "db.observe",
-    {
-      attributes: {
-        "db.system": "postgresql",
-        "db.operation.name": "observe_workload",
-        "db.namespace": schema,
-      },
-    },
-    async (span) => {
-      const startedAt = performance.now();
+  return withObserveSpan("observe_workload", schema, async (span) => {
+    const proposals = new Map<string, Proposal>();
+    let unplanned = 0;
+    const candidates = window
+      .filter((w) => EXPLAINABLE.test(w.query) && !w.query.includes(";"))
+      .slice(0, MAX_FINGERPRINTS);
+    for (const w of candidates) {
+      let plan: PlanNode;
       try {
-        const proposals = new Map<string, Proposal>();
-        let unplanned = 0;
-        const candidates = window
-          .filter((w) => EXPLAINABLE.test(w.query) && !w.query.includes(";"))
-          .slice(0, MAX_FINGERPRINTS);
-        for (const w of candidates) {
-          let plan: PlanNode;
-          try {
-            const { rows } = await query(
-              `EXPLAIN (GENERIC_PLAN, VERBOSE, FORMAT JSON) ${w.query}`,
-              [],
-            );
-            const raw = Object.values(rows[0] ?? {})[0];
-            plan = (typeof raw === "string" ? JSON.parse(raw) : raw)[0].Plan;
-          } catch {
-            unplanned++;
-            continue;
-          }
-          for (const scan of seqScanFilters(plan, schema)) {
-            const key = `${scan.table}\0${[...scan.columns].sort()}`;
-            if (proposals.has(key)) continue;
-            const { rows } = await query(TABLE_CHECK_SQL, [
-              schema,
-              scan.table,
-              JSON.stringify(scan.columns),
-            ]);
-            const t = rows[0];
-            if (!t || Number(t["covered"]) === 1) continue;
-            if (Number(t["known_columns"]) !== scan.columns.length) continue;
-            const rowEstimate = Number(t["row_estimate"]);
-            if (rowEstimate <= 0 || scan.planRows / rowEstimate > MAX_SELECTIVITY) continue;
-            proposals.set(
-              key,
-              createIndexProposal({
-                tier: 1,
-                schema,
-                table: scan.table,
-                columns: scan.columns,
-                reason: `A query that ran ${w.calls} times (mean ${w.meanMs.toFixed(2)} ms, p95 ≈ ${w.p95EstimateMs.toFixed(2)} ms est.) scans all of ${scan.table} to filter on ${scan.columns.join(", ")}; an index on them serves it directly.`,
-                evidence: {
-                  rowEstimate,
-                  tableBytes: Number(t["table_bytes"]),
-                  workload: {
-                    fingerprint: w.fingerprint,
-                    calls: w.calls,
-                    meanMs: w.meanMs,
-                    p95EstimateMs: w.p95EstimateMs,
-                  },
-                },
-              }),
-            );
-          }
-        }
-        span.setAttribute("nlqdb.dba.proposals", proposals.size);
-        span.setAttribute("nlqdb.dba.unplanned", unplanned);
-        return [...proposals.values()];
-      } catch (err) {
-        span.recordException(err as Error);
-        span.setStatus({ code: SpanStatusCode.ERROR });
-        throw err;
-      } finally {
-        dbDurationMs().record(performance.now() - startedAt, { operation: "observe_workload" });
-        span.end();
+        const { rows } = await query(`EXPLAIN (GENERIC_PLAN, VERBOSE, FORMAT JSON) ${w.query}`, []);
+        const raw = Object.values(rows[0] ?? {})[0];
+        plan = (typeof raw === "string" ? JSON.parse(raw) : raw)[0].Plan;
+      } catch {
+        unplanned++;
+        continue;
       }
-    },
-  );
+      for (const scan of seqScanFilters(plan, schema)) {
+        const key = `${scan.table}\0${[...scan.columns].sort()}`;
+        if (proposals.has(key)) continue;
+        const { rows } = await query(TABLE_CHECK_SQL, [
+          schema,
+          scan.table,
+          JSON.stringify(scan.columns),
+        ]);
+        const t = rows[0];
+        if (!t || Number(t["covered"]) === 1) continue;
+        if (Number(t["known_columns"]) !== scan.columns.length) continue;
+        const rowEstimate = Number(t["row_estimate"]);
+        if (rowEstimate <= 0 || scan.planRows / rowEstimate > MAX_SELECTIVITY) continue;
+        proposals.set(
+          key,
+          createIndexProposal({
+            tier: 1,
+            schema,
+            table: scan.table,
+            columns: scan.columns,
+            reason: `A query that ran ${w.calls} times (mean ${w.meanMs.toFixed(2)} ms, p95 ≈ ${w.p95EstimateMs.toFixed(2)} ms est.) scans all of ${scan.table} to filter on ${scan.columns.join(", ")}; an index on them serves it directly.`,
+            evidence: {
+              rowEstimate,
+              tableBytes: Number(t["table_bytes"]),
+              workload: {
+                fingerprint: w.fingerprint,
+                calls: w.calls,
+                meanMs: w.meanMs,
+                p95EstimateMs: w.p95EstimateMs,
+              },
+            },
+          }),
+        );
+      }
+    }
+    span.setAttribute("nlqdb.dba.unplanned", unplanned);
+    return [...proposals.values()];
+  });
 }
