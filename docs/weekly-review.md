@@ -9,9 +9,9 @@ kept as is.
 
 - **#1192–#1196** (runs 254–258) claim real-Postgres walks: 1200 → 600,
   0/196 → 196/196, 0 → 11/11, 0/94 → 94/94, 0/9 → 9/9. None of those walks
-  was committed. Only mocked unit tests landed, and no `*.pg.test.ts` or
-  walk script outside `packages/db`. Last week flagged the same gap on
-  #1183, and it recurred five times.
+  was committed: the five PRs add unit tests over stubbed Postgres (plus
+  #1196's D1 ledger test), no Postgres test or walk script. Last week
+  flagged the same gap on #1183, and it recurred five times.
 - **#1204** fixes the pattern. `test-dba-postgres` reruns its walk on every
   CI run. Its scorecard number is still not CI's: row EA reads 27.9 ms (a
   local median of 5), but `main` CI printed **160.5 ms**
@@ -23,7 +23,7 @@ kept as is.
 Runs 252–258 (7 of 9) built on `insert()` (`GLOBAL-041` steps 1, 2, 11).
 Then `GLOBAL-043` (10-22) put `insert()` on its deletion list. That was a
 founder pivot, not a rut, but this week's build mostly went into a path
-that will be deleted. Run 259 was a correct null, and the 10-23
+slated for deletion once the spike passes. Run 259 was a correct null, and the 10-23
 re-sequence opened 1a. Run 260 shipped slice 1, the first engine number
 on the new plan.
 
