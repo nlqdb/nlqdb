@@ -4,6 +4,9 @@
 // (later item-1a slices) consume it without knowing which observer made it.
 // `kind` is the discriminant of one union (`SK-MIGRATE-003`); adding a kind is
 // a union member, a compiler arm and an inverse — nothing else.
+// `createIndexProposal` renders Postgres DDL; the D1 slice adds its own.
+
+import { quoteIdent } from "./render-byo-postgres.ts";
 
 export type CreateIndexProposal = {
   kind: "create_index";
@@ -22,18 +25,11 @@ export type CreateIndexProposal = {
 
 export type Proposal = CreateIndexProposal;
 
-// Postgres truncates identifiers past 63 bytes, so two long names could
-// collide silently; past the limit keep a prefix and a hash of the full name.
-// The `nlqdb_` prefix keeps the name out of the app's own namespace: with
-// `IF NOT EXISTS`, a user index of the same name would make the apply a no-op
-// and the inverse would drop the user's index.
+// Postgres index names share one namespace per schema and truncate past 63
+// bytes. The name is `nlqdb_` (out of the app's own naming), a readable
+// table/columns stem cut to fit, and a hash of the exact (table, columns): the
+// stem alone is ambiguous (`a_b(c)` and `a(b_c)` both read `nlqdb_a_b_c`).
 const PG_MAX_IDENT_BYTES = 63;
-
-// Double-quote an identifier, escaping embedded quotes (same rule as
-// `render-byo-postgres.ts`).
-function quoteIdent(name: string): string {
-  return `"${name.replace(/"/g, '""')}"`;
-}
 
 function fnv1a(text: string): string {
   let h = 0x811c9dc5;
@@ -44,16 +40,20 @@ function fnv1a(text: string): string {
 }
 
 export function indexName(table: string, columns: string[]): string {
-  const full = `nlqdb_${table}_${columns.join("_")}`;
-  const bytes = new TextEncoder().encode(full);
-  if (bytes.length <= PG_MAX_IDENT_BYTES) return full;
-  // 54 bytes of prefix + "_" + 8 hex = 63. Decode drops a split multibyte tail.
-  const prefix = new TextDecoder().decode(bytes.slice(0, 54)).replace(/�$/, "");
-  return `${prefix}_${fnv1a(full)}`;
+  const stem = new TextEncoder().encode(`nlqdb_${table}_${columns.join("_")}`);
+  // stem + "_" + 8 hex <= 63 bytes. Decode drops a split multibyte tail.
+  const head = new TextDecoder()
+    .decode(stem.slice(0, PG_MAX_IDENT_BYTES - 9))
+    .replace(/\uFFFD$/, "");
+  return `${head}_${fnv1a(JSON.stringify([table, ...columns]))}`;
 }
 
-// `CONCURRENTLY` so the build never blocks the app's writes (`GLOBAL-043`);
-// `IF [NOT] EXISTS` so a retried apply or undo is a no-op, not an error.
+// `CONCURRENTLY` so the build never blocks the app's writes (`GLOBAL-043`).
+// No `IF NOT EXISTS` on the build: a taken name fails loud (42P07) instead of
+// a silent no-op whose inverse would drop an index this apply never made. A
+// failed `CONCURRENTLY` build leaves an invalid index under this proposal's
+// own name; its inverse clears it before a retry. `IF EXISTS` keeps a retried
+// undo a no-op.
 export function createIndexProposal(
   p: Omit<CreateIndexProposal, "kind" | "ddl" | "inverse">,
 ): CreateIndexProposal {
@@ -62,7 +62,7 @@ export function createIndexProposal(
   return {
     kind: "create_index",
     ...p,
-    ddl: `CREATE INDEX CONCURRENTLY IF NOT EXISTS ${quoteIdent(name)} ON ${quoteIdent(p.schema)}.${quoteIdent(p.table)} (${cols})`,
+    ddl: `CREATE INDEX CONCURRENTLY ${quoteIdent(name)} ON ${quoteIdent(p.schema)}.${quoteIdent(p.table)} (${cols})`,
     inverse: `DROP INDEX CONCURRENTLY IF EXISTS ${quoteIdent(p.schema)}.${quoteIdent(name)}`,
   };
 }

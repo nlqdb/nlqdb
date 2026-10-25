@@ -47,8 +47,9 @@ describe("observePostgresCatalog", () => {
     expect(proposals[1]).toMatchObject({
       kind: "create_index",
       tier: 0,
-      ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS "nlqdb_deployments_tenant_id_region" ON "app"."deployments" ("tenant_id", "region")',
-      inverse: 'DROP INDEX CONCURRENTLY IF EXISTS "app"."nlqdb_deployments_tenant_id_region"',
+      ddl: 'CREATE INDEX CONCURRENTLY "nlqdb_deployments_tenant_id_region_0d29d9d1" ON "app"."deployments" ("tenant_id", "region")',
+      inverse:
+        'DROP INDEX CONCURRENTLY IF EXISTS "app"."nlqdb_deployments_tenant_id_region_0d29d9d1"',
       evidence: { rowEstimate: 10, tableBytes: 1_000 },
     });
   });
@@ -83,8 +84,10 @@ describe("observePostgresCatalog", () => {
 });
 
 describe("indexName", () => {
-  it("keeps short names readable and long names within Postgres's 63 bytes, unique", () => {
-    expect(indexName("posts", ["author_id"])).toBe("nlqdb_posts_author_id");
+  it("is readable, within Postgres's 63 bytes, and unique per (table, columns)", () => {
+    expect(indexName("posts", ["author_id"])).toBe("nlqdb_posts_author_id_9f20c65b");
+    // Same `_`-joined stem, different index: the hash keeps them apart.
+    expect(indexName("a_b", ["c"])).not.toBe(indexName("a", ["b_c"]));
     const long = "t".repeat(60);
     const a = indexName(long, ["first_column"]);
     const b = indexName(long, ["second_column"]);

@@ -13,6 +13,8 @@
 // columns in any order (an equality lookup can use any permutation). Partial
 // and invalid (failed `CONCURRENTLY`) indexes don't count. Child partitions are
 // skipped: their FKs are clones of the parent's, the same as `introspect-postgres.ts`.
+// Partitioned parents are skipped too: Postgres can't build their index
+// `CONCURRENTLY`, so they need a multi-statement proposal kind of their own.
 
 import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
@@ -34,7 +36,7 @@ JOIN pg_catalog.pg_class c  ON c.oid  = con.conrelid
 JOIN pg_catalog.pg_class rc ON rc.oid = con.confrelid
 JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS k(attnum, ord) ON true
 JOIN pg_catalog.pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = k.attnum
-WHERE n.nspname = $1 AND con.contype = 'f' AND NOT c.relispartition
+WHERE n.nspname = $1 AND con.contype = 'f' AND c.relkind = 'r' AND NOT c.relispartition
   AND NOT EXISTS (
     SELECT 1 FROM pg_catalog.pg_index i
     WHERE i.indrelid = con.conrelid AND i.indisvalid AND i.indpred IS NULL

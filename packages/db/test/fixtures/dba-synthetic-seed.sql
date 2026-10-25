@@ -31,6 +31,13 @@ CREATE TABLE deployments (
   FOREIGN KEY (tenant_id, region) REFERENCES tenants_regions (tenant_id, region)
 );
 CREATE INDEX deployments_region_only_idx ON deployments (region);
+-- Partitioned: Postgres can't build an index on the parent `CONCURRENTLY`, so
+-- its FK is not a Tier 0 proposal yet; nor is the partition's cloned FK.
+CREATE TABLE events (
+  user_id bigint NOT NULL REFERENCES users (id),
+  at date NOT NULL
+) PARTITION BY RANGE (at);
+CREATE TABLE events_2026 PARTITION OF events FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
 
 INSERT INTO users SELECT g, 'u' || g || '@example.com' FROM generate_series(1, 2000) g;
 INSERT INTO posts SELECT g, 1 + g % 2000, 'post ' || g FROM generate_series(1, 20000) g;

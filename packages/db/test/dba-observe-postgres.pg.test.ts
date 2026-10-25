@@ -40,7 +40,8 @@ describe.skipIf(!url)("observePostgresCatalog on the seeded synthetic DB", () =>
     console.log(`KPI A (synthetic, Tier 0): attach → first proposal ${kpiAMs.toFixed(1)} ms`);
 
     // comments.user_id is indexed; posts' partial index and deployments'
-    // (region) index don't cover their FKs, so three proposals, largest first.
+    // (region) index don't cover their FKs; partitioned events is skipped.
+    // So three proposals, largest first.
     expect(proposals.map((p) => `${p.table}(${p.columns.join(",")})`)).toEqual([
       "comments(post_id)",
       "posts(author_id)",
@@ -52,6 +53,8 @@ describe.skipIf(!url)("observePostgresCatalog on the seeded synthetic DB", () =>
     // findings, and running every inverse brings them back.
     for (const p of proposals) await conn.query(p.ddl, []);
     expect(await observePostgresCatalog(conn.query, SCHEMA)).toEqual([]);
+    // A taken name fails loud rather than no-op under an inverse it doesn't own.
+    await expect(conn.query(proposals[0]?.ddl as string, [])).rejects.toThrow(/already exists/);
     for (const p of proposals) await conn.query(p.inverse, []);
     expect(await observePostgresCatalog(conn.query, SCHEMA)).toHaveLength(3);
     // The inverses dropped only nlqdb's indexes, never the app's own.

@@ -45,7 +45,7 @@ export type RenderedSchema = {
 
 // Double-quote an identifier, escaping any embedded quote the PG-correct way.
 // Matches `compile-ddl.ts` so a hosted and a BYO card quote identically.
-function quoteIdent(name: string): string {
+export function quoteIdent(name: string): string {
   return `"${name.replace(/"/g, '""')}"`;
 }
 
