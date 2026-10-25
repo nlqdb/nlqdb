@@ -15,12 +15,12 @@ kept as is.
 - **#1204** fixes the pattern. `test-dba-postgres` reruns its walk on every
   CI run. Its scorecard number is still not CI's: row EA reads 27.9 ms (a
   local median of 5), but `main` CI printed **160.5 ms**
-  ([job 121135988443](https://github.com/nlqdb/nlqdb/actions/runs/40182391387)).
+  ([job 121135988443](https://github.com/nlqdb/nlqdb/actions/runs/40182391387/job/121135988443)).
   Both are far below the 5 min target. Row EA now cites both.
 
 ## Monoculture (check 2)
 
-Runs 252–258 (7 of 9) refined `insert()` under `GLOBAL-041` step 11.
+Runs 252–258 (7 of 9) built on `insert()` (`GLOBAL-041` steps 1, 2, 11).
 Then `GLOBAL-043` (10-22) put `insert()` on its deletion list. That was a
 founder pivot, not a rut, but this week's build mostly went into a path
 that will be deleted. Run 259 was a correct null, and the 10-23
@@ -40,15 +40,15 @@ on the new plan.
 
 - **Draft #1179 (11 d):** it fixes a write path `insert()` replaced. It can
   never be adopted, and only `/review` may close it.
-- **Dogfood canary:** its 6 MISSes are its own `blocked_items` row shape
-  (`write_constraint:unique`). Each run re-inspects them, and the scorecard
-  calls the cause unverified. The canary stays until `insert()` goes
-  (`GLOBAL-043`), so the useful step is giving `blockedWrites` a `key`.
+- **Dogfood canary:** all 6 window-3 MISSes are `write_constraint:unique`
+  on its own row shape: 2 `scorecard_deltas` re-sends (keyed since run
+  254) and 4 `blocked_items` rows (cause unverified). The canary stays
+  until `insert()` goes (`GLOBAL-043`), so the fix is a `blockedWrites` `key`.
 
 ## Dark metrics (check 4)
 
 - **Row #18** is a phantom claim. `docs.nlqdb.com/sdk` (`sdk.mdx:103`)
-  still offers `runSql({ dryRun })`, which was re-checked as unbuilt. It
+  still offers `runSql({ dryRun })`, re-checked unbuilt. It
   has been carried since run 232 (10-06). It costs $0, but no step-2 slot
   takes it. Rule 9 allows fixes to existing surfaces, so a null run could.
 - **Row #13** (performance) names no blocker in the queue; it needs
