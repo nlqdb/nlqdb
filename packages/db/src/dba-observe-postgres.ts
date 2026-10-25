@@ -74,7 +74,7 @@ export async function observePostgresCatalog(
           entry.columns.push(String(row["column_name"]));
           byConstraint.set(key, entry);
         }
-        const proposals = [...byConstraint.values()].map(({ row, columns }) => {
+        const all = [...byConstraint.values()].map(({ row, columns }) => {
           const table = String(row["table_name"]);
           return createIndexProposal({
             tier: 0,
@@ -88,6 +88,8 @@ export async function observePostgresCatalog(
             },
           });
         });
+        // Two FKs on the same columns (to different tables) need one index, not two.
+        const proposals = [...new Map(all.map((p) => [p.ddl, p])).values()];
         proposals.sort(
           (a, b) =>
             b.evidence.tableBytes - a.evidence.tableBytes ||
