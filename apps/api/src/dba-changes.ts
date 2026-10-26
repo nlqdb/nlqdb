@@ -58,17 +58,19 @@ export function proposalStatement(
     .bind(databaseId, p.kind, p.table, p.ddl, p.inverse, JSON.stringify(p));
 }
 
-// The attach door's proposals still waiting on a DB, as its response listed
-// them — an `Idempotency-Key` replay returns these, not a second observe.
+// The attach door's proposals still waiting on the caller's DB — what an
+// `Idempotency-Key` replay returns instead of a second observe. Scoped to the
+// owner like `listDbaChanges`: `[]` for a DB the tenant doesn't own.
 export async function listProposals(
   d1: D1Database,
   databaseId: string,
+  tenantId: string,
 ): Promise<(Proposal & { id: number })[]> {
   const { results } = await d1
     .prepare(
-      "SELECT id, proposal FROM dba_changes WHERE database_id = ? AND status = 'proposed' AND proposal IS NOT NULL ORDER BY id",
+      "SELECT c.id, c.proposal FROM dba_changes c JOIN databases d ON d.id = c.database_id WHERE c.database_id = ? AND d.tenant_id = ? AND c.status = 'proposed' AND c.proposal IS NOT NULL ORDER BY c.id",
     )
-    .bind(databaseId)
+    .bind(databaseId, tenantId)
     .all<{ id: number; proposal: string }>();
   return results.map((r) => ({ ...(JSON.parse(r.proposal) as Proposal), id: r.id }));
 }

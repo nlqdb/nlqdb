@@ -29,7 +29,9 @@ production (Open question (g)). A **pasted** non-Neon Postgres DSN still uses th
 validator, TOCTOU residual, socket reachability, token-refresh concurrency)
 tracked under *Open questions* below.
 **Owners (code):** `apps/api/src/db-connect/connect.ts` (orchestrator) +
-the `POST /v1/db/connect` route handler in `apps/api/src/index.ts`,
+the `POST /v1/db/connect` route handler in `apps/api/src/index.ts` (also
+mounted as `POST /v1/attach`, the `GLOBAL-043` API door; its Tier 0 proposals
+belong to [`engine-migration`](../engine-migration/FEATURE.md)),
 `packages/db/src/clickhouse-byo.ts`, `apps/api/src/ask/build-deps.ts`
 (`dispatchExec` engine dispatch), `apps/api/migrations/*_byo_connection_blob.sql`
 **Cross-refs:** [`db-adapter/FEATURE.md`](../db-adapter/FEATURE.md)
@@ -41,7 +43,7 @@ introspection, `SK-DB-015` schema render) · [`multi-engine-adapter/FEATURE.md`]
 
 ## Touchpoints — read this feature doc before editing
 
-- `apps/api/src/db-connect/connect.ts` — the standalone `POST /v1/db/connect` orchestrator (route handler is inline in `apps/api/src/index.ts`)
+- `apps/api/src/db-connect/connect.ts` — the standalone `POST /v1/db/connect` orchestrator
 - `packages/db/src/clickhouse-byo.ts` — the BYO ClickHouse HTTP exec adapter
 - `apps/api/src/ask/build-deps.ts` — query-time engine dispatch (`dispatchExec`: PG hosted / PG BYO / ClickHouse-BYO)
 

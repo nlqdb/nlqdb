@@ -351,6 +351,7 @@ app.use("/v1/chat/*", credentialedCors);
 app.use("/v1/databases", credentialedCors);
 app.use("/v1/databases/*", credentialedCors);
 app.use("/v1/db/*", credentialedCors);
+app.use("/v1/attach", credentialedCors); // the `/v1/db/connect` alias
 // Product-UI endpoints the model picker + keys panel hit from
 // `nlqdb.com` cross-origin (SK-PREMIUM-013 / api-keys): the model
 // catalog, the BYOLLM + minted-key routes, and the hosted-premium
@@ -4461,7 +4462,7 @@ const connectByo = async (c: Context<AppEnv>) => {
         span.setAttribute("nlqdb.db.connect.db_id", prior);
         // The proposals were recorded with the DB row, so the replay lists them too.
         const { listProposals } = await import("./dba-changes.ts");
-        const proposals = await listProposals(c.env.DB, prior);
+        const proposals = await listProposals(c.env.DB, prior, tenantId);
         span.end();
         return c.json({ dbId: prior, name: name ?? null, engine, proposals, replayed: true }, 201);
       }

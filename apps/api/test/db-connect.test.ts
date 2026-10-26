@@ -180,6 +180,8 @@ describe("connectByoDb — the attach door's proposals (real test D1)", () => {
       }),
     ]);
     // An Idempotency-Key replay lists the same proposals the attach returned.
-    expect(await listProposals(env.DB, result.dbId)).toEqual(result.proposals);
+    expect(await listProposals(env.DB, result.dbId, tenantId)).toEqual(result.proposals);
+    // ...and only to the DB's owner.
+    expect(await listProposals(env.DB, result.dbId, "user_someone_else")).toEqual([]);
   });
 });
