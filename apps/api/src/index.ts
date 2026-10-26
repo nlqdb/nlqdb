@@ -4373,10 +4373,12 @@ app.post("/v1/db/connect/oauth/supabase/select", requirePrincipal, async (c) => 
   return handleSupabaseSelect(c);
 });
 
-// `POST /v1/db/connect` — bring-your-own ClickHouse / Postgres. The
-// caller posts `{ engine, connection_url, name? }`; we validate +
+// `POST /v1/db/connect` (alias `POST /v1/attach`, the `GLOBAL-043` API
+// door) — bring-your-own ClickHouse / Postgres. The caller posts
+// `{ engine?, connection_url, name? }` (engine defaults to "postgres"); we validate +
 // egress-guard the URL (GLOBAL-035), introspect the live schema, seal
-// the URL (GLOBAL-031), and register a BYO `databases` row. The schema
+// the URL (GLOBAL-031), and register a BYO `databases` row with its Tier 0
+// proposals in the ledger, returned with their row ids. The schema
 // is read out of the user's DB — there is no authored plan, so this does
 // NOT route through the typed-plan create pipeline.
 //
@@ -4393,7 +4395,7 @@ app.post("/v1/db/connect/oauth/supabase/select", requirePrincipal, async (c) => 
 //
 // Secrets: the `connection_url` and any password never enter a span or
 // log. Only `nlqdb.engine` and (on success) `nlqdb.db.connect.db_id`.
-app.post("/v1/db/connect", requirePrincipal, async (c) => {
+const connectByo = async (c: Context<AppEnv>) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.db.connect", async (span) => {
     const principal = c.var.principal as Principal;
@@ -4423,7 +4425,7 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
       return fail(c, "invalid_request", { message: "Body must be JSON." });
     }
 
-    const engine = raw.body.engine;
+    const engine = raw.body.engine ?? "postgres";
     if (engine !== "clickhouse" && engine !== "postgres") {
       span.setAttribute("nlqdb.db.connect.outcome", "invalid_engine");
       span.end();
@@ -4515,6 +4517,7 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
           engine: result.engine,
           schemaPreview: result.schemaPreview,
           pkLive: result.pkLive,
+          proposals: result.proposals,
         },
         201,
       );
@@ -4525,7 +4528,9 @@ app.post("/v1/db/connect", requirePrincipal, async (c) => {
       throw err;
     }
   });
-});
+};
+app.post("/v1/db/connect", requirePrincipal, connectByo);
+app.post("/v1/attach", requirePrincipal, connectByo);
 
 // `DELETE /v1/databases/:id` — destructive removal of a hosted DB.
 // Reuses the SK-HDC-011 `dropSchemaAndRegistry` rollback primitive

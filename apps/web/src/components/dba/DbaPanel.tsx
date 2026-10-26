@@ -136,7 +136,7 @@ function Body({ state }: { state: LoadState }) {
           <pre className="dba__sql">
             <code>{c.ddl}</code>
           </pre>
-          <p className="dba__label">Undo</p>
+          <p className="dba__label">{c.status === "proposed" ? "Undo, once applied" : "Undo"}</p>
           <pre className="dba__sql dba__sql--inverse">
             <code>{c.inverse}</code>
           </pre>

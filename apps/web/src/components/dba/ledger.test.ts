@@ -29,11 +29,24 @@ describe("pickDb", () => {
 
 describe("describeChange", () => {
   it("names the change and the write path that made it", () => {
-    expect(describeChange({ kind: "add_column", table: "votes", origin: "insert" })).toBe(
-      "Added a column to votes — from insert()",
-    );
-    expect(describeChange({ kind: "create_index", table: "servers", origin: "ask" })).toBe(
-      "Indexed a key on servers — from a chat write",
-    );
+    const applied = { status: "applied", reason: null } as const;
+    expect(
+      describeChange({ kind: "add_column", table: "votes", origin: "insert", ...applied }),
+    ).toBe("Added a column to votes — from insert()");
+    expect(
+      describeChange({ kind: "create_index", table: "servers", origin: "ask", ...applied }),
+    ).toBe("Indexed a key on servers — from a chat write");
+  });
+
+  it("never reads an attach proposal as a committed change", () => {
+    expect(
+      describeChange({
+        kind: "create_index",
+        table: "posts",
+        origin: "attach",
+        status: "proposed",
+        reason: "Foreign key posts(author_id) → users has no index.",
+      }),
+    ).toBe("Proposed, not applied — Foreign key posts(author_id) → users has no index.");
   });
 });

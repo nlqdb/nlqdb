@@ -38,6 +38,7 @@
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "latest",
     "@cloudflare/workers-types": "latest",
+    "postgres": "^3.4.9",
     "typescript": "^5.6.0",
     "vitest": "^4.1.0",
     "wrangler": "^4.0.0"

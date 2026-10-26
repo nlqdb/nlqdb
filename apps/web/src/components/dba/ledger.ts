@@ -12,13 +12,19 @@ export function pickDb(dbs: DatabaseSummary[], param: string | null): DatabaseSu
   return [...dbs].sort((a, b) => (b.lastQueriedAt ?? 0) - (a.lastQueriedAt ?? 0))[0] ?? null;
 }
 
-// One line a person reads before the DDL: what changed, and what wrote it.
-export function describeChange(c: Pick<DbaChange, "kind" | "table" | "origin">): string {
+// One line a person reads before the DDL: what changed, and what wrote it —
+// or, for a proposal on an attached DB, that nothing has changed yet and why.
+export function describeChange(
+  c: Pick<DbaChange, "kind" | "table" | "origin" | "status" | "reason">,
+): string {
+  if (c.status === "proposed") return `Proposed, not applied — ${c.reason ?? c.table}`;
   const what =
     c.kind === "create_table"
       ? `Created table ${c.table}`
       : c.kind === "add_column"
         ? `Added a column to ${c.table}`
         : `Indexed a key on ${c.table}`;
-  return `${what} — from ${c.origin === "insert" ? "insert()" : "a chat write"}`;
+  const from =
+    c.origin === "insert" ? "insert()" : c.origin === "ask" ? "a chat write" : "an attach proposal";
+  return `${what} — from ${from}`;
 }

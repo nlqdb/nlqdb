@@ -9,17 +9,17 @@ Operator actions also get one metadata line in
 [`history/founder-actions-log.md`](./history/founder-actions-log.md) — never
 a secret value.
 
-## Approve the held `Deploy API` run on `main`
+## Approve the held `Deploy events-worker` run on `main`
 
-⏱ ~2 min · blocked since 2026-10-25. `Deploy API` on `main` holds at
-`action_required` with no job started on every merge (`c89bbdd`, then
-`2f41a43`), so production serves the 10-22 build — the 09-08
-gate again (`history/founder-actions-log.md`, 2026-09-14).
+⏱ ~2 min · blocked since 2026-10-26. The `Deploy API` hold cleared (it ran
+on `7e174b5` and `edc9b07`), but `Deploy events-worker` now holds at
+`action_required` with no job started on `edc9b07` (#1208), so the
+events-worker still serves the 10-22 build.
 
-1. Open the latest held run ([40236076689](https://github.com/nlqdb/nlqdb/actions/runs/40236076689)
-   as of 2026-10-26) and approve it — it deploys `main`'s head.
-2. If it re-holds on the next merge, set Settings → Actions → General back to
-   auto-run for `main`.
+1. Open the held run ([40331978142](https://github.com/nlqdb/nlqdb/actions/runs/40331978142))
+   and approve it. It deploys `main`'s head.
+2. If a deploy re-holds on the next merge, set Settings → Actions → General
+   back to auto-run for `main`.
 3. Log a line in `history/founder-actions-log.md` and delete this bullet.
 
 ## Pick the spike database and hand its connection string to CI

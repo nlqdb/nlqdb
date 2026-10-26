@@ -1314,6 +1314,50 @@ describe("createClient", () => {
     });
   });
 
+  // GLOBAL-043 — the attach door: Postgres implied, proposals passed through.
+  it("attach: POSTs /v1/attach with the connection_url only + auto Idempotency-Key", async () => {
+    let capturedUrl = "";
+    let capturedInit: RequestInit | undefined;
+    const proposal = {
+      id: 7,
+      kind: "create_index",
+      tier: 0,
+      schema: "public",
+      table: "posts",
+      columns: ["author_id"],
+      ddl: 'CREATE INDEX CONCURRENTLY "nlqdb_posts_author_id_0a1b2c3d" ON "public"."posts" ("author_id")',
+      inverse: 'DROP INDEX CONCURRENTLY IF EXISTS "public"."nlqdb_posts_author_id_0a1b2c3d"',
+      reason: "Foreign key posts(author_id) → users has no index.",
+      evidence: { rowEstimate: 1000, tableBytes: 65536 },
+    };
+    const fakeFetch: FetchLike = async (url, init) => {
+      capturedUrl = String(url);
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          dbId: "db_app_a1",
+          name: "app",
+          engine: "postgres",
+          schemaPreview: "table posts (id bigint, author_id bigint)",
+          pkLive: null,
+          proposals: [proposal],
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({ apiKey: "sk_live_test", fetch: fakeFetch });
+    const out = await client.attach({ connectionUrl: "postgresql://u:p@db.example.com:5432/app" });
+
+    expect(capturedUrl).toBe("https://app.nlqdb.com/v1/attach");
+    expect(capturedInit?.method).toBe("POST");
+    const headers = (capturedInit?.headers ?? {}) as Record<string, string>;
+    expect(headers["idempotency-key"]).toMatch(/^[0-9a-f]{32}$/);
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({
+      connection_url: "postgresql://u:p@db.example.com:5432/app",
+    });
+    expect(out.proposals).toEqual([proposal]);
+  });
+
   it("databases.connect: omits name when not supplied, supports ClickHouse (CH)", async () => {
     let capturedBody: Record<string, unknown> | null = null;
     const fakeFetch: FetchLike = async (_url, init) => {
