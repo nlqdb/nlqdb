@@ -58,6 +58,21 @@ export function proposalStatement(
     .bind(databaseId, p.kind, p.table, p.ddl, p.inverse, JSON.stringify(p));
 }
 
+// The attach door's proposals still waiting on a DB, as its response listed
+// them — an `Idempotency-Key` replay returns these, not a second observe.
+export async function listProposals(
+  d1: D1Database,
+  databaseId: string,
+): Promise<(Proposal & { id: number })[]> {
+  const { results } = await d1
+    .prepare(
+      "SELECT id, proposal FROM dba_changes WHERE database_id = ? AND status = 'proposed' AND proposal IS NOT NULL ORDER BY id",
+    )
+    .bind(databaseId)
+    .all<{ id: number; proposal: string }>();
+  return results.map((r) => ({ ...(JSON.parse(r.proposal) as Proposal), id: r.id }));
+}
+
 export async function recordDbaChanges(
   d1: D1Database,
   databaseId: string,

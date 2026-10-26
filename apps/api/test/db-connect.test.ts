@@ -17,7 +17,7 @@ import type { ClickhouseQueryFn } from "@nlqdb/db";
 import { describe, expect, it } from "vitest";
 import { connectByoDb } from "../src/db-connect/connect.ts";
 import { BYO_SECRET_REF_SENTINEL } from "../src/db-connect/constants.ts";
-import { listDbaChanges } from "../src/dba-changes.ts";
+import { listDbaChanges, listProposals } from "../src/dba-changes.ts";
 
 const CONN_URL = "https://user:supersecret@ch.example.com:8443/?database=analytics";
 
@@ -179,5 +179,7 @@ describe("connectByoDb — the attach door's proposals (real test D1)", () => {
         reason: expect.stringMatching(/^Foreign key posts\(author_id\) → users/),
       }),
     ]);
+    // An Idempotency-Key replay lists the same proposals the attach returned.
+    expect(await listProposals(env.DB, result.dbId)).toEqual(result.proposals);
   });
 });

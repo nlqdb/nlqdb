@@ -4459,8 +4459,11 @@ const connectByo = async (c: Context<AppEnv>) => {
       if (prior) {
         span.setAttribute("nlqdb.db.connect.outcome", "idempotent_replay");
         span.setAttribute("nlqdb.db.connect.db_id", prior);
+        // The proposals were recorded with the DB row, so the replay lists them too.
+        const { listProposals } = await import("./dba-changes.ts");
+        const proposals = await listProposals(c.env.DB, prior);
         span.end();
-        return c.json({ dbId: prior, name: name ?? null, engine, replayed: true }, 201);
+        return c.json({ dbId: prior, name: name ?? null, engine, proposals, replayed: true }, 201);
       }
     }
 
