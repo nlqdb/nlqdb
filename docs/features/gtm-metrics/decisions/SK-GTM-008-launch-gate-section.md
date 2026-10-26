@@ -27,7 +27,7 @@
   number is labeled a **lower bound**, because `first10_asks` saturates
   at 10 per DB. `SK-PIVOT-016` + `worksheets/dogfood/INDEX.md` stay
   canonical for gate state; this section mirrors them and the note on the
-  page says so. Founder-only, on the existing `SK-GTM-002` gate — the
+  page says so. Founder-only, on the existing `SK-GTM-012` gate — the
   public `/agents` dashboard is D-06's separate decision.
 - **Core value:** Honest, Bullet-proof, Simple
 - **Why:** The gate's `n/5` lived only in markdown, so the founder read

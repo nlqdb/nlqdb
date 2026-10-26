@@ -27,7 +27,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
 
 function AdminDashboardInner({ apiBase }: AdminDashboardProps) {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
-  // Named only in the 403 state (SK-GTM-002): "signed in as who?" is the
+  // Named only in the 403 state (SK-GTM-012): "signed in as who?" is the
   // one fact that turns a denial into a next action, and the probe is
   // memoized by lib/session — the page guard already made the call.
   const [signedInAs, setSignedInAs] = useState<string | null>(null);

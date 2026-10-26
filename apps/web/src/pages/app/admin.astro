@@ -1,6 +1,6 @@
 ---
 // Founder GTM/PMF dashboard (SK-GTM-004, GLOBAL-038). The only gate is
-// the SK-GTM-002 server one on `GET /v1/admin/metrics`: this page's
+// the SK-GTM-012 server one on `GET /v1/admin/metrics`: this page's
 // script decides sign-in only, and a signed-in non-admin reads the 403
 // as a named in-page state (GLOBAL-012) instead of being bounced.
 
@@ -35,7 +35,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
 <script>
   // Inline auth guard — the keys.astro pattern, sign-in only. The
-  // admin predicate is not repeated here (SK-GTM-002): a signed-in
+  // admin predicate is not repeated here (SK-GTM-012): a signed-in
   // non-admin gets the island's named 403 state, never a silent bounce
   // to /app/ (which auto-pins a DB and reads as "the page moved").
   import { fetchSession, invalidateSession } from "../../lib/session";

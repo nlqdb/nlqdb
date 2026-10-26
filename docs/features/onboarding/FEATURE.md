@@ -88,7 +88,7 @@ when-to-load:
   WHERE d.first10_asks > 0
     AND (u.email IS NULL          -- anon (walker already excluded at write)
          OR (u.email NOT LIKE '%@nlqdb.com'
-             AND u.email NOT IN ('omer.hochman@gmail.com', 'test@example.com')));
+             AND u.email NOT IN (<founder accounts>, 'test@example.com')));
   ```
 
 - **Core value:** Honest latency (the KPI reads what strangers experience, not what our bots do)

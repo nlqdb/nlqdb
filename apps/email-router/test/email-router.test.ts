@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import worker from "../src/index.ts";
 
-const INBOX = "omer.hochman@gmail.com";
+const INBOX = "inbox@example.com";
+const env = { FORWARD_TO: INBOX };
 
 interface Stub {
   message: ForwardableEmailMessage;
@@ -54,7 +55,7 @@ describe("email router", () => {
       authResults: "spf=pass; dkim=pass; dmarc=pass",
     });
 
-    await worker.email(message);
+    await worker.email(message, env);
 
     expect(forward).toHaveBeenCalledWith(INBOX, expect.any(Headers));
     expect(forwardedHeaders(forward).get("X-Nlqdb-Auth-Verdict")).toBe("pass");
@@ -68,7 +69,7 @@ describe("email router", () => {
       authResults: "spf=softfail; dkim=fail; dmarc=fail",
     });
 
-    await worker.email(message);
+    await worker.email(message, env);
 
     expect(forward).toHaveBeenCalledWith(INBOX, expect.any(Headers));
     expect(forwardedHeaders(forward).get("X-Nlqdb-Auth-Verdict")).toBe("suspicious");
@@ -78,7 +79,7 @@ describe("email router", () => {
   it("treats a missing Authentication-Results header as unknown, not as a failure", async () => {
     const { message, forward } = makeMessage({ arcAuthResults: "i=1; mx.google.com; arc=none" });
 
-    await worker.email(message);
+    await worker.email(message, env);
 
     expect(forwardedHeaders(forward).get("X-Nlqdb-Auth-Verdict")).toBe("unknown");
   });
@@ -86,7 +87,7 @@ describe("email router", () => {
   it("stamps the original recipient so catch-all mail stays sortable", async () => {
     const { message, forward } = makeMessage({ to: "security@nlqdb.com" });
 
-    await worker.email(message);
+    await worker.email(message, env);
 
     expect(forwardedHeaders(forward).get("X-Nlqdb-Original-To")).toBe("security@nlqdb.com");
   });
@@ -99,7 +100,7 @@ describe("email router", () => {
       from: "noreply-dmarc-support@google.com",
     });
 
-    await worker.email(message);
+    await worker.email(message, env);
 
     expect(forward).not.toHaveBeenCalled();
     expect(setReject).not.toHaveBeenCalled();
@@ -108,7 +109,7 @@ describe("email router", () => {
   it("recognises the report mailbox through display-name and subaddress forms", async () => {
     for (const to of ['"DMARC" <dmarc@nlqdb.com>', "dmarc+google@nlqdb.com", "DMARC@nlqdb.com"]) {
       const { message, forward } = makeMessage({ to });
-      await worker.email(message);
+      await worker.email(message, env);
       expect(forward, to).not.toHaveBeenCalled();
     }
   });
@@ -116,7 +117,7 @@ describe("email router", () => {
   it("does not treat a normal mailbox as a report mailbox", async () => {
     const { message, forward } = makeMessage({ to: "dmarc-team@nlqdb.com" });
 
-    await worker.email(message);
+    await worker.email(message, env);
 
     expect(forward).toHaveBeenCalledWith(INBOX, expect.any(Headers));
   });
@@ -128,7 +129,15 @@ describe("email router", () => {
       forwardRejects: new Error("transient error (421): 4.7.28 rate limited"),
     });
 
-    await expect(worker.email(message)).rejects.toThrow("4.7.28");
+    await expect(worker.email(message, env)).rejects.toThrow("4.7.28");
+    expect(setReject).not.toHaveBeenCalled();
+  });
+
+  it("retries instead of dropping mail when the FORWARD_TO secret is missing", async () => {
+    const { message, forward, setReject } = makeMessage();
+
+    await expect(worker.email(message, {})).rejects.toThrow("FORWARD_TO");
+    expect(forward).not.toHaveBeenCalled();
     expect(setReject).not.toHaveBeenCalled();
   });
 });

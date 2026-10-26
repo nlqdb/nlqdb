@@ -16,13 +16,16 @@
 set -euo pipefail
 cd "$(dirname "$0")/../apps/api"
 
-EXCLUDED_EMAILS="'omer.hochman@gmail.com','hi@nlqdb.com','omer@nlqdb.com','omer.hochman@bigpanda.io','test@example.com','e2e-test@preview.dev','browser-test@preview.dev','debug@example.com','myuser@example.com'"
+# Same population as INTERNAL_EMAIL_SQL in apps/api/src/admin/gtm-metrics.ts
+# (SK-GTM-001/-012): company domain (the founder is omer@nlqdb.com) plus
+# the test domains. Personal addresses never appear in this public repo.
+INTERNAL_EMAIL_SQL="(lower(u.email) LIKE '%@nlqdb.com' OR lower(u.email) LIKE '%@example.com' OR lower(u.email) LIKE '%@preview.dev')"
 
 bunx wrangler d1 execute nlqdb-app --remote --json --command "
 SELECT k.mcp_host,
   COUNT(*) AS grants,
   SUM(CASE WHEN k.last_used_at IS NOT NULL THEN 1 ELSE 0 END) AS used_grants,
-  MAX(CASE WHEN u.email IS NOT NULL AND u.email IN (${EXCLUDED_EMAILS}) THEN 1 ELSE 0 END) AS founder_or_test,
+  MAX(CASE WHEN u.email IS NOT NULL AND ${INTERNAL_EMAIL_SQL} THEN 1 ELSE 0 END) AS founder_or_test,
   MAX(datetime(k.last_used_at,'unixepoch')) AS last_used
 FROM api_keys k LEFT JOIN user u ON u.id = k.tenant_id
 WHERE k.key_type = 'sk_mcp' AND k.revoked_at IS NULL

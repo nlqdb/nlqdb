@@ -4087,7 +4087,7 @@ app.get("/v1/keys/:hash/status", requirePrincipal, async (c) => {
 });
 
 // `GET /v1/admin/metrics` — the canonical GTM/PMF read (GLOBAL-038,
-// SK-GTM-001/-002/-003). Session-only + `isAdminEmail` gate: admin data
+// SK-GTM-001/-003/-012). Session-only + `isAdminEmail` gate: admin data
 // must ride a verified first-party identity, never a leakable bearer
 // key. A signed-in non-admin gets 403 (the gate is the security, not
 // the status code). Every authorized read also writes today's

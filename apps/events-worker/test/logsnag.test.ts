@@ -343,7 +343,7 @@ describe("buildPayload", () => {
     const out = buildPayload("nlqdb", {
       name: "pricing.page_viewed",
       principalId: "u_9",
-      email: "founder@nlqdb.com",
+      email: "omer@nlqdb.com",
     });
     expect(out).toMatchObject({
       project: "nlqdb",
@@ -351,7 +351,7 @@ describe("buildPayload", () => {
       event: "Pricing viewed",
       notify: false,
       user_id: "u_9",
-      tags: { authed: "true", email: "founder@nlqdb.com" },
+      tags: { authed: "true", email: "omer@nlqdb.com" },
     });
   });
 
@@ -374,14 +374,14 @@ describe("buildPayload", () => {
       name: "pricing.plan_selected",
       principalId: "u_9",
       plan: "hobby",
-      email: "founder@nlqdb.com",
+      email: "omer@nlqdb.com",
     });
     expect(out).toMatchObject({
       channel: "pricing",
       event: "Plan selected",
       notify: false,
       user_id: "u_9",
-      tags: { plan: "hobby", authed: "true", email: "founder@nlqdb.com" },
+      tags: { plan: "hobby", authed: "true", email: "omer@nlqdb.com" },
     });
   });
 });
