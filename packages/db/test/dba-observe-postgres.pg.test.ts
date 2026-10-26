@@ -2,18 +2,21 @@
 // synthetic app schema (`GLOBAL-043` roadmap item 1a). Runs only when
 // `PG_TEST_URL` is set — CI's `test-dba-postgres` job starts Postgres 16 with
 // `pg_stat_statements` preloaded; the unit env has no Postgres and skips it.
-// It also prints KPI A on the synthetic DB (attach → first proposal, in ms) and
-// the Tier 1 hot fingerprints' p95 estimate before / after their index.
+// It also prints KPI A on the synthetic DB (attach → first proposal, in ms),
+// the Tier 1 hot fingerprints' p95 estimate before / after their index (KPI B)
+// and the injected regression's auto-revert (KPI C).
 
 import { readFileSync } from "node:fs";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  applyProposal,
   type FingerprintWindow,
   observePostgresCatalog,
   observePostgresWorkload,
   snapshotPostgresStatements,
   statementWindow,
+  verifyApplied,
 } from "../src/index.ts";
 import { type ByoPostgresConnection, openByoPostgres } from "../src/postgres-byo.ts";
 
@@ -100,7 +103,7 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
   const hot = (window: FingerprintWindow[], sql: string) =>
     window.find((w) => w.query === sql) as FingerprintWindow;
 
-  it("proposes an index for each hot seq-scanned lookup, and it cuts that fingerprint's p95", async () => {
+  it("proposes an index for each hot seq-scanned lookup; applied, verify keeps it on its p95 cut", async () => {
     await conn.query("SELECT pg_stat_statements_reset()", []);
     const before = await runWorkload();
     const proposals = await observePostgresWorkload(conn.query, SCHEMA, before);
@@ -113,18 +116,52 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
       calls: 300,
     });
 
-    for (const p of proposals) await conn.query(p.ddl, []);
+    for (const p of proposals) await applyProposal(conn.query, p);
     const after = await runWorkload();
-    for (const sql of HOT) {
-      const [b, a] = [hot(before, sql), hot(after, sql)];
-      // biome-ignore lint/suspicious/noConsole: the p95 reading belongs in the CI log
-      console.log(
-        `Tier 1 (synthetic) ${sql}: p95 est ${b.p95EstimateMs.toFixed(3)} → ${a.p95EstimateMs.toFixed(3)} ms`,
-      );
-      expect(a.p95EstimateMs).toBeLessThan(b.p95EstimateMs);
+    let kept = 0;
+    for (const p of proposals) {
+      const v = await verifyApplied(conn.query, p, after);
+      // biome-ignore lint/suspicious/noConsole: the KPI B reading belongs in the CI log
+      console.log(`KPI B (synthetic) ${p.table}(${p.columns}): ${JSON.stringify(v)}`);
+      expect(v.verdict).toBe("keep");
+      if (v.verdict === "keep") expect(v.afterP95Ms).toBeLessThan(v.beforeP95Ms);
+      kept++;
     }
+    // biome-ignore lint/suspicious/noConsole: the KPI B reading belongs in the CI log
+    console.log(`KPI B (synthetic): ${kept}/${proposals.length} applied and kept on a p95 cut`);
     // Served now: the next window proposes nothing.
     expect(await observePostgresWorkload(conn.query, SCHEMA, after)).toEqual([]);
     for (const p of proposals) await conn.query(p.inverse, []);
-  });
+  }, 30_000);
+
+  it("auto-reverts an apply whose fingerprint regressed in the verify window", async () => {
+    await conn.query("SELECT pg_stat_statements_reset()", []);
+    const [proposal] = await observePostgresWorkload(conn.query, SCHEMA, await runWorkload());
+    if (!proposal) throw new Error("no proposal to apply");
+    await applyProposal(conn.query, proposal);
+    // The regression is injected, not caused by the index: JIT forced on every
+    // statement adds compile time to each run of the fingerprint. Verify judges
+    // the counters, never the cause — the same as a production regression.
+    const { rows: jit } = await conn.query("SELECT pg_jit_available() AS ok", []);
+    expect(jit[0]?.["ok"]).toBe(true);
+    for (const knob of ["jit_above_cost", "jit_inline_above_cost", "jit_optimize_above_cost"]) {
+      await conn.query(`SET ${knob} = 0`, []);
+    }
+    const from = await snapshotPostgresStatements(conn.query);
+    for (let i = 0; i < 30; i++) await conn.query(HOT[0] as string, [`post ${1 + i * 37}`]);
+    const after = statementWindow(from, await snapshotPostgresStatements(conn.query));
+    await conn.query("RESET ALL", []);
+    const v = await verifyApplied(conn.query, proposal, after);
+    // biome-ignore lint/suspicious/noConsole: the KPI C reading belongs in the CI log
+    console.log(`KPI C (synthetic, injected regression): ${JSON.stringify(v)}`);
+    expect(v.verdict).toBe("revert");
+    // The inverse ran: the index is gone and the finding is back.
+    const { rows } = await conn.query(
+      "SELECT 1 FROM pg_catalog.pg_indexes WHERE schemaname = $1 AND indexname LIKE 'nlqdb_%'",
+      [SCHEMA],
+    );
+    expect(rows).toEqual([]);
+    // biome-ignore lint/suspicious/noConsole: the KPI C reading belongs in the CI log
+    console.log("KPI C (synthetic): 1/1 regressions auto-reverted");
+  }, 30_000);
 });

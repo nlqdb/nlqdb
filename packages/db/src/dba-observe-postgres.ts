@@ -95,16 +95,30 @@ export function observePostgresCatalog(
   });
 }
 
-// The one `db.observe` span every Postgres observer runs under (`GLOBAL-014`):
-// its proposal count, any extra attributes the observer returns, and the error
-// it throws (`GLOBAL-012`).
+// The one `db.observe` span every Postgres observer runs under: its proposal
+// count and any extra attributes the observer sets.
 export function withObserveSpan(
   operation: string,
   schema: string,
   observe: (span: Span) => Promise<Proposal[]>,
 ): Promise<Proposal[]> {
+  return withDbaSpan("db.observe", operation, schema, async (span) => {
+    const proposals = await observe(span);
+    span.setAttribute("nlqdb.dba.proposals", proposals.length);
+    return proposals;
+  });
+}
+
+// The span every step of the DBA loop on a Postgres runs under (`GLOBAL-014`):
+// its duration and the error it throws (`GLOBAL-012`).
+export function withDbaSpan<T>(
+  name: "db.observe" | "db.apply" | "db.verify",
+  operation: string,
+  schema: string,
+  run: (span: Span) => Promise<T>,
+): Promise<T> {
   return trace.getTracer("@nlqdb/db").startActiveSpan(
-    "db.observe",
+    name,
     {
       attributes: {
         "db.system": "postgresql",
@@ -115,9 +129,7 @@ export function withObserveSpan(
     async (span) => {
       const startedAt = performance.now();
       try {
-        const proposals = await observe(span);
-        span.setAttribute("nlqdb.dba.proposals", proposals.length);
-        return proposals;
+        return await run(span);
       } catch (err) {
         span.recordException(err as Error);
         span.setStatus({ code: SpanStatusCode.ERROR });
