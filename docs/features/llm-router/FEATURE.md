@@ -71,11 +71,11 @@ when-to-load:
 
 ### SK-LLM-014 — Hedged-request race on free-tier chains for planner-tier ops
 
-**Body:** [`decisions/SK-LLM-014-hedged-request-race.md`](./decisions/SK-LLM-014-hedged-request-race.md). `LLMRouterOptions.hedge` opts an op into a two-way hedged race after `afterMs` head-start; loser aborted (`HEDGE_LOST`) without tripping the breaker. Free-tier only; prod wires `schema_infer` + `plan` at `afterMs: 2000` ([`SK-LLM-048`](#sk-llm-048) re-tune, retained by [`SK-LLM-054`](#sk-llm-054)).
+**Body:** [`decisions/SK-LLM-014-hedged-request-race.md`](./decisions/SK-LLM-014-hedged-request-race.md). `LLMRouterOptions.hedge` opts an op into a two-way hedged race after `afterMs` head-start; loser aborted (`HEDGE_LOST`) without tripping the breaker. Free-tier only; prod wires `schema_infer` + `plan` at `afterMs: 2000`.
 
 ### SK-LLM-016 — BYOLLM dispatch lane: per-request override → account-stored → hosted-premium → free
 
-**Body:** [`decisions/SK-LLM-016-byollm-dispatch.md`](./decisions/SK-LLM-016-byollm-dispatch.md). Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` header → account-stored key → hosted-premium → free. Routes through AI Gateway; fails loud per `GLOBAL-012`. Key-handling in [`SK-PREMIUM-008`](../premium-tier/decisions/SK-PREMIUM-008-byollm.md); provider half in [`SK-LLM-019`](#sk-llm-019).
+**Body:** [`decisions/SK-LLM-016-byollm-dispatch.md`](./decisions/SK-LLM-016-byollm-dispatch.md). Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` header → account-stored key → hosted-premium → free. Fails loud per `GLOBAL-012`. Key-handling in [`SK-PREMIUM-008`](../premium-tier/decisions/SK-PREMIUM-008-byollm.md); provider half in [`SK-LLM-019`](#sk-llm-019).
 
 ### SK-LLM-019 — BYOLLM provider factory: AI Gateway unified endpoint + `cf-aig-cache-key` tenant namespace
 
@@ -91,7 +91,7 @@ when-to-load:
 
 ### SK-LLM-017 — Hosted-premium chain: separate provider list, §6-gated meter, never available on free
 
-**Body:** [`decisions/SK-LLM-017-hosted-premium-chain.md`](./decisions/SK-LLM-017-hosted-premium-chain.md). Now ships as `buildPremiumRouter` (`packages/llm/src/premium-dispatch.ts`): a single-provider **Anthropic** lane (v1 `claude-sonnet-4-6`) with a usage sink feeding the meter. Fires only on paid tiers, on a `best`/hard plan, behind `PREMIUM_METER_LIVE` (live 2026-08-14). Commercial form in [`SK-PREMIUM-009`](../premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
+**Body:** [`decisions/SK-LLM-017-hosted-premium-chain.md`](./decisions/SK-LLM-017-hosted-premium-chain.md). Ships as `buildPremiumRouter` (`packages/llm/src/premium-dispatch.ts`): a single-provider Anthropic lane on paid tiers, behind `PREMIUM_METER_LIVE`. Commercial form in [`SK-PREMIUM-009`](../premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
 
 ### SK-LLM-015 — OpenRouter code-gen default — REPLACED by SK-LLM-045
 
@@ -211,7 +211,7 @@ when-to-load:
 
 ### SK-LLM-050 — No-invented-identity directive in the planner prompt (write-scoped)
 
-**Body:** [`decisions/SK-LLM-050-no-invented-identity-directive.md`](./decisions/SK-LLM-050-no-invented-identity-directive.md). Write-scoped `PLAN_DIRECTIVES` bullet: never fill an FK/owner/identity column with a value the goal did not supply (no arbitrary-row `LIMIT 1`, no placeholder ids). Write-scoped ⇒ read-only BIRD/Spider cannot regress (`SK-LLM-044` lesson). Pairs with `SK-TRUST-006` / `SK-ASK-028/029`.
+**Body:** [`decisions/SK-LLM-050-no-invented-identity-directive.md`](./decisions/SK-LLM-050-no-invented-identity-directive.md). Write-scoped `PLAN_DIRECTIVES` bullet: never fill an FK/owner/identity column with a value the goal did not supply. Pairs with `SK-TRUST-006` / `SK-ASK-028/029`.
 
 ### SK-LLM-051 — A planning failure carries its bounded cause: reason, lane, provider, model
 
@@ -228,6 +228,10 @@ when-to-load:
 ### SK-LLM-054 — Qwen3.8-27B (`qwen/qwen3.8-27b`, Groq) leads the strict-$0 planner tier
 
 **Body:** [`decisions/SK-LLM-054-qwen3.8-27b-planner-head.md`](./decisions/SK-LLM-054-qwen3.8-27b-planner-head.md). Replaces [`SK-LLM-053`](#sk-llm-053): Qwen3.8-27B replaces 3.6 as the `groq-qwen` planner head, same card-free Groq key; gpt-oss-120b fallback ([`SK-LLM-023`](#sk-llm-023)).
+
+### SK-LLM-055 — Workers AI stops at 1,000 of the account's daily neurons
+
+**Body:** [`decisions/SK-LLM-055-workers-ai-account-neuron-cap.md`](./decisions/SK-LLM-055-workers-ai-account-neuron-cap.md). The free 10,000/day is shared account-wide; at 1,000 the leg fails `rate_limited` until 00:00 UTC.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 

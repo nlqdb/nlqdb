@@ -4,7 +4,14 @@
 // providers) rather than the `AI` Worker binding — keeps the package
 // runtime-agnostic and easy to test.
 
-import { type CallOpts, type LLMOperation, type Provider, ProviderError } from "../types.ts";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
+import {
+  type CallOpts,
+  type FetchLike,
+  type LLMOperation,
+  type Provider,
+  ProviderError,
+} from "../types.ts";
 import { createChatProvider } from "./_chat-provider.ts";
 import { gatewayAuthHeader, httpError, truncate } from "./_shared.ts";
 import type { ChatMessage } from "./openai-compatible.ts";
@@ -28,7 +35,104 @@ export type WorkersAIProviderOptions = {
   // has Authenticated Gateway enabled (SK-LLM-046). Unset ⇒ no header.
   gatewayToken?: string;
   models?: Partial<Record<LLMOperation, string>>;
+  // SK-LLM-055 — stop calling once the Cloudflare account's Workers AI spend
+  // today reaches this many neurons. The free 10,000/day is the account's,
+  // shared with other Workers on it. Unset ⇒ no check.
+  accountNeuronCap?: number;
 };
+
+// SK-LLM-055 — the cap value both call sites pass: Workers AI is a fallback the
+// chain can do without, so 9,000 of the account's free 10,000 a day stay for the
+// other Workers on the account.
+export const WORKERS_AI_ACCOUNT_NEURON_CAP = 1000;
+
+// How long one read of the account's spend is trusted. Analytics lag the
+// calls by about a minute anyway.
+const SPEND_TTL_MS = 60_000;
+
+const NEURONS_TODAY_QUERY =
+  "query ($account: string!, $date: Date!) { viewer { accounts(filter: { accountTag: $account }) { aiInferenceAdaptiveGroups(limit: 1, filter: { date: $date }) { sum { totalNeurons } } } } }";
+
+type NeuronsTodayResponse = {
+  data?: {
+    viewer?: {
+      accounts?: Array<{
+        aiInferenceAdaptiveGroups?: Array<{ sum?: { totalNeurons?: number } }>;
+      }>;
+    };
+  } | null;
+};
+
+// The account's Workers AI neurons so far today (UTC), from Cloudflare's
+// GraphQL analytics; null when unreadable (the token lacks Account Analytics
+// read, a network fault, an unexpected shape).
+async function readNeuronsToday(
+  accountId: string,
+  apiToken: string,
+  fetchFn: FetchLike,
+  now: Date,
+): Promise<number | null> {
+  return trace
+    .getTracer("@nlqdb/llm")
+    .startActiveSpan("cloudflare.ai.neurons_today", async (span) => {
+      try {
+        const res = await fetchFn("https://api.cloudflare.com/client/v4/graphql", {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: `Bearer ${apiToken}` },
+          body: JSON.stringify({
+            query: NEURONS_TODAY_QUERY,
+            variables: { account: accountId, date: now.toISOString().slice(0, 10) },
+          }),
+        });
+        span.setAttribute("http.response.status_code", res.status);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const body = (await res.json()) as NeuronsTodayResponse;
+        const accounts = body.data?.viewer?.accounts;
+        if (accounts?.length !== 1) throw new Error("no account in the analytics reply");
+        const spent = accounts[0]?.aiInferenceAdaptiveGroups?.[0]?.sum?.totalNeurons ?? 0;
+        span.setAttribute("nlqdb.workers_ai.neurons_today", spent);
+        return spent;
+      } catch (err) {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
+        return null;
+      } finally {
+        span.end();
+      }
+    });
+}
+
+function msToUtcMidnight(now: Date): number {
+  const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+  return next - now.getTime();
+}
+
+// One cached read per provider instance (an isolate, or an eval process).
+function createSpendGuard(accountId: string, apiToken: string, cap: number) {
+  let cached: { at: number; spent: number | null } | undefined;
+  return async (opts: CallOpts): Promise<void> => {
+    const now = new Date();
+    if (!cached || now.getTime() - cached.at > SPEND_TTL_MS) {
+      const spent = await readNeuronsToday(
+        accountId,
+        apiToken,
+        opts.fetch ?? globalThis.fetch,
+        now,
+      );
+      cached = { at: now.getTime(), spent };
+    }
+    // Unreadable spends nothing: the chain fails over to the next provider.
+    if (cached.spent === null)
+      throw new ProviderError("workers-ai: account neuron spend unreadable", "provider_error");
+    // A daily quota reads as a 429 until 00:00 UTC, so the router's breaker
+    // keeps this provider out of the chain until the allocation resets.
+    if (cached.spent >= cap)
+      throw new ProviderError(
+        `workers-ai: account spent ${Math.round(cached.spent)} of its ${cap}-neuron daily cap`,
+        "rate_limited",
+        { retryAfterMs: msToUtcMidnight(now) },
+      );
+  };
+}
 
 type WorkersAIResponse = {
   // SK-LLM-036 — `response` is a string for prose output, but the
@@ -113,11 +217,16 @@ async function workersAIChat(
 }
 
 export function createWorkersAIProvider(opts: WorkersAIProviderOptions): Provider {
+  const guard =
+    opts.accountNeuronCap === undefined
+      ? undefined
+      : createSpendGuard(opts.accountId, opts.apiToken, opts.accountNeuronCap);
   return createChatProvider({
     name: "workers-ai",
     models: { ...DEFAULT_MODELS, ...opts.models },
-    callChat: ({ model, messages, temperature, opts: callOpts }) =>
-      workersAIChat(
+    callChat: async ({ model, messages, temperature, opts: callOpts }) => {
+      await guard?.(callOpts);
+      return workersAIChat(
         opts.accountId,
         opts.apiToken,
         opts.baseUrl,
@@ -126,6 +235,7 @@ export function createWorkersAIProvider(opts: WorkersAIProviderOptions): Provide
         temperature,
         callOpts,
         opts.gatewayToken,
-      ),
+      );
+    },
   });
 }

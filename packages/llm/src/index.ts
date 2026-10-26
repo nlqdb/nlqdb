@@ -129,7 +129,7 @@ export { parseChatUsage } from "./providers/openai-compatible.ts";
 export type { OpenRouterProviderOptions } from "./providers/openrouter.ts";
 export { createOpenRouterProvider } from "./providers/openrouter.ts";
 export type { WorkersAIProviderOptions } from "./providers/workers-ai.ts";
-export { createWorkersAIProvider } from "./providers/workers-ai.ts";
+export { createWorkersAIProvider, WORKERS_AI_ACCOUNT_NEURON_CAP } from "./providers/workers-ai.ts";
 export type {
   AttemptRecord,
   LLMChains,
