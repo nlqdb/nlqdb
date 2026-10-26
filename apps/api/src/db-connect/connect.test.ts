@@ -1,8 +1,9 @@
 // Unit tests for the BYO connect orchestrator. All deps are plain
 // stubs (no `vi.mock`) — matching the db-create orchestrator test
 // convention. D1 is stubbed at the prepared-statement level: the SELECT
-// id collision probe and the INSERT are the only two statements the
-// orchestrator issues, so the stub routes on the SQL prefix.
+// id collision probe and the INSERTs (the DB row, then its proposals, in one
+// batch) are the only statements the orchestrator issues, so the stub routes
+// on the SQL prefix.
 
 import type { ClickhouseConnSpec, ClickhouseQueryFn, DnsResolver } from "@nlqdb/db";
 import { describe, expect, it, vi } from "vitest";
@@ -29,19 +30,35 @@ function stubD1(existingIds: Set<string> = new Set()) {
         }),
       };
     }
-    // INSERT
+    if (sql.startsWith("INSERT INTO dba_changes")) {
+      return {
+        bind: (...params: unknown[]) => ({
+          run: async () => {
+            proposals.push(params);
+            return { meta: { last_row_id: proposals.length } };
+          },
+        }),
+      };
+    }
+    // INSERT INTO databases
     return {
       bind: (...params: unknown[]) => ({
         run: async () => {
           inserted[params[0] as string] = params;
           // After a successful insert the id is now "taken".
           existingIds.add(params[0] as string);
-          return { success: true };
+          return { meta: { last_row_id: 0 } };
         },
       }),
     };
   });
-  return { d1: { prepare } as unknown as D1Database, inserted };
+  const proposals: unknown[][] = [];
+  const batch = async (stmts: { run: () => Promise<unknown> }[]) => {
+    const out = [];
+    for (const s of stmts) out.push(await s.run());
+    return out;
+  };
+  return { d1: { prepare, batch } as unknown as D1Database, inserted, proposals };
 }
 
 function chSchema(): Awaited<ReturnType<ClickhouseQueryFn>> {
@@ -117,6 +134,45 @@ describe("connectByoDb", () => {
     expect(result.dbId).toBe("db_shop_a1b2c3");
     expect(result.engine).toBe("postgres");
     expect(inserted[result.dbId]?.[2]).toBe("postgres");
+  });
+
+  it("attach door — Postgres: records each Tier 0 proposal with the DB row, ids returned", async () => {
+    const { d1, inserted, proposals } = stubD1();
+    // Only the Tier 0 observer's query reads relation sizes; introspection
+    // sees an empty schema.
+    const query = vi.fn(async (sql: string) =>
+      sql.includes("pg_total_relation_size")
+        ? {
+            rows: [
+              {
+                table_name: "posts",
+                constraint_name: "posts_author_id_fkey",
+                column_name: "author_id",
+                ref_table: "users",
+                row_estimate: 1000,
+                table_bytes: 65536,
+              },
+            ],
+            rowCount: 1,
+          }
+        : { rows: [], rowCount: 0 },
+    );
+    const result = await connectByoDb(
+      baseDeps({
+        d1,
+        buildPostgresQuery: () => ({ query, runBounded: query, close: async () => {} }),
+      }),
+      PG_ARGS,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(inserted[result.dbId]).toBeDefined();
+    expect(result.proposals.map((p) => [p.id, p.table, p.columns])).toEqual([
+      [1, "posts", ["author_id"]],
+    ]);
+    // params: database_id, kind, table, ddl, inverse, proposal JSON
+    expect(proposals[0]?.[0]).toBe(result.dbId);
+    expect(JSON.parse(proposals[0]?.[5] as string).reason).toMatch(/^Foreign key posts/);
   });
 
   it("uses the caller-supplied name for the slug when provided", async () => {

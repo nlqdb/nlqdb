@@ -10,7 +10,8 @@
 // SchemaPlan + compiled DDL (the typed-plan create pipeline); a BYO
 // connection has neither — the schema is read out of the live database
 // by introspection, not authored by us. So the flow here is its own:
-// validate → introspect+render → seal → register.
+// validate → introspect+render (+ Tier 0 proposals on Postgres, the
+// `GLOBAL-043` attach door) → seal → register.
 //
 // Ordering is load-bearing (see the numbered steps): the KEK check
 // happens BEFORE any network I/O so a misconfigured deployment fails
@@ -34,10 +35,13 @@ import {
   type DnsResolver,
   introspectClickhouse,
   introspectPostgres,
+  observePostgresCatalog,
+  type Proposal,
   renderByoClickhouseSchema,
   renderByoPostgresSchema,
   validateByoConnection,
 } from "@nlqdb/db";
+import { proposalStatement } from "../dba-changes.ts";
 import { sealSecret } from "../secret-envelope.ts";
 import { BYO_SECRET_REF_SENTINEL } from "./constants.ts";
 import { makeSlug, mintUniqueDbId } from "./register-helpers.ts";
@@ -82,6 +86,9 @@ export type ConnectByoResult =
       engine: string;
       schemaPreview: string;
       pkLive: string | null;
+      // Postgres only: the attach door's Tier 0 proposals (`GLOBAL-043`),
+      // each with its ledger row id. `[]` when the schema needs nothing.
+      proposals: (Proposal & { id: number })[];
     }
   | { ok: false; status: number; message: string };
 
@@ -132,6 +139,7 @@ export async function connectByoDb(
   //    unreachable host, permission error) collapses to one generic
   //    sentence — never the URL, password, or driver error detail.
   let rendered: { schemaText: string; schemaHash: string };
+  let proposals: Proposal[] = [];
   try {
     if (v.connection.engine === "clickhouse") {
       const parsed = v.connection.parsed;
@@ -159,6 +167,9 @@ export async function connectByoDb(
         // hang postgres.js hits on Workers (`SK-DBCONN-003` open question (g)).
         const schema = await introspectPostgres(conn.query, "public", { sequential: true });
         rendered = renderByoPostgresSchema(schema);
+        // The attach door (`GLOBAL-043` item 6): Tier 0 proposals on the same
+        // socket, catalog reads only, so they land before anything is stored.
+        proposals = await observePostgresCatalog(conn.query, "public");
       } finally {
         await conn.close();
       }
@@ -178,11 +189,12 @@ export async function connectByoDb(
     context: `dbconn:${dbId}`,
   });
 
-  // f. Register the row. `connection_secret_ref` is the BYO sentinel
-  //    (there is no env var to resolve); the sealed URL rides
-  //    `connection_blob`. Seed the three timestamps with unixepoch() so
+  // f. Register the row and its proposals in one batch, so an attached DB
+  //    never lacks the proposals its response listed. `connection_secret_ref`
+  //    is the BYO sentinel (there is no env var to resolve); the sealed URL
+  //    rides `connection_blob`. Seed the three timestamps with unixepoch() so
   //    the row matches the hosted-create shape.
-  await deps.d1
+  const dbRow = deps.d1
     .prepare(
       "INSERT INTO databases " +
         "(id, tenant_id, engine, connection_secret_ref, connection_blob, schema_hash, schema_text, synthetic, created_at, updated_at, last_queried_at) " +
@@ -197,8 +209,11 @@ export async function connectByoDb(
       rendered.schemaHash,
       rendered.schemaText,
       args.synthetic ? 1 : 0,
-    )
-    .run();
+    );
+  const [, ...ledger] = await deps.d1.batch([
+    dbRow,
+    ...proposals.map((p) => proposalStatement(deps.d1, dbId, p)),
+  ]);
 
   // g. Mint a pk_live_ key for the copy-snippet CTA. Failure is
   //    non-fatal — the DB is already committed and queryable.
@@ -213,6 +228,7 @@ export async function connectByoDb(
     engine: args.engine,
     schemaPreview: rendered.schemaText.slice(0, SCHEMA_PREVIEW_LIMIT),
     pkLive,
+    proposals: proposals.map((p, i) => ({ ...p, id: Number(ledger[i]?.meta.last_row_id) })),
   };
 }
 

@@ -17,6 +17,7 @@ import type { ClickhouseQueryFn } from "@nlqdb/db";
 import { describe, expect, it } from "vitest";
 import { connectByoDb } from "../src/db-connect/connect.ts";
 import { BYO_SECRET_REF_SENTINEL } from "../src/db-connect/constants.ts";
+import { listDbaChanges, listProposals } from "../src/dba-changes.ts";
 
 const CONN_URL = "https://user:supersecret@ch.example.com:8443/?database=analytics";
 
@@ -26,6 +27,15 @@ describe("POST /v1/db/connect — principal gate", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ engine: "clickhouse", connection_url: CONN_URL }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("gates the GLOBAL-043 alias POST /v1/attach the same way", async () => {
+    const res = await SELF.fetch("https://example.com/v1/attach", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ connection_url: "postgres://u:p@pg.example.com:5432/app" }),
     });
     expect(res.status).toBe(401);
   });
@@ -125,5 +135,53 @@ describe("connectByoDb — persisted BYO row (real test D1)", () => {
     const serialized = JSON.stringify(row);
     expect(serialized).not.toContain("supersecret");
     expect(serialized).not.toContain("ch.example.com");
+  });
+});
+
+describe("connectByoDb — the attach door's proposals (real test D1)", () => {
+  it("lands each Tier 0 proposal as a 'proposed' ledger row the owner can list", async () => {
+    const tenantId = "user_byo_attach_test";
+    const fkRow = {
+      table_name: "posts",
+      constraint_name: "posts_author_id_fkey",
+      column_name: "author_id",
+      ref_table: "users",
+      row_estimate: 1000,
+      table_bytes: 65536,
+    };
+    const query = async (sql: string) =>
+      sql.includes("pg_total_relation_size")
+        ? { rows: [fkRow], rowCount: 1 }
+        : { rows: [], rowCount: 0 };
+    const result = await connectByoDb(
+      {
+        resolve: async () => ["93.184.216.34"],
+        kek: "test-kek-this-is-a-high-entropy-string-aaaa",
+        d1: env.DB,
+        randomSuffix: () => "att001",
+        buildClickhouseQuery: () => async () => ({ rows: [] }),
+        buildPostgresQuery: () => ({ query, runBounded: query, close: async () => {} }),
+      },
+      { engine: "postgres", connectionUrl: "postgres://u:p@pg.example.com:5432/app", tenantId },
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const changes = await listDbaChanges(env.DB, result.dbId, tenantId);
+    expect(changes).toEqual([
+      expect.objectContaining({
+        id: result.proposals[0]?.id,
+        origin: "attach",
+        status: "proposed",
+        kind: "create_index",
+        table: "posts",
+        ddl: result.proposals[0]?.ddl,
+        reason: expect.stringMatching(/^Foreign key posts\(author_id\) → users/),
+      }),
+    ]);
+    // An Idempotency-Key replay lists the same proposals the attach returned.
+    expect(await listProposals(env.DB, result.dbId, tenantId)).toEqual(result.proposals);
+    // ...and only to the DB's owner.
+    expect(await listProposals(env.DB, result.dbId, "user_someone_else")).toEqual([]);
   });
 });

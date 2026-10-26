@@ -223,15 +223,40 @@ export type DatabaseSummary = {
 };
 
 // One row of a DB's change ledger (`listChanges`, GLOBAL-041): a DDL statement
-// the DBA committed, with the statement that undoes it.
+// the DBA committed, or (origin `attach`, status `proposed`) one it proposes on
+// an attached DB (`GLOBAL-043`), with the statement that undoes it. `reason`
+// is the proposal's sentence; null on committed hosted-path rows.
 export type DbaChange = {
   id: number;
-  origin: "insert" | "ask";
+  origin: "insert" | "ask" | "attach";
+  status: "proposed" | "applied";
   kind: "create_table" | "add_column" | "create_index";
   table: string;
   ddl: string;
   inverse: string;
+  reason: string | null;
   createdAt: number;
+};
+
+// One proposal the attach door returns (`GLOBAL-043` item 4): an index the DBA
+// would build `CONCURRENTLY`, the statement that undoes it, and what it saw.
+// `id` is its ledger row (`listChanges`).
+export type Proposal = {
+  id: number;
+  kind: "create_index";
+  // Data tier it came from: 0 = catalog only (what attach reads).
+  tier: 0 | 1 | 2;
+  schema: string;
+  table: string;
+  columns: string[];
+  ddl: string;
+  inverse: string;
+  reason: string;
+  evidence: {
+    rowEstimate: number;
+    tableBytes: number;
+    workload?: { fingerprint: string; calls: number; meanMs: number; p95EstimateMs: number };
+  };
 };
 
 // Body for `client.createDatabase()` — goal-first (`goal` drives the engine classifier) with an optional explicit `engine` override.
@@ -287,7 +312,13 @@ export type ConnectDatabaseResult = {
   engine: string;
   schemaPreview: string;
   pkLive: string | null;
+  // Postgres: the first proposals, from the catalog (`GLOBAL-043`); `[]` when
+  // the schema needs nothing yet. ClickHouse: always `[]`.
+  proposals: Proposal[];
 };
+
+// Body for `client.attach()` — a Postgres connection string.
+export type AttachRequest = Omit<ConnectDatabaseRequest, "engine">;
 
 // `SK-SDK-009` — raw-SQL escape hatch (`GLOBAL-015`); same allow-list as `ask()`, DDL still rejected.
 export type RunSqlRequest = {
@@ -1110,6 +1141,17 @@ export type NlqClient = {
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<void>;
   /**
+   * `POST /v1/attach` — attach the Postgres a team already has (`GLOBAL-043`):
+   * `databases.connect` with `engine: "postgres"`, named for the DBA door.
+   * Resolves with the DB and its first proposals, each already in the ledger.
+   * Same errors and secret handling as `databases.connect`. Mutating:
+   * auto-keyed (`SK-SDK-006`).
+   */
+  attach(
+    req: AttachRequest,
+    opts?: { signal?: AbortSignal; idempotencyKey?: string },
+  ): Promise<ConnectDatabaseResult>;
+  /**
    * Bring-your-own-database verbs (`SK-DBCONN-001`). Namespaced because
    * `GLOBAL-003` parity names the surface `client.databases.connect`.
    */
@@ -1675,6 +1717,18 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
           : {}),
       });
     },
+    attach: (req, callOpts) =>
+      call<ConnectDatabaseResult>("/v1/attach", {
+        method: "POST",
+        body: JSON.stringify({
+          connection_url: req.connectionUrl,
+          ...(req.name !== undefined ? { name: req.name } : {}),
+        }),
+        signal: callOpts?.signal,
+        ...(callOpts?.idempotencyKey
+          ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+          : {}),
+      }),
     databases: {
       connect: (req, callOpts) =>
         // SK-DBCONN-001 — the `connectionUrl` travels only in the JSON

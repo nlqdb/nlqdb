@@ -76,6 +76,7 @@ describe("SDK-method integrity (SK-SDK-013)", () => {
     expect([...shippedMembers].sort()).toEqual([
       "ask",
       "askStream",
+      "attach",
       "clearByollm",
       "connect",
       "createDatabase",

@@ -1,9 +1,10 @@
 // The change ledger (GLOBAL-041 Phase A step 11): every DDL the DBA commits
-// on a hosted DB, one D1 row per statement, each with its inverse. Written
+// on a hosted DB, and every proposal it makes on an attached one (GLOBAL-043),
+// one D1 row per statement, each with its inverse. Hosted-path rows are written
 // after the transaction commits, best-effort like the `schema_hash` CAS: the
 // rows already landed, so a D1 blip never fails the write.
 
-import type { WidenPlan } from "@nlqdb/db";
+import type { Proposal, WidenPlan } from "@nlqdb/db";
 import { quoted, quoteIdent } from "./db-create/compile-ddl.ts";
 
 export type DbaChange = {
@@ -42,6 +43,38 @@ export function indexChange(
   };
 }
 
+// A Tier 0 proposal the attach door records with the DB row (`GLOBAL-043`
+// item 4): `proposed` until a verb applies it, the whole Proposal kept for the
+// apply / verify that follow.
+export function proposalStatement(
+  d1: D1Database,
+  databaseId: string,
+  p: Proposal,
+): D1PreparedStatement {
+  return d1
+    .prepare(
+      "INSERT INTO dba_changes (database_id, origin, kind, table_name, ddl, inverse, status, proposal) VALUES (?, 'attach', ?, ?, ?, ?, 'proposed', ?)",
+    )
+    .bind(databaseId, p.kind, p.table, p.ddl, p.inverse, JSON.stringify(p));
+}
+
+// The attach door's proposals still waiting on the caller's DB — what an
+// `Idempotency-Key` replay returns instead of a second observe. Scoped to the
+// owner like `listDbaChanges`: `[]` for a DB the tenant doesn't own.
+export async function listProposals(
+  d1: D1Database,
+  databaseId: string,
+  tenantId: string,
+): Promise<(Proposal & { id: number })[]> {
+  const { results } = await d1
+    .prepare(
+      "SELECT c.id, c.proposal FROM dba_changes c JOIN databases d ON d.id = c.database_id WHERE c.database_id = ? AND d.tenant_id = ? AND c.status = 'proposed' AND c.proposal IS NOT NULL ORDER BY c.id",
+    )
+    .bind(databaseId, tenantId)
+    .all<{ id: number; proposal: string }>();
+  return results.map((r) => ({ ...(JSON.parse(r.proposal) as Proposal), id: r.id }));
+}
+
 export async function recordDbaChanges(
   d1: D1Database,
   databaseId: string,
@@ -68,7 +101,14 @@ export async function recordDbaChanges(
 }
 
 // One ledger row as `GET /v1/databases/:id/changes` returns it (`/app/dba`).
-export type DbaChangeRow = DbaChange & { id: number; origin: "insert" | "ask"; createdAt: number };
+// `reason` is the proposal card's sentence; null on hosted-path rows.
+export type DbaChangeRow = DbaChange & {
+  id: number;
+  origin: "insert" | "ask" | "attach";
+  status: "proposed" | "applied";
+  reason: string | null;
+  createdAt: number;
+};
 
 // The DB's ledger, newest first; null when the caller doesn't own the DB.
 export async function listDbaChanges(
@@ -83,7 +123,7 @@ export async function listDbaChanges(
       .bind(databaseId, tenantId),
     d1
       .prepare(
-        'SELECT id, origin, kind, table_name AS "table", ddl, inverse, created_at AS createdAt FROM dba_changes WHERE database_id = ? ORDER BY id DESC LIMIT ?',
+        "SELECT id, origin, kind, table_name AS \"table\", ddl, inverse, status, json_extract(proposal, '$.reason') AS reason, created_at AS createdAt FROM dba_changes WHERE database_id = ? ORDER BY id DESC LIMIT ?",
       )
       .bind(databaseId, limit),
   ]);

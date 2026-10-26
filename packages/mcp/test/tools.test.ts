@@ -56,6 +56,9 @@ function stubClient(overrides: Partial<NlqClient> & { connect?: ConnectFn } = {}
       // interface that the SDK now exports.
       throw new Error("deleteDatabase not stubbed");
     },
+    attach: async () => {
+      throw new Error("attach not stubbed");
+    },
     databases: {
       connect: async () => {
         throw new Error("databases.connect not stubbed");
@@ -1066,6 +1069,7 @@ describe("handleConnectDatabase", () => {
           engine: "postgres",
           schemaPreview: "table orders(id, total)\ntable customers(id, name)",
           pkLive: "pk_live_should_not_leak",
+          proposals: [],
         };
       },
     });

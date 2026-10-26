@@ -20,6 +20,7 @@ function stubClient(overrides: Partial<NlqClient>): NlqClient {
     listChanges: async () => ({ changes: [] }),
     createDatabase: notStubbed("createDatabase"),
     deleteDatabase: notStubbed("deleteDatabase"),
+    attach: notStubbed("attach"),
     databases: { connect: notStubbed("databases.connect") },
     getKeyStatus: async () => ({ revoked: false }),
     listKeys: async () => ({ keys: [] }),
