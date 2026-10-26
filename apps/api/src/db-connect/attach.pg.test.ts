@@ -6,10 +6,17 @@
 // ledger, in ms.
 
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { openByoPostgres } from "@nlqdb/db";
-import postgres from "postgres";
 import { describe, expect, it } from "vitest";
 import { connectByoDb } from "./connect.ts";
+
+// The api never depends on a Postgres driver (`GLOBAL-021`, lockfile guard);
+// test-time setup borrows the owner's copy, `@nlqdb/db`'s `postgres`.
+type Sql = { unsafe: (q: string) => Promise<unknown>; end: () => Promise<void> };
+const postgres = createRequire(new URL("../../../../packages/db/package.json", import.meta.url))(
+  "postgres",
+) as (url: string, opts: Record<string, unknown>) => Sql;
 
 const url = process.env["PG_TEST_URL"];
 const DB = "attach_synth";
