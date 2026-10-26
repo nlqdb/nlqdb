@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { createWorkersAIProvider } from "../../src/providers/workers-ai.ts";
+import {
+  createWorkersAIProvider,
+  WORKERS_AI_ACCOUNT_NEURON_CAP,
+} from "../../src/providers/workers-ai.ts";
 import type { ProviderError, RouteRequest } from "../../src/types.ts";
 import { jsonResponse, mockFetch, workersAIResponse } from "../_fixtures.ts";
 
@@ -242,15 +245,23 @@ describe("createWorkersAIProvider accountNeuronCap", () => {
   };
 
   it("calls the model while the account is under the cap, reading the spend once per minute", async () => {
-    const provider = createWorkersAIProvider({ accountId, apiToken, accountNeuronCap: 7000 });
-    const { calls, fetch } = counting(() => spent(6999));
+    const provider = createWorkersAIProvider({
+      accountId,
+      apiToken,
+      accountNeuronCap: WORKERS_AI_ACCOUNT_NEURON_CAP,
+    });
+    const { calls, fetch } = counting(() => spent(WORKERS_AI_ACCOUNT_NEURON_CAP - 1));
     await provider.plan(plan, { fetch });
     await provider.plan(plan, { fetch });
     expect(calls).toEqual({ analytics: 1, run: 2 });
   });
 
   it("at the cap, fails as rate_limited until 00:00 UTC without calling the model", async () => {
-    const provider = createWorkersAIProvider({ accountId, apiToken, accountNeuronCap: 7000 });
+    const provider = createWorkersAIProvider({
+      accountId,
+      apiToken,
+      accountNeuronCap: WORKERS_AI_ACCOUNT_NEURON_CAP,
+    });
     // 2026-10-26: 11,203 by 16:00 UTC, past the free 10,000.
     const { calls, fetch } = counting(() => spent(11203));
     const err = (await provider.plan(plan, { fetch }).catch((e) => e)) as ProviderError;
@@ -261,7 +272,11 @@ describe("createWorkersAIProvider accountNeuronCap", () => {
   });
 
   it("an unreadable spend (token without Account Analytics read) fails over without calling the model", async () => {
-    const provider = createWorkersAIProvider({ accountId, apiToken, accountNeuronCap: 7000 });
+    const provider = createWorkersAIProvider({
+      accountId,
+      apiToken,
+      accountNeuronCap: WORKERS_AI_ACCOUNT_NEURON_CAP,
+    });
     const { calls, fetch } = counting(() =>
       jsonResponse({ data: null, errors: [{ message: "not authorized for that account" }] }),
     );

@@ -41,9 +41,10 @@ export type WorkersAIProviderOptions = {
   accountNeuronCap?: number;
 };
 
-// SK-LLM-055 — the cap value both call sites pass: 3,000 of the account's free
-// 10,000 a day stay for the other Workers on the account.
-export const WORKERS_AI_ACCOUNT_NEURON_CAP = 7000;
+// SK-LLM-055 — the cap value both call sites pass: Workers AI is a fallback the
+// chain can do without, so 9,000 of the account's free 10,000 a day stay for the
+// other Workers on the account.
+export const WORKERS_AI_ACCOUNT_NEURON_CAP = 1000;
 
 // How long one read of the account's spend is trusted. Analytics lag the
 // calls by about a minute anyway.
@@ -92,7 +93,7 @@ async function readNeuronsToday(
         span.setAttribute("nlqdb.workers_ai.neurons_today", spent);
         return spent;
       } catch (err) {
-      span.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
+        span.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
         return null;
       } finally {
         span.end();

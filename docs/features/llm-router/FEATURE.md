@@ -229,9 +229,9 @@ when-to-load:
 
 **Body:** [`decisions/SK-LLM-054-qwen3.8-27b-planner-head.md`](./decisions/SK-LLM-054-qwen3.8-27b-planner-head.md). Replaces [`SK-LLM-053`](#sk-llm-053): Qwen3.8-27B replaces 3.6 as the `groq-qwen` planner head, same card-free Groq key; gpt-oss-120b fallback ([`SK-LLM-023`](#sk-llm-023)).
 
-### SK-LLM-055 — Workers AI stops at 7,000 of the account's daily neurons
+### SK-LLM-055 — Workers AI stops at 1,000 of the account's daily neurons
 
-**Body:** [`decisions/SK-LLM-055-workers-ai-account-neuron-cap.md`](./decisions/SK-LLM-055-workers-ai-account-neuron-cap.md). The free 10,000/day is shared account-wide; at 7,000 the leg fails `rate_limited` until 00:00 UTC.
+**Body:** [`decisions/SK-LLM-055-workers-ai-account-neuron-cap.md`](./decisions/SK-LLM-055-workers-ai-account-neuron-cap.md). The free 10,000/day is shared account-wide; at 1,000 the leg fails `rate_limited` until 00:00 UTC.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
