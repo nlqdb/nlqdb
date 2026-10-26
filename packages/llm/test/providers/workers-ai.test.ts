@@ -212,3 +212,68 @@ describe("createWorkersAIProvider", () => {
     expect(seen[1]).toBeNull();
   });
 });
+
+// SK-LLM-055 — the account's daily neuron cap, read from Cloudflare's analytics.
+describe("createWorkersAIProvider accountNeuronCap", () => {
+  const plan = { goal: "g", schema: "s", dialect: "postgres" } as const;
+  const spent = (totalNeurons: number) =>
+    jsonResponse({
+      data: { viewer: { accounts: [{ aiInferenceAdaptiveGroups: [{ sum: { totalNeurons } }] }] } },
+    });
+  const counting = (analytics: () => Response) => {
+    const calls = { analytics: 0, run: 0 };
+    const fetch = mockFetch([
+      {
+        match: /\/client\/v4\/graphql$/,
+        respond: () => {
+          calls.analytics++;
+          return analytics();
+        },
+      },
+      {
+        match: /\/ai\/run\//,
+        respond: () => {
+          calls.run++;
+          return workersAIResponse(JSON.stringify({ sql: "SELECT 1" }));
+        },
+      },
+    ]);
+    return { calls, fetch };
+  };
+
+  it("calls the model while the account is under the cap, reading the spend once per minute", async () => {
+    const provider = createWorkersAIProvider({ accountId, apiToken, accountNeuronCap: 7000 });
+    const { calls, fetch } = counting(() => spent(6999));
+    await provider.plan(plan, { fetch });
+    await provider.plan(plan, { fetch });
+    expect(calls).toEqual({ analytics: 1, run: 2 });
+  });
+
+  it("at the cap, fails as rate_limited until 00:00 UTC without calling the model", async () => {
+    const provider = createWorkersAIProvider({ accountId, apiToken, accountNeuronCap: 7000 });
+    // 2026-10-26: 11,203 by 16:00 UTC, past the free 10,000.
+    const { calls, fetch } = counting(() => spent(11203));
+    const err = (await provider.plan(plan, { fetch }).catch((e) => e)) as ProviderError;
+    expect(err.reason).toBe("rate_limited");
+    expect(err.retryAfterMs).toBeGreaterThan(0);
+    expect(err.retryAfterMs).toBeLessThanOrEqual(24 * 3_600_000);
+    expect(calls.run).toBe(0);
+  });
+
+  it("an unreadable spend (token without Account Analytics read) fails over without calling the model", async () => {
+    const provider = createWorkersAIProvider({ accountId, apiToken, accountNeuronCap: 7000 });
+    const { calls, fetch } = counting(() =>
+      jsonResponse({ data: null, errors: [{ message: "not authorized for that account" }] }),
+    );
+    const err = (await provider.plan(plan, { fetch }).catch((e) => e)) as ProviderError;
+    expect(err.reason).toBe("provider_error");
+    expect(calls.run).toBe(0);
+  });
+
+  it("without a cap, never reads the analytics", async () => {
+    const provider = createWorkersAIProvider({ accountId, apiToken });
+    const { calls, fetch } = counting(() => spent(99999));
+    await provider.plan(plan, { fetch });
+    expect(calls).toEqual({ analytics: 0, run: 1 });
+  });
+});

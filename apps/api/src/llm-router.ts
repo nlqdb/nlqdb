@@ -22,6 +22,7 @@ import {
   createOpenRouterProvider,
   createWorkersAIProvider,
   type LLMRouter,
+  WORKERS_AI_ACCOUNT_NEURON_CAP,
 } from "@nlqdb/llm";
 
 let cached: LLMRouter | undefined;
@@ -104,6 +105,7 @@ export function getLLMRouter(): LLMRouter {
       accountId: env.CLOUDFLARE_ACCOUNT_ID ?? "",
       baseUrl: gw.workersAi,
       gatewayToken: gwToken,
+      accountNeuronCap: WORKERS_AI_ACCOUNT_NEURON_CAP,
     }),
     createOpenRouterProvider({
       apiKey: env.OPENROUTER_API_KEY ?? "",

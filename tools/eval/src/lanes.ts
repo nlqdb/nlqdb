@@ -18,6 +18,7 @@ import {
   createOpenRouterProvider,
   createWorkersAIProvider,
   type LLMRouter,
+  WORKERS_AI_ACCOUNT_NEURON_CAP,
 } from "@nlqdb/llm";
 
 import type { DispatchLane } from "./types.ts";
@@ -90,7 +91,11 @@ function buildFreeLane(env: EvalEnv): Lane | null {
   if (env.GEMINI_API_KEY) providers.push(createGeminiProvider({ apiKey: env.GEMINI_API_KEY }));
   if (env.CF_AI_TOKEN && env.CLOUDFLARE_ACCOUNT_ID) {
     providers.push(
-      createWorkersAIProvider({ apiToken: env.CF_AI_TOKEN, accountId: env.CLOUDFLARE_ACCOUNT_ID }),
+      createWorkersAIProvider({
+        apiToken: env.CF_AI_TOKEN,
+        accountId: env.CLOUDFLARE_ACCOUNT_ID,
+        accountNeuronCap: WORKERS_AI_ACCOUNT_NEURON_CAP,
+      }),
     );
   }
   if (env.OPENROUTER_API_KEY) {
