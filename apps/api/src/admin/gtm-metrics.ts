@@ -15,13 +15,13 @@
 import { AGENT_MEMORY_V1_VERSION } from "../db-create/presets/agent-memory-v1.ts";
 
 // Founder/test account patterns — the scorecard row #2 exclusion list,
-// previously re-typed by hand on every /daily pull. `lower(email)` is
+// previously re-typed by hand on every /daily pull. The founder is
+// `omer@nlqdb.com`, covered by the company domain; personal
+// addresses are never named here (SK-GTM-012). `lower(email)` is
 // applied in SQL so casing in the stored row can't leak an internal
 // account into the stranger count.
 const INTERNAL_EMAIL_SQL = `(
-  lower(u.email) = 'omer@salfati.group'
-  OR lower(u.email) LIKE 'omer.hochman@%'
-  OR lower(u.email) LIKE '%@nlqdb.com'
+  lower(u.email) LIKE '%@nlqdb.com'
   OR lower(u.email) LIKE '%@example.com'
   OR lower(u.email) LIKE '%@preview.dev'
 )`;

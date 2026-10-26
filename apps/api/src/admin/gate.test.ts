@@ -1,4 +1,4 @@
-// SK-GTM-002 — the admin predicate is the whole authorization story
+// SK-GTM-012 — the admin predicate is the whole authorization story
 // for admin surfaces, so its edges are pinned here: exact allowlist,
 // domain match, case/whitespace normalization, and the lookalike
 // domains that must NOT pass.
@@ -10,15 +10,14 @@ describe("isAdminEmail", () => {
   it("admits the founder allowlist and any @nlqdb.com address", () => {
     // The founder signs in with this account — the dashboard's whole
     // audience, so it is pinned first.
-    expect(isAdminEmail("omer@salfati.group")).toBe(true);
-    expect(isAdminEmail("  Omer@Salfati.Group ")).toBe(true);
     expect(isAdminEmail("omer@nlqdb.com")).toBe(true);
+    expect(isAdminEmail("  Founder@NLQDB.com ")).toBe(true);
     expect(isAdminEmail("hi@nlqdb.com")).toBe(true);
     expect(isAdminEmail("future-teammate@nlqdb.com")).toBe(true);
   });
 
   it("normalizes case and surrounding whitespace", () => {
-    expect(isAdminEmail("Omer@nlqdb.com")).toBe(true);
+    expect(isAdminEmail("Dev@nlqdb.com")).toBe(true);
     expect(isAdminEmail("  OPS@NLQDB.COM  ")).toBe(true);
   });
 
@@ -27,8 +26,9 @@ describe("isAdminEmail", () => {
     expect(isAdminEmail("attacker@nlqdb.com.evil.io")).toBe(false);
     expect(isAdminEmail("attacker@evilnlqdb.com")).toBe(false);
     expect(isAdminEmail("nlqdb.com")).toBe(false);
-    // salfati.group is an exact-address entry, never a domain grant.
-    expect(isAdminEmail("other@salfati.group")).toBe(false);
+    // The founder's personal accounts are deliberately not admins
+    // (SK-GTM-012): only nlqdb-owned identities reach admin data.
+    expect(isAdminEmail("founder@gmail.com")).toBe(false);
   });
 
   it("rejects empty / null / undefined", () => {

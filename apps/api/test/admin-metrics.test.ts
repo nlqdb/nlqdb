@@ -2,7 +2,7 @@
 // Three seams under test:
 //   1. The auth gate: session-only (401 for no session / anon / sk_live
 //      bearers), 403 for a signed-in non-admin email, 200 only for the
-//      SK-GTM-002 allowlist+domain match. Sessions are minted through
+//      SK-GTM-012 allowlist+domain match. Sessions are minted through
 //      the real magic-link flow (magic-link.test.ts pattern) because
 //      worker-module mocking is broken under vitest-pool-workers.
 //   2. computeGtmMetrics: the SK-GTM-001 definitions against seeded D1
@@ -435,7 +435,7 @@ describe("writeGtmSnapshot — SK-GTM-003 idempotency", () => {
   });
 });
 
-describe("/v1/admin/metrics — SK-GTM-002 auth gate", () => {
+describe("/v1/admin/metrics — SK-GTM-012 auth gate", () => {
   it("returns 401 without a session", async () => {
     const res = await SELF.fetch(base);
     expect(res.status).toBe(401);

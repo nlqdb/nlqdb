@@ -8,7 +8,12 @@
 // forward() only accepts addresses verified under Email Routing →
 // Destination Addresses. An address on our own zones is not a valid
 // target: it is unverified and resolves back through our own MX.
-const INBOX = "omer.hochman@gmail.com";
+// The destination is a Worker secret (`wrangler secret put FORWARD_TO`),
+// not a constant, so the founder's personal inbox stays out of this
+// public repo.
+export interface Env {
+  FORWARD_TO?: string;
+}
 
 // DMARC aggregate reports (`_dmarc` rua=mailto:dmarc@nlqdb.com) are
 // machine-readable XML that nobody opens, and their volume is what trips
@@ -19,7 +24,7 @@ const REPORT_MAILBOXES = new Set(["dmarc"]);
 type Verdict = "pass" | "suspicious" | "unknown";
 
 export default {
-  async email(message: ForwardableEmailMessage): Promise<void> {
+  async email(message: ForwardableEmailMessage, env: Env): Promise<void> {
     // Cloudflare does not always stamp Authentication-Results on
     // Worker-delivered mail, so a verdict may be unavailable entirely.
     const authResults =
@@ -43,7 +48,10 @@ export default {
     }
 
     try {
-      await message.forward(INBOX, stamp(verdict, message.to));
+      // A missing secret throws (temporary SMTP error, sender retries)
+      // rather than dropping the message.
+      if (!env.FORWARD_TO) throw new Error("FORWARD_TO secret is not set");
+      await message.forward(env.FORWARD_TO, stamp(verdict, message.to));
       console.info(JSON.stringify({ ...entry, action: "forwarded" }));
     } catch (error) {
       // Rethrowing makes Cloudflare return a temporary SMTP error, so the

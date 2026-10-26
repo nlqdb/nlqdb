@@ -5,8 +5,8 @@
   the control-plane D1. The **population split is part of the metric**:
   every headline number reports real strangers separately from
   founder/test accounts, via the `INTERNAL_EMAIL` patterns
-  (`omer@salfati.group`, `omer.hochman@*`, `*@nlqdb.com`, `*@example.com`,
-  `*@preview.dev`). Metric set v1 (full shape = the `GtmMetrics` type):
+  (`*@nlqdb.com`, `*@example.com`, `*@preview.dev`; the population is
+  defined by [`SK-GTM-012`](SK-GTM-012-founder-identity-admin-gate.md)). Metric set v1 (full shape = the `GtmMetrics` type):
   signups, anon funnel, activation (`SK-ONBOARD-006`'s first-10 counters),
   retention (7d/30d + retained ≥ 7 days after signup), PMF proxies
   (`premium_interest`, paying `customers`, Sean-Ellis gate runnable once ≥

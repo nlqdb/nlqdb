@@ -99,7 +99,7 @@ describe("recordPricingEvent — SK-EVENTS-012 pricing funnel", () => {
     const result = await recordPricingEvent(
       { kv: stubKv(), events },
       { event: "view" },
-      { userId: "u_1", email: "founder@nlqdb.com" },
+      { userId: "u_1", email: "omer@nlqdb.com" },
       "1.2.3.4",
     );
     expect(result.status).toBe(202);
@@ -107,7 +107,7 @@ describe("recordPricingEvent — SK-EVENTS-012 pricing funnel", () => {
     expect(events.emit.mock.calls[0]?.[0]).toEqual({
       name: "pricing.page_viewed",
       principalId: "u_1",
-      email: "founder@nlqdb.com",
+      email: "omer@nlqdb.com",
     });
   });
 
@@ -132,7 +132,7 @@ describe("recordPricingEvent — SK-EVENTS-012 pricing funnel", () => {
     const result = await recordPricingEvent(
       { kv: stubKv(), events },
       { event: "plan", plan: "pro" },
-      { userId: "u_1", email: "founder@nlqdb.com" },
+      { userId: "u_1", email: "omer@nlqdb.com" },
       "1.2.3.4",
     );
     expect(result.status).toBe(202);

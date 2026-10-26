@@ -70,20 +70,20 @@ re-enable via Cloudflare later).
 | :--------------- | :------------------------ | :-------------------------------- | :------------------------------------------------- |
 | GitHub           | `omerhochman` (personal)  | Org `nlqdb` (free)                | Repo: `nlqdb/nlqdb`; tap: `nlqdb/homebrew-tap`     |
 | npm              | `omerhochman`             | Free (unlimited public packages)  | Scope `@nlqdb`                                     |
-| Cloudflare       | `omer.hochman@gmail.com`  | Free per zone                     | Token name: `nlqdb-phase0-dev`                     |
-| Neon             | `omer.hochman@gmail.com`  | Free                              | Project in `us-east-1`, PG 17, **Neon Auth OFF**   |
-| Fly.io           | `omer.hochman@gmail.com`  | 7-day trial → PAYG (no card yet)  | Org `personal`, **no apps**, token scope: `org`    |
-| Sentry           | `omer.hochman@gmail.com`  | 14-day Business trial → Developer | Project: `nlqdb-api` (Cloudflare Workers platform) |
+| Cloudflare       | Founder's personal Google | Free per zone                     | Token name: `nlqdb-phase0-dev`                     |
+| Neon             | Founder's personal Google | Free                              | Project in `us-east-1`, PG 17, **Neon Auth OFF**   |
+| Fly.io           | Founder's personal Google | 7-day trial → PAYG (no card yet)  | Org `personal`, **no apps**, token scope: `org`    |
+| Sentry           | Founder's personal Google | 14-day Business trial → Developer | Project: `nlqdb-api` (Cloudflare Workers platform) |
 | Google AI Studio | Existing                  | Free                              | Gemini API key                                     |
 | Groq             | Existing                  | Free                              | —                                                  |
 | OpenRouter       | Existing                  | Free (fallback)                   | —                                                  |
-| Google Cloud     | `omer.hochman@gmail.com`  | Free                              | Project `nlqdb`, OAuth consent screen **In production** |
-| Resend           | `omer.hochman@gmail.com`  | Free (3k emails/mo)               | API key `nlqdb-phase0`; `nlqdb.com` verified (DKIM `resend._domainkey`, SPF on `send.nlqdb.com`) |
-| Stripe           | `omer.hochman@gmail.com`  | Live mode                         | Merchant: Switzerland / CHF; descriptor `NLQDB.COM`; live — keys + webhook (5 events) + price IDs set, Tax + portal done; Worker push pending deploy |
-| Grafana Cloud    | `omer.hochman@gmail.com`  | Free                              | Stack `nlqdb` on `us-east-2`, instance `1609127`, access policy `nlqdb-phase0-telemetry` |
-| LogSnag          | `omer.hochman@gmail.com`  | Free (2,500 events/mo)            | Sole sink for `packages/events`; verified end-to-end (first `/v1/ask` produced an event) |
-| Tinybird         | `omer.hochman@gmail.com`  | Free Forever (10 GB, 1k reads/day)| Workspace `omer` (`us-east-1`, Forward). **Dual role:** the ClickHouse engine (`packages/db/clickhouse-tinybird`) **and** the `query_log` events sink (`SK-EVENTS-009`). `query_log` Data Source **live** — deploy datafiles with `scripts/tinybird-deploy.sh`. Worker token scope `DATASOURCE:APPEND` |
-| PostHog          | `omer.hochman@gmail.com`  | Free (EU, 1M events/mo)           | Product analytics (`GLOBAL-034`): server sink for every `ProductEvent` (`SK-EVENTS-013`) + posthog-js on `/app` only (`SK-WEB-024`). Marketing stays SDK-free |
+| Google Cloud     | Founder's personal Google | Free                              | Project `nlqdb`, OAuth consent screen **In production** |
+| Resend           | Founder's personal Google | Free (3k emails/mo)               | API key `nlqdb-phase0`; `nlqdb.com` verified (DKIM `resend._domainkey`, SPF on `send.nlqdb.com`) |
+| Stripe           | Founder's personal Google | Live mode                         | Merchant: Switzerland / CHF; descriptor `NLQDB.COM`; live — keys + webhook (5 events) + price IDs set, Tax + portal done; Worker push pending deploy |
+| Grafana Cloud    | Founder's personal Google | Free                              | Stack `nlqdb` on `us-east-2`, instance `1609127`, access policy `nlqdb-phase0-telemetry` |
+| LogSnag          | Founder's personal Google | Free (2,500 events/mo)            | Sole sink for `packages/events`; verified end-to-end (first `/v1/ask` produced an event) |
+| Tinybird         | Founder's personal Google | Free Forever (10 GB, 1k reads/day)| Workspace `omer` (`us-east-1`, Forward). **Dual role:** the ClickHouse engine (`packages/db/clickhouse-tinybird`) **and** the `query_log` events sink (`SK-EVENTS-009`). `query_log` Data Source **live** — deploy datafiles with `scripts/tinybird-deploy.sh`. Worker token scope `DATASOURCE:APPEND` |
+| PostHog          | Founder's personal Google | Free (EU, 1M events/mo)           | Product analytics (`GLOBAL-034`): server sink for every `ProductEvent` (`SK-EVENTS-013`) + posthog-js on `/app` only (`SK-WEB-024`). Marketing stays SDK-free |
 | Docker Hub       | **SKIPPED**               | —                                 | Using `ghcr.io/nlqdb` instead (paid-only org tier) |
 
 **Explicitly skipped** (re-evaluate post-PMF):

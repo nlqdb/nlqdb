@@ -35,7 +35,6 @@ D4's 20 KB cap). The list below is the index; open the linked file for the full
 five-field block.
 
 - [**SK-GTM-001**](decisions/SK-GTM-001-one-module-owns-metric-definitions.md) — One module owns the metric definitions, including the internal-email split
-- [**SK-GTM-002**](decisions/SK-GTM-002-admin-gate.md) — Admin gate: exact founder allowlist + `@nlqdb.com` domain, server-side only
 - [**SK-GTM-003**](decisions/SK-GTM-003-daily-snapshots.md) — Daily `gtm_snapshots` rows make progress observable; written by cron + on-read
 - [**SK-GTM-004**](decisions/SK-GTM-004-founder-dashboard.md) — Founder dashboard at `/app/admin/`; deliberately not in SDK/CLI/MCP/elements
 - [**SK-GTM-005**](decisions/SK-GTM-005-synthetic-traffic-flag.md) — Synthetic traffic is stamped at DB create; unique-people counts exclude it
@@ -45,6 +44,7 @@ five-field block.
 - [**SK-GTM-009**](decisions/SK-GTM-009-paying-customer-watchlist.md) — Paying-customer watchlist: per-customer drill-down, built ahead of the first conversion
 - [**SK-GTM-010**](decisions/SK-GTM-010-creating-surface-on-db-row.md) — Record the creating surface (web/cli/mcp/embed) on the DB row, derived from the principal; orthogonal to `source_json`
 - [**SK-GTM-011**](decisions/SK-GTM-011-per-surface-ask-counters.md) — Non-saturating per-DB ask counters split by surface (`asks_total`/`asks_mcp`) — built for the retired `SK-PIVOT-016` gate; the counter shape `GLOBAL-041` KPI 1 reuses
+- [**SK-GTM-012**](decisions/SK-GTM-012-founder-identity-admin-gate.md) — Admin gate and internal population name only nlqdb-owned identities; the founder is `omer@nlqdb.com`
 
 ## GLOBALs governing this feature
 
@@ -61,6 +61,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 ## Open questions / known unknowns
 
 - **External sources (CF Web Analytics visits, GSC clicks/impressions)** — Parked until the D1 dashboard proves daily use; both need operator tokens (`CF_ANALYTICS_TOKEN`, GSC service account) in the Worker, so v1 names the gap rather than proxy half-configured sources.
-- **Loop integration — Resolved (`GLOBAL-033`).** `GET /v1/admin/metrics` is the canonical read (`gtm-metrics.ts` forbids re-derived SQL in loop prompts), but it is `requireSession` + `isAdminEmail`-gated (`SK-GTM-002`) with no token path — so an agent-run `/daily` can't call it without a new admin-token auth surface, which GLOBAL-033 says not to build on spec: remote-D1 is a working equivalent whose row-#2 exclusion list mirrors `INTERNAL_EMAIL_SQL` (no drift). **Parked until** a founder automation needs the endpoint.
+- **Loop integration — Resolved (`GLOBAL-033`).** `GET /v1/admin/metrics` is the canonical read (`gtm-metrics.ts` forbids re-derived SQL in loop prompts), but it is `requireSession` + `isAdminEmail`-gated (`SK-GTM-012`) with no token path — so an agent-run `/daily` can't call it without a new admin-token auth surface, which GLOBAL-033 says not to build on spec: remote-D1 is a working equivalent whose row-#2 exclusion list mirrors `INTERNAL_EMAIL_SQL` (no drift). **Parked until** a founder automation needs the endpoint.
 - **No ask counter could answer the (since retired) `SK-PIVOT-016` criterion 1 — Resolved ([`SK-GTM-011`](decisions/SK-GTM-011-per-surface-ask-counters.md)).** `first10_asks` saturates at 10 and carries no per-ask surface, and `source_surface` (`SK-GTM-010`) is a create-time stamp, so neither could isolate the "≥ 100 asks *through the public MCP surface*" the criterion is defined over. The fix shipped the documented smallest honest shape: `databases.asks_total` + `asks_mcp` (migration 0034), bumped fire-and-forget in the same `/v1/ask` completion UPDATE as `first10_*` (off the response path, synthetic-walker-excluded), non-saturating, with `asks_mcp` counting the `sk_mcp_`-principal subset (`surfaceFromPrincipal === "mcp"`). The launch gate now reads `SUM(asks_mcp)` over the `agent_memory_v1` DBs and renders criterion 1 as a real live count that can go green — no longer a first-10 lower bound.
 - **Adoption-rate denominator understates the true anon-DB base** — `adoptionRate = adopted / (live anon DBs + adopted)`, but the `SK-ANON-002` sweep deletes abandoned anon DBs and adoption re-tenants off `anon:%`, so the rate slightly overstates. Exact share needs an append-only anon-created counter; parked until anon volume makes the gap material.

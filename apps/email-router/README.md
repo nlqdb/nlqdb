@@ -4,6 +4,11 @@ Inbound mail for `nlqdb.com` and `nlqdb.ai`. Email Routing's catch-all
 rule on both zones invokes this Worker's `email()` handler over SMTP;
 it forwards to the founder's verified inbox.
 
+The destination is the `FORWARD_TO` Worker secret, never a constant in
+this public repo. Set it once per account before deploying:
+`bunx wrangler secret put FORWARD_TO` (a verified Email Routing
+destination). If it is unset, the handler throws and senders retry.
+
 Deployed name is `protect-email-domain-reputation`. Renaming it unbinds
 the routing rules and silently stops inbound mail.
 
