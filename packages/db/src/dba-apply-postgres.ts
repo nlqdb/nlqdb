@@ -40,7 +40,7 @@ export function judgeApplied(proposal: Proposal, after: FingerprintWindow[]): Ve
 // is rethrown — except when the name was already taken (42P07): that index
 // isn't this apply's to drop.
 export function applyProposal(query: PostgresQueryFn, proposal: Proposal): Promise<void> {
-  return withDbaSpan("db.apply", proposal.kind, proposal.schema, async () => {
+  return withDbaSpan("db.apply", `apply_${proposal.kind}`, proposal.schema, async () => {
     try {
       await query(proposal.ddl, []);
     } catch (err) {
@@ -57,7 +57,7 @@ export function verifyApplied(
   proposal: Proposal,
   after: FingerprintWindow[],
 ): Promise<Verification> {
-  return withDbaSpan("db.verify", proposal.kind, proposal.schema, async (span) => {
+  return withDbaSpan("db.verify", `verify_${proposal.kind}`, proposal.schema, async (span) => {
     const v = judgeApplied(proposal, after);
     span.setAttribute("nlqdb.dba.verdict", v.verdict);
     if (v.verdict === "revert") await query(proposal.inverse, []);

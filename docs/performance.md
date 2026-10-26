@@ -133,39 +133,39 @@ Canonical names. Every slice MUST use these — no one-off variants.
 
 | Span                          | Wraps                                          |
 | :---------------------------- | :--------------------------------------------- |
-| `http.server.request`         | Outermost — already standard OTel.             |
-| `nlqdb.auth.verify`           | Internal JWT HMAC verify.                      |
-| `nlqdb.ratelimit.check`       | D1 UPSERT for the per-principal rate-limit window. `SK-MCP-009` keys buckets via `principal.ts::rateLimitBucketKey` — sk_live/sk_mcp get one bucket per `api_keys.id`; session/anon/pk_live key by `principal.id`. |
-| `nlqdb.ask`                   | Top-level wrapper for `/v1/ask` request.       |
-| `nlqdb.insert`                | `/v1/insert` (SK-SCHEMA-012): `nlqdb.insert.{outcome,widened,rows}`; one `db.query` (column read) + one `db.transaction` (`nlqdb.db.transaction.kind=widen`), never an `llm.*` child. A class-22 refusal adds one probe `db.query` (`nlqdb.insert.rows_refused`) and one retry `db.transaction`. |
-| `nlqdb.cache.plan.lookup`     | KV read for cached plan (label `hit=true/false`). |
-| `nlqdb.cache.plan.write`      | KV write of new plan.                          |
+| `http.server.request` | Outermost — already standard OTel. |
+| `nlqdb.auth.verify` | Internal JWT HMAC verify. |
+| `nlqdb.ratelimit.check` | D1 UPSERT for the per-principal rate-limit window. `SK-MCP-009` keys buckets via `principal.ts::rateLimitBucketKey` — sk_live/sk_mcp get one bucket per `api_keys.id`; session/anon/pk_live key by `principal.id`. |
+| `nlqdb.ask` | Top-level wrapper for `/v1/ask` request. |
+| `nlqdb.insert` | `/v1/insert` (SK-SCHEMA-012): `nlqdb.insert.{outcome,widened,rows}`; one `db.query` (column read) + one `db.transaction` (`nlqdb.db.transaction.kind=widen`), never an `llm.*` child. A class-22 refusal adds one probe `db.query` (`nlqdb.insert.rows_refused`) and one retry `db.transaction`. |
+| `nlqdb.cache.plan.lookup` | KV read for cached plan (label `hit=true/false`). |
+| `nlqdb.cache.plan.write` | KV write of new plan. |
 | `nlqdb.cache.first_query.{lookup,commit}` | KV read/write of the `user.first_query` emit marker (`ask/orchestrate.ts`); emit-then-commit, both non-fatal (a failed commit re-emits next request). |
-| `nlqdb.recent_tables.lookup`  | KV read of principal's recent-tables MRU (`SK-ASK-012`). |
-| `nlqdb.recent_tables.touch`   | KV read-merge-write pushing new tables onto the MRU (`SK-ASK-012`); `ctx.waitUntil` on `/v1/ask`, inline on create. |
-| `nlqdb.diag.write`            | KV write persisting a swallowed failure's SQLSTATE (`SK-ASK-023`) — KV is the durable channel since previews log nowhere. Swallowed; never blocks the error path. |
-| `llm.route`                   | Merged kind + dbId classification (SK-ASK-009). One cheap-tier call per cache-miss / dbId-absent send; replaces the older `llm.classify` + `llm.disambiguate` pair. |
-| `llm.plan`                    | NL → SQL generation.                           |
-| `llm.summarize`               | Result summarization (conditional).            |
-| `llm.schema_infer`            | Hosted db.create — NL → typed `SchemaPlan` (SK-HDC-002, SK-HDC-003). |
-| `llm.engine_classify`         | Hosted db.create — goal text → engine pick (SK-DB-010, SK-MULTIENG-002). Parent carries `nlqdb.engine_classify.fallback_reason ∈ {deferred, below_floor, provider_failed, unknown_string}`. |
-| `nlqdb.sql.validate`          | SQL parse + schema-fit check.                  |
-| `db.query`                    | Neon HTTP execute — standard OTel `db.*`. Attributes: `db.system=postgresql`, `db.operation.name`, `db.statement` (PII-redacted SQL text). |
-| `db.transaction`              | One Neon HTTP `transaction([...])` round-trip; no per-statement `db.query` nests under it. `db.system=postgresql`; on failure `db.transaction.error_sqlstate` (SK-HDC-017). Emitters: the db.create provision batch (SK-HDC-012), the ACL retarget (SK-ANON-003 / SK-ASK-024). |
+| `nlqdb.recent_tables.lookup` | KV read of principal's recent-tables MRU (`SK-ASK-012`). |
+| `nlqdb.recent_tables.touch` | KV read-merge-write pushing new tables onto the MRU (`SK-ASK-012`); `ctx.waitUntil` on `/v1/ask`, inline on create. |
+| `nlqdb.diag.write` | KV write persisting a swallowed failure's SQLSTATE (`SK-ASK-023`) — KV is the durable channel since previews log nowhere. Swallowed; never blocks the error path. |
+| `llm.route` | Merged kind + dbId classification (SK-ASK-009). One cheap-tier call per cache-miss / dbId-absent send; replaces the older `llm.classify` + `llm.disambiguate` pair. |
+| `llm.plan` | NL → SQL generation. |
+| `llm.summarize` | Result summarization (conditional). |
+| `llm.schema_infer` | Hosted db.create — NL → typed `SchemaPlan` (SK-HDC-002, SK-HDC-003). |
+| `llm.engine_classify` | Hosted db.create — goal text → engine pick (SK-DB-010, SK-MULTIENG-002). Parent carries `nlqdb.engine_classify.fallback_reason ∈ {deferred, below_floor, provider_failed, unknown_string}`. |
+| `nlqdb.sql.validate` | SQL parse + schema-fit check. |
+| `db.query` | Neon HTTP execute — standard OTel `db.*`. Attributes: `db.system=postgresql`, `db.operation.name`, `db.statement` (PII-redacted SQL text). |
+| `db.transaction` | One Neon HTTP `transaction([...])` round-trip; no per-statement `db.query` nests under it. `db.system=postgresql`; on failure `db.transaction.error_sqlstate` (SK-HDC-017). Emitters: the db.create provision batch (SK-HDC-012), the ACL retarget (SK-ANON-003 / SK-ASK-024). |
 | `db.query`/`db.transaction` (cron) | `nlqdb.cron` names the job: `keep_warm` (SK-HDC-014 `SELECT 1`), `tenant_role_reap` (SK-HDC-024 role read + per-role drop). |
-| `nlqdb.auth.oauth.callback`   | `/api/auth/callback/{github,google}` flow.     |
-| `nlqdb.anon.adopt`            | Better Auth `after`-hook adoption hop (SK-ANON-012): wraps `recordAnonAdoption()` (SK-ANON-003) on magic-link / OAuth callback when `__Secure-anon-bearer` is present. Carries `nlqdb.user.id`, `nlqdb.anon.adopt.outcome ∈ {adopted, replay, invalid_cookie, invalid_token, token_taken, internal}`. |
-| `nlqdb.webhook.stripe`        | Stripe webhook handler.                        |
+| `nlqdb.auth.oauth.callback` | `/api/auth/callback/{github,google}` flow. |
+| `nlqdb.anon.adopt` | Better Auth `after`-hook adoption hop (SK-ANON-012): wraps `recordAnonAdoption()` (SK-ANON-003) on magic-link / OAuth callback when `__Secure-anon-bearer` is present. Carries `nlqdb.user.id`, `nlqdb.anon.adopt.outcome ∈ {adopted, replay, invalid_cookie, invalid_token, token_taken, internal}`. |
+| `nlqdb.webhook.stripe` | Stripe webhook handler. |
 | `nlqdb.billing.{checkout,portal}.create` | Stripe Checkout (SK-STRIPE-004) / Billing Portal (SK-STRIPE-008) session create, one per `POST /v1/billing/{checkout,portal}`. Carry `nlqdb.user.id`, `nlqdb.billing.{plan,checkout_session_id,portal_session_id}`. |
 | `nlqdb.billing.premium.{meter_event,overage_item,reconcile}` | Hosted-premium Stripe calls (SK-PREMIUM-017, GLOBAL-014), all behind `PREMIUM_METER_LIVE`: `meter_event` = Billing Meter event create (carries `nlqdb.premium.event_id`); `overage_item` = lazy overage subscription-item attach; `reconcile` = daily meter-summary cross-check (carries `nlqdb.premium.reconcile_cross_checked`). ERROR on Stripe failure; best-effort, never breaks `/v1/ask`. |
-| `nlqdb.events.emit`           | Product-event sink dispatch (LogSnag + PostHog). Wrapped in `ctx.waitUntil` (off the response path). Server-side only. |
+| `nlqdb.events.emit` | Product-event sink dispatch (LogSnag + PostHog), in `ctx.waitUntil`. |
 | `nlqdb.events.sink.query_log` | Tinybird `query_log` Data Source write; one per events-batch. Carries `nlqdb.events.{batch_size,rows_written,circuit_open}`, `http.response.status_code` (`SK-EVENTS-009`). |
 | `nlqdb.events.sink.posthog` | PostHog `/batch` fan-out; one per events-batch. Carries `nlqdb.events.batch_size`, `http.response.status_code`. Best-effort — ERROR on failure, never affects ack/retry (`SK-EVENTS-013`). |
 | `nlqdb.workload_analyser.run` | W5 daily cron parent span. Carries `nlqdb.workload_analyser.{query_log_rows, proposals, reshapes_applied, errors, elapsed_ms}` (`SK-MIGRATE-001`). |
 | `nlqdb.workload_analyser.reshape` | One child span per `ReshapeProposal` the cron dispatches. Carries `nlqdb.workload_analyser.{kind, db_id, pipe_pre_existed?, pipe_name?}`. ERROR on a Tinybird create-reject or `schema_hash`-drift rollback (`SK-MIGRATE-004/006`). |
 | `db.query` (Tinybird Pipes mgmt) | Per-call span around `createPipe` / `dropPipe` / `getPipe`. Attributes `db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`, `db.tinybird.pipe`. Latency on `nlqdb.db.duration_ms{operation}` (`SK-MIGRATE-001`). |
-| `dns.resolve`                 | One span per BYO connect-time egress resolve (`GLOBAL-035`); A + AAAA DoH legs nest under it. Attributes `server.address`, `dns.question.name`, `dns.answer.count`; ERROR on fail-loud. |
-| `db.observe`                  | One per DBA-loop observer pass (`GLOBAL-043`): `db.operation.name=observe_catalog`, `db.namespace`, `nlqdb.dba.proposals`; latency on `nlqdb.db.duration_ms{operation}`. |
+| `dns.resolve` | One span per BYO connect-time egress resolve (`GLOBAL-035`); A + AAAA DoH legs nest under it. Attributes `server.address`, `dns.question.name`, `dns.answer.count`; ERROR on fail-loud. |
+| `db.{observe,apply,verify}` | One per DBA-loop step on a Postgres (`GLOBAL-043`): `db.operation.name` = `observe_{catalog,workload}` / `apply_<kind>` / `verify_<kind>`, `db.namespace`; observe adds `nlqdb.dba.proposals`, verify `nlqdb.dba.verdict`. Latency on `nlqdb.db.duration_ms{operation}`. |
 | `nlqdb.mcp.http.request`     | `SK-MCP-009` — every hosted-MCP Worker request before `OAuthProvider` dispatch (`GET /health` skipped). Attributes `http.{request.method,route,response.status_code}`; an `OAuthProvider` error adds `nlqdb.mcp.auth.{error_code,error_status,error_description}` and flips status to ERROR. |
 | `nlqdb.grants.{mint,list,revoke}` | The `/v1/grants` cross-tenant read-grant control plane (`SK-EKP-008`). Each carries `nlqdb.user.id` plus its own `nlqdb.grants.<verb>.outcome`; mint adds `.db_id`, list adds `.count`, revoke adds `.grant_id` and is fail-closed within the 30 s bound. |
 | `nlqdb.pack.import.{create,advance,retry,delete}` | The shared goal-pack import runner (`SK-PIVOT-021`, D-08). One per `/v1/packs/imports*` call. Carries `nlqdb.pack.id`, `nlqdb.pack.import.{id,phase,db_id}` and `nlqdb.pack.import.outcome` (values: `apps/api/src/pack-runner/`). |
