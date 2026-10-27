@@ -9,15 +9,16 @@ Operator actions also get one metadata line in
 [`history/founder-actions-log.md`](./history/founder-actions-log.md) — never
 a secret value.
 
-## Approve the held `Deploy events-worker` run on `main`
+## Approve the held `Deploy events-worker` and `Deploy MCP server` runs on `main`
 
-⏱ ~2 min · blocked since 2026-10-26. The `Deploy API` hold cleared (it ran
-on `7e174b5` and `edc9b07`), but `Deploy events-worker` now holds at
-`action_required` with no job started on `edc9b07` (#1208), so the
-events-worker still serves the 10-22 build.
+⏱ ~2 min · blocked since 2026-10-26. Both hold at `action_required` with no
+job started on `main`'s head `eae528a`, so the events-worker serves the 10-22
+build and the MCP server a pre-`7983aeb` one. Deploy API and Deploy web run.
 
-1. Open the held run ([40331978142](https://github.com/nlqdb/nlqdb/actions/runs/40331978142))
-   and approve it. It deploys `main`'s head.
+1. Approve the held runs: events-worker
+   ([40398610582](https://github.com/nlqdb/nlqdb/actions/runs/40398610582)),
+   MCP server ([40398610484](https://github.com/nlqdb/nlqdb/actions/runs/40398610484)).
+   Each deploys `main`'s head.
 2. If a deploy re-holds on the next merge, set Settings → Actions → General
    back to auto-run for `main`.
 3. Log a line in `history/founder-actions-log.md` and delete this bullet.

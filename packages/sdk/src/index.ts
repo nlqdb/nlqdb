@@ -229,7 +229,7 @@ export type DatabaseSummary = {
 export type DbaChange = {
   id: number;
   origin: "insert" | "ask" | "attach";
-  status: "proposed" | "applied";
+  status: "proposed" | "applied" | "rejected";
   kind: "create_table" | "add_column" | "create_index";
   table: string;
   ddl: string;
@@ -315,6 +315,22 @@ export type ConnectDatabaseResult = {
   // Postgres: the first proposals, from the catalog (`GLOBAL-043`); `[]` when
   // the schema needs nothing yet. ClickHouse: always `[]`.
   proposals: Proposal[];
+};
+
+// A proposal after `applyProposal` / `rejectProposal` (`GLOBAL-043` item 5):
+// who decided it (`user:<id>`, `sk_live:<keyId>` or `sk_mcp:<keyId>`), when
+// (unix seconds), and the reason a reject gave. `replayed` is true when the
+// same verb had already decided it.
+export type DecideProposalResult = {
+  proposal: {
+    id: number;
+    dbId: string;
+    status: "applied" | "rejected";
+    decidedBy: string;
+    decidedAt: number;
+    rejectReason: string | null;
+  };
+  replayed: boolean;
 };
 
 // Body for `client.attach()` — a Postgres connection string.
@@ -440,6 +456,9 @@ export type ApiErrorCode =
   | "unconfigured"
   | "internal_error"
   | "key_not_found"
+  | "proposal_not_found"
+  | "proposal_decided"
+  | "apply_failed"
   | "challenge_required"
   // SK-ANON-010 / SK-ANON-012 — the anonymous budget ran out; `params.cap`
   // names which cap so the surface can stash the prompt and offer sign-in.
@@ -1152,6 +1171,24 @@ export type NlqClient = {
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<ConnectDatabaseResult>;
   /**
+   * `POST /v1/proposals/:id/apply` — run a proposal's DDL on the attached DB
+   * (`GLOBAL-043` item 5); `id` is the one `attach()` / `listChanges` gave.
+   * Verify and auto-revert follow after the window, whoever applied it.
+   * Errors: `proposal_not_found` (404), `proposal_decided` (409, it was
+   * rejected), `apply_failed` (502, the DB is unchanged). Applying an applied
+   * proposal returns it with `replayed: true`.
+   */
+  applyProposal(id: number, opts?: { signal?: AbortSignal }): Promise<DecideProposalResult>;
+  /**
+   * `POST /v1/proposals/:id/reject` — decline a proposal, with an optional
+   * reason the playbook learns from. Same errors as `applyProposal` minus
+   * `apply_failed`.
+   */
+  rejectProposal(
+    id: number,
+    opts?: { reason?: string; signal?: AbortSignal },
+  ): Promise<DecideProposalResult>;
+  /**
    * Bring-your-own-database verbs (`SK-DBCONN-001`). Namespaced because
    * `GLOBAL-003` parity names the surface `client.databases.connect`.
    */
@@ -1728,6 +1765,17 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
         ...(callOpts?.idempotencyKey
           ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
           : {}),
+      }),
+    applyProposal: (id, callOpts) =>
+      call<DecideProposalResult>(`/v1/proposals/${encodeURIComponent(String(id))}/apply`, {
+        method: "POST",
+        signal: callOpts?.signal,
+      }),
+    rejectProposal: (id, callOpts) =>
+      call<DecideProposalResult>(`/v1/proposals/${encodeURIComponent(String(id))}/reject`, {
+        method: "POST",
+        body: JSON.stringify(callOpts?.reason !== undefined ? { reason: callOpts.reason } : {}),
+        signal: callOpts?.signal,
       }),
     databases: {
       connect: (req, callOpts) =>

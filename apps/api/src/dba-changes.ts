@@ -105,7 +105,7 @@ export async function recordDbaChanges(
 export type DbaChangeRow = DbaChange & {
   id: number;
   origin: "insert" | "ask" | "attach";
-  status: "proposed" | "applied";
+  status: "proposed" | "applied" | "rejected";
   reason: string | null;
   createdAt: number;
 };

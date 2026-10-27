@@ -621,6 +621,29 @@ export const REGISTRY = {
     message: () => "No key of yours matched that id.",
     action: () => `Check the list at ${KEYS_URL}, then retry.`,
   }),
+  // ── DBA proposals (`POST /v1/proposals/:id/apply|reject`, GLOBAL-043) ──
+  proposal_not_found: defineError({
+    httpStatus: 404,
+    recoverability: "user_config",
+    params: NONE,
+    message: () => "No proposal of yours matched that id.",
+    action: () => "List the database's changes for the proposals still open, then retry.",
+  }),
+  proposal_decided: defineError({
+    httpStatus: 409,
+    recoverability: "user_config",
+    params: z.object({ status: z.enum(["applied", "rejected"]).optional().catch(undefined) }),
+    message: (p) => `That proposal was already ${p.status ?? "decided"}.`,
+    action: () => "Nothing to do; list the database's changes for the proposals still open.",
+  }),
+  apply_failed: defineError({
+    httpStatus: 502,
+    recoverability: "transient",
+    params: NONE,
+    message: () => "The proposal couldn't be applied, so the database is unchanged.",
+    action: () =>
+      "Check the host is reachable and the role may create indexes on that table, then retry.",
+  }),
   // ── Guided import (`/v1/import/*`) ─────────────────────────────────────
   import_not_found: defineError({
     httpStatus: 404,

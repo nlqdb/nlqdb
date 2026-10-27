@@ -352,6 +352,7 @@ app.use("/v1/databases", credentialedCors);
 app.use("/v1/databases/*", credentialedCors);
 app.use("/v1/db/*", credentialedCors);
 app.use("/v1/attach", credentialedCors); // the `/v1/db/connect` alias
+app.use("/v1/proposals/*", credentialedCors); // the apply / reject verbs
 // Product-UI endpoints the model picker + keys panel hit from
 // `nlqdb.com` cross-origin (SK-PREMIUM-013 / api-keys): the model
 // catalog, the BYOLLM + minted-key routes, and the hosted-premium
@@ -4535,6 +4536,63 @@ const connectByo = async (c: Context<AppEnv>) => {
 };
 app.post("/v1/db/connect", requirePrincipal, connectByo);
 app.post("/v1/attach", requirePrincipal, connectByo);
+
+// `POST /v1/proposals/:id/apply|reject` — the two verbs (`GLOBAL-043` item 5)
+// on a proposal the attach door recorded. Any account principal the owner
+// holds may decide — a session, an `sk_live` or an `sk_mcp` key — and the
+// ledger row names which (`decided_by`). Natural-key idempotent
+// (`SK-IDEMP-004`, the proposal id + verb): repeating the verb that decided a
+// proposal returns it, `replayed: true`.
+const decideVerb = (verb: "apply" | "reject") => async (c: Context<AppEnv>) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan(`nlqdb.proposal.${verb}`, async (span) => {
+    try {
+      const principal = c.var.principal as Principal;
+      const tenantId = accountTenantIdFromPrincipal(principal);
+      const decidedBy =
+        principal.kind === "user"
+          ? `user:${principal.id}`
+          : principal.kind === "sk_live" || principal.kind === "sk_mcp"
+            ? `${principal.kind}:${principal.keyId}`
+            : null;
+      if (!tenantId || !decidedBy) return fail(c, "account_required");
+      const id = Number(c.req.param("id"));
+      if (!Number.isSafeInteger(id) || id <= 0) return fail(c, "proposal_not_found");
+      let reason: string | null = null;
+      if (verb === "reject") {
+        const raw = await parseJsonBody<{ reason?: unknown }>(c);
+        if (raw.ok && typeof raw.body.reason === "string" && raw.body.reason.trim() !== "") {
+          reason = raw.body.reason.trim().slice(0, 500);
+        }
+      }
+      span.setAttribute("nlqdb.principal.kind", principal.kind);
+      span.setAttribute("nlqdb.proposal.id", id);
+      const { buildConnectByoDeps } = await import("./db-connect/build-deps.ts");
+      const { decideProposal } = await import("./dba-verbs.ts");
+      const result = await decideProposal(buildConnectByoDeps(c.env), {
+        id,
+        tenantId,
+        decidedBy,
+        ...(verb === "apply" ? { verb } : { verb, reason }),
+      });
+      span.setAttribute("nlqdb.proposal.outcome", result.ok ? result.proposal.status : result.code);
+      if (!result.ok) {
+        return result.code === "proposal_decided"
+          ? fail(c, result.code, { status: result.status })
+          : fail(c, result.code);
+      }
+      return c.json({ proposal: result.proposal, replayed: result.replayed });
+    } catch (err) {
+      span.recordException(err as Error);
+      span.setStatus({ code: SpanStatusCode.ERROR });
+      throw err;
+    } finally {
+      span.end();
+    }
+  });
+};
+app.post("/v1/proposals/:id/apply", requirePrincipal, decideVerb("apply"));
+app.post("/v1/proposals/:id/reject", requirePrincipal, decideVerb("reject"));
 
 // `DELETE /v1/databases/:id` — destructive removal of a hosted DB.
 // Reuses the SK-HDC-011 `dropSchemaAndRegistry` rollback primitive

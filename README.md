@@ -182,7 +182,8 @@ One loop — observe → propose → apply → verify → revert — on your Pos
   (read-only v0)
 - ~ Attach product on synthetic databases — observer, `create_index`
   proposal, apply → verify → auto-revert, the four doors (the API door,
-  `POST /v1/attach` / `client.attach()`, is live), tested in CI
+  `POST /v1/attach` / `client.attach()` with `client.applyProposal()` /
+  `rejectProposal()`, is live), tested in CI
 - ◯ Postgres spike — one index proposed, applied and measured (before/after
   p95) on a real-traffic database
 - ◯ D1 attach on the real rateme12 — the dogfood

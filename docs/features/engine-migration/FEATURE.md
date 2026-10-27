@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Engine Migration
 
 **One-liner:** Reshape loop — daily workload analyser creates Tinybird Pipes for hot ClickHouse fingerprints and writes advisory audit rows for hot Postgres ones; cross-engine migration still planned.
-**Status:** partial — intra-engine reshape live (`SK-MIGRATE-001..006`); the attach loop is `GLOBAL-043` roadmap item 1 — its Postgres Tier 0 observer (unindexed FKs) and Tier 1 observer (`pg_stat_statements` windows → selective seq-scanned equality filters, with a mean + 1.65 σ p95 estimate per fingerprint) ship as `create_index` proposals with inverses; `applyProposal` / `verifyApplied` (`packages/db/src/dba-apply-postgres.ts`) apply one, re-read its fingerprint and run its stored inverse when its p95 est. is > 10 % worse. The API door (`POST /v1/attach`, an alias of `/v1/db/connect` that defaults to Postgres; `client.attach`) observes Tier 0 on the connect socket and writes the DB row and its proposals (`status = 'proposed'`, the Proposal JSON kept) to the ledger in one D1 batch. The apply / reject verbs (who decided, before / after) and the CLI, MCP and web doors follow. Engine placement is the playbook's last kind.
+**Status:** partial — intra-engine reshape live (`SK-MIGRATE-001..006`); the attach loop is `GLOBAL-043` roadmap item 1 — its Postgres Tier 0 observer (unindexed FKs) and Tier 1 observer (`pg_stat_statements` windows → selective seq-scanned equality filters, with a mean + 1.65 σ p95 estimate per fingerprint) ship as `create_index` proposals with inverses; `applyProposal` / `verifyApplied` (`packages/db/src/dba-apply-postgres.ts`) apply one, re-read its fingerprint and run its stored inverse when its p95 est. is > 10 % worse. The API door (`POST /v1/attach`, an alias of `/v1/db/connect` that defaults to Postgres; `client.attach`) observes Tier 0 on the connect socket and writes the DB row and its proposals (`status = 'proposed'`, the Proposal JSON kept) to the ledger in one D1 batch. `POST /v1/proposals/:id/apply|reject` (`client.applyProposal` / `rejectProposal`) decide one: a compare-and-set flips the row first, `decided_by` names the principal (`user:` / `sk_live:` / `sk_mcp:`), a failed apply returns it to `proposed`, a reject keeps its reason (migration `0040`). Verify after the window, and the CLI, MCP and web doors, follow. Engine placement is the playbook's last kind.
 **Owners (code):** `apps/api/src/workload-analyser/**`, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql`
 **Cross-refs:** `multi-engine-adapter/FEATURE.md` `SK-MULTIENG-003` (the rule this feature operationalises) · `events-pipeline/FEATURE.md` `SK-EVENTS-009` (the `query_log` Data Source the analyser reads) · `plan-cache/FEATURE.md` `SK-PLAN-002` (cache key must outlive reshape) · `GLOBAL-043` (roadmap + exit gate) · `docs/performance.md §3.1` (`nlqdb.workload_analyser.*` spans)
 
@@ -23,7 +23,7 @@ when-to-load:
 - `apps/api/src/scheduled/jobs.ts` — the `workload_analyser` row (SK-HDC-023 owns the trigger)
 - `apps/api/migrations/0008_workload_analyser_audit.sql`
 - `packages/db/src/dba-*.ts` — the engine-agnostic `Proposal` and the per-engine observers; CI's `test-dba-postgres` job runs them against `packages/db/test/fixtures/dba-synthetic-seed.sql`.
-- `apps/api/src/dba-changes.ts`, `apps/web/src/pages/app/dba.astro`, `apps/web/src/components/dba/**` — the change ledger and `/app/dba` v0, read-only; `GLOBAL-043` adds proposals, apply / reject and revert here. Surface gap (`GLOBAL-003`): `client.listChanges`, `client.attach` and the web page (proposals read as not applied) have it; `nlq attach`, MCP's proposal listing and the web paste door don't yet.
+- `apps/api/src/dba-changes.ts`, `apps/web/src/pages/app/dba.astro`, `apps/web/src/components/dba/**` — the change ledger and `/app/dba` v0, read-only; `GLOBAL-043` adds proposals, apply / reject and revert here. Surface gap (`GLOBAL-003`): the SDK (`listChanges`, `attach`, `applyProposal`, `rejectProposal`) and the web page (read-only) have it; `nlq attach` / `apply` / `reject`, the MCP proposal tools and the web paste door and buttons don't yet.
 
 ## Decisions
 
@@ -80,7 +80,6 @@ when-to-load:
 - **Alternatives rejected:**
   - Defer the trace until routing lands — every later PR has to relitigate the orchestrator surface; one small forward-compat field is cheaper.
   - Surface via OTel only (no user-visible field) — operators see it, users don't; the architecture-is-hidden thesis is about the user signal.
-  - Trace toggle (opt-in via header / query param) — the field is small and absent-when-no-row, no toggle needed.
 
 ### SK-MIGRATE-006 — Best-effort with per-day idempotency; failures log + roll back the partial Pipe; next cron retries
 
