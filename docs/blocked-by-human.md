@@ -29,8 +29,7 @@ build and the MCP server a pre-`7983aeb` one. Deploy API and Deploy web run.
 2-week Postgres spike, run once item 1a's Postgres slices land ([`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md));
 it needs a real-traffic database only you can pick and grant.
 
-1. Choose a real-traffic Postgres you own (Supabase / Neon / RDS — not the
-   rateme12 clone).
+1. Choose a real-traffic Postgres you own (Supabase / Neon / RDS).
 2. Create a role with `pg_read_all_stats`, granted membership in the role
    that owns the app's tables (only a table's owner can add its indexes).
 3. Make sure `pg_stat_statements` is enabled (and HypoPG, if the host
@@ -55,6 +54,15 @@ only the account owner can mint the token.
    `RATEME12_D1_ACCOUNT_ID`, `RATEME12_D1_DATABASE_ID` the same way).
 3. Log a line in `history/founder-actions-log.md` (no secret) and delete
    this bullet.
+
+## Delete the `rateme12` Worker and its `rateme12.nlqdb.com` domain
+
+⏱ ~2 min · blocked since 2026-10-27. The clone's code and deploy workflow
+are gone from the repo, but the deployed Worker still serves a dead page.
+
+1. Cloudflare dashboard → Workers & Pages → `rateme12` → Settings → Delete
+   (this also removes the `rateme12.nlqdb.com` custom domain).
+2. Log a line in `history/founder-actions-log.md` and delete this bullet.
 
 ## 🔒 Lock which `/v1/ask` pieces the deletion series removes
 

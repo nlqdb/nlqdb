@@ -172,9 +172,10 @@ iterate → retro → cleanup loop stand.
     compile-write-ddl, tenant roles), the NL-specific `/v1/ask` machinery,
     `tools/eval` (BIRD/Spider), anonymous mode, agent-memory and
     expert-knowledge rails, ICP-mining / GTM / PMF, marketing content pages,
-    other-language SDKs and framework wrappers, the rateme12 clone
-    (`apps/rateme12`) — one per PR. The dogfood canary stays a regression
-    check until `insert()` goes.
+    other-language SDKs and framework wrappers — one per PR. The rateme12
+    clone (`apps/rateme12`) went first, ahead of the spike (founder,
+    2026-10-27). The dogfood canary stays a regression check until
+    `insert()` goes.
   - **Kept and reused:** the `dba_changes` ledger (migration `0038`), the
     `libpg_query` DDL validator, the BYO egress guard + sealed secrets
     (`GLOBAL-031`, `GLOBAL-035`), `packages/db` adapters, OTel, the job
