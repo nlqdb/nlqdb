@@ -640,7 +640,7 @@ export const REGISTRY = {
     httpStatus: 502,
     recoverability: "transient",
     params: NONE,
-    message: () => "The proposal couldn't be applied, so the database is unchanged.",
+    message: () => "The proposal couldn't be applied.",
     action: () =>
       "Check the host is reachable and the role may create indexes on that table, then retry.",
   }),

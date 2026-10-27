@@ -1175,7 +1175,7 @@ export type NlqClient = {
    * (`GLOBAL-043` item 5); `id` is the one `attach()` / `listChanges` gave.
    * Verify and auto-revert follow after the window, whoever applied it.
    * Errors: `proposal_not_found` (404), `proposal_decided` (409, it was
-   * rejected), `apply_failed` (502, the DB is unchanged). Applying an applied
+   * rejected), `apply_failed` (502, the build failed). Applying an applied
    * proposal returns it with `replayed: true`.
    */
   applyProposal(id: number, opts?: { signal?: AbortSignal }): Promise<DecideProposalResult>;

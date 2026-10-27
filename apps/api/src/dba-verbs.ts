@@ -5,9 +5,10 @@
 //
 // A verb flips the row out of `proposed` with a compare-and-set before it
 // touches the user's DB, so two concurrent applies run the DDL once. A failed
-// apply puts the row back to `proposed`: `applyProposal` has already cleared
-// any half-built index, so the DB is as it was. Repeating the verb that
-// decided a row returns that row (`SK-IDEMP-004`); the other verb is refused.
+// apply puts the row back to `proposed`: `applyProposal` has already tried to
+// clear any half-built index (a dropped socket can leave one behind).
+// Repeating the verb that decided a row returns that row (`SK-IDEMP-004`); the
+// other verb is refused.
 //
 // Verify (the p95 re-read and auto-revert, `verifyApplied`) runs after the
 // 72 h window, not here.
