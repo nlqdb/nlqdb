@@ -299,9 +299,11 @@ export function validateCompiledDdl(statements: string[]): DdlValidationResult {
 
 // `GLOBAL-043` item 7 — the only DDL nlqdb runs under an attached DB's owner
 // role: a `create_index` proposal's build (one schema-qualified
-// `CREATE INDEX CONCURRENTLY`, clean of the walk's hits above) and its stored
-// inverse (one `DROP INDEX CONCURRENTLY` of that same index — a failed build
-// runs it, so it may never name another index).
+// `CREATE INDEX CONCURRENTLY`, clean of the walk's hits above; never `UNIQUE`,
+// which would refuse the app's writes, nor `IF NOT EXISTS`, which would adopt
+// an index the app already has) and its stored inverse (one
+// `DROP INDEX CONCURRENTLY` of that same index without `CASCADE` — a failed
+// build runs it, so it may never reach another object).
 export function validateProposalDdl(p: {
   kind: "create_index";
   ddl: string;
@@ -311,7 +313,15 @@ export function validateProposalDdl(p: {
   if (!build.ok) return build;
   const idx = (build.stmt as { IndexStmt?: IndexStmt } | undefined)?.IndexStmt;
   const schema = idx?.relation?.schemaname;
-  if (p.kind !== "create_index" || !idx?.concurrent || !idx.idxname || !idx.relation || !schema) {
+  if (
+    p.kind !== "create_index" ||
+    !idx?.concurrent ||
+    idx.unique ||
+    idx.if_not_exists ||
+    !idx.idxname ||
+    !idx.relation ||
+    !schema
+  ) {
     return {
       ok: false,
       reason: "destructive_verb",
@@ -331,7 +341,8 @@ export function validateProposalDdl(p: {
     ),
   );
   const sameIndex = names.length === 2 && names[0] === schema && names[1] === idx.idxname;
-  if (!drop?.concurrent || drop.removeType !== "OBJECT_INDEX" || !sameIndex) {
+  const restrict = drop?.behavior !== "DROP_CASCADE";
+  if (!drop?.concurrent || drop.removeType !== "OBJECT_INDEX" || !restrict || !sameIndex) {
     const want = `DropStmt of ${schema}.${idx.idxname}`;
     return { ok: false, reason: "destructive_verb", statement: p.inverse, details: { want } };
   }

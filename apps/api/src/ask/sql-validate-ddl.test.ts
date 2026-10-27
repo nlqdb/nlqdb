@@ -265,6 +265,21 @@ describe("validateProposalDdl (GLOBAL-043 item 7)", () => {
       { inverse: 'DROP INDEX CONCURRENTLY "public"."users_email_idx"' },
     ],
     [
+      "an inverse naming the index by its unquoted, case-folded name",
+      "destructive_verb",
+      {
+        ddl: ok.ddl.replace('"nlqdb_posts_author_id_1a2b3c4d"', '"Nlqdb_Idx"'),
+        inverse: "DROP INDEX CONCURRENTLY public.Nlqdb_Idx",
+      },
+    ],
+    ["a unique build", "destructive_verb", { ddl: ok.ddl.replace("INDEX", "UNIQUE INDEX") }],
+    [
+      "a build that adopts an existing index",
+      "destructive_verb",
+      { ddl: ok.ddl.replace("CONCURRENTLY", "CONCURRENTLY IF NOT EXISTS") },
+    ],
+    ["a cascading inverse", "destructive_verb", { inverse: `${ok.inverse} CASCADE` }],
+    [
       "an unqualified build",
       "destructive_verb",
       { ddl: ok.ddl.replace('"public"."posts"', '"posts"') },
