@@ -74,6 +74,7 @@ describe("SDK-method integrity (SK-SDK-013)", () => {
     // here — and any deferred verb that gets built must land as a real member
     // of `NlqClient` before this set includes it.
     expect([...shippedMembers].sort()).toEqual([
+      "applyProposal",
       "ask",
       "askStream",
       "attach",
@@ -97,6 +98,7 @@ describe("SDK-method integrity (SK-SDK-013)", () => {
       "postChat",
       "redeemOAuthBridgeCode",
       "registerPremiumInterest",
+      "rejectProposal",
       "remember",
       "revokeGrant",
       "revokeKey",

@@ -59,6 +59,12 @@ function stubClient(overrides: Partial<NlqClient> & { connect?: ConnectFn } = {}
     attach: async () => {
       throw new Error("attach not stubbed");
     },
+    applyProposal: async () => {
+      throw new Error("applyProposal not stubbed");
+    },
+    rejectProposal: async () => {
+      throw new Error("rejectProposal not stubbed");
+    },
     databases: {
       connect: async () => {
         throw new Error("databases.connect not stubbed");

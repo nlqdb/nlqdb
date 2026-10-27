@@ -83,6 +83,9 @@ retryable and which need a human. `code` is the discriminant the SDK exposes as
 | `account_required` | 403 | The call needs an account-scoped key, not a public embed key. | No | Mint an account key and retry. |
 | `challenge_required` | 428 | A human check is required before running that. | No | Complete the check, then retry. |
 | `key_not_found` | 404 | No key of yours matched that id. | No | Check the key list, then retry. |
+| `proposal_not_found` | 404 | No proposal of yours matched that id. | No | List the database's changes for the proposals still open. |
+| `proposal_decided` | 409 | The proposal was already decided the other way (`body.status`). | No | Nothing to do; list the proposals still open. |
+| `apply_failed` | 502 | The proposal's DDL failed on your database; nlqdb drops any half-built index while the connection holds. | Yes | Check the host is reachable and the role may create indexes on that table, then retry. |
 | `unconfigured` | 503 | That feature isn't configured on this deployment. | No | Operator action — retry later. |
 | `internal_error` | 500 | An unexpected server-side failure. | No | Retry once; if it persists, report it. |
 | `invalid_bearer` | 400 | The `Authorization` header wasn't a usable bearer token. | No | Send `Authorization: Bearer <key>`. |

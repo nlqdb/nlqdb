@@ -18,6 +18,7 @@ export function describeChange(
   c: Pick<DbaChange, "kind" | "table" | "origin" | "status" | "reason">,
 ): string {
   if (c.status === "proposed") return `Proposed, not applied — ${c.reason ?? c.table}`;
+  if (c.status === "rejected") return `Rejected, not applied — ${c.reason ?? c.table}`;
   const what =
     c.kind === "create_table"
       ? `Created table ${c.table}`

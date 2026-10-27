@@ -1358,6 +1358,37 @@ describe("createClient", () => {
     expect(out.proposals).toEqual([proposal]);
   });
 
+  // GLOBAL-043 item 5 — the two verbs on a proposal id.
+  it("applyProposal / rejectProposal: POST the verb, the reason only on reject", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    const decided = {
+      proposal: {
+        id: 7,
+        dbId: "db_app_a1",
+        status: "applied",
+        decidedBy: "sk_live:k1",
+        decidedAt: 1,
+        rejectReason: null,
+      },
+      replayed: false,
+    };
+    const fakeFetch: FetchLike = async (url, init) => {
+      calls.push({ url: String(url), body: init?.body ? JSON.parse(String(init.body)) : null });
+      return new Response(JSON.stringify(decided), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const client = createClient({ apiKey: "sk_live_test", fetch: fakeFetch });
+    expect(await client.applyProposal(7)).toEqual(decided);
+    await client.rejectProposal(8, { reason: "built offline" });
+
+    expect(calls).toEqual([
+      { url: "https://app.nlqdb.com/v1/proposals/7/apply", body: null },
+      { url: "https://app.nlqdb.com/v1/proposals/8/reject", body: { reason: "built offline" } },
+    ]);
+  });
+
   it("databases.connect: omits name when not supplied, supports ClickHouse (CH)", async () => {
     let capturedBody: Record<string, unknown> | null = null;
     const fakeFetch: FetchLike = async (_url, init) => {

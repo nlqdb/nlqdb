@@ -49,4 +49,16 @@ describe("describeChange", () => {
       }),
     ).toBe("Proposed, not applied — Foreign key posts(author_id) → users has no index.");
   });
+
+  it("never reads a rejected proposal as a committed change", () => {
+    expect(
+      describeChange({
+        kind: "create_index",
+        table: "posts",
+        origin: "attach",
+        status: "rejected",
+        reason: "Foreign key posts(author_id) → users has no index.",
+      }),
+    ).toBe("Rejected, not applied — Foreign key posts(author_id) → users has no index.");
+  });
 });
