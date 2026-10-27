@@ -41,7 +41,9 @@ import type {
   Constraint,
   ConstrType,
   CopyStmt,
+  DropStmt,
   FuncCall,
+  IndexStmt,
   Node,
   RangeVar,
   RawStmt,
@@ -53,16 +55,17 @@ import { loadModule, parseSync } from "./libpg-query-worker.js";
 // any importer of this module just inherits the one-time init wait.
 // Bundle-weight note (GLOBAL-013): this module is never statically
 // imported from the `/v1/ask` cold-start graph. That graph pulls
-// `sql-validate.ts` (node-sql-parser, read/write); the two paths that
-// need this file — the create path and widen-on-write (SK-SCHEMA-008)
-// — reach it through a dynamic `import()` and pay the WASM init only
-// when they fire.
+// `sql-validate.ts` (node-sql-parser, read/write); the paths that
+// need this file — the create path, widen-on-write (SK-SCHEMA-008) and
+// the apply verb (`dba-verbs.ts`) — reach it through a dynamic `import()`
+// and pay the WASM init only when they fire.
 //
 // A failed init rejects this module, so every dynamic `import()` of it
-// rejects too. Both call sites treat that as a normal failure of the
+// rejects too. The first two treat that as a normal failure of the
 // step they were running (create → 422 `compile_failed` per
 // SK-HDC-006; widen-on-write → the `schema_mismatch` fall-through in
-// `ask/orchestrate.ts`) — never an uncaught 500.
+// `ask/orchestrate.ts`) — never an uncaught 500. The apply verb fails
+// closed: a 500 before any ledger claim or socket.
 await loadModule();
 
 export type DdlValidationResult =
@@ -295,38 +298,61 @@ export function validateCompiledDdl(statements: string[]): DdlValidationResult {
 }
 
 // `GLOBAL-043` item 7 — the only DDL nlqdb runs under an attached DB's owner
-// role: a proposal's DDL and its stored inverse, each exactly one statement of
-// that kind's verb set, the build also clean of the walk's hits above.
-const PROPOSAL_VERBS = {
-  create_index: { ddl: "IndexStmt", inverse: "DropStmt" },
-} as const;
-
+// role: a `create_index` proposal's build (one schema-qualified
+// `CREATE INDEX CONCURRENTLY`, clean of the walk's hits above) and its stored
+// inverse (one `DROP INDEX CONCURRENTLY` of that same index — a failed build
+// runs it, so it may never name another index).
 export function validateProposalDdl(p: {
-  kind: keyof typeof PROPOSAL_VERBS;
+  kind: "create_index";
   ddl: string;
   inverse: string;
 }): DdlValidationResult {
-  const verbs = PROPOSAL_VERBS[p.kind];
-  for (const [statement, want] of [
-    [p.ddl, verbs.ddl],
-    [p.inverse, verbs.inverse],
-  ] as const) {
-    let parsed: { stmts?: RawStmt[] };
-    try {
-      parsed = parseSync(statement) as { stmts?: RawStmt[] };
-    } catch (err) {
-      const details = err instanceof Error ? err.message : String(err);
-      return { ok: false, reason: "parse_failed", statement, details };
-    }
-    const only = parsed.stmts?.length === 1 ? parsed.stmts[0]?.stmt : undefined;
-    const body = (
-      only as Record<string, { concurrent?: boolean; removeType?: string }> | undefined
-    )?.[want];
-    const shaped =
-      body?.concurrent === true && (want === "IndexStmt" || body.removeType === "OBJECT_INDEX");
-    if (!shaped) return { ok: false, reason: "destructive_verb", statement, details: { want } };
-    const hit = want === "IndexStmt" ? walkNode(only) : null;
-    if (hit) return { ok: false, reason: hit.reason, statement, details: hit.details };
+  const build = parseOne(p.ddl);
+  if (!build.ok) return build;
+  const idx = (build.stmt as { IndexStmt?: IndexStmt } | undefined)?.IndexStmt;
+  const schema = idx?.relation?.schemaname;
+  if (p.kind !== "create_index" || !idx?.concurrent || !idx.idxname || !idx.relation || !schema) {
+    return {
+      ok: false,
+      reason: "destructive_verb",
+      statement: p.ddl,
+      details: { want: "IndexStmt" },
+    };
+  }
+  const hit = checkRangeVar(idx.relation) ?? walkNode(build.stmt);
+  if (hit) return { ok: false, reason: hit.reason, statement: p.ddl, details: hit.details };
+
+  const inverse = parseOne(p.inverse);
+  if (!inverse.ok) return inverse;
+  const drop = (inverse.stmt as { DropStmt?: DropStmt } | undefined)?.DropStmt;
+  const names = (drop?.objects?.length === 1 ? drop.objects : []).flatMap((o) =>
+    ((o as { List?: { items?: Node[] } }).List?.items ?? []).map(
+      (n) => (n as { String?: { sval?: string } }).String?.sval,
+    ),
+  );
+  const sameIndex = names.length === 2 && names[0] === schema && names[1] === idx.idxname;
+  if (!drop?.concurrent || drop.removeType !== "OBJECT_INDEX" || !sameIndex) {
+    const want = `DropStmt of ${schema}.${idx.idxname}`;
+    return { ok: false, reason: "destructive_verb", statement: p.inverse, details: { want } };
   }
   return { ok: true };
+}
+
+// Parses one statement; anything else (none, several, unparseable) fails.
+function parseOne(
+  statement: string,
+): { ok: true; stmt: Node | undefined } | (DdlValidationResult & { ok: false }) {
+  try {
+    const parsed = parseSync(statement) as { stmts?: RawStmt[] };
+    if (parsed.stmts?.length === 1) return { ok: true, stmt: parsed.stmts[0]?.stmt };
+    return {
+      ok: false,
+      reason: "destructive_verb",
+      statement,
+      details: { stmts: parsed.stmts?.length ?? 0 },
+    };
+  } catch (err) {
+    const details = err instanceof Error ? err.message : String(err);
+    return { ok: false, reason: "parse_failed", statement, details };
+  }
 }

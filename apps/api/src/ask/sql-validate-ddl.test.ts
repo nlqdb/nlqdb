@@ -260,6 +260,24 @@ describe("validateProposalDdl (GLOBAL-043 item 7)", () => {
     ["a blocking build", "destructive_verb", { ddl: ok.ddl.replace(" CONCURRENTLY", "") }],
     ["a table-dropping inverse", "destructive_verb", { inverse: 'DROP TABLE "public"."posts"' }],
     [
+      "an inverse naming another index",
+      "destructive_verb",
+      { inverse: 'DROP INDEX CONCURRENTLY "public"."users_email_idx"' },
+    ],
+    [
+      "an unqualified build",
+      "destructive_verb",
+      { ddl: ok.ddl.replace('"public"."posts"', '"posts"') },
+    ],
+    [
+      "a system-catalog target",
+      "system_schema_ref",
+      {
+        ddl: ok.ddl.replace('"public"."posts"', "pg_catalog.pg_class"),
+        inverse: ok.inverse.replace('"public"', "pg_catalog"),
+      },
+    ],
+    [
       "a side-effect predicate",
       "side_effect_function",
       { ddl: `${ok.ddl} WHERE pg_sleep(1) IS NULL` },
