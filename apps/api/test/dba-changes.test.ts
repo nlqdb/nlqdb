@@ -167,9 +167,24 @@ describe("decideProposal", () => {
     const id = await seed("db_verb_fail", "u_verb");
     const { deps: d, sent } = deps(true);
     const res = await decideProposal(d, { id, tenantId: "u_verb", decidedBy: "u", verb: "apply" });
-    expect(res).toEqual({ ok: false, code: "apply_failed" });
+    expect(res).toMatchObject({ ok: false, code: "apply_failed" });
     expect(sent.at(-1)).toBe(proposal.inverse);
     const rows = await listDbaChanges(env.DB, "db_verb_fail", "u_verb");
+    expect(rows?.[0]?.status).toBe("proposed");
+  });
+
+  it("refuses to run DDL outside the proposal kind's verb set, the row untouched", async () => {
+    const id = await seed("db_verb_tamper", "u_verb");
+    const tampered = { ...proposal, ddl: 'DROP TABLE "public"."posts"' };
+    await env.DB.prepare("UPDATE dba_changes SET proposal = ? WHERE id = ?")
+      .bind(JSON.stringify(tampered), id)
+      .run();
+    const { deps: d, sent } = deps();
+    await expect(
+      decideProposal(d, { id, tenantId: "u_verb", decidedBy: "u", verb: "apply" }),
+    ).rejects.toThrow(/DDL validator/);
+    expect(sent).toEqual([]);
+    const rows = await listDbaChanges(env.DB, "db_verb_tamper", "u_verb");
     expect(rows?.[0]?.status).toBe("proposed");
   });
 

@@ -17,7 +17,9 @@
 // `information_schema` references in any RangeVar or qualified
 // FuncCall, and the side-effecting function set per
 // `docs/research-receipts.md §10` (`pg_sleep`, `dblink_*`, `lo_*`,
-// `pg_read_file`, `pg_ls_dir`, `COPY ... FROM PROGRAM`).
+// `pg_read_file`, `pg_ls_dir`, `COPY ... FROM PROGRAM`). Also a DBA
+// proposal's DDL and inverse, against its kind's verb set
+// (`validateProposalDdl`, `GLOBAL-043` item 7).
 //
 // Why libpg_query and not node-sql-parser:
 //   `sql-validate.ts` (read/write) uses node-sql-parser because it's
@@ -288,6 +290,43 @@ export function validateCompiledDdl(statements: string[]): DdlValidationResult {
         details: hit.details,
       };
     }
+  }
+  return { ok: true };
+}
+
+// `GLOBAL-043` item 7 — the only DDL nlqdb runs under an attached DB's owner
+// role: a proposal's DDL and its stored inverse, each exactly one statement of
+// that kind's verb set, the build also clean of the walk's hits above.
+const PROPOSAL_VERBS = {
+  create_index: { ddl: "IndexStmt", inverse: "DropStmt" },
+} as const;
+
+export function validateProposalDdl(p: {
+  kind: keyof typeof PROPOSAL_VERBS;
+  ddl: string;
+  inverse: string;
+}): DdlValidationResult {
+  const verbs = PROPOSAL_VERBS[p.kind];
+  for (const [statement, want] of [
+    [p.ddl, verbs.ddl],
+    [p.inverse, verbs.inverse],
+  ] as const) {
+    let parsed: { stmts?: RawStmt[] };
+    try {
+      parsed = parseSync(statement) as { stmts?: RawStmt[] };
+    } catch (err) {
+      const details = err instanceof Error ? err.message : String(err);
+      return { ok: false, reason: "parse_failed", statement, details };
+    }
+    const only = parsed.stmts?.length === 1 ? parsed.stmts[0]?.stmt : undefined;
+    const body = (
+      only as Record<string, { concurrent?: boolean; removeType?: string }> | undefined
+    )?.[want];
+    const shaped =
+      body?.concurrent === true && (want === "IndexStmt" || body.removeType === "OBJECT_INDEX");
+    if (!shaped) return { ok: false, reason: "destructive_verb", statement, details: { want } };
+    const hit = want === "IndexStmt" ? walkNode(only) : null;
+    if (hit) return { ok: false, reason: hit.reason, statement, details: hit.details };
   }
   return { ok: true };
 }

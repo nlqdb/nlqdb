@@ -4576,6 +4576,7 @@ const decideVerb = (verb: "apply" | "reject") => async (c: Context<AppEnv>) => {
         ...(verb === "apply" ? { verb } : { verb, reason }),
       });
       span.setAttribute("nlqdb.proposal.outcome", result.ok ? result.proposal.status : result.code);
+      if (!result.ok && result.code === "apply_failed") span.recordException(result.cause as Error);
       if (!result.ok) {
         return result.code === "proposal_decided"
           ? fail(c, result.code, { status: result.status })

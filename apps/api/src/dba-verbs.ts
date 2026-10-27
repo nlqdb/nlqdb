@@ -34,7 +34,8 @@ export type DecidedProposal = {
 
 export type DecideResult =
   | { ok: true; proposal: DecidedProposal; replayed: boolean }
-  | { ok: false; code: "proposal_not_found" | "sealing_unconfigured" | "apply_failed" }
+  | { ok: false; code: "proposal_not_found" | "sealing_unconfigured" }
+  | { ok: false; code: "apply_failed"; cause: unknown }
   | { ok: false; code: "proposal_decided"; status: "applied" | "rejected" };
 
 // `SK-HDC-010`'s bound for index DDL; `CONCURRENTLY` can't run in a
@@ -79,6 +80,13 @@ export async function decideProposal(deps: DecideDeps, args: DecideArgs): Promis
   if (row.status === target) return { ok: true, proposal: decided(row), replayed: true };
   if (row.status !== "proposed") return { ok: false, code: "proposal_decided", status: row.status };
   if (args.verb === "apply" && !deps.kek) return { ok: false, code: "sealing_unconfigured" };
+  const proposal = JSON.parse(row.proposal) as Proposal;
+  if (args.verb === "apply") {
+    // `GLOBAL-043` item 7: only a proposal kind's own verbs run under the owner role.
+    const { validateProposalDdl } = await import("./ask/sql-validate-ddl.ts");
+    const v = validateProposalDdl(proposal);
+    if (!v.ok) throw new Error(`proposal ${row.id} failed the DDL validator: ${v.reason}`);
+  }
 
   const claim = await deps.d1
     .prepare(
@@ -99,15 +107,15 @@ export async function decideProposal(deps: DecideDeps, args: DecideArgs): Promis
 
   if (args.verb === "apply") {
     try {
-      await applyOn(deps, row);
-    } catch {
+      await applyOn(deps, row, proposal);
+    } catch (cause) {
       await deps.d1
         .prepare(
           "UPDATE dba_changes SET status = 'proposed', decided_by = NULL, decided_at = NULL WHERE id = ? AND status = 'applied'",
         )
         .bind(args.id)
         .run();
-      return { ok: false, code: "apply_failed" };
+      return { ok: false, code: "apply_failed", cause };
     }
   }
   const now = await readRow(deps.d1, args.id, args.tenantId);
@@ -118,7 +126,7 @@ export async function decideProposal(deps: DecideDeps, args: DecideArgs): Promis
 
 // Opens the sealed URL, re-guards its host (`GLOBAL-035`, DNS may have moved
 // since attach) and runs the proposal's DDL on a socket closed in `finally`.
-async function applyOn(deps: DecideDeps, row: Row): Promise<void> {
+async function applyOn(deps: DecideDeps, row: Row, proposal: Proposal): Promise<void> {
   if (!row.blob) throw new Error("attached row has no connection_blob");
   const url = await openSecret(row.blob, {
     kek: deps.kek as string,
@@ -129,7 +137,7 @@ async function applyOn(deps: DecideDeps, row: Row): Promise<void> {
   const conn = deps.buildPostgresQuery(url);
   try {
     await conn.query(INDEX_DDL_TIMEOUT, []);
-    await applyProposal(conn.query, JSON.parse(row.proposal) as Proposal);
+    await applyProposal(conn.query, proposal);
   } finally {
     await conn.close();
   }

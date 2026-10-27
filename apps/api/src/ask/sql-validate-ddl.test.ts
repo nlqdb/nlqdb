@@ -12,7 +12,7 @@ import type { SchemaPlan } from "@nlqdb/db/types";
 import { describe, expect, it } from "vitest";
 import { compileDdl } from "../db-create/compile-ddl.ts";
 import { compileWriteDdl } from "../db-create/compile-write-ddl.ts";
-import { validateCompiledDdl } from "./sql-validate-ddl.ts";
+import { validateCompiledDdl, validateProposalDdl } from "./sql-validate-ddl.ts";
 
 describe("validateCompiledDdl", () => {
   it("accepts the output of a real compileDdl run", () => {
@@ -240,5 +240,32 @@ describe("validateCompiledDdl", () => {
     const result = validateCompiledDdl([`ALTER TABLE "s"."orders" DROP COLUMN "total";`]);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe("destructive_verb");
+  });
+});
+
+describe("validateProposalDdl (GLOBAL-043 item 7)", () => {
+  const ok = {
+    kind: "create_index" as const,
+    ddl: 'CREATE INDEX CONCURRENTLY "nlqdb_posts_author_id_1a2b3c4d" ON "public"."posts" ("author_id")',
+    inverse: 'DROP INDEX CONCURRENTLY IF EXISTS "public"."nlqdb_posts_author_id_1a2b3c4d"',
+  };
+
+  it("accepts a create_index build and its inverse", () => {
+    expect(validateProposalDdl(ok)).toEqual({ ok: true });
+  });
+
+  it.each([
+    ["a non-index verb", "destructive_verb", { ddl: 'DROP TABLE "public"."posts"' }],
+    ["a second statement", "destructive_verb", { ddl: `${ok.ddl}; DROP TABLE "public"."posts"` }],
+    ["a blocking build", "destructive_verb", { ddl: ok.ddl.replace(" CONCURRENTLY", "") }],
+    ["a table-dropping inverse", "destructive_verb", { inverse: 'DROP TABLE "public"."posts"' }],
+    [
+      "a side-effect predicate",
+      "side_effect_function",
+      { ddl: `${ok.ddl} WHERE pg_sleep(1) IS NULL` },
+    ],
+    ["unparseable SQL", "parse_failed", { ddl: "CREATE INDEX ((" }],
+  ])("rejects %s (%s)", (_, reason, change) => {
+    expect(validateProposalDdl({ ...ok, ...change })).toMatchObject({ ok: false, reason });
   });
 });
