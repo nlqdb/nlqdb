@@ -17,8 +17,7 @@ starting to scale. nlqdb **attaches** to its D1 — it does not move it:
    both measurements and who decided. A regression auto-reverts (KPI C).
 
 rateme12's app code is not changed; nlqdb is never on its request path.
-The clone (`apps/rateme12`, `rateme12.nlqdb.com`) gets no further work and
-goes in the deletion series.
+The clone (`apps/rateme12`, `rateme12.nlqdb.com`) was deleted 2026-10-27.
 
 ## 2. What the D1 observer reads
 
