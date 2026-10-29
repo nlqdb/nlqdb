@@ -10,10 +10,22 @@
 // Repeating the verb that decided a row returns that row (`SK-IDEMP-004`); the
 // other verb is refused.
 //
-// Verify (the p95 re-read and auto-revert, `verifyApplied`) runs after the
-// 72 h window, not here.
+// An apply also keeps its fingerprint's cumulative counters (`verify_from`);
+// `verifyDue` (the `dba_verify` job) diffs them against a fresh read once the
+// window has passed — the p95 re-read and auto-revert, `verifyApplied`.
 
-import { applyProposal, type Proposal, validateByoConnection } from "@nlqdb/db";
+import {
+  applyProposal,
+  judgeApplied,
+  type PostgresQueryFn,
+  type Proposal,
+  type StatementCounters,
+  snapshotPostgresStatements,
+  statementWindow,
+  type Verification,
+  validateByoConnection,
+  verifyApplied,
+} from "@nlqdb/db";
 import type { ConnectByoDeps } from "./db-connect/connect.ts";
 import { openSecret } from "./secret-envelope.ts";
 
@@ -37,7 +49,7 @@ export type DecideResult =
   | { ok: true; proposal: DecidedProposal; replayed: boolean }
   | { ok: false; code: "proposal_not_found" | "sealing_unconfigured" }
   | { ok: false; code: "apply_failed"; cause: unknown }
-  | { ok: false; code: "proposal_decided"; status: "applied" | "rejected" };
+  | { ok: false; code: "proposal_decided"; status: "applied" | "rejected" | "reverted" };
 
 // `SK-HDC-010`'s bound for index DDL; `CONCURRENTLY` can't run in a
 // transaction, so it is set on the session before the build.
@@ -46,7 +58,7 @@ const INDEX_DDL_TIMEOUT = "SET statement_timeout = '600s'";
 type Row = {
   id: number;
   dbId: string;
-  status: "proposed" | "applied" | "rejected";
+  status: "proposed" | "applied" | "rejected" | "reverted";
   proposal: string;
   blob: string | null;
   decidedBy: string | null;
@@ -82,12 +94,7 @@ export async function decideProposal(deps: DecideDeps, args: DecideArgs): Promis
   if (row.status !== "proposed") return { ok: false, code: "proposal_decided", status: row.status };
   if (args.verb === "apply" && !deps.kek) return { ok: false, code: "sealing_unconfigured" };
   const proposal = JSON.parse(row.proposal) as Proposal;
-  if (args.verb === "apply") {
-    // `GLOBAL-043` item 7: only a proposal kind's own verbs run under the owner role.
-    const { validateProposalDdl } = await import("./ask/sql-validate-ddl.ts");
-    const v = validateProposalDdl(proposal);
-    if (!v.ok) throw new Error(`proposal ${row.id} failed the DDL validator: ${v.reason}`);
-  }
+  if (args.verb === "apply") await validate(row.id, proposal);
 
   const claim = await deps.d1
     .prepare(
@@ -102,13 +109,14 @@ export async function decideProposal(deps: DecideDeps, args: DecideArgs): Promis
     return {
       ok: false,
       code: "proposal_decided",
-      status: now?.status === "applied" ? "applied" : "rejected",
+      status: now?.status === "applied" || now?.status === "reverted" ? now.status : "rejected",
     };
   }
 
   if (args.verb === "apply") {
+    let from: StatementCounters | null;
     try {
-      await applyOn(deps, row, proposal);
+      from = await applyOn(deps, row, proposal);
     } catch (cause) {
       await deps.d1
         .prepare(
@@ -118,6 +126,15 @@ export async function decideProposal(deps: DecideDeps, args: DecideArgs): Promis
         .run();
       return { ok: false, code: "apply_failed", cause };
     }
+    // After the catch: the index is built, so a D1 blip here must not return
+    // the row to `proposed`. Without it, verify judges the row unmeasured.
+    if (from) {
+      await deps.d1
+        .prepare("UPDATE dba_changes SET verify_from = ? WHERE id = ?")
+        .bind(JSON.stringify(from), args.id)
+        .run()
+        .catch(() => {});
+    }
   }
   const now = await readRow(deps.d1, args.id, args.tenantId);
   return now
@@ -125,9 +142,20 @@ export async function decideProposal(deps: DecideDeps, args: DecideArgs): Promis
     : { ok: false, code: "proposal_not_found" };
 }
 
+// `GLOBAL-043` item 7: only a proposal kind's own verbs run under the owner role.
+async function validate(id: number, proposal: Proposal): Promise<void> {
+  const { validateProposalDdl } = await import("./ask/sql-validate-ddl.ts");
+  const v = validateProposalDdl(proposal);
+  if (!v.ok) throw new Error(`proposal ${id} failed the DDL validator: ${v.reason}`);
+}
+
 // Opens the sealed URL, re-guards its host (`GLOBAL-035`, DNS may have moved
-// since attach) and runs the proposal's DDL on a socket closed in `finally`.
-async function applyOn(deps: DecideDeps, row: Row, proposal: Proposal): Promise<void> {
+// since attach) and hands `fn` a socket closed in `finally`.
+async function onAttached<T>(
+  deps: DecideDeps,
+  row: { dbId: string; blob: string | null },
+  fn: (query: PostgresQueryFn) => Promise<T>,
+): Promise<T> {
   if (!row.blob) throw new Error("attached row has no connection_blob");
   const url = await openSecret(row.blob, {
     kek: deps.kek as string,
@@ -138,8 +166,102 @@ async function applyOn(deps: DecideDeps, row: Row, proposal: Proposal): Promise<
   const conn = deps.buildPostgresQuery(url);
   try {
     await conn.query(INDEX_DDL_TIMEOUT, []);
-    await applyProposal(conn.query, proposal);
+    return await fn(conn.query);
   } finally {
     await conn.close();
   }
+}
+
+// Runs the proposal's DDL, then reads its fingerprint's counters — the start
+// of the verify window. Null when it names no fingerprint (catalog tier) or
+// `pg_stat_statements` can't be read: the apply stands, verify says unmeasured.
+function applyOn(
+  deps: DecideDeps,
+  row: Row,
+  proposal: Proposal,
+): Promise<StatementCounters | null> {
+  return onAttached(deps, row, async (query) => {
+    await applyProposal(query, proposal);
+    const fingerprint = proposal.evidence.workload?.fingerprint;
+    if (!fingerprint) return null;
+    const snapshot = await snapshotPostgresStatements(query).catch(() => null);
+    if (!snapshot) return null;
+    // Not run since the last stats reset: the window counts from zero.
+    return snapshot.get(fingerprint) ?? { query: "", calls: 0, totalMs: 0, sumSquaresMs: 0 };
+  });
+}
+
+// `GLOBAL-043` item 7: 72 h on both engines until the spike measures when each
+// engine's counters settle.
+export const VERIFY_WINDOW_SEC = 72 * 3600;
+// Rows per tick: each opens a socket to a user's DB (Workers' subrequest cap).
+const VERIFY_BATCH = 5;
+
+type DueRow = {
+  id: number;
+  dbId: string;
+  proposal: string;
+  verifyFrom: string | null;
+  blob: string | null;
+};
+
+// Judges each applied proposal whose window has passed and records the
+// verdict; a regression has already been reverted by `verifyApplied` when its
+// row turns `reverted`. A row whose DB can't be reached stays due for the next
+// tick; the error is logged, the rest of the batch still runs.
+export async function verifyDue(
+  deps: DecideDeps,
+  nowSec: number,
+): Promise<{ id: number; verification: Verification }[]> {
+  const { results } = await deps.d1
+    .prepare(
+      "SELECT c.id, c.database_id AS dbId, c.proposal, c.verify_from AS verifyFrom, d.connection_blob AS blob FROM dba_changes c JOIN databases d ON d.id = c.database_id WHERE c.status = 'applied' AND c.proposal IS NOT NULL AND c.verified_at IS NULL AND c.decided_at <= ? ORDER BY c.decided_at LIMIT ?",
+    )
+    .bind(nowSec - VERIFY_WINDOW_SEC, VERIFY_BATCH)
+    .all<DueRow>();
+  const verified: { id: number; verification: Verification }[] = [];
+  for (const row of results) {
+    try {
+      const verification = await verifyRow(deps, row);
+      await deps.d1
+        .prepare(
+          "UPDATE dba_changes SET verification = ?, verified_at = unixepoch(), status = ? WHERE id = ? AND verified_at IS NULL",
+        )
+        .bind(
+          JSON.stringify(verification),
+          verification.verdict === "revert" ? "reverted" : "applied",
+          row.id,
+        )
+        .run();
+      verified.push({ id: row.id, verification });
+    } catch (err) {
+      console.error(
+        JSON.stringify({
+          msg: "dba_verify_failed",
+          id: row.id,
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+  }
+  return verified;
+}
+
+async function verifyRow(deps: DecideDeps, row: DueRow): Promise<Verification> {
+  const proposal = JSON.parse(row.proposal) as Proposal;
+  const fingerprint = proposal.evidence.workload?.fingerprint;
+  if (!fingerprint) return judgeApplied(proposal, []);
+  if (!row.verifyFrom) {
+    return { verdict: "unmeasured", reason: "pg_stat_statements unreadable at apply" };
+  }
+  if (!deps.kek) throw new Error("sealing unconfigured");
+  await validate(row.id, proposal);
+  const from = JSON.parse(row.verifyFrom) as StatementCounters;
+  return onAttached(deps, row, async (query) => {
+    const window = statementWindow(
+      new Map([[fingerprint, from]]),
+      await snapshotPostgresStatements(query),
+    );
+    return verifyApplied(query, proposal, window);
+  });
 }
