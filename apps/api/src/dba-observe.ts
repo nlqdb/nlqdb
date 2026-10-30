@@ -23,6 +23,7 @@ import { type DecideDeps, onAttached } from "./dba-verbs.ts";
 // One day: a window spans the app's daily cycle.
 export const OBSERVE_WINDOW_SEC = 24 * 3600;
 // DBs per tick: each opens a socket to a user's DB (Workers' subrequest cap).
+// Hourly, that is 120 DBs a day before a window stretches past 24 h.
 const OBSERVE_BATCH = 5;
 
 type DueRow = { dbId: string; blob: string | null; observeFrom: string | null };
@@ -50,6 +51,11 @@ export async function observeDue(
   deps: DecideDeps,
   nowSec: number,
 ): Promise<{ dbId: string; proposalIds: number[] }[]> {
+  // Checked once, not per DB: a missing KEK must not push every DB a day back.
+  if (!deps.kek) {
+    console.error(JSON.stringify({ msg: "dba_observe_failed", message: "sealing unconfigured" }));
+    return [];
+  }
   const { results } = await deps.d1
     .prepare(
       "SELECT id AS dbId, connection_blob AS blob, observe_from AS observeFrom FROM databases WHERE engine = 'postgres' AND connection_secret_ref = ? AND connection_blob IS NOT NULL AND COALESCE(observed_at, 0) <= ? ORDER BY COALESCE(observed_at, 0), id LIMIT ?",
@@ -59,7 +65,6 @@ export async function observeDue(
   const observed: { dbId: string; proposalIds: number[] }[] = [];
   for (const row of results) {
     try {
-      if (!deps.kek) throw new Error("sealing unconfigured");
       const { snapshot, proposals } = await onAttached(deps, row, async (query) => {
         const snapshot = await snapshotPostgresStatements(query, "public");
         if (!row.observeFrom) return { snapshot, proposals: [] };

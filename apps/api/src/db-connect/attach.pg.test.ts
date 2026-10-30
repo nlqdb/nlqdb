@@ -15,6 +15,7 @@ import { listProposals, proposalStatement } from "../dba-changes.ts";
 import { OBSERVE_WINDOW_SEC, observeDue } from "../dba-observe.ts";
 import { decideProposal, VERIFY_WINDOW_SEC, verifyDue } from "../dba-verbs.ts";
 import { connectByoDb } from "./connect.ts";
+import { BYO_SECRET_REF_SENTINEL } from "./constants.ts";
 
 // The api never depends on a Postgres driver (`GLOBAL-021`, lockfile guard);
 // test-time setup borrows the owner's copy, `@nlqdb/db`'s `postgres`.
@@ -319,6 +320,46 @@ describe("verifyDue on rows it can't reach", () => {
     expect(await tried()).toEqual([...Array(5).fill(VERIFY_WINDOW_SEC + 1), null]);
     expect(await verifyDue(deps, VERIFY_WINDOW_SEC + 2)).toEqual([]);
     expect((await tried())[5]).toBe(VERIFY_WINDOW_SEC + 2);
+    quiet.mockRestore();
+  });
+});
+
+describe("observeDue on DBs it can't read", () => {
+  it("keeps no baseline for a failed DB, tries the untried one next tick, and holds off the rest for a window", async () => {
+    const d1 = sqliteD1();
+    for (let i = 0; i < 6; i++) {
+      await d1
+        .prepare(
+          "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, connection_blob, schema_hash, schema_text, synthetic, created_at, updated_at, last_queried_at) VALUES (?, 'user_synth', 'postgres', ?, 'not-a-sealed-blob', 'h', '', 0, 0, 0, 0)",
+        )
+        .bind(`db_${i}`, BYO_SECRET_REF_SENTINEL)
+        .run();
+    }
+    const deps = {
+      resolve: async () => [],
+      kek: "test-kek-this-is-a-high-entropy-string-aaaa",
+      d1,
+      buildPostgresQuery: () => {
+        throw new Error("unreachable");
+      },
+    };
+    const rows = async () =>
+      (
+        await d1
+          .prepare("SELECT observed_at AS t, observe_from AS b FROM databases ORDER BY id")
+          .all<{ t: number | null; b: string | null }>()
+      ).results;
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    const t0 = OBSERVE_WINDOW_SEC;
+    expect(await observeDue(deps, t0)).toEqual([]);
+    expect((await rows()).map((r) => r.t)).toEqual([...Array(5).fill(t0), null]);
+    expect(await observeDue(deps, t0 + 1)).toEqual([]);
+    expect((await rows()).map((r) => r.t)).toEqual([...Array(5).fill(t0), t0 + 1]);
+    expect(await observeDue(deps, t0 + 2)).toEqual([]); // the failed five wait a window
+    expect((await rows()).every((r) => r.b === null)).toBe(true);
+    // No KEK: nothing is tried, so no DB is pushed back.
+    expect(await observeDue({ ...deps, kek: undefined }, t0 + OBSERVE_WINDOW_SEC)).toEqual([]);
+    expect((await rows())[0]?.t).toBe(t0);
     quiet.mockRestore();
   });
 });
