@@ -150,8 +150,9 @@ async function validate(id: number, proposal: Proposal): Promise<void> {
 }
 
 // Opens the sealed URL, re-guards its host (`GLOBAL-035`, DNS may have moved
-// since attach) and hands `fn` a socket closed in `finally`.
-async function onAttached<T>(
+// since attach) and hands `fn` a socket closed in `finally`. Also the
+// `dba_observe` job's way in (`dba-observe.ts`).
+export async function onAttached<T>(
   deps: DecideDeps,
   row: { dbId: string; blob: string | null },
   fn: (query: PostgresQueryFn) => Promise<T>,

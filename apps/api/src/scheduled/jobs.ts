@@ -19,7 +19,7 @@ import { runWorkloadAnalyser } from "../workload-analyser/index.ts";
 export type Job = {
   name: string;
   when: (t: Date) => boolean;
-  run: (env: Cloudflare.Env) => Promise<void>;
+  run: (env: Cloudflare.Env, scheduledTime: number) => Promise<void>;
 };
 
 type When = Job["when"];
@@ -110,14 +110,34 @@ export const JOBS: Job[] = [
     // est., whoever applied it. :16, off the ticks the other jobs share.
     name: "dba_verify",
     when: hourlyAt(16),
-    run: async (env) => {
+    run: async (env, scheduledTime) => {
       const { buildConnectByoDeps } = await import("../db-connect/build-deps.ts");
       const { verifyDue } = await import("../dba-verbs.ts");
-      const verified = await verifyDue(buildConnectByoDeps(env), Math.floor(Date.now() / 1000));
+      const verified = await verifyDue(buildConnectByoDeps(env), Math.floor(scheduledTime / 1000));
       if (verified.length) {
         info({
           msg: "dba_verify",
           verdicts: verified.map((v) => `${v.id}:${v.verification.verdict}`),
+        });
+      }
+    },
+  },
+  {
+    // GLOBAL-043 item 7 (Tier 1) — the scheduled observer: diffs each attached
+    // Postgres DB's `pg_stat_statements` once a day and records the window's
+    // `create_index` proposals. :48, off the ticks the other jobs share.
+    name: "dba_observe",
+    when: hourlyAt(48),
+    // Stamped with the scheduled minute, not wall-clock: a tick that starts a
+    // second earlier than yesterday's still finds the DB due.
+    run: async (env, scheduledTime) => {
+      const { buildConnectByoDeps } = await import("../db-connect/build-deps.ts");
+      const { observeDue } = await import("../dba-observe.ts");
+      const observed = await observeDue(buildConnectByoDeps(env), Math.floor(scheduledTime / 1000));
+      if (observed.length) {
+        info({
+          msg: "dba_observe",
+          proposals: observed.map((o) => `${o.dbId}:${o.proposalIds.length}`),
         });
       }
     },
@@ -227,7 +247,7 @@ export async function runDueJobs(
 ): Promise<void> {
   for (const job of dueJobs(jobs, scheduledTime)) {
     try {
-      await job.run(env);
+      await job.run(env, scheduledTime);
     } catch (err) {
       error({ msg: "scheduled_job_failed", job: job.name, message: errMessage(err) });
     }
