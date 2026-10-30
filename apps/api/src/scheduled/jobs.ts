@@ -105,6 +105,24 @@ export const JOBS: Job[] = [
     },
   },
   {
+    // GLOBAL-043 items 4 and 7 — verify after the window: judges each applied
+    // proposal whose 72 h window has passed and reverts a > 10 % worse p95
+    // est., whoever applied it. :16, off the ticks the other jobs share.
+    name: "dba_verify",
+    when: hourlyAt(16),
+    run: async (env) => {
+      const { buildConnectByoDeps } = await import("../db-connect/build-deps.ts");
+      const { verifyDue } = await import("../dba-verbs.ts");
+      const verified = await verifyDue(buildConnectByoDeps(env), Math.floor(Date.now() / 1000));
+      if (verified.length) {
+        info({
+          msg: "dba_verify",
+          verdicts: verified.map((v) => `${v.id}:${v.verification.verdict}`),
+        });
+      }
+    },
+  },
+  {
     // SK-GTM-003 — daily GTM/PMF snapshot (GLOBAL-038); the on-read writer
     // in `GET /v1/admin/metrics` covers a missed day.
     name: "gtm_snapshot",

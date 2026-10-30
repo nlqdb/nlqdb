@@ -64,6 +64,12 @@ describe("JOBS selection by scheduledTime", () => {
   it("13:32 Mon → keep-warm + the hourly role reap", () => {
     expect(due(utc(MON, 13, 32))).toEqual(["neon_keep_warm", "tenant_role_reap"]);
   });
+  it("13:16 Mon → keep-warm + the hourly DBA verify", () => {
+    expect(due(utc(MON, 13, 16))).toEqual(["neon_keep_warm", "dba_verify"]);
+  });
+  it("02:16 Sun → the DBA verify alone", () => {
+    expect(due(utc(SUN, 2, 16))).toEqual(["dba_verify"]);
+  });
   it("12:56 Mon → nothing (window not open)", () => {
     expect(due(utc(MON, 12, 56))).toEqual([]);
   });

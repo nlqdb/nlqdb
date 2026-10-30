@@ -86,7 +86,7 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
     "SELECT id FROM dba_synth.users WHERE email = $1",
   ];
   async function runWorkload(): Promise<FingerprintWindow[]> {
-    const before = await snapshotPostgresStatements(conn.query);
+    const before = await snapshotPostgresStatements(conn.query, SCHEMA);
     for (let i = 0; i < 300; i++) {
       await conn.query(HOT[0] as string, [`post ${1 + ((i * 37) % 20000)}`]);
       await conn.query(HOT[1] as string, [`u${1 + ((i * 7) % 2000)}@example.com`]);
@@ -98,7 +98,7 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
         String(1 + (i % 2000)),
       ]);
     }
-    return statementWindow(before, await snapshotPostgresStatements(conn.query));
+    return statementWindow(before, await snapshotPostgresStatements(conn.query, SCHEMA));
   }
   const hot = (window: FingerprintWindow[], sql: string) =>
     window.find((w) => w.query === sql) as FingerprintWindow;
@@ -147,9 +147,9 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
     for (const knob of ["jit_above_cost", "jit_inline_above_cost", "jit_optimize_above_cost"]) {
       await conn.query(`SET ${knob} = 0`, []);
     }
-    const from = await snapshotPostgresStatements(conn.query);
+    const from = await snapshotPostgresStatements(conn.query, SCHEMA);
     for (let i = 0; i < 30; i++) await conn.query(HOT[0] as string, [`post ${1 + i * 37}`]);
-    const after = statementWindow(from, await snapshotPostgresStatements(conn.query));
+    const after = statementWindow(from, await snapshotPostgresStatements(conn.query, SCHEMA));
     await conn.query("RESET ALL", []);
     const v = await verifyApplied(conn.query, proposal, after);
     // biome-ignore lint/suspicious/noConsole: the KPI C reading belongs in the CI log

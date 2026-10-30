@@ -632,7 +632,9 @@ export const REGISTRY = {
   proposal_decided: defineError({
     httpStatus: 409,
     recoverability: "user_config",
-    params: z.object({ status: z.enum(["applied", "rejected"]).optional().catch(undefined) }),
+    params: z.object({
+      status: z.enum(["applied", "rejected", "reverted"]).optional().catch(undefined),
+    }),
     message: (p) => `That proposal was already ${p.status ?? "decided"}.`,
     action: () => "Nothing to do; list the database's changes for the proposals still open.",
   }),

@@ -4,7 +4,7 @@
 // after the transaction commits, best-effort like the `schema_hash` CAS: the
 // rows already landed, so a D1 blip never fails the write.
 
-import type { Proposal, WidenPlan } from "@nlqdb/db";
+import type { Proposal, Verification, WidenPlan } from "@nlqdb/db";
 import { quoted, quoteIdent } from "./db-create/compile-ddl.ts";
 
 export type DbaChange = {
@@ -102,11 +102,13 @@ export async function recordDbaChanges(
 
 // One ledger row as `GET /v1/databases/:id/changes` returns it (`/app/dba`).
 // `reason` is the proposal card's sentence; null on hosted-path rows.
+// `verification` is verify's verdict once the window has passed, else null.
 export type DbaChangeRow = DbaChange & {
   id: number;
   origin: "insert" | "ask" | "attach";
-  status: "proposed" | "applied" | "rejected";
+  status: "proposed" | "applied" | "rejected" | "reverted";
   reason: string | null;
+  verification: Verification | null;
   createdAt: number;
 };
 
@@ -123,10 +125,13 @@ export async function listDbaChanges(
       .bind(databaseId, tenantId),
     d1
       .prepare(
-        "SELECT id, origin, kind, table_name AS \"table\", ddl, inverse, status, json_extract(proposal, '$.reason') AS reason, created_at AS createdAt FROM dba_changes WHERE database_id = ? ORDER BY id DESC LIMIT ?",
+        "SELECT id, origin, kind, table_name AS \"table\", ddl, inverse, status, json_extract(proposal, '$.reason') AS reason, verification, created_at AS createdAt FROM dba_changes WHERE database_id = ? ORDER BY id DESC LIMIT ?",
       )
       .bind(databaseId, limit),
   ]);
   if (!owned?.results.length) return null;
-  return (rows?.results ?? []) as DbaChangeRow[];
+  return (rows?.results ?? []).map((r) => ({
+    ...r,
+    verification: typeof r["verification"] === "string" ? JSON.parse(r["verification"]) : null,
+  })) as DbaChangeRow[];
 }

@@ -226,10 +226,16 @@ export type DatabaseSummary = {
 // the DBA committed, or (origin `attach`, status `proposed`) one it proposes on
 // an attached DB (`GLOBAL-043`), with the statement that undoes it. `reason`
 // is the proposal's sentence; null on committed hosted-path rows.
+// `verification` is verify's verdict once an applied proposal's window has
+// passed (`reverted`: its p95 est. ran > 10 % worse and its inverse ran).
 export type DbaChange = {
   id: number;
   origin: "insert" | "ask" | "attach";
-  status: "proposed" | "applied" | "rejected";
+  status: "proposed" | "applied" | "rejected" | "reverted";
+  verification?:
+    | { verdict: "keep" | "revert"; fingerprint: string; beforeP95Ms: number; afterP95Ms: number }
+    | { verdict: "unmeasured"; reason: string }
+    | null;
   kind: "create_table" | "add_column" | "create_index";
   table: string;
   ddl: string;

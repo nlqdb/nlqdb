@@ -61,4 +61,30 @@ describe("describeChange", () => {
       }),
     ).toBe("Rejected, not applied — Foreign key posts(author_id) → users has no index.");
   });
+
+  it("shows verify's before / after p95 on a kept or reverted proposal", () => {
+    const base = {
+      kind: "create_index" as const,
+      table: "posts",
+      origin: "attach" as const,
+      reason: "posts(title) is seq-scanned.",
+    };
+    const measured = { fingerprint: "1", beforeP95Ms: 1.83, afterP95Ms: 0.04 };
+    expect(
+      describeChange({
+        ...base,
+        status: "applied",
+        verification: { verdict: "keep", ...measured },
+      }),
+    ).toBe("Applied and verified: p95 est. 1.83 ms → 0.04 ms — posts(title) is seq-scanned.");
+    expect(
+      describeChange({
+        ...base,
+        status: "reverted",
+        verification: { verdict: "revert", fingerprint: "1", beforeP95Ms: 1.35, afterP95Ms: 26.6 },
+      }),
+    ).toBe(
+      "Reverted: its query ran slower (p95 est. 1.35 ms → 27 ms) — posts(title) is seq-scanned.",
+    );
+  });
 });
