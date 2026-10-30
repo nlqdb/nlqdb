@@ -1,5 +1,11 @@
 # @nlqdb/sdk
 
+## 0.9.0
+
+### Minor Changes
+
+- 68f287f: `listChanges` rows carry `verification` — verify's verdict once an applied proposal's 72 h window has passed (`keep` / `revert` with the fingerprint's p95 est. before and after, or `unmeasured`) — and can now be `reverted`: the fingerprint ran > 10 % slower and nlqdb ran the proposal's inverse. `proposal_decided` can report `status: "reverted"`.
+
 ## 0.8.0
 
 ### Minor Changes
