@@ -77,8 +77,8 @@ export async function observeDue(
         .all<{ ddl: string }>();
       const known = new Set(seen.map((s) => s.ddl));
       const fresh = proposals.filter((p) => !known.has(p.ddl));
-      // The rows and the new baseline in one batch: a D1 blip re-observes the
-      // same window next tick rather than losing it.
+      // The rows and the new baseline in one batch: a failed write keeps the
+      // old baseline, so the next observe's window still covers this one.
       const [, ...ledger] = await deps.d1.batch([
         deps.d1
           .prepare("UPDATE databases SET observe_from = ?, observed_at = ? WHERE id = ?")
