@@ -1,23 +1,18 @@
 // Live check of the attach door (`GLOBAL-043` item 6) on the seeded synthetic
 // Postgres: `connectByoDb` validates, introspects, observes Tier 0, seals and
 // records the DB row with its proposals, on the production BYO transport minus
-// TLS, then the verbs and the `dba_verify` job's verify after the window. Runs
-// only when `PG_TEST_URL` is set (CI's `test-dba-postgres` job); it prints KPI
-// A through the door (connection string in → proposals in the ledger, in ms)
-// and KPIs B and C as the job judged them. The last case needs no Postgres.
+// TLS, then the verbs, the `dba_observe` job's Tier 1 proposals and the
+// `dba_verify` job's verify after the window. Runs only when `PG_TEST_URL` is
+// set (CI's `test-dba-postgres` job); it prints KPI A through the door
+// (connection string in → proposals in the ledger, in ms), the observe, and
+// KPIs B and C as the job judged them. The last case needs no Postgres.
 
 import { readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import {
-  createIndexProposal,
-  type FingerprintWindow,
-  observePostgresWorkload,
-  openByoPostgres,
-  snapshotPostgresStatements,
-  statementWindow,
-} from "@nlqdb/db";
+import { createIndexProposal, openByoPostgres } from "@nlqdb/db";
 import { describe, expect, it, vi } from "vitest";
-import { proposalStatement } from "../dba-changes.ts";
+import { listProposals, proposalStatement } from "../dba-changes.ts";
+import { OBSERVE_WINDOW_SEC, observeDue } from "../dba-observe.ts";
 import { decideProposal, VERIFY_WINDOW_SEC, verifyDue } from "../dba-verbs.ts";
 import { connectByoDb } from "./connect.ts";
 
@@ -102,7 +97,7 @@ function sqliteD1(): D1Database {
 }
 
 describe.skipIf(!url)("the attach door on the seeded synthetic Postgres", () => {
-  it("records the five Tier 0 proposals within KPI A's 5 min; the verbs decide them; verify judges every applied row after its window", async () => {
+  it("records the five Tier 0 proposals within KPI A's 5 min; the verbs decide them; the observe job proposes Tier 1; verify judges every applied row after its window", async () => {
     const target = await seedPublic(url as string);
     const d1 = sqliteD1();
 
@@ -183,10 +178,11 @@ describe.skipIf(!url)("the attach door on the seeded synthetic Postgres", () => 
     await sql.end();
     expect(built.map((b) => b.relname)).toEqual(applied.map(nameOf).sort());
 
-    // Verify after the window (`GLOBAL-043` items 4 and 7). Tier 1 proposals
-    // on the app's two hot lookups, recorded the way the door records Tier 0
-    // and applied through the verb; then the `dba_verify` job's `verifyDue`
-    // judges every applied row once its window has passed — no caller asks.
+    // The `dba_observe` job (`GLOBAL-043` item 7, Tier 1) on the attached DB:
+    // its first tick keeps a baseline, the app's two hot lookups run, and the
+    // tick after the window records their proposals — no caller asks. Then
+    // verify after the window (items 4 and 7): applied through the verb, every
+    // applied row is judged by the `dba_verify` job's `verifyDue`.
     const conn = deps.buildPostgresQuery();
     const HOT = ["SELECT id FROM posts WHERE title = $1", "SELECT id FROM users WHERE email = $1"];
     const run = async (n: number, which: 0 | 1) => {
@@ -196,28 +192,32 @@ describe.skipIf(!url)("the attach door on the seeded synthetic Postgres", () => 
         ]);
       }
     };
-    const window = async (work: () => Promise<void>): Promise<FingerprintWindow[]> => {
-      const from = await snapshotPostgresStatements(conn.query, "public");
-      await work();
-      return statementWindow(from, await snapshotPostgresStatements(conn.query, "public"));
-    };
-    const tier1 = await observePostgresWorkload(
-      conn.query,
-      "public",
-      await window(async () => {
-        await run(300, 0);
-        await run(300, 1);
-      }),
+    const t0 = 1_000_000_000;
+    expect(await observeDue(deps, t0)).toEqual([{ dbId: result.dbId, proposalIds: [] }]);
+    await run(300, 0);
+    await run(300, 1);
+    expect(await observeDue(deps, t0 + OBSERVE_WINDOW_SEC - 1)).toEqual([]); // inside the window
+    const observeAt = performance.now();
+    const [observed] = await observeDue(deps, t0 + OBSERVE_WINDOW_SEC);
+    const observeMs = performance.now() - observeAt;
+    const tier1Ids = observed?.proposalIds ?? [];
+    const tier1 = await listProposals(d1, result.dbId, "user_synth").then((ps) =>
+      ps.filter((p) => tier1Ids.includes(p.id)),
     );
     expect(tier1.map((p) => `${p.table}(${p.columns}) t${p.tier}`)).toEqual([
       "posts(title) t1",
       "users(email) t1",
     ]);
-    const tier1Ids: number[] = [];
-    for (const p of tier1) {
-      const row = await proposalStatement(d1, result.dbId, p).run();
-      const id = Number(row.meta.last_row_id);
-      tier1Ids.push(id);
+    // biome-ignore lint/suspicious/noConsole: the observe reading belongs in the CI log
+    console.log(
+      `Tier 1 observe (synthetic, dba_observe job): ${tier1.length} proposals recorded with no caller, ${observeMs.toFixed(1)} ms for the DB`,
+    );
+    // The same lookups next window: their DDL is already in the ledger.
+    await run(300, 0);
+    expect(await observeDue(deps, t0 + 2 * OBSERVE_WINDOW_SEC)).toEqual([
+      { dbId: result.dbId, proposalIds: [] },
+    ]);
+    for (const id of tier1Ids) {
       const r = await decideProposal(deps, {
         id,
         tenantId: "user_synth",

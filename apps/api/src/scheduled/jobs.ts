@@ -123,6 +123,24 @@ export const JOBS: Job[] = [
     },
   },
   {
+    // GLOBAL-043 item 7 (Tier 1) — the scheduled observer: diffs each attached
+    // Postgres DB's `pg_stat_statements` once a day and records the window's
+    // `create_index` proposals. :48, off the ticks the other jobs share.
+    name: "dba_observe",
+    when: hourlyAt(48),
+    run: async (env) => {
+      const { buildConnectByoDeps } = await import("../db-connect/build-deps.ts");
+      const { observeDue } = await import("../dba-observe.ts");
+      const observed = await observeDue(buildConnectByoDeps(env), Math.floor(Date.now() / 1000));
+      if (observed.length) {
+        info({
+          msg: "dba_observe",
+          proposals: observed.map((o) => `${o.dbId}:${o.proposalIds.length}`),
+        });
+      }
+    },
+  },
+  {
     // SK-GTM-003 — daily GTM/PMF snapshot (GLOBAL-038); the on-read writer
     // in `GET /v1/admin/metrics` covers a missed day.
     name: "gtm_snapshot",

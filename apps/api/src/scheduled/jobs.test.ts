@@ -70,6 +70,9 @@ describe("JOBS selection by scheduledTime", () => {
   it("02:16 Sun → the DBA verify alone", () => {
     expect(due(utc(SUN, 2, 16))).toEqual(["dba_verify"]);
   });
+  it("02:48 Sun → the DBA observe alone", () => {
+    expect(due(utc(SUN, 2, 48))).toEqual(["dba_observe"]);
+  });
   it("12:56 Mon → nothing (window not open)", () => {
     expect(due(utc(MON, 12, 56))).toEqual([]);
   });
