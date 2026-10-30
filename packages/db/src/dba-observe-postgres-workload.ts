@@ -14,7 +14,7 @@
 // attached schema with a selective AND of equality filters, and no valid btree
 // / hash index already leads with those columns.
 
-import { withObserveSpan } from "./dba-observe-postgres.ts";
+import { withDbaSpan, withObserveSpan } from "./dba-observe-postgres.ts";
 import { createIndexProposal, type Proposal } from "./dba-proposal.ts";
 import type { PostgresQueryFn } from "./postgres.ts";
 
@@ -51,36 +51,41 @@ FROM pg_stat_statements s
 WHERE s.dbid = (SELECT oid FROM pg_catalog.pg_database WHERE datname = current_database())
   AND s.toplevel AND s.queryid IS NOT NULL`;
 
-export async function snapshotPostgresStatements(
+// One read of every fingerprint's counters — an observe window's ends, and a
+// verify window's — under the loop's span (`GLOBAL-014`).
+export function snapshotPostgresStatements(
   query: PostgresQueryFn,
+  schema: string,
 ): Promise<StatementSnapshot> {
-  const { rows } = await query(SNAPSHOT_SQL, []);
-  const snapshot: StatementSnapshot = new Map();
-  for (const row of rows) {
-    const calls = Number(row["calls"]);
-    const totalMs = Number(row["total_ms"]);
-    const mean = calls > 0 ? totalMs / calls : 0;
-    const prev = snapshot.get(String(row["fingerprint"]));
-    const counters = {
-      query: String(row["query"]),
-      calls,
-      totalMs,
-      sumSquaresMs: calls * (Number(row["stddev_ms"]) ** 2 + mean ** 2),
-    };
-    // One queryid can repeat per role: sum them, the fingerprint is the query.
-    snapshot.set(
-      String(row["fingerprint"]),
-      prev
-        ? {
-            query: prev.query,
-            calls: prev.calls + calls,
-            totalMs: prev.totalMs + totalMs,
-            sumSquaresMs: prev.sumSquaresMs + counters.sumSquaresMs,
-          }
-        : counters,
-    );
-  }
-  return snapshot;
+  return withDbaSpan("db.observe", "snapshot_statements", schema, async () => {
+    const { rows } = await query(SNAPSHOT_SQL, []);
+    const snapshot: StatementSnapshot = new Map();
+    for (const row of rows) {
+      const calls = Number(row["calls"]);
+      const totalMs = Number(row["total_ms"]);
+      const mean = calls > 0 ? totalMs / calls : 0;
+      const prev = snapshot.get(String(row["fingerprint"]));
+      const counters = {
+        query: String(row["query"]),
+        calls,
+        totalMs,
+        sumSquaresMs: calls * (Number(row["stddev_ms"]) ** 2 + mean ** 2),
+      };
+      // One queryid can repeat per role: sum them, the fingerprint is the query.
+      snapshot.set(
+        String(row["fingerprint"]),
+        prev
+          ? {
+              query: prev.query,
+              calls: prev.calls + calls,
+              totalMs: prev.totalMs + totalMs,
+              sumSquaresMs: prev.sumSquaresMs + counters.sumSquaresMs,
+            }
+          : counters,
+      );
+    }
+    return snapshot;
+  });
 }
 
 // The fingerprints that ran between `before` and `after`, most total time

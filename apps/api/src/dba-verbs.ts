@@ -25,7 +25,6 @@ import {
   type Verification,
   validateByoConnection,
   verifyApplied,
-  withDbaSpan,
 } from "@nlqdb/db";
 import type { ConnectByoDeps } from "./db-connect/connect.ts";
 import { openSecret } from "./secret-envelope.ts";
@@ -185,7 +184,7 @@ function applyOn(
     await applyProposal(query, proposal);
     const fingerprint = proposal.evidence.workload?.fingerprint;
     if (!fingerprint) return null;
-    const snapshot = await readCounters(query, proposal.schema).catch(() => null);
+    const snapshot = await snapshotPostgresStatements(query, proposal.schema).catch(() => null);
     if (!snapshot) return null;
     // Not run since the last stats reset: the window counts from zero.
     return snapshot.get(fingerprint) ?? { query: "", calls: 0, totalMs: 0, sumSquaresMs: 0 };
@@ -208,15 +207,15 @@ type DueRow = {
 
 // Judges each applied proposal whose window has passed and records the
 // verdict; a regression has already been reverted by `verifyApplied` when its
-// row turns `reverted`. A row whose DB can't be reached stays due for the next
-// tick; the error is logged, the rest of the batch still runs.
+// row turns `reverted`. A row whose DB can't be reached stays due, behind the
+// rows not yet tried (`verify_tried_at`), so it never holds the batch.
 export async function verifyDue(
   deps: DecideDeps,
   nowSec: number,
 ): Promise<{ id: number; verification: Verification }[]> {
   const { results } = await deps.d1
     .prepare(
-      "SELECT c.id, c.database_id AS dbId, c.proposal, c.verify_from AS verifyFrom, d.connection_blob AS blob FROM dba_changes c JOIN databases d ON d.id = c.database_id WHERE c.status = 'applied' AND c.proposal IS NOT NULL AND c.verified_at IS NULL AND c.decided_at <= ? ORDER BY c.decided_at LIMIT ?",
+      "SELECT c.id, c.database_id AS dbId, c.proposal, c.verify_from AS verifyFrom, d.connection_blob AS blob FROM dba_changes c JOIN databases d ON d.id = c.database_id WHERE c.status = 'applied' AND c.proposal IS NOT NULL AND c.verified_at IS NULL AND c.decided_at <= ? ORDER BY COALESCE(c.verify_tried_at, 0), c.decided_at LIMIT ?",
     )
     .bind(nowSec - VERIFY_WINDOW_SEC, VERIFY_BATCH)
     .all<DueRow>();
@@ -236,6 +235,11 @@ export async function verifyDue(
         .run();
       verified.push({ id: row.id, verification });
     } catch (err) {
+      await deps.d1
+        .prepare("UPDATE dba_changes SET verify_tried_at = ? WHERE id = ?")
+        .bind(nowSec, row.id)
+        .run()
+        .catch(() => {});
       console.error(
         JSON.stringify({
           msg: "dba_verify_failed",
@@ -261,13 +265,8 @@ async function verifyRow(deps: DecideDeps, row: DueRow): Promise<Verification> {
   return onAttached(deps, row, async (query) => {
     const window = statementWindow(
       new Map([[fingerprint, from]]),
-      await readCounters(query, proposal.schema),
+      await snapshotPostgresStatements(query, proposal.schema),
     );
     return verifyApplied(query, proposal, window);
   });
 }
-
-// The fingerprint counters read that opens and closes a verify window, under
-// the loop's span (`GLOBAL-014`).
-const readCounters = (query: PostgresQueryFn, schema: string) =>
-  withDbaSpan("db.observe", "snapshot_statements", schema, () => snapshotPostgresStatements(query));

@@ -4,18 +4,19 @@
 // TLS, then the verbs and the `dba_verify` job's verify after the window. Runs
 // only when `PG_TEST_URL` is set (CI's `test-dba-postgres` job); it prints KPI
 // A through the door (connection string in → proposals in the ledger, in ms)
-// and KPIs B and C as the job judged them.
+// and KPIs B and C as the job judged them. The last case needs no Postgres.
 
 import { readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import {
+  createIndexProposal,
   type FingerprintWindow,
   observePostgresWorkload,
   openByoPostgres,
   snapshotPostgresStatements,
   statementWindow,
 } from "@nlqdb/db";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { proposalStatement } from "../dba-changes.ts";
 import { decideProposal, VERIFY_WINDOW_SEC, verifyDue } from "../dba-verbs.ts";
 import { connectByoDb } from "./connect.ts";
@@ -196,9 +197,9 @@ describe.skipIf(!url)("the attach door on the seeded synthetic Postgres", () => 
       }
     };
     const window = async (work: () => Promise<void>): Promise<FingerprintWindow[]> => {
-      const from = await snapshotPostgresStatements(conn.query);
+      const from = await snapshotPostgresStatements(conn.query, "public");
       await work();
-      return statementWindow(from, await snapshotPostgresStatements(conn.query));
+      return statementWindow(from, await snapshotPostgresStatements(conn.query, "public"));
     };
     const tier1 = await observePostgresWorkload(
       conn.query,
@@ -271,4 +272,53 @@ describe.skipIf(!url)("the attach door on the seeded synthetic Postgres", () => 
     await check.end();
     expect(left.map((b) => b.relname)).toEqual([nameOf(tier1[1] as { ddl: string })]);
   }, 60_000);
+});
+
+describe("verifyDue on rows it can't reach", () => {
+  it("tries the untried rows before retrying a failed one, so failures never hold the batch", async () => {
+    const d1 = sqliteD1();
+    await d1
+      .prepare(
+        "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, connection_blob, schema_hash, schema_text, synthetic, created_at, updated_at, last_queried_at) VALUES ('db_gone', 'user_synth', 'postgres', 'byo', NULL, 'h', '', 0, 0, 0, 0)",
+      )
+      .run();
+    const p = createIndexProposal({
+      tier: 1,
+      schema: "public",
+      table: "posts",
+      columns: ["title"],
+      reason: "r",
+      evidence: {
+        rowEstimate: 1,
+        tableBytes: 1,
+        workload: { fingerprint: "1", calls: 1, meanMs: 1, p95EstimateMs: 1 },
+      },
+    });
+    for (let i = 0; i < 6; i++) await proposalStatement(d1, "db_gone", p).run();
+    await d1
+      .prepare("UPDATE dba_changes SET status = 'applied', decided_at = 0, verify_from = '{}'")
+      .run();
+    const deps = {
+      resolve: async () => [],
+      kek: "test-kek-this-is-a-high-entropy-string-aaaa",
+      d1,
+      randomSuffix: () => "x",
+      buildClickhouseQuery: () => async () => ({ rows: [] }),
+      buildPostgresQuery: () => {
+        throw new Error("unreachable");
+      },
+    };
+    const tried = async () =>
+      (
+        await d1
+          .prepare("SELECT verify_tried_at AS t FROM dba_changes ORDER BY id")
+          .all<{ t: number | null }>()
+      ).results.map((r) => r.t);
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await verifyDue(deps, VERIFY_WINDOW_SEC + 1)).toEqual([]);
+    expect(await tried()).toEqual([...Array(5).fill(VERIFY_WINDOW_SEC + 1), null]);
+    expect(await verifyDue(deps, VERIFY_WINDOW_SEC + 2)).toEqual([]);
+    expect((await tried())[5]).toBe(VERIFY_WINDOW_SEC + 2);
+    quiet.mockRestore();
+  });
 });

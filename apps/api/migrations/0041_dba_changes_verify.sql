@@ -7,3 +7,4 @@
 ALTER TABLE dba_changes ADD COLUMN verify_from TEXT; -- StatementCounters JSON; NULL = nothing to diff
 ALTER TABLE dba_changes ADD COLUMN verification TEXT; -- Verification JSON, set once
 ALTER TABLE dba_changes ADD COLUMN verified_at INTEGER;
+ALTER TABLE dba_changes ADD COLUMN verify_tried_at INTEGER; -- last failed verify; orders retries last
