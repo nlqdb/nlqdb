@@ -25,6 +25,7 @@ import {
   type Verification,
   validateByoConnection,
   verifyApplied,
+  withDbaSpan,
 } from "@nlqdb/db";
 import type { ConnectByoDeps } from "./db-connect/connect.ts";
 import { openSecret } from "./secret-envelope.ts";
@@ -184,7 +185,7 @@ function applyOn(
     await applyProposal(query, proposal);
     const fingerprint = proposal.evidence.workload?.fingerprint;
     if (!fingerprint) return null;
-    const snapshot = await snapshotPostgresStatements(query).catch(() => null);
+    const snapshot = await readCounters(query, proposal.schema).catch(() => null);
     if (!snapshot) return null;
     // Not run since the last stats reset: the window counts from zero.
     return snapshot.get(fingerprint) ?? { query: "", calls: 0, totalMs: 0, sumSquaresMs: 0 };
@@ -252,7 +253,7 @@ async function verifyRow(deps: DecideDeps, row: DueRow): Promise<Verification> {
   const fingerprint = proposal.evidence.workload?.fingerprint;
   if (!fingerprint) return judgeApplied(proposal, []);
   if (!row.verifyFrom) {
-    return { verdict: "unmeasured", reason: "pg_stat_statements unreadable at apply" };
+    return { verdict: "unmeasured", reason: "no counters kept at apply" };
   }
   if (!deps.kek) throw new Error("sealing unconfigured");
   await validate(row.id, proposal);
@@ -260,8 +261,13 @@ async function verifyRow(deps: DecideDeps, row: DueRow): Promise<Verification> {
   return onAttached(deps, row, async (query) => {
     const window = statementWindow(
       new Map([[fingerprint, from]]),
-      await snapshotPostgresStatements(query),
+      await readCounters(query, proposal.schema),
     );
     return verifyApplied(query, proposal, window);
   });
 }
+
+// The fingerprint counters read that opens and closes a verify window, under
+// the loop's span (`GLOBAL-014`).
+const readCounters = (query: PostgresQueryFn, schema: string) =>
+  withDbaSpan("db.observe", "snapshot_statements", schema, () => snapshotPostgresStatements(query));

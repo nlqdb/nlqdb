@@ -75,7 +75,7 @@ export {
 } from "./connection-url.ts";
 export type { Verification } from "./dba-apply-postgres.ts";
 export { applyProposal, judgeApplied, verifyApplied } from "./dba-apply-postgres.ts";
-export { observePostgresCatalog } from "./dba-observe-postgres.ts";
+export { observePostgresCatalog, withDbaSpan } from "./dba-observe-postgres.ts";
 export type {
   FingerprintWindow,
   StatementCounters,
