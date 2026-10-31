@@ -67,7 +67,7 @@ async function connect(client: NlqClient) {
 }
 
 describe("P2 — Agent Builder · MCP protocol contract", () => {
-  it("exposes the SK-MCP-002 tools in order (+ additive nlqdb_remember, nlqdb_insert, nlqdb_connect_database)", async () => {
+  it("exposes the SK-MCP-002 tools in order (+ additive nlqdb_remember, nlqdb_insert, nlqdb_connect_database, the proposal verbs)", async () => {
     const { mcpClient, teardown } = await connect(stubClient({}));
     try {
       const { tools } = await mcpClient.listTools();
@@ -76,7 +76,8 @@ describe("P2 — Agent Builder · MCP protocol contract", () => {
       // This is the SK-MCP-002 canonical catalog: `nlqdb_read` sits beside its
       // `nlqdb_query` sibling (the read-only, pre-authorizable twin), then the
       // list/describe pair, then the additive `nlqdb_remember` (SK-PIVOT-008),
-      // `nlqdb_insert` (SK-SCHEMA-012) and `nlqdb_connect_database` (SK-DBCONN-001).
+      // `nlqdb_insert` (SK-SCHEMA-012), `nlqdb_connect_database` (SK-DBCONN-001) and
+      // the DBA's list + two verbs (GLOBAL-043 item 5).
       expect(names).toEqual([
         "nlqdb_query",
         "nlqdb_read",
@@ -85,6 +86,9 @@ describe("P2 — Agent Builder · MCP protocol contract", () => {
         "nlqdb_remember",
         "nlqdb_insert",
         "nlqdb_connect_database",
+        "nlqdb_list_proposals",
+        "nlqdb_apply_proposal",
+        "nlqdb_reject_proposal",
       ]);
       for (const t of tools) {
         expect(t.description).toBeTruthy();

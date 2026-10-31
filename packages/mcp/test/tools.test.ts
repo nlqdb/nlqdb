@@ -1093,6 +1093,7 @@ describe("handleConnectDatabase", () => {
         engine: "postgres",
         schemaPreview: "table orders(id, total)\ntable customers(id, name)",
         credential: "stored_sealed",
+        proposals: [],
       },
     });
 

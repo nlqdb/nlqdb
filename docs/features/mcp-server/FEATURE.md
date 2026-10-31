@@ -24,7 +24,7 @@ when-to-load:
 Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-MCP-NNN`. The list below is the index; open the linked file for the full five-field block.
 
 - [**SK-MCP-001**](decisions/SK-MCP-001-two-transports.md) — Two transports: hosted (default) and local stdio (npm fallback).
-- [**SK-MCP-002**](decisions/SK-MCP-002-three-tools.md) — Fixed verb set: `nlqdb_query`, `nlqdb_read` (read-only, pre-authorizable sibling — never writes/creates, honest `readOnlyHint`), `nlqdb_list_databases`, `nlqdb_describe`, + additive `nlqdb_remember` (E-02 memory write), `nlqdb_insert` (model-free structured insert) and `nlqdb_connect_database` (BYO-connect); no public `nlqdb_create_database`.
+- [**SK-MCP-002**](decisions/SK-MCP-002-three-tools.md) — Fixed verb set: `nlqdb_query`, `nlqdb_read` (read-only, pre-authorizable sibling — never writes/creates, honest `readOnlyHint`), `nlqdb_list_databases`, `nlqdb_describe`, + additive `nlqdb_remember` (E-02 memory write), `nlqdb_insert` (model-free structured insert), `nlqdb_connect_database` (BYO-connect, returns the DBA's first proposals) and the DBA's `nlqdb_list_proposals` / `nlqdb_apply_proposal` / `nlqdb_reject_proposal` (`GLOBAL-043` item 5); no public `nlqdb_create_database`.
 - [**SK-MCP-003**](decisions/SK-MCP-003-install-autodetect.md) — `nlq mcp install` no-arg auto-detects hosts; explicit `<host>` is the power-user override.
 - [**SK-MCP-004**](decisions/SK-MCP-004-per-host-keys.md) — Per-host scoped keys: `sk_mcp_<host>_<device>_…`.
 - [**SK-MCP-005**](decisions/SK-MCP-005-zero-db-drivers.md) — Zero DB drivers in `@nlqdb/mcp`'s lockfile (CI-enforced).
