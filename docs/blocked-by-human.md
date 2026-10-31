@@ -55,6 +55,21 @@ only the account owner can mint the token.
 3. Log a line in `history/founder-actions-log.md` (no secret) and delete
    this bullet.
 
+## Claim the `nlqdb` npm name for the `npx nlqdb attach` door
+
+⏱ ~5 min · blocked since 2026-10-31. [`END_GOAL.md`](./END_GOAL.md) row 1
+and [`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md)
+item 6 promise `npx nlqdb attach <connection-string>`, but the npm name
+`nlqdb` is unclaimed (anyone can take it) and the shim ships as `@nlqdb/cli`.
+Until then the CLI door is `nlq attach` (curl or Homebrew install).
+
+1. From the npm account that owns the `@nlqdb` org, publish a placeholder
+   `nlqdb` package, then add the trusted publisher `nlqdb/nlqdb` →
+   `release-npm.yml` on <https://www.npmjs.com/package/nlqdb/access>; agents
+   then ship it as the shim's alias. Or instead amend `END_GOAL.md` row 1
+   and `GLOBAL-043` item 6 to `npx @nlqdb/cli attach`.
+2. Log a line in `history/founder-actions-log.md` and delete this bullet.
+
 ## Delete the `rateme12` Worker and its `rateme12.nlqdb.com` domain
 
 ⏱ ~2 min · blocked since 2026-10-27. The clone's code and deploy workflow

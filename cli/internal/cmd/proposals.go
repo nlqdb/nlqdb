@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -63,7 +64,7 @@ ones with verify's verdict once their window has passed.`,
 				if v := p.Verification; v != nil {
 					status += ", verify: " + v.Verdict
 					if v.BeforeP95Ms != nil && v.AfterP95Ms != nil {
-						status += fmt.Sprintf(" (p95 %.3g → %.3g ms)", *v.BeforeP95Ms, *v.AfterP95Ms)
+						status += fmt.Sprintf(" (p95 %s → %s ms)", ms(*v.BeforeP95Ms), ms(*v.AfterP95Ms))
 					}
 				}
 				fmt.Fprintf(out, "#%d  %s  %s\n", p.ID, status, p.DDL)
@@ -76,4 +77,13 @@ ones with verify's verdict once their window has passed.`,
 	}
 	cmd.Flags().StringVar(&dbID, "db", "", "database id (defaults to the active one)")
 	return cmd
+}
+
+// ms prints a p95 in milliseconds: three significant digits, never an
+// exponent (%g turns 1234.5 into "1.23e+03").
+func ms(v float64) string {
+	if v >= 100 {
+		return strconv.FormatFloat(v, 'f', 0, 64)
+	}
+	return strconv.FormatFloat(v, 'g', 3, 64)
 }

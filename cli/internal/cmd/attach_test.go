@@ -155,7 +155,7 @@ func TestAttachDoorWalk(t *testing.T) {
 	t.Logf("proposals decided from the CLI: %d/5", decided)
 
 	// Replaying a verb is a no-op; the opposite verb surfaces the server copy.
-	if out, _, err := nlq(t, srv.URL, "", "apply", "1"); err != nil || !strings.Contains(out, "#1 applied") {
+	if out, _, err := nlq(t, srv.URL, "", "apply", "1"); err != nil || !strings.Contains(out, "#1 was already applied") {
 		t.Errorf("replayed apply: %v %q", err, out)
 	}
 	if _, e, err := nlq(t, srv.URL, "", "reject", "1"); err == nil || !strings.Contains(e, "already applied") {
@@ -193,5 +193,13 @@ func TestAttachNothingToImprove(t *testing.T) {
 	out, e, err := nlq(t, srv.URL, "postgres://u:p@h/db\n", "attach")
 	if err != nil || !strings.Contains(out, "Nothing worth changing yet") || strings.Contains(out, "nlq ask") {
 		t.Fatalf("err=%v stdout=%q stderr=%q", err, out, e)
+	}
+}
+
+func TestMsNeverPrintsAnExponent(t *testing.T) {
+	for in, want := range map[float64]string{0.1: "0.1", 2: "2", 12.345: "12.3", 1234.5: "1234"} {
+		if got := ms(in); got != want {
+			t.Errorf("ms(%v) = %q, want %q", in, got, want)
+		}
 	}
 }

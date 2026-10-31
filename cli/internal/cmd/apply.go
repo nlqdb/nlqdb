@@ -50,6 +50,10 @@ func decideCmd(g *globalFlags, cmd *cobra.Command, verb string, reason *string) 
 		if w.Format == output.FormatJSON {
 			return w.JSON(resp)
 		}
+		if resp.Replayed {
+			fmt.Fprintf(cmd.OutOrStdout(), "Proposal #%d was already %s — nothing ran.\n", resp.Proposal.ID, resp.Proposal.Status)
+			return nil
+		}
 		fmt.Fprintf(cmd.OutOrStdout(), "✓ Proposal #%d %s.\n", resp.Proposal.ID, resp.Proposal.Status)
 		if resp.Proposal.Status == "applied" {
 			fmt.Fprintln(cmd.OutOrStdout(), "Verify judges it after its window and reverts it if it regressed — see `nlq proposals`.")
