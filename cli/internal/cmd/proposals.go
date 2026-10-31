@@ -43,7 +43,7 @@ ones with verify's verdict once their window has passed.`,
 			if err != nil {
 				return renderAPIError(cmd, err)
 			}
-			proposals := rows[:0]
+			proposals := []api.DbaChange{}
 			for _, r := range rows {
 				if r.Origin == "attach" {
 					proposals = append(proposals, r)
@@ -60,8 +60,11 @@ ones with verify's verdict once their window has passed.`,
 			}
 			for _, p := range proposals {
 				status := p.Status
-				if v, ok := p.Verification["verdict"].(string); ok {
-					status += ", verify: " + v
+				if v := p.Verification; v != nil {
+					status += ", verify: " + v.Verdict
+					if v.BeforeP95Ms != nil && v.AfterP95Ms != nil {
+						status += fmt.Sprintf(" (p95 %.3g → %.3g ms)", *v.BeforeP95Ms, *v.AfterP95Ms)
+					}
 				}
 				fmt.Fprintf(out, "#%d  %s  %s\n", p.ID, status, p.DDL)
 				if p.Reason != nil {

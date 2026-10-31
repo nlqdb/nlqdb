@@ -201,19 +201,28 @@ type Proposal struct {
 }
 
 // DbaChange mirrors the SDK's DbaChange — one row of GET
-// /v1/databases/:id/changes. Verification stays raw: the CLI prints its
-// verdict and passes the rest through under --json.
+// /v1/databases/:id/changes.
 type DbaChange struct {
-	ID           int64          `json:"id"`
-	Origin       string         `json:"origin"`
-	Status       string         `json:"status"`
-	Verification map[string]any `json:"verification,omitempty"`
-	Kind         string         `json:"kind"`
-	Table        string         `json:"table"`
-	DDL          string         `json:"ddl"`
-	Inverse      string         `json:"inverse"`
-	Reason       *string        `json:"reason"`
-	CreatedAt    int64          `json:"createdAt"`
+	ID           int64         `json:"id"`
+	Origin       string        `json:"origin"`
+	Status       string        `json:"status"`
+	Verification *Verification `json:"verification,omitempty"`
+	Kind         string        `json:"kind"`
+	Table        string        `json:"table"`
+	DDL          string        `json:"ddl"`
+	Inverse      string        `json:"inverse"`
+	Reason       *string       `json:"reason"`
+	CreatedAt    int64         `json:"createdAt"`
+}
+
+// Verification mirrors @nlqdb/db's Verification: verify's verdict on an
+// applied proposal; the p95 pair is absent when the verdict is "unmeasured".
+type Verification struct {
+	Verdict     string   `json:"verdict"`
+	Fingerprint string   `json:"fingerprint,omitempty"`
+	BeforeP95Ms *float64 `json:"beforeP95Ms,omitempty"`
+	AfterP95Ms  *float64 `json:"afterP95Ms,omitempty"`
+	Reason      string   `json:"reason,omitempty"`
 }
 
 // DecideResult mirrors the SDK's DecideProposalResult (POST

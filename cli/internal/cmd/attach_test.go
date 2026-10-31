@@ -13,7 +13,7 @@ import (
 )
 
 // fakeDBA mirrors the API's attach → ledger → verbs on five Tier 0 proposals,
-// with the response shapes of POST /v1/attach, GET /v1/databases/:id/changes
+// with the response shapes of POST /v1/db/connect, GET /v1/databases/:id/changes
 // and POST /v1/proposals/:id/apply|reject (GLOBAL-043).
 func fakeDBA(t *testing.T) (*httptest.Server, map[int64]string, *[]string) {
 	t.Helper()
@@ -166,7 +166,7 @@ func TestAttachDoorWalk(t *testing.T) {
 	if err != nil {
 		t.Fatalf("proposals: %v (stderr=%q)", err, errBuf)
 	}
-	for _, want := range []string{"#1  applied, verify: keep", "#5  rejected"} {
+	for _, want := range []string{"#1  applied, verify: keep (p95 2 → 0.1 ms)", "#5  rejected"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("proposals stdout missing %q; got %q", want, out)
 		}
@@ -178,5 +178,20 @@ func TestDecideRejectsNonNumericID(t *testing.T) {
 	_, errBuf, err := nlq(t, "http://127.0.0.1:0", "", "apply", "abc")
 	if err == nil || !strings.Contains(errBuf, "must be a number") {
 		t.Fatalf("err=%v stderr=%q", err, errBuf)
+	}
+}
+
+// A healthy DB gets no invented proposal: attach says it is watching.
+func TestAttachNothingToImprove(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("NLQDB_API_KEY", "sk_live_test")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(map[string]any{"dbId": "db_ok", "engine": "postgres", "proposals": []any{}})
+	}))
+	t.Cleanup(srv.Close)
+	out, e, err := nlq(t, srv.URL, "postgres://u:p@h/db\n", "attach")
+	if err != nil || !strings.Contains(out, "Nothing worth changing yet") || strings.Contains(out, "nlq ask") {
+		t.Fatalf("err=%v stdout=%q stderr=%q", err, out, e)
 	}
 }

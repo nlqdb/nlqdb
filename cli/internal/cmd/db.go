@@ -196,11 +196,21 @@ func writeConnect(cmd *cobra.Command, g *globalFlags, resp *api.ConnectResponse)
 	if resp.PKLive != nil && *resp.PKLive != "" {
 		fmt.Fprintf(out, "  pkLive: %s\n", *resp.PKLive)
 	}
-	if len(resp.Proposals) == 0 {
+	switch {
+	case len(resp.Proposals) > 0:
+	case resp.Engine == "postgres":
+		// END_GOAL "Nothing to improve": never an invented proposal, keep watching.
+		fmt.Fprintln(out, "Nothing worth changing yet — watching. Workload proposals follow a day of traffic: `nlq proposals`.")
+		return nil
+	default:
 		fmt.Fprintf(out, "Next: nlq ask --db %s \"<question>\"\n", resp.DBID)
 		return nil
 	}
-	fmt.Fprintf(out, "%d proposals:\n", len(resp.Proposals))
+	noun := "proposals"
+	if len(resp.Proposals) == 1 {
+		noun = "proposal"
+	}
+	fmt.Fprintf(out, "%d %s:\n", len(resp.Proposals), noun)
 	for _, p := range resp.Proposals {
 		fmt.Fprintf(out, "  #%d  %s\n       %s\n", p.ID, p.DDL, p.Reason)
 	}
