@@ -183,6 +183,60 @@ type ConnectResponse struct {
 	Engine        string  `json:"engine"`
 	SchemaPreview string  `json:"schemaPreview"`
 	PKLive        *string `json:"pkLive,omitempty"`
+	// Postgres: the first proposals, already in the ledger (GLOBAL-043).
+	Proposals []Proposal `json:"proposals,omitempty"`
+}
+
+// Proposal mirrors the SDK's Proposal: an index the DBA would build, the
+// statement that undoes it, and why. `ID` is the id `nlq apply` takes.
+type Proposal struct {
+	ID      int64    `json:"id"`
+	Kind    string   `json:"kind"`
+	Tier    int      `json:"tier"`
+	Table   string   `json:"table"`
+	Columns []string `json:"columns"`
+	DDL     string   `json:"ddl"`
+	Inverse string   `json:"inverse"`
+	Reason  string   `json:"reason"`
+}
+
+// DbaChange mirrors the SDK's DbaChange — one row of GET
+// /v1/databases/:id/changes.
+type DbaChange struct {
+	ID           int64         `json:"id"`
+	Origin       string        `json:"origin"`
+	Status       string        `json:"status"`
+	Verification *Verification `json:"verification,omitempty"`
+	Kind         string        `json:"kind"`
+	Table        string        `json:"table"`
+	DDL          string        `json:"ddl"`
+	Inverse      string        `json:"inverse"`
+	Reason       *string       `json:"reason"`
+	CreatedAt    int64         `json:"createdAt"`
+}
+
+// Verification mirrors @nlqdb/db's Verification: verify's verdict on an
+// applied proposal; the p95 pair is absent when the verdict is "unmeasured".
+type Verification struct {
+	Verdict     string   `json:"verdict"`
+	Fingerprint string   `json:"fingerprint,omitempty"`
+	BeforeP95Ms *float64 `json:"beforeP95Ms,omitempty"`
+	AfterP95Ms  *float64 `json:"afterP95Ms,omitempty"`
+	Reason      string   `json:"reason,omitempty"`
+}
+
+// DecideResult mirrors the SDK's DecideProposalResult (POST
+// /v1/proposals/:id/apply|reject).
+type DecideResult struct {
+	Proposal struct {
+		ID           int64   `json:"id"`
+		DBID         string  `json:"dbId"`
+		Status       string  `json:"status"`
+		DecidedBy    string  `json:"decidedBy"`
+		DecidedAt    int64   `json:"decidedAt"`
+		RejectReason *string `json:"rejectReason"`
+	} `json:"proposal"`
+	Replayed bool `json:"replayed"`
 }
 
 type DatabaseSummary struct {

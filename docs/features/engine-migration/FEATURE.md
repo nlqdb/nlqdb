@@ -23,7 +23,7 @@ when-to-load:
 - `apps/api/src/scheduled/jobs.ts` — the `workload_analyser`, `dba_observe` and `dba_verify` rows (SK-HDC-023 owns the trigger); `apps/api/src/dba-verbs.ts` — the verbs and verify; `apps/api/src/dba-observe.ts` — the scheduled Tier 1 observer
 - `apps/api/migrations/0008_workload_analyser_audit.sql`
 - `packages/db/src/dba-*.ts` — the engine-agnostic `Proposal` and the per-engine observers; CI's `test-dba-postgres` job runs them against `packages/db/test/fixtures/dba-synthetic-seed.sql`.
-- `apps/api/src/dba-changes.ts`, `apps/web/src/pages/app/dba.astro`, `apps/web/src/components/dba/**` — the change ledger and `/app/dba` v0, read-only; `GLOBAL-043` adds proposals, apply / reject and revert here. Surface gap (`GLOBAL-003`): the SDK (`listChanges`, `attach`, `applyProposal`, `rejectProposal`) and the web page (read-only) have it; `nlq attach` / `apply` / `reject`, the MCP proposal tools and the web paste door and buttons don't yet.
+- `apps/api/src/dba-changes.ts`, `apps/web/src/pages/app/dba.astro`, `apps/web/src/components/dba/**` — the change ledger and `/app/dba` v0, read-only; `GLOBAL-043` adds proposals, apply / reject and revert here. Surface gap (`GLOBAL-003`): the SDK (`listChanges`, `attach`, `applyProposal`, `rejectProposal`), the CLI (`nlq attach` / `proposals` / `apply` / `reject`) and the web page (read-only) have it; the MCP proposal tools and the web paste door and buttons don't yet.
 
 ## Decisions
 
