@@ -3,6 +3,8 @@
 // and applies or rejects each — over the real MCP protocol and the real
 // `@nlqdb/sdk` client, against a recorded fixture of the API's responses
 // (the same shapes as the CLI's `TestAttachDoorWalk`). No network, no LLM.
+// The fixture keeps the API's key boundary: only an `sk_live_` key attaches
+// (`SK-APIKEYS-015`); an `sk_mcp_` key decides, named in `decided_by`.
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { renderError } from "@nlqdb/errors";
@@ -23,7 +25,10 @@ function fakeApi() {
       status: code,
       headers: { "content-type": "application/json" },
     });
-  const fail = (code: "proposal_not_found" | "proposal_decided", params?: { status: string }) => {
+  const fail = (
+    code: "proposal_not_found" | "proposal_decided" | "connect_requires_account",
+    params?: { status: string },
+  ) => {
     const { httpStatus, recoverability: _r, ...wire } = renderError(code, params ?? {});
     return json({ error: wire }, httpStatus);
   };
@@ -33,8 +38,11 @@ function fakeApi() {
     const method = init?.method ?? "GET";
     const body = typeof init?.body === "string" ? init.body : "";
     requests.push({ method, path: url.pathname, body });
+    const key = new Headers(init?.headers).get("authorization")?.replace(/^Bearer /, "") ?? "";
+    const kind = key.startsWith("sk_live_") ? "sk_live" : "sk_mcp";
 
     if (method === "POST" && url.pathname === "/v1/db/connect") {
+      if (kind !== "sk_live") return fail("connect_requires_account");
       const proposals = TABLES.map((t, i) => {
         status.set(i + 1, "proposed");
         return {
@@ -90,14 +98,14 @@ function fakeApi() {
       if (cur !== "proposed" && cur !== want) return fail("proposal_decided", { status: cur });
       const replayed = cur === want;
       status.set(id, want);
-      decidedBy.set(id, "sk_mcp:key_1");
+      decidedBy.set(id, `${kind}:key_1`);
       const reason = want === "rejected" ? (JSON.parse(body || "{}").reason ?? null) : null;
       return json({
         proposal: {
           id,
           dbId: "db_attach_1",
           status: want,
-          decidedBy: "sk_mcp:key_1",
+          decidedBy: `${kind}:key_1`,
           decidedAt: 1,
           rejectReason: reason,
         },
@@ -109,10 +117,10 @@ function fakeApi() {
   return { fetch, status, decidedBy, requests };
 }
 
-async function connect() {
-  const api = fakeApi();
+// One MCP host on `apiKey`, against a shared fake API.
+async function connect(api: ReturnType<typeof fakeApi>, apiKey: string) {
   const client = createClient({
-    apiKey: "sk_mcp_test",
+    apiKey,
     baseUrl: "https://api.test",
     fetch: api.fetch,
   });
@@ -129,15 +137,25 @@ async function connect() {
     };
     return { ...res, text: res.content.map((c) => c.text).join("\n") };
   };
-  return { api, call, teardown: () => mcp.close() };
+  return { call, teardown: () => mcp.close() };
 }
 
 describe("the MCP door to the DBA (GLOBAL-043 items 5–6)", () => {
   it("attaches, lists, applies 3 and rejects 2 — every proposal decided from MCP", async () => {
-    const { api, call, teardown } = await connect();
+    const api = fakeApi();
+    const owner = await connect(api, "sk_live_owner");
+    const { call, teardown } = await connect(api, "sk_mcp_agent");
     try {
       const secret = "postgres://app:s3cret@db.example.com:5432/app";
-      const attached = await call("nlqdb_connect_database", {
+      // An `sk_mcp_` key can't attach yet — the error names the sk_live_ route.
+      const refused = await call("nlqdb_connect_database", {
+        engine: "postgres",
+        connection_url: secret,
+      });
+      expect(refused.isError).toBe(true);
+      expect(refused.text).toContain("sk_live_");
+
+      const attached = await owner.call("nlqdb_connect_database", {
         engine: "postgres",
         connection_url: secret,
       });
@@ -181,11 +199,12 @@ describe("the MCP door to the DBA (GLOBAL-043 items 5–6)", () => {
       expect(rows.find((r) => r.id === 5)?.status).toBe("rejected");
     } finally {
       await teardown();
+      await owner.teardown();
     }
   });
 
   it("a replayed verb is a no-op; the opposite verb and an unknown id say what to call next", async () => {
-    const { call, teardown } = await connect();
+    const { call, teardown } = await connect(fakeApi(), "sk_live_owner");
     try {
       await call("nlqdb_connect_database", {
         engine: "postgres",

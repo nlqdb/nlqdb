@@ -113,6 +113,21 @@ paused.
 2. Record the choice as a line in `GLOBAL-043`'s consequences, then delete
    this bullet.
 
+## 🔒 Lock whether an `sk_mcp_` key may attach a database
+
+⏱ ~5 min · blocked since 2026-10-31. `END_GOAL.md` row 8 has the coding
+agent attach with one MCP call, but the hosted MCP's `sk_mcp_` key gets
+`connect_requires_account` (`SK-APIKEYS-015` keeps attach its one
+`sk_live_`-only capability); it can already list, apply and reject. Checked
+`GLOBAL-043` items 5–6, `GLOBAL-033`'s security row, `SK-DBCONN-001`: none
+weighs a stored credential against the agent door. Default until locked:
+attach over MCP needs an `sk_live_` key.
+
+1. Pick one: (a) `sk_mcp_` attaches (amend `SK-APIKEYS-015`); (b) keep
+   `sk_live_`-only and amend `END_GOAL.md` row 8 to say so; (c) `sk_mcp_`
+   attaches only once per-database scoping ships.
+2. Record it in `SK-APIKEYS-015`, then delete this bullet.
+
 ## Recruit 10 builders once rateme12's attach shows a measured delta
 
 ⏱ ~5 h · blocked since 2026-10-14. Gated — opens when KPI B > 0 on
