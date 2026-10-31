@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 )
@@ -57,6 +58,32 @@ func (c *Client) Insert(ctx context.Context, req InsertRequest) (*InsertResult, 
 func (c *Client) Connect(ctx context.Context, req ConnectRequest) (*ConnectResponse, error) {
 	var out ConnectResponse
 	if err := c.do(ctx, http.MethodPost, "/v1/db/connect", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListChanges hits GET /v1/databases/:id/changes — the DB's ledger, newest
+// first, proposals included (GLOBAL-043).
+func (c *Client) ListChanges(ctx context.Context, dbID string) ([]DbaChange, error) {
+	var out struct {
+		Changes []DbaChange `json:"changes"`
+	}
+	if err := c.do(ctx, http.MethodGet, "/v1/databases/"+url.PathEscape(dbID)+"/changes", nil, &out); err != nil {
+		return nil, err
+	}
+	return out.Changes, nil
+}
+
+// Decide hits POST /v1/proposals/:id/<verb> — verb is "apply" or "reject"
+// (GLOBAL-043 item 5). Repeating the verb that decided it replays it.
+func (c *Client) Decide(ctx context.Context, id int64, verb, reason string) (*DecideResult, error) {
+	var body any
+	if reason != "" {
+		body = map[string]string{"reason": reason}
+	}
+	var out DecideResult
+	if err := c.do(ctx, http.MethodPost, fmt.Sprintf("/v1/proposals/%d/%s", id, verb), body, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

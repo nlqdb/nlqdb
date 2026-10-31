@@ -196,6 +196,14 @@ func writeConnect(cmd *cobra.Command, g *globalFlags, resp *api.ConnectResponse)
 	if resp.PKLive != nil && *resp.PKLive != "" {
 		fmt.Fprintf(out, "  pkLive: %s\n", *resp.PKLive)
 	}
-	fmt.Fprintf(out, "Next: nlq ask --db %s \"<question>\"\n", resp.DBID)
+	if len(resp.Proposals) == 0 {
+		fmt.Fprintf(out, "Next: nlq ask --db %s \"<question>\"\n", resp.DBID)
+		return nil
+	}
+	fmt.Fprintf(out, "%d proposals:\n", len(resp.Proposals))
+	for _, p := range resp.Proposals {
+		fmt.Fprintf(out, "  #%d  %s\n       %s\n", p.ID, p.DDL, p.Reason)
+	}
+	fmt.Fprintf(out, "Next: nlq apply %d   (or nlq reject %d --reason \"…\")\n", resp.Proposals[0].ID, resp.Proposals[0].ID)
 	return nil
 }

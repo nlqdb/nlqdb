@@ -183,6 +183,51 @@ type ConnectResponse struct {
 	Engine        string  `json:"engine"`
 	SchemaPreview string  `json:"schemaPreview"`
 	PKLive        *string `json:"pkLive,omitempty"`
+	// Postgres: the first proposals, already in the ledger (GLOBAL-043).
+	Proposals []Proposal `json:"proposals,omitempty"`
+}
+
+// Proposal mirrors the SDK's Proposal: an index the DBA would build, the
+// statement that undoes it, and why. `ID` is the id `nlq apply` takes.
+type Proposal struct {
+	ID      int64    `json:"id"`
+	Kind    string   `json:"kind"`
+	Tier    int      `json:"tier"`
+	Table   string   `json:"table"`
+	Columns []string `json:"columns"`
+	DDL     string   `json:"ddl"`
+	Inverse string   `json:"inverse"`
+	Reason  string   `json:"reason"`
+}
+
+// DbaChange mirrors the SDK's DbaChange — one row of GET
+// /v1/databases/:id/changes. Verification stays raw: the CLI prints its
+// verdict and passes the rest through under --json.
+type DbaChange struct {
+	ID           int64          `json:"id"`
+	Origin       string         `json:"origin"`
+	Status       string         `json:"status"`
+	Verification map[string]any `json:"verification,omitempty"`
+	Kind         string         `json:"kind"`
+	Table        string         `json:"table"`
+	DDL          string         `json:"ddl"`
+	Inverse      string         `json:"inverse"`
+	Reason       *string        `json:"reason"`
+	CreatedAt    int64          `json:"createdAt"`
+}
+
+// DecideResult mirrors the SDK's DecideProposalResult (POST
+// /v1/proposals/:id/apply|reject).
+type DecideResult struct {
+	Proposal struct {
+		ID           int64   `json:"id"`
+		DBID         string  `json:"dbId"`
+		Status       string  `json:"status"`
+		DecidedBy    string  `json:"decidedBy"`
+		DecidedAt    int64   `json:"decidedAt"`
+		RejectReason *string `json:"rejectReason"`
+	} `json:"proposal"`
+	Replayed bool `json:"replayed"`
 }
 
 type DatabaseSummary struct {

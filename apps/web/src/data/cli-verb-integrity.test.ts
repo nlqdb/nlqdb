@@ -62,7 +62,9 @@ describe("CLI-verb integrity (SK-WEB-008 / SK-CLI-002)", () => {
     // here — and any deferred verb (`chat`, `connection`, `keys rotate`) that
     // gets built must land as a real command file before this set includes it.
     expect([...shippedVerbs].sort()).toEqual([
+      "apply",
       "ask",
+      "attach",
       "byollm",
       "db",
       "grants",
@@ -73,7 +75,9 @@ describe("CLI-verb integrity (SK-WEB-008 / SK-CLI-002)", () => {
       "logout",
       "mcp",
       "new",
+      "proposals",
       "query",
+      "reject",
       "remember",
       "run",
       "update",
