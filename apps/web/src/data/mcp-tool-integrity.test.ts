@@ -79,12 +79,15 @@ describe("MCP tool-name integrity (SK-MCP-002)", () => {
     // Pins the source of truth so a silent rename/drop in the server is
     // caught here (and forces the doc + this allow-set to move together).
     expect([...shippedTools].sort()).toEqual([
+      "nlqdb_apply_proposal",
       "nlqdb_connect_database",
       "nlqdb_describe",
       "nlqdb_insert",
       "nlqdb_list_databases",
+      "nlqdb_list_proposals",
       "nlqdb_query",
       "nlqdb_read",
+      "nlqdb_reject_proposal",
       "nlqdb_remember",
     ]);
   });

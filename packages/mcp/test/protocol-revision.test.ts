@@ -108,6 +108,9 @@ describe("tool catalog meets the 2026-07-28 + Connectors-Directory bar", () => {
     "nlqdb_remember",
     "nlqdb_insert",
     "nlqdb_connect_database",
+    "nlqdb_list_proposals",
+    "nlqdb_apply_proposal",
+    "nlqdb_reject_proposal",
   ];
 
   it("returns tools in a deterministic order", async () => {

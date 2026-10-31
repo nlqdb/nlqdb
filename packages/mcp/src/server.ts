@@ -4,32 +4,43 @@ import type { NlqClient } from "@nlqdb/sdk";
 import { trace } from "@opentelemetry/api";
 import type { z } from "zod";
 import {
+  type ApplyProposalInput,
+  applyProposalInputShape,
   type ConnectDatabaseInput,
   type ConnectDatabaseOutput,
   connectDatabaseInputShape,
+  type DecideProposalOutput,
   type DescribeInput,
   type DescribeOutput,
   describeInputShape,
   type HandlerContext,
+  handleApplyProposal,
   handleConnectDatabase,
   handleDescribe,
   handleInsert,
   handleListDatabases,
+  handleListProposals,
   handleQuery,
   handleRead,
+  handleRejectProposal,
   handleRemember,
   type InsertInput,
   type InsertOutput,
   insertInputShape,
   type ListDatabasesOutput,
+  type ListProposalsInput,
+  type ListProposalsOutput,
   listDatabasesInputShape,
+  listProposalsInputShape,
   type QueryInput,
   type QueryOutput,
   queryInputShape,
   type ReadInput,
+  type RejectProposalInput,
   type RememberInput,
   type RememberOutput,
   readInputShape,
+  rejectProposalInputShape,
   rememberInputShape,
   type ToolError,
   type ToolResult,
@@ -208,7 +219,7 @@ export function createServer(opts: ServerOptions): McpServer {
     {
       title: "Connect an existing database so the agent can query it in English",
       description:
-        "Connect an existing ClickHouse or Postgres database so the agent can query it in natural language with nlqdb_query — no migration, no schema upload. Pass the engine and a connection URL; the credential is stored sealed server-side and never echoed back. Returns the new dbId and a preview of the discovered schema.",
+        "Connect (attach) an existing Postgres or ClickHouse database: the agent can query it in natural language with nlqdb_query, and on Postgres nlqdb's DBA starts watching it — no migration, no schema upload. Pass the engine and a connection URL; the credential is stored sealed server-side and never echoed back. Returns the new dbId, a preview of the discovered schema and, on Postgres, the DBA's first proposals to apply or reject.",
       inputSchema: connectDatabaseInputShape,
       // Reads schema + stores a credential; it creates a registry row but
       // doesn't mutate the connected database's data.
@@ -218,6 +229,57 @@ export function createServer(opts: ServerOptions): McpServer {
       return runTool("nlqdb_connect_database", extra.signal, async (ctx) => {
         const result = await handleConnectDatabase(client, args, ctx);
         return formatResult<ConnectDatabaseOutput>(result);
+      });
+    },
+  );
+
+  // GLOBAL-043 item 5 — the DBA's list and two verbs.
+  registerTool(
+    "nlqdb_list_proposals",
+    {
+      title: "List the DBA's proposals on an attached database",
+      description:
+        "List what nlqdb's DBA proposes for an attached Postgres — each an index with the statement that undoes it and the reason — plus the ones already decided, with verify's measured p95 before/after once the window has passed. Pass the dbId nlqdb_connect_database returned.",
+      inputSchema: listProposalsInputShape,
+      annotations: { readOnlyHint: true },
+    },
+    async (args: ListProposalsInput, extra: ToolExtra) => {
+      return runTool("nlqdb_list_proposals", extra.signal, async (ctx) => {
+        return formatResult<ListProposalsOutput>(await handleListProposals(client, args, ctx));
+      });
+    },
+  );
+
+  registerTool(
+    "nlqdb_apply_proposal",
+    {
+      title: "Apply one of the DBA's proposals",
+      description:
+        "Apply a proposal on the attached database: its DDL runs (an index built CONCURRENTLY), the ledger records this key as who decided, and verify measures the query it targets after the window — a regression is reverted automatically by the stored inverse. Applying the same id again is a no-op (`replayed: true`).",
+      inputSchema: applyProposalInputShape,
+      // Additive DDL with a stored inverse and auto-revert on regression;
+      // a second call with the same id changes nothing.
+      annotations: { destructiveHint: false, idempotentHint: true },
+    },
+    async (args: ApplyProposalInput, extra: ToolExtra) => {
+      return runTool("nlqdb_apply_proposal", extra.signal, async (ctx) => {
+        return formatResult<DecideProposalOutput>(await handleApplyProposal(client, args, ctx));
+      });
+    },
+  );
+
+  registerTool(
+    "nlqdb_reject_proposal",
+    {
+      title: "Reject one of the DBA's proposals",
+      description:
+        "Decline a proposal; nothing runs on the database and it is never proposed again. Give a one-sentence reason (e.g. 'this table is append-only') — the DBA learns from it.",
+      inputSchema: rejectProposalInputShape,
+      annotations: { destructiveHint: false, idempotentHint: true },
+    },
+    async (args: RejectProposalInput, extra: ToolExtra) => {
+      return runTool("nlqdb_reject_proposal", extra.signal, async (ctx) => {
+        return formatResult<DecideProposalOutput>(await handleRejectProposal(client, args, ctx));
       });
     },
   );

@@ -50,12 +50,17 @@ const EXPECTED_TOOLS: Record<string, ToolSpec> = {
     destructive: false,
     inputKeys: ["db", "kind", "payload", "endUserId", "threadId", "ttlSeconds"],
   },
-  nlqdb_insert: { readOnly: false, destructive: false, inputKeys: ["db", "table", "rows"] },
+  // `key` upserts — a keyed write overwrites the fields it names (GLOBAL-041 step 11).
+  nlqdb_insert: { readOnly: false, destructive: true, inputKeys: ["db", "table", "rows", "key"] },
   nlqdb_connect_database: {
     readOnly: false,
     destructive: false,
     inputKeys: ["engine", "connection_url", "name"],
   },
+  // GLOBAL-043 item 5 — the DBA's list and two verbs.
+  nlqdb_list_proposals: { readOnly: true, destructive: false, inputKeys: ["db"] },
+  nlqdb_apply_proposal: { readOnly: false, destructive: false, inputKeys: ["id"] },
+  nlqdb_reject_proposal: { readOnly: false, destructive: false, inputKeys: ["id", "reason"] },
 };
 // Names the tracker has mis-referenced as MCP tools — none may exist.
 const FORBIDDEN_TOOLS = ["create_database", "nlqdb_create_database", "ask", "run"];

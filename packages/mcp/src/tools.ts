@@ -5,7 +5,15 @@ import {
   isErrorCode,
   renderError,
 } from "@nlqdb/errors";
-import type { AskDiff, NlqClient, NlqdbApiError, RememberRequest } from "@nlqdb/sdk";
+import type {
+  AskDiff,
+  DbaChange,
+  DecideProposalResult,
+  NlqClient,
+  NlqdbApiError,
+  Proposal,
+  RememberRequest,
+} from "@nlqdb/sdk";
 import { z } from "zod";
 
 export type ToolError = {
@@ -255,9 +263,57 @@ export const connectDatabaseOutputShape = {
   credential: z
     .literal("stored_sealed")
     .describe("The connection URL was stored sealed server-side; it is never returned."),
+  // GLOBAL-043 item 6(d): the attach is the agent's door to the DBA — the
+  // first proposals come back on the same call.
+  proposals: z
+    .array(z.custom<Proposal>())
+    .describe(
+      "Postgres: the DBA's first proposals (an index with the statement that undoes it, and why), each with an `id` to pass to nlqdb_apply_proposal or nlqdb_reject_proposal. Empty when the schema needs nothing yet; later ones follow a day of traffic — see nlqdb_list_proposals.",
+    ),
 };
 
 export type ConnectDatabaseOutput = z.infer<z.ZodObject<typeof connectDatabaseOutputShape>>;
+
+// The DBA's two verbs and their list (`GLOBAL-043` item 5): the agent decides
+// a proposal under the owner's ceiling — the server records `sk_mcp:<keyId>`
+// as who decided, and auto-revert on regression is the same as for a human.
+export const listProposalsInputShape = {
+  db: z
+    .string()
+    .min(1)
+    .describe("Id of the attached database (the dbId nlqdb_connect_database returned)."),
+};
+export type ListProposalsInput = z.infer<z.ZodObject<typeof listProposalsInputShape>>;
+
+export const listProposalsOutputShape = {
+  proposals: z
+    .array(z.custom<DbaChange>())
+    .describe(
+      "Newest first: `proposed` ones wait for nlqdb_apply_proposal / nlqdb_reject_proposal; decided ones carry `verification` once verify has measured the fingerprint's p95 (`keep`, or `revert` and the index was dropped).",
+    ),
+};
+export type ListProposalsOutput = z.infer<z.ZodObject<typeof listProposalsOutputShape>>;
+
+const proposalId = z
+  .number()
+  .int()
+  .positive()
+  .describe("The proposal's `id` from nlqdb_list_proposals or nlqdb_connect_database.");
+
+export const applyProposalInputShape = { id: proposalId };
+export type ApplyProposalInput = z.infer<z.ZodObject<typeof applyProposalInputShape>>;
+
+export const rejectProposalInputShape = {
+  id: proposalId,
+  reason: z
+    .string()
+    .max(500)
+    .optional()
+    .describe("Why not, in a sentence — kept on the proposal for the DBA to learn from."),
+};
+export type RejectProposalInput = z.infer<z.ZodObject<typeof rejectProposalInputShape>>;
+
+export type DecideProposalOutput = DecideProposalResult;
 
 export const queryOutputShape = {
   rows: z
@@ -764,11 +820,60 @@ export async function handleConnectDatabase(
         engine: res.engine === "clickhouse" ? "clickhouse" : "postgres",
         schemaPreview: res.schemaPreview,
         credential: "stored_sealed",
+        proposals: res.proposals ?? [],
       },
     };
   } catch (err) {
     return { err: mapSdkError(err) };
   }
+}
+
+export async function handleListProposals(
+  client: NlqClient,
+  input: ListProposalsInput,
+  ctx: HandlerContext = {},
+): Promise<ToolResult<ListProposalsOutput>> {
+  try {
+    const { changes } = await client.listChanges(input.db, signalOpts(ctx));
+    // The ledger also holds the hosted path's committed DDL; only the attach
+    // rows are proposals.
+    return { ok: { proposals: changes.filter((c) => c.origin === "attach") } };
+  } catch (err) {
+    return { err: mapSdkError(err) };
+  }
+}
+
+export async function handleApplyProposal(
+  client: NlqClient,
+  input: ApplyProposalInput,
+  ctx: HandlerContext = {},
+): Promise<ToolResult<DecideProposalOutput>> {
+  try {
+    return { ok: await client.applyProposal(input.id, signalOpts(ctx)) };
+  } catch (err) {
+    return { err: mapSdkError(err) };
+  }
+}
+
+export async function handleRejectProposal(
+  client: NlqClient,
+  input: RejectProposalInput,
+  ctx: HandlerContext = {},
+): Promise<ToolResult<DecideProposalOutput>> {
+  try {
+    return {
+      ok: await client.rejectProposal(input.id, {
+        ...signalOpts(ctx),
+        ...(input.reason !== undefined ? { reason: input.reason } : {}),
+      }),
+    };
+  } catch (err) {
+    return { err: mapSdkError(err) };
+  }
+}
+
+function signalOpts(ctx: HandlerContext): { signal?: AbortSignal } {
+  return ctx.signal ? { signal: ctx.signal } : {};
 }
 
 function traceOf(trace: {
@@ -861,6 +966,13 @@ const OVERRIDES: Partial<Record<ErrorCode, Override>> = assertOverrides({
   connect_requires_account: {
     action:
       "Connect it once at https://app.nlqdb.com (signed in), or re-launch this host with an sk_live_ key. Every other tool works on the MCP key.",
+  },
+  // The registry's "list the database's changes" names no tool; an agent has one.
+  proposal_not_found: {
+    action: "Call nlqdb_list_proposals with the database id for the proposals still open.",
+  },
+  proposal_decided: {
+    action: "Nothing to do — nlqdb_list_proposals shows the ones still open.",
   },
   db_not_found: {
     action:
