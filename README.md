@@ -183,8 +183,10 @@ One loop — observe → propose → apply → verify → revert — on your Pos
 - ~ Attach product on synthetic databases — observer, `create_index`
   proposal, apply → verify → auto-revert, the four doors (the API door,
   `POST /v1/attach` / `client.attach()` with `client.applyProposal()` /
-  `rejectProposal()`, and the CLI door, `nlq attach` / `nlq proposals` /
-  `nlq apply` / `nlq reject`, are live; verify runs on its own once an applied
+  `rejectProposal()`, the CLI door, `nlq attach` / `nlq proposals` /
+  `nlq apply` / `nlq reject`, and the MCP door, `nlqdb_connect_database` /
+  `nlqdb_list_proposals` / `nlqdb_apply_proposal` / `nlqdb_reject_proposal`,
+  are live; verify runs on its own once an applied
   proposal's 72 h window has passed), tested in CI
 - ◯ Postgres spike — one index proposed, applied and measured (before/after
   p95) on a real-traffic database
