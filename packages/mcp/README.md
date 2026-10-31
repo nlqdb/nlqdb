@@ -63,7 +63,10 @@ appended by hand. All four host artifacts:
 | `nlqdb_insert` | Insert JSON rows exactly as sent; an unseen table or field is created; `key` upserts. No model call. |
 | `nlqdb_list_databases` | List your databases. |
 | `nlqdb_describe` | Describe a database's schema. |
-| `nlqdb_connect_database` | Attach your own Postgres or ClickHouse. |
+| `nlqdb_connect_database` | Attach your own Postgres or ClickHouse; on Postgres, returns the DBA's first proposals. |
+| `nlqdb_list_proposals` | List the DBA's proposals on an attached Postgres, with verify's p95 before/after on decided ones. |
+| `nlqdb_apply_proposal` | Apply one (an index with its undo statement); a regression is reverted automatically. |
+| `nlqdb_reject_proposal` | Decline one, with a reason the DBA learns from. |
 
 Destructive plans (INSERT/UPDATE/DELETE/DDL) come back as
 `requires_confirm: true` with a diff — re-call with `confirm: true` to commit.

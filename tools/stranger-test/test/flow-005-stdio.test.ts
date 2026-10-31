@@ -37,13 +37,28 @@ const GOOD: Handshake = {
     },
     {
       name: "nlqdb_insert",
-      annotations: { destructiveHint: false },
-      inputSchema: { properties: { db: {}, table: {}, rows: {} } },
+      annotations: { destructiveHint: true },
+      inputSchema: { properties: { db: {}, table: {}, rows: {}, key: {} } },
     },
     {
       name: "nlqdb_connect_database",
       annotations: { destructiveHint: false },
       inputSchema: { properties: { engine: {}, connection_url: {}, name: {} } },
+    },
+    {
+      name: "nlqdb_list_proposals",
+      annotations: { readOnlyHint: true },
+      inputSchema: { properties: { db: {} } },
+    },
+    {
+      name: "nlqdb_apply_proposal",
+      annotations: { destructiveHint: false },
+      inputSchema: { properties: { id: {} } },
+    },
+    {
+      name: "nlqdb_reject_proposal",
+      annotations: { destructiveHint: false },
+      inputSchema: { properties: { id: {}, reason: {} } },
     },
   ],
 };

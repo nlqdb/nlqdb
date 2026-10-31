@@ -12,8 +12,10 @@ Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, Cline — can call
 `nlqdb_query`, `nlqdb_read` (the read-only variant, safe to mark "always
 allow"), `nlqdb_list_databases`, `nlqdb_describe`, `nlqdb_remember`
 (write a typed memory row your agent can later query), `nlqdb_insert`
-(insert JSON rows exactly as sent; an unseen table or field is created) and
-`nlqdb_connect_database` (attach an existing ClickHouse/Postgres) directly.
+(insert JSON rows exactly as sent; an unseen table or field is created),
+`nlqdb_connect_database` (attach an existing ClickHouse/Postgres), and the
+DBA's `nlqdb_list_proposals`, `nlqdb_apply_proposal` and
+`nlqdb_reject_proposal` (index proposals on an attached Postgres) directly.
 
 ## Install paths
 
