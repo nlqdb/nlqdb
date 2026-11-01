@@ -8,11 +8,12 @@ number: doors 3/4 → 4/4, then the D1 slice.
 ## Worst: the README called the MCP door live, but users can't reach it (check 7)
 
 #1220 (run 268) added the MCP tools, and `README.md` "Now" listed them as
-live. Neither way to reach them has shipped. `Deploy MCP server` is held at
-`action_required` on `7520c42`
-([41241791417](https://github.com/nlqdb/nlqdb/actions/runs/41241791417)),
-and `@nlqdb/mcp` 0.4.0 waits in release PR #1221. Its 5/5 ran on a recorded
-fixture, not a live API. This PR rewords the line. The scorecard's
+live before either way to reach them shipped. `@nlqdb/mcp` 0.4.0 (stdio)
+has since published (#1221), but `Deploy MCP server` is still held at
+`action_required` on `d8e38ea`
+([41266559502](https://github.com/nlqdb/nlqdb/actions/runs/41266559502)),
+so `mcp.nlqdb.com` lacks them. Its 5/5 ran on a recorded fixture, not a
+live API. This PR rewords the line. The scorecard's
 "Doors that reach the loop: 3/4" means merged doors, not shipped ones;
 queue head #1 shows the gap.
 
