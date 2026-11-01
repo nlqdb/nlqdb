@@ -432,13 +432,48 @@ function ConnectResultView({ result }: { result: ConnectSuccess }) {
 
       {result.pkLive && <PkLiveRow pkLive={result.pkLive} />}
 
+      {result.engine === "postgres" && <FirstProposals result={result} />}
+
       <a
-        className="cta connect-result__cta"
+        className={`cta connect-result__cta${result.engine === "postgres" ? " cta--ghost" : ""}`}
         href={appHref(`/app/?db=${encodeURIComponent(result.dbId)}`)}
       >
         Question it now →
       </a>
     </section>
+  );
+}
+
+// The web door's first proposals (`GLOBAL-043` item 6a): what the DBA would
+// change, and one click to the page where each is applied or rejected.
+function FirstProposals({ result }: { result: ConnectSuccess }) {
+  const proposals = result.proposals ?? [];
+  const dbaHref = appHref(`/app/dba/?db=${encodeURIComponent(result.dbId)}`);
+  if (proposals.length === 0) {
+    return (
+      <p className="connect__hint">
+        Nothing worth changing yet — watching. Workload proposals follow a day of traffic, on{" "}
+        <a className="connect__hint-link" href={dbaHref}>
+          its changes page
+        </a>
+        .
+      </p>
+    );
+  }
+  return (
+    <>
+      <p className="connect-result__schema-label">
+        {proposals.length} {proposals.length === 1 ? "proposal" : "proposals"} — nothing applied yet
+      </p>
+      <ul className="connect__hint">
+        {proposals.map((p) => (
+          <li key={p.id}>{p.reason}</li>
+        ))}
+      </ul>
+      <a className="cta connect-result__cta" href={dbaHref}>
+        Review {proposals.length === 1 ? "it" : `all ${proposals.length}`} →
+      </a>
+    </>
   );
 }
 

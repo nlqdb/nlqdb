@@ -1,13 +1,14 @@
-// `/app/dba` v0 (GLOBAL-041 step 11, END_GOAL row 4): the change ledger —
-// every schema change the DBA made on a database, newest first, each with
-// the statement that undoes it. Read-only; apply/undo is Phase B.
+// `/app/dba` (END_GOAL row 7): the change ledger — every schema change the
+// DBA made or proposes on a database, newest first, each with the statement
+// that undoes it. A proposal on an attached DB carries the web door's two
+// verbs (`GLOBAL-043` item 5): Apply and Reject, one click each.
 
 import { type DatabaseSummary, type DbaChange, NlqdbApiError } from "@nlqdb/sdk";
 import { useEffect, useState } from "react";
 import { appHref } from "../../lib/app-href";
 import { getChatClient } from "../../lib/chat-client";
 import ErrorBoundary from "../ErrorBoundary";
-import { describeChange, pickDb } from "./ledger";
+import { decide, describeChange, pickDb, type Verb, withStatus } from "./ledger";
 
 interface DbaPanelProps {
   apiBase: string;
@@ -70,8 +71,8 @@ function DbaPanelInner({ apiBase }: DbaPanelProps) {
         <div>
           <h1 className="keys__title">Schema changes</h1>
           <p className="keys__lede">
-            Every table, column and index the DBA added to your database, newest first. Each one
-            shows the statement that undoes it.
+            Every change the DBA made or proposes on your database, newest first, each with the
+            statement that undoes it. Apply a proposal and it is measured, then kept or reverted.
           </p>
         </div>
         {state.kind === "ready" && state.dbs.length > 1 && (
@@ -87,12 +88,27 @@ function DbaPanelInner({ apiBase }: DbaPanelProps) {
           </label>
         )}
       </header>
-      <Body state={state} />
+      <Body
+        state={state}
+        onDecided={(id, status) =>
+          setState((s) =>
+            s.kind === "ready" && s.changes
+              ? { ...s, changes: withStatus(s.changes, id, status) }
+              : s,
+          )
+        }
+      />
     </section>
   );
 }
 
-function Body({ state }: { state: LoadState }) {
+function Body({
+  state,
+  onDecided,
+}: {
+  state: LoadState;
+  onDecided: (id: number, status: DbaChange["status"]) => void;
+}) {
   if (state.kind === "loading" || (state.kind === "ready" && state.changes === null)) {
     return <p className="keys__status">Loading schema changes…</p>;
   }
@@ -116,9 +132,8 @@ function Body({ state }: { state: LoadState }) {
     return (
       <div className="keys__empty">
         <p>
-          No schema changes on {state.db.displayName} yet. Insert a row with a field it hasn't seen
-          — <code>client.insert()</code> or <code>nlq insert</code> — and the column the DBA adds
-          shows up here with its undo statement.
+          Nothing worth changing on {state.db.displayName} yet — watching. Workload proposals follow
+          a day of traffic and show up here, each with its undo statement.
         </p>
       </div>
     );
@@ -146,9 +161,69 @@ function Body({ state }: { state: LoadState }) {
           <pre className="dba__sql dba__sql--inverse">
             <code>{c.inverse}</code>
           </pre>
+          {c.status === "proposed" && <Decide id={c.id} onDecided={onDecided} />}
         </li>
       ))}
     </ol>
+  );
+}
+
+// Apply builds the index `CONCURRENTLY`; verify judges it after its window and
+// reverts it if its query got slower. A reject keeps the reason given.
+function Decide({
+  id,
+  onDecided,
+}: {
+  id: number;
+  onDecided: (id: number, status: DbaChange["status"]) => void;
+}) {
+  const [busy, setBusy] = useState<Verb | null>(null);
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function run(verb: Verb) {
+    setBusy(verb);
+    setError(null);
+    const out = await decide(getChatClient(), id, verb, reason);
+    setBusy(null);
+    if (out.ok) onDecided(id, out.status);
+    else setError(out.message);
+  }
+
+  return (
+    <div className="dba__decide">
+      <button
+        type="button"
+        className="cta"
+        disabled={busy !== null}
+        onClick={() => void run("apply")}
+      >
+        {busy === "apply" ? "Building the index…" : "Apply"}
+      </button>
+      <input
+        className="dba__reason"
+        type="text"
+        value={reason}
+        maxLength={500}
+        placeholder="Reason to reject (optional)"
+        aria-label="Reason to reject (optional)"
+        disabled={busy !== null}
+        onChange={(e) => setReason(e.target.value)}
+      />
+      <button
+        type="button"
+        className="cta cta--ghost"
+        disabled={busy !== null}
+        onClick={() => void run("reject")}
+      >
+        {busy === "reject" ? "Rejecting…" : "Reject"}
+      </button>
+      {error && (
+        <p className="keys__status keys__status--error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 

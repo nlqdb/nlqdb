@@ -69,3 +69,28 @@
 .dba__sql--inverse {
   color: var(--fg-dim);
 }
+
+.dba__decide {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.dba__reason {
+  flex: 1 1 180px;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r-md);
+  padding: 6px 8px;
+}
+
+.dba__decide .keys__status {
+  flex-basis: 100%;
+  margin: 0;
+}

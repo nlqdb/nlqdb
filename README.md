@@ -178,15 +178,17 @@ One loop — observe → propose → apply → verify → revert — on your Pos
 (Supabase, Neon, RDS) or Cloudflare D1. Plan, KPIs and exit gate:
 [`GLOBAL-043`](./docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md).
 
-- ~ `/app/dba` change ledger — every change with its inverse, newest first
-  (read-only v0)
+- ~ `/app/dba` change ledger — every change with its inverse, newest first;
+  Apply / Reject on each proposal
 - ~ Attach product on synthetic databases — observer, `create_index`
-  proposal, apply → verify → auto-revert, the four doors (the API door,
+  proposal, apply → verify → auto-revert, the four doors (the web door,
+  paste a Postgres string at `/app/connect` then Apply / Reject in
+  `/app/dba`, the API door,
   `POST /v1/attach` / `client.attach()` with `client.applyProposal()` /
   `rejectProposal()`, the CLI door, `nlq attach` / `nlq proposals` /
   `nlq apply` / `nlq reject`, and the MCP door, `nlqdb_connect_database` /
   `nlqdb_list_proposals` / `nlqdb_apply_proposal` / `nlqdb_reject_proposal`;
-  the API, CLI and stdio MCP (`@nlqdb/mcp` 0.4.0) doors are live; hosted
+  the web, API, CLI and stdio MCP (`@nlqdb/mcp` 0.4.0) doors are live; hosted
   `mcp.nlqdb.com` serves the MCP tools once its held deploy runs; verify
   runs on its own once an applied proposal's 72 h window has passed),
   tested in CI
