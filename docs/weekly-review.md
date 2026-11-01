@@ -1,84 +1,92 @@
-# Weekly review — 2026-10-25
+# Weekly review — 2026-11-01
 
 Current-state audit of `/daily` (≤ 4 KB, overwritten weekly). Window
-10-18→10-25: runs 252–260 (#1189–#1204), plus the `GLOBAL-043` steer
-(#1199–#1201, re-sequenced 10-23). The focus is the founder's (10-22/23),
-kept as is.
+10-25→11-01: runs 261–268 (#1206–#1220), plus #1211 (`SK-LLM-055`) and
+#1214 (rateme12 clone deleted). Founder focus kept. This week's focus
+number: doors 3/4 → 4/4, then the D1 slice.
 
-## Worst: five deltas can't be re-run, and KPI A's number isn't CI's (check 5)
+## Worst: the README called the MCP door live, but users can't reach it (check 7)
 
-- **#1192–#1196** (runs 254–258) claim real-Postgres walks: 1200 → 600,
-  0/196 → 196/196, 0 → 11/11, 0/94 → 94/94, 0/9 → 9/9. None of those walks
-  was committed: the five PRs add unit tests over stubbed Postgres (plus
-  #1196's D1 ledger test), no Postgres test or walk script. Last week
-  flagged the same gap on #1183, and it recurred five times.
-- **#1204** fixes the pattern. `test-dba-postgres` reruns its walk on every
-  CI run. Its scorecard number is still not CI's: row EA reads 27.9 ms (a
-  local median of 5), but `main` CI printed **160.5 ms**
-  ([job 121135988443](https://github.com/nlqdb/nlqdb/actions/runs/40182391387/job/121135988443)).
-  Both are far below the 5 min target. Row EA now cites both.
+#1220 (run 268) added the MCP tools, and `README.md` "Now" listed them as
+live before either way to reach them shipped. `@nlqdb/mcp` 0.4.0 (stdio)
+has since published (#1221), but `Deploy MCP server` is still held at
+`action_required` on `d8e38ea`
+([41266559502](https://github.com/nlqdb/nlqdb/actions/runs/41266559502)),
+so `mcp.nlqdb.com` lacks them. Its 5/5 ran on a recorded fixture, not a
+live API. This PR rewords the line. The scorecard's
+"Doors that reach the loop: 3/4" now holds for shipped doors (CLI
+v0.1.25, stdio MCP 0.4.0); only hosted MCP waits on queue head #1.
 
-## Monoculture (check 2)
+## Delta integrity (check 5): the numbers re-ran
 
-Runs 252–258 (7 of 9) built on `insert()` (`GLOBAL-041` steps 1, 2, 11).
-Then `GLOBAL-043` (10-22) put `insert()` on its deletion list. That was a
-founder pivot, not a rut, but this week's build mostly went into a path
-slated for deletion once the spike passes. Run 259 was a correct null, and the 10-23
-re-sequence opened 1a. Run 260 shipped slice 1, the first engine number
-on the new plan.
+All 8 runs committed their walks as CI tests, which fixes last week's
+gap. I re-ran them on a local Postgres 16 with `pg_stat_statements`:
+
+| Walk | Claimed | Re-run |
+|---|---|---|
+| `dba-observe-postgres.pg.test.ts` | KPI B 2/2 kept, KPI C 1/1 | 2/2 kept, 1/1 |
+| `attach.pg.test.ts`, KPI A | 48.5 ms | 66.2 ms |
+| `attach.pg.test.ts`, Tier 1 | 2/2 | 2/2 |
+| `attach.pg.test.ts`, verify | 6/6 | 6/6 |
+| CLI `TestAttachDoorWalk` | pass | pass |
+| MCP `dba-door.test.ts` | pass | pass |
+
+KPI A is noisy at the ms scale, but every reading is far under 5 min.
 
 ## Trend (check 1)
 
-- **Engine:** KPI A (synthetic) went from unmeasured to measured. B and C
-  stay unmeasured until the apply/verify slice lands.
-- **UX:** `/app/dba` v0 ledger view (#1196).
+- **Engine:** synthetic KPIs moved. KPI B went 0 → 1 kept through the job,
+  KPI C 1/1, and doors 0 → 3/4.
+- **UX:** the `/app/dba` ledger shows decisions and verdicts.
 - **Onboarding:** flat.
-- **Performance:** dark. Row #13 has been carried since 07-27 (90 d).
-- No `GLOBAL-025` alert fired. BIRD/Spider are dark, not red.
+- **Performance:** dark.
+- No `GLOBAL-025` alert. BIRD/Spider are dark, not red.
+
+## Monoculture (check 2)
+
+8 of 8 runs took 1a slices. That is the plan, not a rut: each moved a
+distinct number. About 2 slices remain (the web door, then D1). After
+that, both 1b tracks wait on founder secrets (queue #2 spike DB and #3 D1
+token, 10 d each). The loop will then run null runs, so those two bullets
+decide next week's yield.
 
 ## Inert output (check 3)
 
-- **Draft #1179 (11 d):** it fixes a write path `insert()` replaced. It can
-  never be adopted, and only `/review` may close it.
-- **Dogfood canary:** all 6 window-3 MISSes are `write_constraint:unique`
-  on its own row shape: 2 `scorecard_deltas` re-sends (keyed since run
-  254) and 4 `blocked_items` rows (cause unverified). The canary stays
-  until `insert()` goes (`GLOBAL-043`), so the fix is a `blockedWrites` `key`.
+- **Draft #1179 (18 d):** still not adoptable. This is the 3rd week it's
+  flagged; `/review` should close it.
+- **Canary paragraph:** the scorecard header still lists per-merge canary
+  verdicts for `insert()`, a path slated for deletion. It runs about
+  8 lines a day and nobody acts on it. Shrink it to one line on the next
+  daily.
 
 ## Dark metrics (check 4)
 
-- **Row #18** is a phantom claim. `docs.nlqdb.com/sdk` (`sdk.mdx:103`)
-  still offers `runSql({ dryRun })`, re-checked unbuilt. It
-  has been carried since run 232 (10-06). It costs $0, but no step-2 slot
-  takes it. Rule 9 allows fixes to existing surfaces, so a null run could.
-- **Row #13** (performance) names no blocker in the queue; it needs
-  Grafana `metrics:read`.
-- **Rows #8/#9, #15 and #20** name their blockers. The queue is 10 deep,
-  and its head (spike DB) is 3 d old.
+- **Row #18** (phantom `runSql({ dryRun })` in `sdk.mdx:103`): flagged for a
+  3rd week. It costs $0 and is agent-fixable, but no step-2 slot takes it.
+- **Row #13** (perf, carried since 07-27, 97 d): it measures `/v1/ask`,
+  which `GLOBAL-043` deletes. Queueing a Grafana-token bullet would spend
+  founder minutes on a path that is going away, so none was added.
+- **Rows #8/#9/#15/#20:** blockers named.
 
 ## Prompt drift (check 6)
 
-All IDs and paths in `daily.md` and `weekly.md` resolve. Rule 5 cited
-`GLOBAL-007` for a "Become AI update list", but `GLOBAL-007` never names it
-and `GLOBAL-043` retired the EK track. That clause is removed here.
-
-## Public roadmap (check 7)
-
-`README.md` "Now" marked the synthetic attach product ◯. Slice 1 is
-merged (#1204), so it is now ~. The other markers match.
+Every ID and path in `daily.md` and `weekly.md` resolves. No dead rules,
+so `daily.md` is unchanged.
 
 ## Free-model roster (check 8)
 
-**Plan chain, best first:** groq-qwen `qwen3.8-27b` → gemini
-`2.5-flash` → ~~cerebras `gpt-oss-120b`~~ → groq `gpt-oss-120b` →
-workers-ai `llama-3.3-70b` → openrouter → mistral.
+**Plan chain, best first:** groq-qwen `qwen3.8-27b` → gemini `2.5-flash` →
+cerebras `gpt-oss-120b` → groq `gpt-oss-120b` → workers-ai
+`llama-3.3-70b` (capped by `SK-LLM-055`) → openrouter → mistral.
 
-- **Cerebras** still returns 402 `payment_required` (chat probe today),
-  for a 5th week. Removing it amends `SK-LLM-023`, so it is flagged only.
-- **Gemini:** the key now lists `gemini-3.x-flash` (3.5–3.8). Free-tier
-  quotas for them are unconfirmed
-  ([ai.google.dev pricing](https://ai.google.dev/pricing),
-  [forum](https://discuss.ai.google.dev/t/limits-on-gemini-api-free-tier-not-resetting/135026)),
-  and daily rule 3 bars live probes. With no LLM in any hot path
-  (`GLOBAL-043`), the swap is low priority, so nothing changed.
-- **Blocked-by-human:** no bullet; no new key is needed.
+- 2026 roundups still rank Groq gpt-oss/Qwen and Gemini Flash as the
+  free leaders. Gemini's free tier is Flash-only since April, with
+  3.5-flash listed at about 1,500 RPD
+  ([OpenRouter](https://openrouter.ai/blog/tutorials/free-llm-apis-compared/),
+  [agentdeals](https://agentdeals.dev/gemini-api-pricing-changes),
+  [costbench](https://costbench.com/best/best-llm-api-with-free-tier/)).
+- No model is missing that is worth a key, since there is no LLM in any
+  hot path (`GLOBAL-043`).
+- Cerebras's 402 status is carried from last week (no live probe, daily
+  rule 3).
+- No blocked-by-human bullet.
