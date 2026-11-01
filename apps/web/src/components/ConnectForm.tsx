@@ -13,6 +13,7 @@
 // validate → introspect → seal → register) → success (render the schema
 // preview + a "Question it now →" CTA) / error (one sentence, GLOBAL-012).
 
+import type { Proposal } from "@nlqdb/sdk";
 import { useEffect, useId, useState } from "react";
 import { appHref } from "../lib/app-href";
 import {
@@ -417,6 +418,9 @@ function ProjectPicker({
 }
 
 function ConnectResultView({ result }: { result: ConnectSuccess }) {
+  // Only the Postgres paste path observes on connect; the OAuth picker result
+  // carries no `proposals`, so it never claims "nothing worth changing".
+  const attached = result.engine === "postgres" && result.proposals !== undefined;
   return (
     <section className="connect-result" aria-label="Connected database">
       <p className="connect-result__id">
@@ -432,10 +436,10 @@ function ConnectResultView({ result }: { result: ConnectSuccess }) {
 
       {result.pkLive && <PkLiveRow pkLive={result.pkLive} />}
 
-      {result.engine === "postgres" && <FirstProposals result={result} />}
+      {attached && <FirstProposals dbId={result.dbId} proposals={result.proposals ?? []} />}
 
       <a
-        className={`cta connect-result__cta${result.engine === "postgres" ? " cta--ghost" : ""}`}
+        className={`cta connect-result__cta${attached ? " cta--ghost" : ""}`}
         href={appHref(`/app/?db=${encodeURIComponent(result.dbId)}`)}
       >
         Question it now →
@@ -446,9 +450,8 @@ function ConnectResultView({ result }: { result: ConnectSuccess }) {
 
 // The web door's first proposals (`GLOBAL-043` item 6a): what the DBA would
 // change, and one click to the page where each is applied or rejected.
-function FirstProposals({ result }: { result: ConnectSuccess }) {
-  const proposals = result.proposals ?? [];
-  const dbaHref = appHref(`/app/dba/?db=${encodeURIComponent(result.dbId)}`);
+function FirstProposals({ dbId, proposals }: { dbId: string; proposals: Proposal[] }) {
+  const dbaHref = appHref(`/app/dba/?db=${encodeURIComponent(dbId)}`);
   if (proposals.length === 0) {
     return (
       <p className="connect__hint">
