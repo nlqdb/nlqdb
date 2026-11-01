@@ -131,9 +131,11 @@ function Body({
   if (changes.length === 0) {
     return (
       <div className="keys__empty">
+        {/* The DB list carries no attached flag, so the copy can't claim "watching" for a DB nlqdb isn't observing. */}
         <p>
-          Nothing worth changing on {state.db.displayName} yet — watching. Workload proposals follow
-          a day of traffic and show up here, each with its undo statement.
+          No changes on {state.db.displayName} yet. On a Postgres you connected, nlqdb watches the
+          workload: proposals follow a day of traffic and show up here, each with its undo
+          statement.
         </p>
       </div>
     );
