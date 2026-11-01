@@ -14,8 +14,8 @@ has since published (#1221), but `Deploy MCP server` is still held at
 ([41266559502](https://github.com/nlqdb/nlqdb/actions/runs/41266559502)),
 so `mcp.nlqdb.com` lacks them. Its 5/5 ran on a recorded fixture, not a
 live API. This PR rewords the line. The scorecard's
-"Doors that reach the loop: 3/4" means merged doors, not shipped ones;
-queue head #1 shows the gap.
+"Doors that reach the loop: 3/4" now holds for shipped doors (CLI
+v0.1.25, stdio MCP 0.4.0); only hosted MCP waits on queue head #1.
 
 ## Delta integrity (check 5): the numbers re-ran
 
