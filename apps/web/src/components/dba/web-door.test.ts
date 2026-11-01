@@ -127,7 +127,7 @@ describe("the web door to the DBA (GLOBAL-043 items 5–6a)", () => {
     expect(api.reasons.get(4)).toBe("write-heavy table");
   });
 
-  it("a replay is a no-op; the opposite verb and an unknown id show the API's sentence", async () => {
+  it("a replay is a no-op; the opposite verb moves the row to its real status; an unknown id shows the API's sentence", async () => {
     const api = fakeApi();
     globalThis.fetch = api.fetch as typeof fetch;
     const client = createClient({
@@ -140,8 +140,9 @@ describe("the web door to the DBA (GLOBAL-043 items 5–6a)", () => {
     expect(await decide(client, 1, "apply")).toEqual({ ok: true, status: "applied" });
     expect(await decide(client, 1, "apply")).toEqual({ ok: true, status: "applied" });
     expect(await decide(client, 1, "reject")).toEqual({
-      ok: false,
-      message: "That proposal was already applied.",
+      ok: true,
+      status: "applied",
+      note: "That proposal was already applied.",
     });
     expect(await decide(client, 404, "apply")).toEqual({
       ok: false,

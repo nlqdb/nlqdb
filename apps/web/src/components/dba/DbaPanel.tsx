@@ -31,6 +31,8 @@ export default function DbaPanel(props: DbaPanelProps) {
 
 function DbaPanelInner({ apiBase }: DbaPanelProps) {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+  // A decision that found the row already decided says so on that row.
+  const [notes, setNotes] = useState<Record<number, string>>({});
   const [dbId, setDbId] = useState<string | null>(() =>
     new URLSearchParams(location.search).get("db"),
   );
@@ -90,24 +92,30 @@ function DbaPanelInner({ apiBase }: DbaPanelProps) {
       </header>
       <Body
         state={state}
-        onDecided={(id, status) =>
+        notes={notes}
+        onDecided={(id, status, note) => {
           setState((s) =>
             s.kind === "ready" && s.changes
               ? { ...s, changes: withStatus(s.changes, id, status) }
               : s,
-          )
-        }
+          );
+          if (note) setNotes((n) => ({ ...n, [id]: note }));
+        }}
       />
     </section>
   );
 }
 
+type OnDecided = (id: number, status: DbaChange["status"], note?: string) => void;
+
 function Body({
   state,
+  notes,
   onDecided,
 }: {
   state: LoadState;
-  onDecided: (id: number, status: DbaChange["status"]) => void;
+  notes: Record<number, string>;
+  onDecided: OnDecided;
 }) {
   if (state.kind === "loading" || (state.kind === "ready" && state.changes === null)) {
     return <p className="keys__status">Loading schema changes…</p>;
@@ -164,6 +172,11 @@ function Body({
             <code>{c.inverse}</code>
           </pre>
           {c.status === "proposed" && <Decide id={c.id} onDecided={onDecided} />}
+          {notes[c.id] && (
+            <p className="keys__status" role="status">
+              {notes[c.id]}
+            </p>
+          )}
         </li>
       ))}
     </ol>
@@ -172,13 +185,7 @@ function Body({
 
 // Apply builds the index `CONCURRENTLY`; verify judges it after its window and
 // reverts it if its query got slower. A reject keeps the reason given.
-function Decide({
-  id,
-  onDecided,
-}: {
-  id: number;
-  onDecided: (id: number, status: DbaChange["status"]) => void;
-}) {
+function Decide({ id, onDecided }: { id: number; onDecided: OnDecided }) {
   const [busy, setBusy] = useState<Verb | null>(null);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -188,7 +195,7 @@ function Decide({
     setError(null);
     const out = await decide(getChatClient(), id, verb, reason);
     setBusy(null);
-    if (out.ok) onDecided(id, out.status);
+    if (out.ok) onDecided(id, out.status, out.note);
     else setError(out.message);
   }
 

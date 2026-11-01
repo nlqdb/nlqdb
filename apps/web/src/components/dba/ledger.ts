@@ -44,7 +44,9 @@ const ms = (n: number) => `${n < 10 ? n.toFixed(2) : n.toFixed(0)} ms`;
 // ledger names the person (`user:<id>`). The outcome is the row's new status,
 // or one sentence the row shows in place — never a silent failure.
 export type Verb = "apply" | "reject";
-export type Decision = { ok: true; status: DbaChange["status"] } | { ok: false; message: string };
+export type Decision =
+  | { ok: true; status: DbaChange["status"]; note?: string }
+  | { ok: false; message: string };
 
 export async function decide(
   client: Pick<NlqClient, "applyProposal" | "rejectProposal">,
@@ -63,11 +65,19 @@ export async function decide(
     // The API's copy is already one safe sentence (`GLOBAL-012`).
     if (err instanceof NlqdbApiError) {
       if (err.httpStatus === 401) return { ok: false, message: "Sign in again to decide." };
+      // Decided elsewhere (another tab, the CLI, an agent): the row moves to its real status.
+      const status = err.body?.params?.status;
+      if (err.code === "proposal_decided" && isDecided(status)) {
+        return { ok: true, status, note: err.body?.message ?? `Already ${status}.` };
+      }
       return { ok: false, message: err.body?.message ?? "Couldn't decide that one — try again." };
     }
     return { ok: false, message: "Couldn't reach the API — try again." };
   }
 }
+
+const isDecided = (s: unknown): s is DbaChange["status"] =>
+  s === "applied" || s === "rejected" || s === "reverted";
 
 // The ledger after a decision: only that row's status moves.
 export function withStatus(
