@@ -1,7 +1,7 @@
 ---
-// `/app/dba` v0 (GLOBAL-041 step 11, END_GOAL row 4): every schema change the
-// DBA made on a database, newest first, each with its inverse. Reads
-// `GET /v1/databases/:id/changes`; proposals and apply/undo come in Phase B.
+// `/app/dba` (END_GOAL row 7): every schema change the DBA made or proposes
+// on a database, newest first, each with its inverse, and Apply / Reject on
+// each proposal (GLOBAL-043 item 5). Reads `GET /v1/databases/:id/changes`.
 
 import AppAnalytics from "../../components/AppAnalytics.astro";
 import ConsentBanner from "../../components/ConsentBanner.astro";
@@ -15,7 +15,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 ---
 <Base
   title="Schema changes — nlqdb"
-  description="Every schema change the DBA made on your database, with its undo statement."
+  description="Every schema change the DBA made or proposes on your database, with its undo statement."
   noindex
 >
   <div class="page page--keys" id="dba-shell" data-api-base={apiBase} hidden>

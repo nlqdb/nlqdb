@@ -10,6 +10,7 @@
 // helper just shapes the call + normalises the response into a tagged
 // outcome; the error `message` is rendered verbatim as one sentence.
 
+import type { Proposal } from "@nlqdb/sdk";
 import { firstTouchSource } from "./attribution";
 
 export type ConnectEngine = "clickhouse" | "postgres";
@@ -20,6 +21,9 @@ export interface ConnectSuccess {
   engine: string;
   schemaPreview: string;
   pkLive: string | null;
+  // Postgres: the attach's first proposals (`GLOBAL-043`), already in the
+  // ledger; absent on the OAuth picker path.
+  proposals?: Proposal[];
 }
 
 export type ConnectOutcome =

@@ -13,6 +13,7 @@
 // validate → introspect → seal → register) → success (render the schema
 // preview + a "Question it now →" CTA) / error (one sentence, GLOBAL-012).
 
+import type { Proposal } from "@nlqdb/sdk";
 import { useEffect, useId, useState } from "react";
 import { appHref } from "../lib/app-href";
 import {
@@ -417,6 +418,9 @@ function ProjectPicker({
 }
 
 function ConnectResultView({ result }: { result: ConnectSuccess }) {
+  // Only the Postgres paste path observes on connect; the OAuth picker result
+  // carries no `proposals`, so it never claims "nothing worth changing".
+  const attached = result.engine === "postgres" && result.proposals !== undefined;
   return (
     <section className="connect-result" aria-label="Connected database">
       <p className="connect-result__id">
@@ -432,13 +436,47 @@ function ConnectResultView({ result }: { result: ConnectSuccess }) {
 
       {result.pkLive && <PkLiveRow pkLive={result.pkLive} />}
 
+      {attached && <FirstProposals dbId={result.dbId} proposals={result.proposals ?? []} />}
+
       <a
-        className="cta connect-result__cta"
+        className={`cta connect-result__cta${attached ? " cta--ghost" : ""}`}
         href={appHref(`/app/?db=${encodeURIComponent(result.dbId)}`)}
       >
         Question it now →
       </a>
     </section>
+  );
+}
+
+// The web door's first proposals (`GLOBAL-043` item 6a): what the DBA would
+// change, and one click to the page where each is applied or rejected.
+function FirstProposals({ dbId, proposals }: { dbId: string; proposals: Proposal[] }) {
+  const dbaHref = appHref(`/app/dba/?db=${encodeURIComponent(dbId)}`);
+  if (proposals.length === 0) {
+    return (
+      <p className="connect__hint">
+        Nothing worth changing yet — watching. Workload proposals follow a day of traffic, on{" "}
+        <a className="connect__hint-link" href={dbaHref}>
+          its changes page
+        </a>
+        .
+      </p>
+    );
+  }
+  return (
+    <>
+      <p className="connect-result__schema-label">
+        {proposals.length} {proposals.length === 1 ? "proposal" : "proposals"} — nothing applied yet
+      </p>
+      <ul className="connect__hint">
+        {proposals.map((p) => (
+          <li key={p.id}>{p.reason}</li>
+        ))}
+      </ul>
+      <a className="cta connect-result__cta" href={dbaHref}>
+        Review {proposals.length === 1 ? "it" : `all ${proposals.length}`} →
+      </a>
+    </>
   );
 }
 
