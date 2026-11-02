@@ -131,6 +131,7 @@ export const DISALLOWED_FUNCTIONS: ReadonlySet<string> = new Set([
   "dblink",
   "dblink_exec",
   "dblink_connect",
+  "dblink_connect_u",
   "lo_import",
   "lo_export",
   "pg_read_file",

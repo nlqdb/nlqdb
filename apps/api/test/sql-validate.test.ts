@@ -53,6 +53,7 @@ describe("validateSql", () => {
       ["WITH x AS (SELECT pg_sleep(3)) SELECT 1", "disallowed_function"],
       ["SELECT pg_read_file('/etc/passwd')", "disallowed_function"],
       ["SELECT dblink('host=evil', 'select 1')", "disallowed_function"],
+      ["SELECT dblink_connect_u('c', 'dbname=x')", "disallowed_function"],
       ["SELECT lo_import('/etc/passwd')", "disallowed_function"],
       // RLS-tenancy GUC primitives: inside user SQL they could re-arm
       // `app.tenant_id` or reset the role the exec wrapper sets outside it.
