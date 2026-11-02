@@ -122,7 +122,6 @@ describe("validateSql", () => {
       // `other.t` on a real Postgres 16 with the earlier lexer.
       "SHOW x --\r; RESET ROLE; SELECT * FROM other.t",
       "EXPLAIN SELECT 1 AS é$$; RESET ROLE; SELECT * FROM other.t; --$$",
-      "EXPLAIN SELECT 1 AS éE'\\'; RESET ROLE; SELECT 1 --'",
       "SHOW x;\u00a0RESET ROLE",
       // A quote or dollar-quote right after a number or `$n` fails closed.
       "EXPLAIN SELECT 1$$; RESET ROLE; $$",
@@ -168,15 +167,13 @@ describe("validateSql", () => {
     expect(containsWriteVerb(sql)).toBe(false); // so the validator is the gate
   });
 
-  it("names the reported payload a second statement, not a parse failure", () => {
-    expect(validateSql(`SELECT 'a\\'; RESET ROLE; SELECT 1 -- '`)).toEqual({
-      ok: false,
-      reason: "multi_statement",
-    });
-    expect(validateSql("SELECT 'a\\', pg_sleep(1) -- '")).toEqual({
-      ok: false,
-      reason: "multi_statement",
-    });
+  it.each([
+    `SELECT 'a\\'; RESET ROLE; SELECT 1 -- '`,
+    "SELECT 'a\\', pg_sleep(1) -- '",
+    "SELECT 'C:\\'",
+    "EXPLAIN SELECT 1 AS éE'\\'; RESET ROLE; SELECT 1 --'",
+  ])("names the backslash before a quote, not a second statement %j", (sql) => {
+    expect(validateSql(sql)).toEqual({ ok: false, reason: "backslash_quote" });
   });
 
   it.each([
@@ -346,8 +343,8 @@ describe("containsWriteVerb", () => {
 // fails closed instead of reaching Postgres.
 describe("validateSqlPg", () => {
   it.each([
-    ["SELECT 'a\\'; RESET ROLE; SELECT secret FROM other.orders -- '", "multi_statement"],
-    ["SELECT 'a\\', pg_sleep(1) -- '", "multi_statement"],
+    ["SELECT 'a\\'; RESET ROLE; SELECT secret FROM other.orders -- '", "backslash_quote"],
+    ["SELECT 'a\\', pg_sleep(1) -- '", "backslash_quote"],
     ["SELECT pg_catalog.pg_sleep(1)", "disallowed_function"],
     ["SELECT * INTO newt FROM t", "disallowed_verb"],
     ["WITH d AS (UPDATE t SET a = 1 RETURNING *) SELECT * FROM d", "update_without_where"],

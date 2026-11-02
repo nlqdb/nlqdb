@@ -64,6 +64,7 @@ export type SqlRejectReason =
   | "disallowed_verb"
   | "disallowed_function"
   | "multi_statement"
+  | "backslash_quote"
   | "parse_failed"
   | "empty";
 
@@ -207,35 +208,36 @@ const collapseComments = (s: string): string => {
 // * FROM other.t` (no parse) and `SELECT 'a\'; RESET ROLE; SELECT … -- '`
 // (parsed as one SELECT) drop back to the RLS-bypassing owner. A lexer, not
 // a regex — a `;` inside a string, quoted identifier, dollar-quote or comment
-// is not a separator. Fails closed on: unterminated input; a `$` or `'`
-// right after a number or `$n` (never valid SQL; Postgres versions lex it
-// differently); and a backslash before a quote in a standard '…' string,
-// which Postgres takes literally but node-sql-parser reads as an escape, so
-// the validator's walk would see a different query than Postgres runs.
-export function hasSecondStatement(sql: string): boolean {
+// is not a separator. Fails closed (`multi_statement`) on unterminated input
+// and on a `$` or `'` right after a number or `$n` (never valid SQL; Postgres
+// versions lex it differently). A backslash before a quote in a standard '…'
+// string is `backslash_quote`: Postgres takes it literally but node-sql-parser
+// reads it as an escape, so the walk would see a query Postgres never runs.
+export function splitReject(sql: string): "multi_statement" | "backslash_quote" | null {
   const n = sql.length;
   let afterSemi = false;
   for (let i = 0; i < n; ) {
     const c = sql[i] as string;
     const end = commentEnd(sql, i);
     const tag = c === "$" ? dollarTag(sql, i) : undefined;
-    if (end === -1) return true;
+    if (end === -1) return "multi_statement";
     if (end > i) {
       i = end;
     } else if (PG_SPACE.test(c)) {
       i++;
     } else if (afterSemi) {
-      return true;
+      return "multi_statement";
     } else if (c === ";") {
       afterSemi = true;
       i++;
     } else if (tag) {
       const close = sql.indexOf(tag, i + tag.length);
-      if (close === -1) return true;
+      if (close === -1) return "multi_statement";
       i = close + tag.length;
     } else if (c === "'" || c === '"') {
       const end = quotedEnd(sql, i, false);
-      if (end === -1 || (c === "'" && /\\'/.test(sql.slice(i, end)))) return true;
+      if (end === -1) return "multi_statement";
+      if (c === "'" && sql.slice(i, end).includes("\\'")) return "backslash_quote";
       i = end;
     } else if (IDENT_CONT.test(c)) {
       // A whole identifier / number / `$n` run, so a `$` inside it is never
@@ -243,14 +245,14 @@ export function hasSecondStatement(sql: string): boolean {
       let j = i + 1;
       while (j < n && IDENT_CONT.test(sql[j] as string)) j++;
       const run = sql.slice(i, j);
-      if (/^[0-9$]/.test(run) && (run.includes("$", 1) || sql[j] === "'")) return true;
+      if (/^[0-9$]/.test(run) && (run.includes("$", 1) || sql[j] === "'")) return "multi_statement";
       i = (run === "e" || run === "E") && sql[j] === "'" ? quotedEnd(sql, j, true) : j;
-      if (i === -1) return true;
+      if (i === -1) return "multi_statement";
     } else {
       i++;
     }
   }
-  return false;
+  return null;
 }
 
 function dollarTag(sql: string, i: number): string | undefined {
@@ -340,7 +342,8 @@ export function validateSql(rawSql: string): SqlValidationResult {
   // refuses both ("not supported"); short-circuit instead of demanding
   // a parse.
   if (leading === "show" || leading === "explain") {
-    return hasSecondStatement(sql) ? { ok: false, reason: "multi_statement" } : { ok: true };
+    const split = splitReject(sql);
+    return split ? { ok: false, reason: split } : { ok: true };
   }
 
   let asts: AstNode[];
@@ -355,8 +358,9 @@ export function validateSql(rawSql: string): SqlValidationResult {
   // WHERE id=1` parses as two sibling statements; the per-statement
   // walk below would clear each one, so a benign-looking lead statement
   // can smuggle a second. A plan is exactly one statement — fail closed,
-  // by Postgres's split as well as the parser's (`hasSecondStatement`).
-  if (asts.length > 1 || hasSecondStatement(sql)) return { ok: false, reason: "multi_statement" };
+  // by Postgres's split as well as the parser's (`splitReject`).
+  const split = splitReject(sql) ?? (asts.length > 1 ? "multi_statement" : null);
+  if (split) return { ok: false, reason: split };
 
   for (const root of asts) {
     const embedded = walkForRejected(root);
