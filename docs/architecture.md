@@ -193,7 +193,7 @@ the user to approve a diff that names the wrong table (`SK-ASK-004` /
 
 Two non-overlapping validators: the **read/write** path
 (`SELECT/INSERT/UPDATE/DELETE/WITH/EXPLAIN/SHOW` only, `EXPLAIN ANALYZE` and
-multi-statement rejected — the LLM never gets DDL rights here) and the **DDL**
+multi-statement rejected, re-parsed with libpg_query, which must agree — the LLM never gets DDL rights here) and the **DDL**
 path (only the §3.6.2 compiler's `CREATE TABLE/INDEX/FK`, re-parsed with
 libpg_query). Canonical:
 [`hosted-db-create`](./features/hosted-db-create/FEATURE.md) `SK-HDC-006` +

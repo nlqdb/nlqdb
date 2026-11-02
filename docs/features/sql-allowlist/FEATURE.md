@@ -4,6 +4,7 @@ description: Safety boundary on LLM-generated SQL — what is allowed to execute
 when-to-load:
   globs:
     - apps/api/src/ask/sql-validate.ts
+    - apps/api/src/ask/sql-validate-pg.ts
     - apps/api/src/ask/orchestrate.ts
   topics: [sql-allowlist, validation, safety, sanitization]
 ---
@@ -12,26 +13,27 @@ when-to-load:
 
 **One-liner:** Safety boundary on LLM-generated SQL — what is allowed to execute.
 **Status:** implemented
-**Owners (code):** `apps/api/src/ask/sql-validate.ts` (called from `apps/api/src/ask/orchestrate.ts`)
+**Owners (code):** `apps/api/src/ask/sql-validate.ts` + `apps/api/src/ask/sql-validate-pg.ts` (called from `/v1/ask`, `/v1/run` and grant reads)
 **Cross-refs:** docs/architecture.md §3.6.5 (validator architecture) · docs/research-receipts.md §1, §10 (Replit incident, Postgres-specific guardrails) · docs/performance.md §2.1 stage 8 / §2.2 stage 8 (parse + schema-fit budget — 5 ms p50 / 20 ms p99) · §3.1 (`nlqdb.sql.validate` span) · §4 Slice 6 · GLOBAL-015 (see governing GLOBALs section) · `docs/features/hosted-db-create/FEATURE.md` (Phase 1 — owns the parallel DDL-path validator at `apps/api/src/ask/sql-validate-ddl.ts`; SK-HDC-006 splits the two validator files deliberately)
 
 ## Touchpoints — read this feature before editing
 
 - `apps/api/src/ask/sql-validate.ts`
-- `apps/api/src/ask/orchestrate.ts` (the only caller of `validateSql`)
+- `apps/api/src/ask/sql-validate-pg.ts` (`validateSqlPg` — the entry point every user-SQL path calls)
+- `apps/api/src/ask/orchestrate.ts`, `apps/api/src/run/orchestrate.ts`, `apps/api/src/grant-read.ts` (its callers)
 
 ## Decisions
 
 ### SK-SQLAL-001 — Layered guardrails, three-stage validation
 
-- **Decision:** SQL validation is three independent stages — (1) leading-verb regex gate, (2) `node-sql-parser` AST parse, (3) AST walk for embedded rejected verbs and DELETE-without-WHERE. All three must pass; any one rejects.
+- **Decision:** SQL validation is three independent stages — (1) leading-verb regex gate, (2) `node-sql-parser` AST parse, (3) AST walk for embedded rejected verbs and DELETE-without-WHERE. All three must pass; any one rejects. Postgres's own parser then re-checks the result (`SK-SQLAL-009`).
 - **Core value:** Bullet-proof, Simple
 - **Why:** The Replit incident (`docs/research-receipts.md §1`) had three guardrails active and still lost data — single-rule validation is not enough. A regex-only gate misses CTE-embedded DROPs (`WITH x AS (DROP TABLE foo) SELECT 1`); an AST-only gate misses Postgres-specific destructive variants the parser doesn't recognise (`DROP MATERIALIZED VIEW`, `VACUUM`). Layering catches each other's blind spots.
 - **Consequence in code:** `validateSql()` in `sql-validate.ts` runs all three stages in order. Adding a new dangerous verb means adding it to BOTH `LEADING_VERB_REJECT` and `EMBEDDED_REJECT` — never one without the other. Reviewers reject any PR that bypasses a stage on perceived performance grounds.
 - **Alternatives rejected:**
   - Regex-only — false-passes CTE-embedded destructive statements.
   - AST-only — node-sql-parser silently shrugs on PG-specific destructive variants; we'd ship false-passes.
-  - Single library (e.g. libpg_query) — bigger bundle, weaker for our specific DML/DDL split, doesn't compose with our embedded-verb walk.
+  - libpg_query alone — weaker for our specific DML/DDL split, doesn't compose with our embedded-verb walk; it runs as an agreement check after the three stages instead (`SK-SQLAL-009`).
 
 ### SK-SQLAL-002 — Allowed-verb whitelist; everything else rejected by default
 
@@ -45,7 +47,7 @@ when-to-load:
 
 ### SK-SQLAL-003 — EXPLAIN ANALYZE rejected; plain EXPLAIN and SHOW short-circuit
 
-- **Decision:** `EXPLAIN ANALYZE …` and `EXPLAIN (ANALYZE …) …` are rejected (matched by `EXPLAIN_ANALYZE` regex) because they execute the wrapped statement on Postgres. Plain `EXPLAIN` and `SHOW` skip AST parsing entirely — they are read-only by definition.
+- **Decision:** `EXPLAIN ANALYZE …` and `EXPLAIN (ANALYZE …) …` are rejected (matched by `EXPLAIN_ANALYZE` regex) because they execute the wrapped statement on Postgres. Plain `EXPLAIN` and `SHOW` skip the `node-sql-parser` AST parse — they are read-only by definition (libpg_query still parses them, `SK-SQLAL-009`).
 - **Core value:** Bullet-proof, Simple
 - **Why:** `EXPLAIN ANALYZE` over a DML inner statement runs the DML — that is exactly the destructive-side-effect surface we are guarding. Conversely, `node-sql-parser` returns "not supported" for plain `EXPLAIN`/`SHOW`, so demanding a parse for them would force false-rejects on safe statements.
 - **Consequence in code:** The `EXPLAIN_ANALYZE` regex must match before the SHOW/EXPLAIN short-circuit, in that order, and must be tested against a **comment-collapsed** view of the SQL — a comment wedged between `EXPLAIN` and `ANALYZE` (`EXPLAIN /*c*/ ANALYZE DELETE …`) is whitespace to Postgres, so a comment-blind regex lets the destructive form smuggle past into the `explain` short-circuit (same class as `SK-TRUST-001`). The regex matches both `ANALYZE` and the British `ANALYSE` — Postgres accepts them as keyword synonyms (`analyze_keyword: ANALYZE | ANALYSE`), so both execute the wrapped DML. A quote anywhere in a parenthesised option list is rejected too: `(U&"\0061nalyze")` names the same option. Future short-circuits for other leading verbs require the same "is this read-only by definition" justification.
@@ -105,10 +107,10 @@ when-to-load:
 
 ### SK-SQLAL-009 — Multi-statement input rejected
 
-- **Decision:** A statement that `node-sql-parser` parses into more than one sibling statement is rejected with `multi_statement`, before the per-statement walk.
+- **Decision:** User SQL runs only when it is one statement by node-sql-parser's split, by Postgres's lexer (`hasSecondStatement`) and by Postgres's own parser (libpg_query, `validateSqlPg`) — and libpg_query agrees with the AST walk's verdict; anything else is rejected with `multi_statement` (or the reason the disagreement names), before execution.
 - **Core value:** Bullet-proof, Simple
 - **Why:** `SELECT 1; DELETE FROM x WHERE id=1` parses as two statements; the per-statement walk clears each (the DELETE *has* a WHERE), so a benign-looking lead statement smuggles a second one past the guardrails. A plan is exactly one statement — rejecting `>1` is fail-closed and matches the `architecture.md §3.6.5` "multi-statement rejected" contract that was previously only asserted in prose. Resolved per `GLOBAL-033` (security trade-off → fail-closed).
-- **Consequence in code:** `validateSql()` returns `{ ok:false, reason:"multi_statement" }` when `asts.length > 1` **or** `hasSecondStatement` — Postgres's own split, on every statement — finds a second one. node-sql-parser's split is not authoritative: it reads `\'` in a standard `'…'` string as an escape where Postgres ends the string, so `SELECT 'a\'; RESET ROLE; SELECT … -- '` parsed as one SELECT and read another tenant's schema (reported 2026-11-01); `hasSecondStatement` fails closed on that sequence, which also hid a denylisted call inside one statement. `SHOW` / plain `EXPLAIN` skip the parser and rely on it alone (`SHOW x; RESET ROLE; …`, fixed 2026-10-16). Every path that runs user SQL (`/v1/run`, `/v1/ask` incl. stash / cache / repair, grants) calls `validateSqlPg` (`sql-validate-pg.ts`): libpg_query, Postgres's own parser, re-parses the statement and must agree with `validateSql` on one statement, its kind per leading verb, whether it writes (`containsWriteVerb`, which the read-only gates key off) and no denylisted call — so a divergence nobody has found yet fails closed too (one WASM load per isolate, ~1.6 ms per statement warm). The executors refuse a second command themselves: the BYO runner sends the user statement over the extended protocol (`postgres-byo.ts` `runBounded`), as Neon's SQL-over-HTTP does for the hosted path. It, the leading-comment strip and the `EXPLAIN_ANALYZE` collapse share one comment scanner that follows Postgres's lexer, not JS's: `--` ends at `\n` or `\r`, `/* */` nests, and any non-ASCII character continues an identifier (`é$$` is not a dollar-quote). Each of those three disagreements let a statement through on Postgres 16 (2026-10-19). `tenant-isolation.integration.test.ts` pins the engine side: a tenant role cannot read another tenant's schema.
+- **Consequence in code:** `validateSql()` returns `{ ok:false, reason:"multi_statement" }` when `asts.length > 1` **or** `hasSecondStatement` — Postgres's own split, on every statement — finds a second one. node-sql-parser's split is not authoritative: it reads `\'` in a standard `'…'` string as an escape where Postgres ends the string, so `SELECT 'a\'; RESET ROLE; SELECT … -- '` parsed as one SELECT and read another tenant's schema (reported 2026-11-01); `hasSecondStatement` fails closed on that sequence, which also hid a denylisted call inside one statement. `SHOW` / plain `EXPLAIN` skip the parser and rely on it alone (`SHOW x; RESET ROLE; …`, fixed 2026-10-16). Every path that runs user SQL (`/v1/run`, `/v1/ask` incl. stash / cache / repair, grants) calls `validateSqlPg` (`sql-validate-pg.ts`): libpg_query re-parses the statement and must agree with `validateSql` on the facts the gates act on (listed in that file's header), so a divergence nobody has found yet fails closed too (one WASM load per isolate, ~1.6 ms per statement warm). The executors refuse a second command themselves: the BYO runner sends the user statement over the extended protocol (`postgres-byo.ts` `runBounded`), as Neon's SQL-over-HTTP does for the hosted path. It, the leading-comment strip and the `EXPLAIN_ANALYZE` collapse share one comment scanner that follows Postgres's lexer, not JS's: `--` ends at `\n` or `\r`, `/* */` nests, and any non-ASCII character continues an identifier (`é$$` is not a dollar-quote). Each of those three disagreements let a statement through on Postgres 16 (2026-10-19). `tenant-isolation.integration.test.ts` pins the engine side: a tenant role cannot read another tenant's schema.
 - **Alternatives rejected:**
   - Trust the per-statement walk to catch everything — it only catches *rejected* patterns; two benign statements both pass.
   - A leading-`;`-count regex — trips on semicolons inside string literals; only a lexer that follows Postgres's rules splits correctly.
@@ -119,7 +121,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **GLOBAL-015** — Power users always have an escape hatch.
   - *In this feature:*
-    **Interaction note:** `/v1/run` ships in Phase 2 (`apps/api/src/run/orchestrate.ts`, backing CLI `nlq run` + SDK `client.runSql()`). It reuses this validator unchanged — `/v1/run` skips the LLM, not the validator. The orchestrator calls `validateSql()` at the same point `/v1/ask` does; read-only principals (pk_live + anon) then reject writes via `containsWriteVerb` — a write-anywhere check (exported from `sql-validate.ts`) that catches data-modifying CTEs (`WITH x AS (INSERT …) SELECT …`, leading verb `with`), not just the leading verb (`SK-APIKEYS-003`). The `/v1/ask` render-before-commit gate (`SK-TRUST-001`) shares the same `containsWriteVerb` so neither gate can be smuggled past by a write hidden in a CTE. Future work that loosens this needs to update both this feature and `GLOBAL-015` in the same PR.
+    **Interaction note:** `/v1/run` ships in Phase 2 (`apps/api/src/run/orchestrate.ts`, backing CLI `nlq run` + SDK `client.runSql()`). It reuses this validator unchanged — `/v1/run` skips the LLM, not the validator. The orchestrator calls `validateSqlPg()` at the same point `/v1/ask` does; read-only principals (pk_live + anon) then reject writes via `containsWriteVerb` — a write-anywhere check (exported from `sql-validate.ts`) that catches data-modifying CTEs (`WITH x AS (INSERT …) SELECT …`, leading verb `with`), not just the leading verb (`SK-APIKEYS-003`). The `/v1/ask` render-before-commit gate (`SK-TRUST-001`) shares the same `containsWriteVerb` so neither gate can be smuggled past by a write hidden in a CTE. Future work that loosens this needs to update both this feature and `GLOBAL-015` in the same PR.
 - **GLOBAL-033** — Resolution defaults (close open questions from the values).
 
 ## Open questions / known unknowns
