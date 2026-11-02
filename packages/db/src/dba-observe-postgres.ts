@@ -17,9 +17,8 @@
 // Partitioned parents are skipped too: Postgres can't build their index
 // `CONCURRENTLY`, so they need a multi-statement proposal kind of their own.
 
-import { dbDurationMs } from "@nlqdb/otel";
-import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import { createIndexProposal, type Proposal } from "./dba-proposal.ts";
+import { withObserveSpan } from "./dba-span.ts";
 import type { PostgresQueryFn } from "./postgres.ts";
 
 // One row per (constraint, column), in key order — grouped in JS so no driver
@@ -93,51 +92,4 @@ export function observePostgresCatalog(
     );
     return proposals;
   });
-}
-
-// The one `db.observe` span every Postgres observer runs under: its proposal
-// count and any extra attributes the observer sets.
-export function withObserveSpan(
-  operation: string,
-  schema: string,
-  observe: (span: Span) => Promise<Proposal[]>,
-): Promise<Proposal[]> {
-  return withDbaSpan("db.observe", operation, schema, async (span) => {
-    const proposals = await observe(span);
-    span.setAttribute("nlqdb.dba.proposals", proposals.length);
-    return proposals;
-  });
-}
-
-// The span every step of the DBA loop on a Postgres runs under (`GLOBAL-014`):
-// its duration and the error it throws (`GLOBAL-012`).
-export function withDbaSpan<T>(
-  name: "db.observe" | "db.apply" | "db.verify",
-  operation: string,
-  schema: string,
-  run: (span: Span) => Promise<T>,
-): Promise<T> {
-  return trace.getTracer("@nlqdb/db").startActiveSpan(
-    name,
-    {
-      attributes: {
-        "db.system": "postgresql",
-        "db.operation.name": operation,
-        "db.namespace": schema,
-      },
-    },
-    async (span) => {
-      const startedAt = performance.now();
-      try {
-        return await run(span);
-      } catch (err) {
-        span.recordException(err as Error);
-        span.setStatus({ code: SpanStatusCode.ERROR });
-        throw err;
-      } finally {
-        dbDurationMs().record(performance.now() - startedAt, { operation });
-        span.end();
-      }
-    },
-  );
 }

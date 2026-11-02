@@ -32,6 +32,11 @@ until the first attach** (introspect the GraphQL schema then, record it in
 | 2 what-if | `EXPLAIN QUERY PLAN` — `SEARCH … USING INDEX` vs `SCAN` ([use indexes](https://developers.cloudflare.com/d1/best-practices/use-indexes/)). **No hypothetical index:** a real what-if is a real `CREATE INDEX`, billed as rows written — so the verify window judges, not a dry run | yes |
 | 3 truth | Tier 1 re-read for the same query text after apply | — |
 
+Verified on a local D1 (workerd, run 270): D1 refuses a table-valued pragma
+joined to a table (`SQLITE_AUTH`) and binds no `PRAGMA` parameter, so Tier 0
+reads per table in batched requests; `sqlite_stat1` exists only after an
+`ANALYZE` / `PRAGMA optimize`, and `dbstat` is absent (no table size).
+
 **Apply:** `CREATE INDEX IF NOT EXISTS` + `PRAGMA optimize` over the same
 REST endpoint (D1 Edit). D1 caps a statement at 30 s and runs
 single-threaded ([limits](https://developers.cloudflare.com/d1/platform/limits/)),
@@ -80,7 +85,7 @@ D1 is the dogfood engine; Postgres is the market.
 
 | Number | Value |
 |---|---|
-| KPI A — attach → first proposal | unmeasured |
+| KPI A — attach → first proposal | unmeasured here; synthetic local D1, catalog → first proposal: 106.2 ms (run 270) |
 | KPI B — applied with measured p95 gain (and rows-read Δ) | 0 |
 | KPI C — regressions auto-reverted / applied | — |
 | Verified GraphQL fields + token scopes | pending first attach |

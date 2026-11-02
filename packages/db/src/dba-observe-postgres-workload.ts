@@ -14,8 +14,8 @@
 // attached schema with a selective AND of equality filters, and no valid btree
 // / hash index already leads with those columns.
 
-import { withDbaSpan, withObserveSpan } from "./dba-observe-postgres.ts";
 import { createIndexProposal, type Proposal } from "./dba-proposal.ts";
+import { withDbaSpan, withObserveSpan } from "./dba-span.ts";
 import type { PostgresQueryFn } from "./postgres.ts";
 
 // The cumulative counters of one fingerprint (`queryid`), in ms.

@@ -7,9 +7,9 @@
 // More than 10 % worse reverts — always, whoever approved the apply; the
 // inverse is the one stored on the proposal, never re-derived.
 
-import { withDbaSpan } from "./dba-observe-postgres.ts";
 import type { FingerprintWindow } from "./dba-observe-postgres-workload.ts";
 import type { Proposal } from "./dba-proposal.ts";
+import { withDbaSpan } from "./dba-span.ts";
 import type { PostgresQueryFn } from "./postgres.ts";
 
 // `GLOBAL-043` item 7's regression bound (after > before × 1.1 reverts).
