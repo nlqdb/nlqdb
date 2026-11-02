@@ -120,11 +120,10 @@ const ALLOWED_LEADING = new Set([
 // `set_config` / `current_setting` are the RLS-tenancy GUC primitives.
 // The exec wrapper sets `search_path` / `app.tenant_id` and `SET LOCAL
 // ROLE tenant_<hash>` OUTSIDE the validated user SQL (separate
-// transaction statements). The least-privilege `SET LOCAL ROLE` is the
-// load-bearing isolation control; denying these functions inside user
-// SQL is defense-in-depth so a `WITH x AS (SELECT set_config('app.
-// tenant_id', …)) …` CTE can never re-arm the RLS GUC from within a
-// query. The LLM has zero legitimate reason to call either on `/v1/ask`.
+// transaction statements). Denying them is load-bearing, not only
+// defense-in-depth: `set_config('role', 'none', true)` inside user SQL
+// undoes that `SET LOCAL ROLE`, and `set_config('app.tenant_id', …)`
+// re-arms the RLS GUC. The LLM has zero legitimate reason to call either.
 export const DISALLOWED_FUNCTIONS: ReadonlySet<string> = new Set([
   "pg_sleep",
   "pg_sleep_for",
@@ -141,6 +140,19 @@ export const DISALLOWED_FUNCTIONS: ReadonlySet<string> = new Set([
   "pg_logical_emit_message",
   "set_config",
   "current_setting",
+  // These run a query string the walk never sees, so `set_config('role',
+  // 'none', true)` inside one drops `SET LOCAL ROLE` (Postgres 16, 2026-11-02).
+  "query_to_xml",
+  "query_to_xmlschema",
+  "query_to_xml_and_xmlschema",
+  "ts_rewrite",
+  "ts_stat",
+  "crosstab",
+  "crosstab2",
+  "crosstab3",
+  "crosstab4",
+  "connectby",
+  "xpath_table",
 ]);
 
 // EXPLAIN ANALYZE actually executes the wrapped statement on Postgres

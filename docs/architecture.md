@@ -222,7 +222,7 @@ Not in Phase 1. Shape locked now to avoid painting into a corner:
 
 **Cancel on write.** Write and DDL queries run inside `BEGIN; … COMMIT;` with a live `executing for Xs [Cancel]` label. Cancel → `ROLLBACK` + `pg_cancel_backend(pid)`. Layered under `SK-TRUST-001` diff-confirm (pre-exec gate); this is the during-exec gate.
 
-**Function reject-list.** Filesystem/network builtins (`pg_read_file`, `pg_ls_dir`, `lo_import`, `dblink*`, `COPY ... FROM PROGRAM`, `pg_sleep`) rejected by the validator (`SK-SQLAL-008`, sql-allowlist feature). User-defined functions opaque — user owns their DB.
+**Function reject-list.** File/network IO, `pg_sleep`, the GUC setters and query-string executors are rejected by the validator (`SK-SQLAL-008`). User-defined functions opaque — user owns their DB.
 
 Sibling concern for BYO ClickHouse: `readonly = 1` does *not* block DDL — see `docs/research/personas.md` P6 open questions.
 

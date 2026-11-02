@@ -54,15 +54,22 @@ describe("validateSql", () => {
       ["SELECT pg_read_file('/etc/passwd')", "disallowed_function"],
       ["SELECT dblink('host=evil', 'select 1')", "disallowed_function"],
       ["SELECT lo_import('/etc/passwd')", "disallowed_function"],
-      // RLS-tenancy GUC primitives — defense-in-depth so a CTE can't
-      // re-arm `app.tenant_id` from inside a validated query (the exec
-      // wrapper sets it OUTSIDE the user SQL).
+      // RLS-tenancy GUC primitives: inside user SQL they could re-arm
+      // `app.tenant_id` or reset the role the exec wrapper sets outside it.
       ["SELECT set_config('app.tenant_id', 'other', false)", "disallowed_function"],
       ["SELECT current_setting('app.tenant_id')", "disallowed_function"],
       [
         "WITH x AS (SELECT set_config('app.tenant_id', 'other', true)) SELECT * FROM users",
         "disallowed_function",
       ],
+      // A function that runs a query string hides a `set_config('role', …)`
+      // that drops `SET LOCAL ROLE` back to the owner.
+      [
+        "SELECT query_to_xml('select set_config(''role'',''none'',true)', true, true, '')",
+        "disallowed_function",
+      ],
+      ["SELECT ts_rewrite('a'::tsquery, 'select 1')", "disallowed_function"],
+      ["SELECT * FROM ts_stat('select to_tsvector(1::text)')", "disallowed_function"],
     ])("rejects %j with reason %s", (sql, reason) => {
       const result = validateSql(sql);
       expect(result.ok).toBe(false);
@@ -346,6 +353,8 @@ describe("validateSqlPg", () => {
     ["SELECT 'a\\'; RESET ROLE; SELECT secret FROM other.orders -- '", "backslash_quote"],
     ["SELECT 'a\\', pg_sleep(1) -- '", "backslash_quote"],
     ["SELECT pg_catalog.pg_sleep(1)", "disallowed_function"],
+    // node-sql-parser misses a FROM function with a column definition list.
+    ["SELECT * FROM crosstab('select 1, 2, 3') AS c(a int, b int)", "disallowed_function"],
     ["SELECT * INTO newt FROM t", "disallowed_verb"],
     ["WITH d AS (UPDATE t SET a = 1 RETURNING *) SELECT * FROM d", "update_without_where"],
     ["EXPLAIN (ANALYZE) DELETE FROM t WHERE true", "disallowed_verb"],
