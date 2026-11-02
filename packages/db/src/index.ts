@@ -73,8 +73,11 @@ export {
   redactConnectionUrl,
   UNPARSEABLE_CONNECTION_URL,
 } from "./connection-url.ts";
+export type { D1BatchFn, D1Target } from "./d1/rest.ts";
+export { D1RestError, d1RestBatch } from "./d1/rest.ts";
 export type { Verification } from "./dba-apply-postgres.ts";
 export { applyProposal, judgeApplied, verifyApplied } from "./dba-apply-postgres.ts";
+export { observeD1Catalog } from "./dba-observe-d1.ts";
 export { observePostgresCatalog } from "./dba-observe-postgres.ts";
 export type {
   FingerprintWindow,
@@ -87,7 +90,7 @@ export {
   statementWindow,
 } from "./dba-observe-postgres-workload.ts";
 export type { CreateIndexProposal, Proposal } from "./dba-proposal.ts";
-export { createIndexProposal, indexName } from "./dba-proposal.ts";
+export { createD1IndexProposal, createIndexProposal, indexName } from "./dba-proposal.ts";
 export type { DohResolverOptions } from "./doh-resolver.ts";
 export { createDohResolver } from "./doh-resolver.ts";
 export type { DnsResolver, EgressGuardResult } from "./egress-guard.ts";

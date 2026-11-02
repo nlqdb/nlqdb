@@ -4,7 +4,7 @@
 // (later item-1a slices) consume it without knowing which observer made it.
 // `kind` is the discriminant of one union (`SK-MIGRATE-003`); adding a kind is
 // a union member, a compiler arm and an inverse — nothing else.
-// `createIndexProposal` renders Postgres DDL; the D1 slice adds its own.
+// `createIndexProposal` renders Postgres DDL, `createD1IndexProposal` SQLite's.
 
 import { quoteIdent } from "./render-byo-postgres.ts";
 
@@ -69,5 +69,22 @@ export function createIndexProposal(
     ...p,
     ddl: `CREATE INDEX CONCURRENTLY ${quoteIdent(name)} ON ${quoteIdent(p.schema)}.${quoteIdent(p.table)} (${cols})`,
     inverse: `DROP INDEX CONCURRENTLY IF EXISTS ${quoteIdent(p.schema)}.${quoteIdent(name)}`,
+  };
+}
+
+// D1 (SQLite) has no `CONCURRENTLY` and no half-built index state, and the
+// name is nlqdb's own hash of (table, columns), so `IF NOT EXISTS` only makes
+// a retried apply a no-op (`002-rateme12-attach.md` §2). One schema: `main`.
+export function createD1IndexProposal(
+  p: Omit<CreateIndexProposal, "kind" | "schema" | "ddl" | "inverse">,
+): CreateIndexProposal {
+  const name = indexName(p.table, p.columns);
+  const cols = p.columns.map(quoteIdent).join(", ");
+  return {
+    kind: "create_index",
+    ...p,
+    schema: "main",
+    ddl: `CREATE INDEX IF NOT EXISTS ${quoteIdent(name)} ON ${quoteIdent(p.table)} (${cols})`,
+    inverse: `DROP INDEX IF EXISTS ${quoteIdent(name)}`,
   };
 }
