@@ -18,8 +18,8 @@
 // never counts rows itself (a `COUNT(*)` is billed per row read).
 
 import { type D1BatchFn, d1Literal } from "./d1/rest.ts";
-import { withObserveSpan } from "./dba-observe-postgres.ts";
 import { createD1IndexProposal, type Proposal } from "./dba-proposal.ts";
+import { withObserveSpan } from "./dba-span.ts";
 import type { Row } from "./types.ts";
 
 // SQLite's own tables and D1's internal ones (`_cf_KV`, `_cf_METADATA`).

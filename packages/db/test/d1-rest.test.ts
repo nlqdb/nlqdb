@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { createTestTelemetry, type TestTelemetry } from "@nlqdb/otel/test";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { D1RestError, d1RestBatch } from "../src/index.ts";
 
 const target = {
@@ -15,6 +16,12 @@ function recording(status: number, body: unknown) {
   }) as typeof fetch;
   return { calls, fetchFn };
 }
+
+let telemetry: TestTelemetry;
+beforeEach(() => {
+  telemetry = createTestTelemetry();
+});
+afterEach(() => telemetry.reset());
 
 describe("d1RestBatch", () => {
   it("sends one batch request and returns one row set per statement", async () => {
@@ -42,6 +49,14 @@ describe("d1RestBatch", () => {
     expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
       batch: [{ sql: "PRAGMA table_list" }, { sql: "PRAGMA index_list('posts')" }],
     });
+    const [span] = telemetry.spanExporter.getFinishedSpans();
+    expect(span?.name).toBe("db.query");
+    expect(span?.attributes).toEqual({
+      "db.system": "sqlite",
+      "db.operation.name": "BATCH",
+      "db.namespace": target.databaseId,
+      "nlqdb.transport": "d1-rest",
+    });
   });
 
   it("throws the API's error sentence with its status", async () => {
@@ -52,6 +67,7 @@ describe("d1RestBatch", () => {
     const err = await d1RestBatch(target, fetchFn)(["PRAGMA table_list"]).catch((e) => e);
     expect(err).toBeInstanceOf(D1RestError);
     expect(err).toMatchObject({ message: "D1 query failed: Authentication error", status: 403 });
+    expect(telemetry.spanExporter.getFinishedSpans()[0]?.status.code).toBe(2); // ERROR
   });
 
   it("refuses ids that are not an account id or a UUID before any request", () => {

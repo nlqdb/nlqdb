@@ -267,6 +267,7 @@ jobs:
   # GLOBAL-043 roadmap item 1a: the DBA loop runs against a seeded synthetic
   # Postgres with pg_stat_statements preloaded. The `*.pg.test.ts` files skip
   # without PG_TEST_URL, so test-pkgs and the api suite stay Postgres-free.
+  # The local-D1 observer runs here too, so its KPI A line lands in the log.
   test-dba-postgres:
     name: packages/db DBA loop vs synthetic Postgres
     runs-on: ubuntu-latest
@@ -288,7 +289,7 @@ jobs:
         working-directory: packages/db
         env:
           PG_TEST_URL: postgres://postgres:pg@127.0.0.1:5432/postgres
-        run: bunx vitest run --reporter=verbose test/*.pg.test.ts
+        run: bunx vitest run --reporter=verbose test/*.pg.test.ts test/dba-observe-d1.test.ts
 
       # The attach door (POST /v1/attach's orchestrator) on the same Postgres.
       - name: Test the attach door

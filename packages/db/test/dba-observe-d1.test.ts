@@ -142,8 +142,8 @@ describe("observeD1Catalog on a local D1", () => {
   });
 
   // KPI A on a synthetic D1 (`GLOBAL-043` item 9): catalog read → first
-  // proposal, printed per CI run. Local, so it excludes the REST round trips
-  // (3 requests) a real attach adds.
+  // proposal, printed in CI's `test-dba-postgres` log. Local, so it excludes the
+  // REST round trips (3 requests) a real attach adds.
   it("KPI A (synthetic, local D1): time to first proposal", async () => {
     const batch = await localD1(APP);
     const runs: number[] = [];
@@ -154,6 +154,7 @@ describe("observeD1Catalog on a local D1", () => {
       expect(proposals.length).toBeGreaterThan(0);
     }
     runs.sort((a, b) => a - b);
+    // biome-ignore lint/suspicious/noConsole: the KPI A reading belongs in the CI log
     console.log(
       `KPI A (synthetic, local D1): median ${runs[2]?.toFixed(1)} ms over 5 (${runs[0]?.toFixed(1)}–${runs[4]?.toFixed(1)} ms)`,
     );

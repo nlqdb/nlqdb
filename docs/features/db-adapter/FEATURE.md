@@ -184,9 +184,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
     `@neondatabase/serverless` imports live in `@nlqdb/db`. Documented
     exception: `apps/api/src/db-create/pg-client.ts` imports the Neon
     client for the control-plane provisioner + ACL retarget (`SK-HDC-*`,
-    `SK-ASK-024`). Cloudflare D1 is
-    a **separate** system owned by `packages/platform-db/` (the `D1Database`
-    binding through `db-registry.ts` is platform-db consumer code).
+    `SK-ASK-024`). nlqdb's own D1 is owned by `packages/platform-db/`; an
+    attached user D1 (`GLOBAL-043`) by `packages/db/src/d1/rest.ts`.
 - **GLOBAL-031** — One AES-256-GCM at-rest envelope + one Workers-held KEK for every BYO secret.
   - *In this feature:* the BYO Postgres `connection_url` (`SK-DB-011`) is sealed by `apps/api/src/secret-envelope.ts` (context `dbconn:<dbId>`) before the D1 row; `registerByoDb` reads it back via `openSecret`. The adapter still gets a plaintext DSN at execute time — the envelope is the storage boundary, not the adapter contract.
 - **GLOBAL-035** — One egress guard for every BYO outbound connection host (the connect path applies it via `validateByoConnection`, `SK-DB-013`).
