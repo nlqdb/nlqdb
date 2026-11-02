@@ -874,6 +874,10 @@ const SQL_REJECT_COPY: Record<string, [string, string]> = {
     "That came through as several statements at once.",
     "Ask for one thing at a time.",
   ],
+  backslash_quote: [
+    "A backslash right before a quote reads differently to Postgres and to nlqdb's checker.",
+    "Write a quote inside a string as '' (or use an E'…' string), then retry.",
+  ],
   parse_failed: [
     "nlqdb couldn't turn that into a valid query.",
     "Rephrase the goal, naming the tables and columns you mean.",

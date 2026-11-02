@@ -4,6 +4,7 @@ description: Safety boundary on LLM-generated SQL — what is allowed to execute
 when-to-load:
   globs:
     - apps/api/src/ask/sql-validate.ts
+    - apps/api/src/ask/sql-validate-pg.ts
     - apps/api/src/ask/orchestrate.ts
   topics: [sql-allowlist, validation, safety, sanitization]
 ---
@@ -12,26 +13,27 @@ when-to-load:
 
 **One-liner:** Safety boundary on LLM-generated SQL — what is allowed to execute.
 **Status:** implemented
-**Owners (code):** `apps/api/src/ask/sql-validate.ts` (called from `apps/api/src/ask/orchestrate.ts`)
+**Owners (code):** `apps/api/src/ask/sql-validate.ts` + `apps/api/src/ask/sql-validate-pg.ts` (called from `/v1/ask`, `/v1/run` and grant reads)
 **Cross-refs:** docs/architecture.md §3.6.5 (validator architecture) · docs/research-receipts.md §1, §10 (Replit incident, Postgres-specific guardrails) · docs/performance.md §2.1 stage 8 / §2.2 stage 8 (parse + schema-fit budget — 5 ms p50 / 20 ms p99) · §3.1 (`nlqdb.sql.validate` span) · §4 Slice 6 · GLOBAL-015 (see governing GLOBALs section) · `docs/features/hosted-db-create/FEATURE.md` (Phase 1 — owns the parallel DDL-path validator at `apps/api/src/ask/sql-validate-ddl.ts`; SK-HDC-006 splits the two validator files deliberately)
 
 ## Touchpoints — read this feature before editing
 
 - `apps/api/src/ask/sql-validate.ts`
-- `apps/api/src/ask/orchestrate.ts` (the only caller of `validateSql`)
+- `apps/api/src/ask/sql-validate-pg.ts` (`validateSqlPg` — the entry point every user-SQL path calls)
+- `apps/api/src/ask/orchestrate.ts`, `apps/api/src/run/orchestrate.ts`, `apps/api/src/grant-read.ts` (its callers)
 
 ## Decisions
 
 ### SK-SQLAL-001 — Layered guardrails, three-stage validation
 
-- **Decision:** SQL validation is three independent stages — (1) leading-verb regex gate, (2) `node-sql-parser` AST parse, (3) AST walk for embedded rejected verbs and DELETE-without-WHERE. All three must pass; any one rejects.
+- **Decision:** SQL validation is three independent stages — (1) leading-verb regex gate, (2) `node-sql-parser` AST parse, (3) AST walk for embedded rejected verbs and DELETE-without-WHERE. All three must pass; any one rejects. Postgres's own parser then re-checks the result (`SK-SQLAL-009`).
 - **Core value:** Bullet-proof, Simple
 - **Why:** The Replit incident (`docs/research-receipts.md §1`) had three guardrails active and still lost data — single-rule validation is not enough. A regex-only gate misses CTE-embedded DROPs (`WITH x AS (DROP TABLE foo) SELECT 1`); an AST-only gate misses Postgres-specific destructive variants the parser doesn't recognise (`DROP MATERIALIZED VIEW`, `VACUUM`). Layering catches each other's blind spots.
 - **Consequence in code:** `validateSql()` in `sql-validate.ts` runs all three stages in order. Adding a new dangerous verb means adding it to BOTH `LEADING_VERB_REJECT` and `EMBEDDED_REJECT` — never one without the other. Reviewers reject any PR that bypasses a stage on perceived performance grounds.
 - **Alternatives rejected:**
   - Regex-only — false-passes CTE-embedded destructive statements.
   - AST-only — node-sql-parser silently shrugs on PG-specific destructive variants; we'd ship false-passes.
-  - Single library (e.g. libpg_query) — bigger bundle, weaker for our specific DML/DDL split, doesn't compose with our embedded-verb walk.
+  - libpg_query alone — weaker for our specific DML/DDL split, doesn't compose with our embedded-verb walk; it runs as an agreement check after the three stages instead (`SK-SQLAL-009`).
 
 ### SK-SQLAL-002 — Allowed-verb whitelist; everything else rejected by default
 
@@ -45,7 +47,7 @@ when-to-load:
 
 ### SK-SQLAL-003 — EXPLAIN ANALYZE rejected; plain EXPLAIN and SHOW short-circuit
 
-- **Decision:** `EXPLAIN ANALYZE …` and `EXPLAIN (ANALYZE …) …` are rejected (matched by `EXPLAIN_ANALYZE` regex) because they execute the wrapped statement on Postgres. Plain `EXPLAIN` and `SHOW` skip AST parsing entirely — they are read-only by definition.
+- **Decision:** `EXPLAIN ANALYZE …` and `EXPLAIN (ANALYZE …) …` are rejected (matched by `EXPLAIN_ANALYZE` regex) because they execute the wrapped statement on Postgres. Plain `EXPLAIN` and `SHOW` skip the `node-sql-parser` AST parse — they are read-only by definition (libpg_query still parses them, `SK-SQLAL-009`).
 - **Core value:** Bullet-proof, Simple
 - **Why:** `EXPLAIN ANALYZE` over a DML inner statement runs the DML — that is exactly the destructive-side-effect surface we are guarding. Conversely, `node-sql-parser` returns "not supported" for plain `EXPLAIN`/`SHOW`, so demanding a parse for them would force false-rejects on safe statements.
 - **Consequence in code:** The `EXPLAIN_ANALYZE` regex must match before the SHOW/EXPLAIN short-circuit, in that order, and must be tested against a **comment-collapsed** view of the SQL — a comment wedged between `EXPLAIN` and `ANALYZE` (`EXPLAIN /*c*/ ANALYZE DELETE …`) is whitespace to Postgres, so a comment-blind regex lets the destructive form smuggle past into the `explain` short-circuit (same class as `SK-TRUST-001`). The regex matches both `ANALYZE` and the British `ANALYSE` — Postgres accepts them as keyword synonyms (`analyze_keyword: ANALYZE | ANALYSE`), so both execute the wrapped DML. A quote anywhere in a parenthesised option list is rejected too: `(U&"\0061nalyze")` names the same option. Future short-circuits for other leading verbs require the same "is this read-only by definition" justification.
@@ -88,30 +90,30 @@ when-to-load:
 - **Decision:** Role-level isolation (`pg_read_all_data`, `search_path` scoping), Row-Level Security policies, statement timeout, EXPLAIN cost cap, and the transactional wrapper are NOT enforced by `sql-validate.ts`. They live at the Neon connection pool, the per-schema provisioner, and the executor (`apps/api/src/ask/orchestrate.ts`) respectively.
 - **Core value:** Bullet-proof, Simple
 - **Why:** Validation is one layer of layered defense (`SK-SQLAL-001`); coupling it to runtime concerns (timeouts, transactions) blurs the boundary and makes both layers harder to reason about. Each layer has one job.
-- **Consequence in code:** A reviewer asking "why doesn't sql-validate enforce timeouts?" gets pointed here. Statement timeout / cost cap / transactional wrapper remain the executor's job (still unwired — tracked in `db-adapter`). Side-effecting function rejection moved *into* the validator in `SK-SQLAL-008` (it's a parse-time decision, not a runtime one).
+- **Consequence in code:** A reviewer asking "why doesn't sql-validate enforce timeouts?" gets pointed here. Statement timeout / cost cap / transactional wrapper remain the executor's job. Side-effecting function rejection moved *into* the validator in `SK-SQLAL-008` (it's a parse-time decision, not a runtime one).
 - **Alternatives rejected:**
   - Move timeout enforcement into the validator — the validator runs at parse time, before execution, with no executor context.
   - Move RLS into application code — defeats the purpose of RLS (database-enforced).
 
 ### SK-SQLAL-008 — Side-effecting functions rejected at the AST walk
 
-- **Decision:** `validateSql()` rejects a closed set of side-effecting functions anywhere in the AST with reason `disallowed_function`: the `pg_sleep*` family (connection-pinning DoS), `dblink*` (network egress), `lo_import` / `lo_export` / `pg_read_file` / `pg_read_binary_file` / `pg_ls_dir` / `pg_stat_file` (server-side file IO), `pg_logical_emit_message`, and `set_config` / `current_setting` (the RLS-tenancy GUC primitives). `COPY ... FROM PROGRAM` is already rejected one layer earlier — `copy` is not in `ALLOWED_LEADING`. The GUC pair is denied so a `WITH x AS (SELECT set_config('app.tenant_id', …)) …` CTE can't re-arm the tenant GUC from inside user SQL; this is defense-in-depth behind the load-bearing least-privilege `SET LOCAL ROLE tenant_<hash>` the executor sets outside the validated SQL (`db-adapter` role/RLS wiring).
+- **Decision:** `validateSql()` rejects a closed set of side-effecting functions anywhere in the AST with reason `disallowed_function`: the `pg_sleep*` family (connection-pinning DoS), `dblink` / `dblink_exec` / `dblink_connect` / `dblink_connect_u` (network egress; every other dblink call needs a connection these open), `lo_import` / `lo_export` / `pg_read_file` / `pg_read_binary_file` / `pg_ls_dir` / `pg_stat_file` (server-side file IO), `pg_logical_emit_message`, `set_config` / `current_setting` (the RLS-tenancy GUC primitives), and the functions that run a query string the walk never sees (`query_to_xml*`, `ts_rewrite`, `ts_stat`, tablefunc's `crosstab*` / `connectby`, xml2's `xpath_table`). `COPY ... FROM PROGRAM` is already rejected one layer earlier — `copy` is not in `ALLOWED_LEADING`. The GUC pair is load-bearing, not just defense-in-depth: `set_config('role', 'none', true)` undoes the `SET LOCAL ROLE tenant_<hash>` the executor sets outside the validated SQL, and wrapped in `query_to_xml` it read another tenant's table in one SELECT (Postgres 16, 2026-11-02).
 - **Core value:** Bullet-proof
-- **Why:** `pg_sleep(3600)` is callable by *any* role and pins a connection for the duration — a trivial DoS — and the statement-timeout layer that was supposed to bound it is still unwired (`db-adapter` open question). The file-IO functions are blocked at the PG level by Neon's non-superuser role, but listing them here makes the reject *attributed* (`disallowed_function`) rather than surfacing as an opaque Postgres permission error, and holds the layered-guardrails line (`SK-SQLAL-001`) if a future engine or BYO connection runs as a more privileged role. Resolved per `GLOBAL-033` (security trade-off → layered guardrails) — was previously an open question relying on a single control.
-- **Consequence in code:** `DISALLOWED_FUNCTIONS` is a closed set in `sql-validate.ts`; `walkForRejected()` tests every `type:"function"`/`"aggr_func"` node's name against it via `containsDisallowedFunction` (recurses string leaves under `name` so it's robust to node-sql-parser's version-dependent name shape). Adding a dangerous function = one line in the set + a test row.
+- **Why:** `pg_sleep(3600)` is callable by *any* role and pins a connection until the statement timeout fires — a trivial DoS. The file-IO functions are blocked at the PG level by Neon's non-superuser role, but listing them here makes the reject *attributed* (`disallowed_function`) rather than surfacing as an opaque Postgres permission error, and holds the layered-guardrails line (`SK-SQLAL-001`) if a future engine or BYO connection runs as a more privileged role. Resolved per `GLOBAL-033` (security trade-off → layered guardrails).
+- **Consequence in code:** `DISALLOWED_FUNCTIONS` is a closed set in `sql-validate.ts`; `walkForRejected()` tests every `type:"function"`/`"aggr_func"` node's name against it via `containsDisallowedFunction` (recurses string leaves under `name` so it's robust to node-sql-parser's version-dependent name shape), and `validateSqlPg` checks every name segment of libpg_query's calls against it too. Adding a dangerous function = one line in the set + a test row.
 - **Alternatives rejected:**
   - Rely on Neon's non-superuser role alone — misses `pg_sleep` (any role can call it) and breaks the moment a more-privileged engine/connection is added.
-  - Rely on a statement timeout — not wired, and a timeout still wastes the connection for its duration.
+  - Rely on a statement timeout — it still wastes the connection for its duration.
 
 ### SK-SQLAL-009 — Multi-statement input rejected
 
-- **Decision:** A statement that `node-sql-parser` parses into more than one sibling statement is rejected with `multi_statement`, before the per-statement walk.
+- **Decision:** User SQL runs only when it is one statement by node-sql-parser's split, by Postgres's lexer (`splitReject`) and by Postgres's own parser (libpg_query, `validateSqlPg`) — and libpg_query agrees with the AST walk's verdict; anything else is rejected with `multi_statement` (or the reason the disagreement names), before execution.
 - **Core value:** Bullet-proof, Simple
 - **Why:** `SELECT 1; DELETE FROM x WHERE id=1` parses as two statements; the per-statement walk clears each (the DELETE *has* a WHERE), so a benign-looking lead statement smuggles a second one past the guardrails. A plan is exactly one statement — rejecting `>1` is fail-closed and matches the `architecture.md §3.6.5` "multi-statement rejected" contract that was previously only asserted in prose. Resolved per `GLOBAL-033` (security trade-off → fail-closed).
-- **Consequence in code:** `validateSql()` returns `{ ok:false, reason:"multi_statement" }` when `asts.length > 1`. (`WITH … SELECT` is a single statement and is unaffected.) `SHOW` / plain `EXPLAIN` skip the parser, so `hasSecondStatement` applies the same rule there; before it, `SHOW x; RESET ROLE; SELECT * FROM other.t` passed and could drop back to the RLS-bypassing owner (fixed 2026-10-16). It, the leading-comment strip and the `EXPLAIN_ANALYZE` collapse share one comment scanner that follows Postgres's lexer, not JS's: `--` ends at `\n` or `\r`, `/* */` nests, and any non-ASCII character continues an identifier (`é$$` is not a dollar-quote). Each of those three disagreements let a statement through on Postgres 16 (2026-10-19). `tenant-isolation.integration.test.ts` pins the engine side: a tenant role cannot read another tenant's schema.
+- **Consequence in code:** `validateSql()` returns `{ ok:false, reason:"multi_statement" }` when `asts.length > 1` **or** `splitReject` — Postgres's own split, on every statement — finds a second one. node-sql-parser's split is not authoritative: it reads `\'` in a standard `'…'` string as an escape where Postgres ends the string, so `SELECT 'a\'; RESET ROLE; SELECT … -- '` parsed as one SELECT and read another tenant's schema (reported 2026-11-01); `splitReject` fails closed on that sequence (`backslash_quote`, which also hid a denylisted call inside one statement). `SHOW` / plain `EXPLAIN` skip the parser and rely on it alone (`SHOW x; RESET ROLE; …`, fixed 2026-10-16). Every path that runs user SQL (`/v1/run`, `/v1/ask` incl. stash / cache / repair, grants) calls `validateSqlPg` (`sql-validate-pg.ts`): libpg_query re-parses the statement and must agree with `validateSql` on the facts the gates act on (listed in that file's header), so a divergence nobody has found yet fails closed too (one WASM load per isolate, ~1.6 ms per statement warm). The executors refuse a second command themselves: the BYO runner sends the user statement over the extended protocol (`postgres-byo.ts` `runBounded`), as Neon's SQL-over-HTTP does for the hosted path; the Supabase Management-API transport (`postgres-supabase-mgmt.ts`) relies on its engine-enforced `read_only: true` transaction plus this validator instead. It, the leading-comment strip and the `EXPLAIN_ANALYZE` collapse share one comment scanner that follows Postgres's lexer, not JS's: `--` ends at `\n` or `\r`, `/* */` nests, and any non-ASCII character continues an identifier (`é$$` is not a dollar-quote). Each of those three disagreements let a statement through on Postgres 16 (2026-10-19). `tenant-isolation.integration.test.ts` pins the engine side: a tenant role cannot read another tenant's schema.
 - **Alternatives rejected:**
   - Trust the per-statement walk to catch everything — it only catches *rejected* patterns; two benign statements both pass.
-  - A leading-`;`-count regex — string-level counting trips on semicolons inside string literals; the parser's statement split is authoritative.
+  - A leading-`;`-count regex — trips on semicolons inside string literals; only a lexer that follows Postgres's rules splits correctly.
 
 ## GLOBALs governing this feature
 
@@ -119,9 +121,11 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **GLOBAL-015** — Power users always have an escape hatch.
   - *In this feature:*
-    **Interaction note:** `/v1/run` ships in Phase 2 (`apps/api/src/run/orchestrate.ts`, backing CLI `nlq run` + SDK `client.runSql()`). It reuses this validator unchanged — `/v1/run` skips the LLM, not the validator. The orchestrator calls `validateSql()` at the same point `/v1/ask` does; read-only principals (pk_live + anon) then reject writes via `containsWriteVerb` — a write-anywhere check (exported from `sql-validate.ts`) that catches data-modifying CTEs (`WITH x AS (INSERT …) SELECT …`, leading verb `with`), not just the leading verb (`SK-APIKEYS-003`). The `/v1/ask` render-before-commit gate (`SK-TRUST-001`) shares the same `containsWriteVerb` so neither gate can be smuggled past by a write hidden in a CTE. Future work that loosens this needs to update both this feature and `GLOBAL-015` in the same PR.
+    **Interaction note:** `/v1/run` ships in Phase 2 (`apps/api/src/run/orchestrate.ts`, backing CLI `nlq run` + SDK `client.runSql()`). It reuses this validator unchanged — `/v1/run` skips the LLM, not the validator. The orchestrator calls `validateSqlPg()` at the same point `/v1/ask` does; read-only principals (pk_live + anon) then reject writes via `containsWriteVerb` — a write-anywhere check (exported from `sql-validate.ts`) that catches data-modifying CTEs (`WITH x AS (INSERT …) SELECT …`, leading verb `with`), not just the leading verb (`SK-APIKEYS-003`). The `/v1/ask` render-before-commit gate (`SK-TRUST-001`) shares the same `containsWriteVerb` so neither gate can be smuggled past by a write hidden in a CTE. Future work that loosens this needs to update both this feature and `GLOBAL-015` in the same PR.
 - **GLOBAL-033** — Resolution defaults (close open questions from the values).
 
 ## Open questions / known unknowns
 
+- **Gap — the connecting role can leave the tenant role.** The hosted executor connects as the schema-owning role and narrows with `SET LOCAL ROLE`, so any call that reaches `set_config('role', …)` restores the owner — including through an SQL-string executor in an extension `SK-SQLAL-008` does not name; a denylist cannot be complete for extensions. Lever: run tenant SQL on a connection whose session user is the tenant role, so there is no wider role to return to.
+- **Gap — side-effecting reads.** `nextval` / `setval`, `lo_create` / `lo_unlink`, `pg_advisory_lock` and `pg_notify` run inside a SELECT, so read-only principals (`SK-APIKEYS-003`) pass them, bounded by the tenant role's own privileges. Lever: run read-only principals in a `READ ONLY` transaction (Postgres 16 then refuses `nextval` and `lo_*`), then deny what it still allows.
 - **Parked until `semantic.yml` ships (Phase 2):** semantic-aware allow-list — an optional pass (DESIGN §17) verifying referenced columns belong to dimensions/metrics declared in `semantic.yml`, failing with `semantic_violation` instead of leaking schema. Plan-cache key construction folds in the semantic.yml fingerprint when this lands.

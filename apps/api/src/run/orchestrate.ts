@@ -7,7 +7,8 @@ import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { classifyDataException } from "../ask/exec-classify.ts";
 import { hashGoal } from "../ask/plan-cache.ts";
 import type { RateLimiter } from "../ask/rate-limit.ts";
-import { containsWriteVerb, validateSql } from "../ask/sql-validate.ts";
+import { containsWriteVerb } from "../ask/sql-validate.ts";
+import { validateSqlPg } from "../ask/sql-validate-pg.ts";
 import {
   type AskError,
   DbConfigError,
@@ -89,7 +90,7 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
   }
 
   // Span name matches `/v1/ask` so dashboards built off `performance.md §3.1` work unchanged.
-  const validation = await withSpan("nlqdb.sql.validate", async () => validateSql(req.sql));
+  const validation = await withSpan("nlqdb.sql.validate", () => validateSqlPg(req.sql));
   if (!validation.ok) {
     return { ok: false, error: { code: "sql_rejected", reason: validation.reason } };
   }

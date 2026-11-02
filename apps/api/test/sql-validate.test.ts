@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 import { containsWriteVerb, validateSql } from "../src/ask/sql-validate.ts";
+import { disagreement, validateSqlPg } from "../src/ask/sql-validate-pg.ts";
 
 describe("validateSql", () => {
   describe("rejects", () => {
@@ -52,16 +53,24 @@ describe("validateSql", () => {
       ["WITH x AS (SELECT pg_sleep(3)) SELECT 1", "disallowed_function"],
       ["SELECT pg_read_file('/etc/passwd')", "disallowed_function"],
       ["SELECT dblink('host=evil', 'select 1')", "disallowed_function"],
+      ["SELECT dblink_connect_u('c', 'dbname=x')", "disallowed_function"],
       ["SELECT lo_import('/etc/passwd')", "disallowed_function"],
-      // RLS-tenancy GUC primitives — defense-in-depth so a CTE can't
-      // re-arm `app.tenant_id` from inside a validated query (the exec
-      // wrapper sets it OUTSIDE the user SQL).
+      // RLS-tenancy GUC primitives: inside user SQL they could re-arm
+      // `app.tenant_id` or reset the role the exec wrapper sets outside it.
       ["SELECT set_config('app.tenant_id', 'other', false)", "disallowed_function"],
       ["SELECT current_setting('app.tenant_id')", "disallowed_function"],
       [
         "WITH x AS (SELECT set_config('app.tenant_id', 'other', true)) SELECT * FROM users",
         "disallowed_function",
       ],
+      // A function that runs a query string hides a `set_config('role', …)`
+      // that drops `SET LOCAL ROLE` back to the owner.
+      [
+        "SELECT query_to_xml('select set_config(''role'',''none'',true)', true, true, '')",
+        "disallowed_function",
+      ],
+      ["SELECT ts_rewrite('a'::tsquery, 'select 1')", "disallowed_function"],
+      ["SELECT * FROM ts_stat('select to_tsvector(1::text)')", "disallowed_function"],
     ])("rejects %j with reason %s", (sql, reason) => {
       const result = validateSql(sql);
       expect(result.ok).toBe(false);
@@ -121,7 +130,6 @@ describe("validateSql", () => {
       // `other.t` on a real Postgres 16 with the earlier lexer.
       "SHOW x --\r; RESET ROLE; SELECT * FROM other.t",
       "EXPLAIN SELECT 1 AS é$$; RESET ROLE; SELECT * FROM other.t; --$$",
-      "EXPLAIN SELECT 1 AS éE'\\'; RESET ROLE; SELECT 1 --'",
       "SHOW x;\u00a0RESET ROLE",
       // A quote or dollar-quote right after a number or `$n` fails closed.
       "EXPLAIN SELECT 1$$; RESET ROLE; $$",
@@ -148,6 +156,41 @@ describe("validateSql", () => {
     ])("accepts %j", (sql) => {
       expect(validateSql(sql)).toEqual({ ok: true });
     });
+  });
+
+  // Postgres's statement split governs every statement, not node-sql-parser's:
+  // a backslash before a quote in a standard '…' string ends the string for
+  // Postgres but reads as an escape to node-sql-parser, which then saw one
+  // SELECT where Postgres ran three (reported 2026-11-01; read another
+  // tenant's schema over the simple protocol on Postgres 16).
+  it.each([
+    `SELECT 'a\\'; RESET ROLE; SELECT secret FROM "db_other_xxxxxx".orders -- '`,
+    "SELECT 'a\\'; DELETE FROM t WHERE true -- '",
+    "WITH x AS (SELECT 'a\\') SELECT 1; RESET ROLE -- '",
+    // One statement to Postgres, but the walk would miss the call.
+    "SELECT 'a\\', pg_sleep(1) -- '",
+    "SELECT 'it\\''s', pg_sleep(1) -- '",
+  ])("rejects a statement node-sql-parser lexes differently %j", (sql) => {
+    expect(validateSql(sql).ok).toBe(false);
+    expect(containsWriteVerb(sql)).toBe(false); // so the validator is the gate
+  });
+
+  it.each([
+    `SELECT 'a\\'; RESET ROLE; SELECT 1 -- '`,
+    "SELECT 'a\\', pg_sleep(1) -- '",
+    "SELECT 'C:\\'",
+    "EXPLAIN SELECT 1 AS éE'\\'; RESET ROLE; SELECT 1 --'",
+  ])("names the backslash before a quote, not a second statement %j", (sql) => {
+    expect(validateSql(sql)).toEqual({ ok: false, reason: "backslash_quote" });
+  });
+
+  it.each([
+    "SELECT * FROM t WHERE name LIKE '50\\%'",
+    "SELECT E'it\\'s'",
+    "SELECT 'it''s'",
+    "SELECT 1;",
+  ])("accepts %j", (sql) => {
+    expect(validateSql(sql).ok).toBe(true);
   });
 
   // A leading comment Postgres ends sooner than a naive strip (`--` at
@@ -299,5 +342,47 @@ describe("containsWriteVerb", () => {
     "",
   ])("returns false for the read %j", (sql) => {
     expect(containsWriteVerb(sql)).toBe(false);
+  });
+});
+
+// Postgres's own parser (libpg_query) must agree with `validateSql` on the
+// facts the gates act on (SK-SQLAL-009): one statement, its kind, whether it
+// writes, and no denylisted call — so a reading node-sql-parser gets wrong
+// fails closed instead of reaching Postgres.
+describe("validateSqlPg", () => {
+  it.each([
+    ["SELECT 'a\\'; RESET ROLE; SELECT secret FROM other.orders -- '", "backslash_quote"],
+    ["SELECT 'a\\', pg_sleep(1) -- '", "backslash_quote"],
+    ["SELECT pg_catalog.pg_sleep(1)", "disallowed_function"],
+    // node-sql-parser misses a FROM function with a column definition list.
+    ["SELECT * FROM crosstab('select 1, 2, 3') AS c(a int, b int)", "disallowed_function"],
+    ["SELECT * INTO newt FROM t", "disallowed_verb"],
+    ["WITH d AS (UPDATE t SET a = 1 RETURNING *) SELECT * FROM d", "update_without_where"],
+    ["EXPLAIN (ANALYZE) DELETE FROM t WHERE true", "disallowed_verb"],
+  ])("rejects %j", async (sql, reason) => {
+    expect(await validateSqlPg(sql)).toMatchObject({ ok: false, reason });
+  });
+
+  // Field notation calls a function too (Postgres 16 runs both); node-sql-parser
+  // can't parse it today, so this pins the walk for the day it can.
+  it.each([
+    "SELECT ('search_path'::text).current_setting",
+    "SELECT (x).pg_sleep FROM (SELECT 1::float8 AS x) s",
+  ])("names a field-notation call %j disallowed_function", async (sql) => {
+    expect(await disagreement(sql)).toBe("disallowed_function");
+  });
+
+  it.each([
+    "SELECT DISTINCT ON (user_id) * FROM posts ORDER BY user_id, created_at DESC",
+    "SELECT count(*) FILTER (WHERE status = 'paid'), date_trunc('day', created_at)::date FROM orders GROUP BY 2",
+    "SELECT data->>'name' FROM events WHERE data @> '{\"a\":1}'::jsonb AND name ILIKE '%x%'",
+    "INSERT INTO t (a) VALUES ($1) ON CONFLICT (a) DO UPDATE SET a = EXCLUDED.a RETURNING *",
+    "UPDATE t SET a = 1 WHERE id = $1 RETURNING id",
+    "WITH d AS (DELETE FROM t WHERE id = 1 RETURNING *) SELECT * FROM d",
+    "EXPLAIN SELECT * FROM t",
+    "SHOW search_path",
+    "SELECT E'it\\'s'",
+  ])("accepts %j", async (sql) => {
+    expect((await validateSqlPg(sql)).ok).toBe(true);
   });
 });

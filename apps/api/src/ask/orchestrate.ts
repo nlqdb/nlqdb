@@ -42,7 +42,7 @@ import {
   classifySchemaError,
   recordExecUnreachable,
 } from "./schema-mismatch.ts";
-import { validateSql } from "./sql-validate.ts";
+import { validateSqlPg } from "./sql-validate-pg.ts";
 import { shouldSummarize } from "./summarize-gate.ts";
 import {
   type AskDiff,
@@ -318,7 +318,7 @@ export async function orchestrateAsk(
     planSql = stashed.sql;
     planModel = stashed.model;
     planConfidence = stashed.confidence;
-    const stashValidation = await withSpan("nlqdb.sql.validate", async () => validateSql(planSql));
+    const stashValidation = await withSpan("nlqdb.sql.validate", () => validateSqlPg(planSql));
     if (!stashValidation.ok) {
       return { ok: false, error: { code: "sql_rejected", reason: stashValidation.reason } };
     }
@@ -335,7 +335,7 @@ export async function orchestrateAsk(
     planConfidence = cached.confidence ?? 1.0;
     // Validate the cached plan once — caches don't lie often, but we
     // never trust SQL onto the wire without a fresh allowlist pass.
-    const cachedValidation = await withSpan("nlqdb.sql.validate", async () => validateSql(planSql));
+    const cachedValidation = await withSpan("nlqdb.sql.validate", () => validateSqlPg(planSql));
     if (!cachedValidation.ok) {
       return { ok: false, error: { code: "sql_rejected", reason: cachedValidation.reason } };
     }
@@ -380,7 +380,7 @@ export async function orchestrateAsk(
           // the SQL we validate, exec, and cache is portable (search_path
           // resolves it in any DB sharing this schema_hash).
           const sql = hostedSchema ? schemaRelativeSql(plan.sql, hostedSchema) : plan.sql;
-          const validation = validateSql(sql);
+          const validation = await validateSqlPg(sql);
           if (!validation.ok) {
             // Tag with the reject reason so the next attempt's prompt
             // can describe what to avoid; keep the rejected SQL on the
@@ -861,7 +861,7 @@ export async function orchestrateAsk(
           // hosted DB otherwise re-caches a physical schema name, re-poisoning
           // the shared cache key this decision exists to keep portable.
           const repairSql = hostedSchema ? schemaRelativeSql(repair.sql, hostedSchema) : repair.sql;
-          const validation = validateSql(repairSql);
+          const validation = await validateSqlPg(repairSql);
           // A repaired read must stay a read — never let repair smuggle a
           // write past the preview gate.
           if (!validation.ok)

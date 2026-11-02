@@ -64,6 +64,7 @@ export type SqlRejectReason =
   | "disallowed_verb"
   | "disallowed_function"
   | "multi_statement"
+  | "backslash_quote"
   | "parse_failed"
   | "empty";
 
@@ -119,18 +120,18 @@ const ALLOWED_LEADING = new Set([
 // `set_config` / `current_setting` are the RLS-tenancy GUC primitives.
 // The exec wrapper sets `search_path` / `app.tenant_id` and `SET LOCAL
 // ROLE tenant_<hash>` OUTSIDE the validated user SQL (separate
-// transaction statements). The least-privilege `SET LOCAL ROLE` is the
-// load-bearing isolation control; denying these functions inside user
-// SQL is defense-in-depth so a `WITH x AS (SELECT set_config('app.
-// tenant_id', …)) …` CTE can never re-arm the RLS GUC from within a
-// query. The LLM has zero legitimate reason to call either on `/v1/ask`.
-const DISALLOWED_FUNCTIONS = new Set([
+// transaction statements). Denying them is load-bearing, not only
+// defense-in-depth: `set_config('role', 'none', true)` inside user SQL
+// undoes that `SET LOCAL ROLE`, and `set_config('app.tenant_id', …)`
+// re-arms the RLS GUC. The LLM has zero legitimate reason to call either.
+export const DISALLOWED_FUNCTIONS: ReadonlySet<string> = new Set([
   "pg_sleep",
   "pg_sleep_for",
   "pg_sleep_until",
   "dblink",
   "dblink_exec",
   "dblink_connect",
+  "dblink_connect_u",
   "lo_import",
   "lo_export",
   "pg_read_file",
@@ -140,6 +141,19 @@ const DISALLOWED_FUNCTIONS = new Set([
   "pg_logical_emit_message",
   "set_config",
   "current_setting",
+  // These run a query string the walk never sees, so `set_config('role',
+  // 'none', true)` inside one drops `SET LOCAL ROLE` (Postgres 16, 2026-11-02).
+  "query_to_xml",
+  "query_to_xmlschema",
+  "query_to_xml_and_xmlschema",
+  "ts_rewrite",
+  "ts_stat",
+  "crosstab",
+  "crosstab2",
+  "crosstab3",
+  "crosstab4",
+  "connectby",
+  "xpath_table",
 ]);
 
 // EXPLAIN ANALYZE actually executes the wrapped statement on Postgres
@@ -201,51 +215,57 @@ const collapseComments = (s: string): string => {
   return out;
 };
 
-// Statement-split check for the SHOW / EXPLAIN short-circuit, which skips
-// the parser and so its multi-statement reject (SK-SQLAL-009): without it
-// `SHOW x; RESET ROLE; SELECT * FROM other.t` drops back to the RLS-
-// bypassing owner. A lexer, not a regex — a `;` inside a string, quoted
-// identifier, dollar-quote or comment is not a separator. Unterminated
-// input fails closed, and so does a `$` or `'` right after a number or
-// `$n` (never valid SQL; Postgres versions lex it differently).
-export function hasSecondStatement(sql: string): boolean {
+// Postgres's own statement split (SK-SQLAL-009), run on every statement:
+// node-sql-parser's split is not authoritative, because it lexes some
+// strings differently from Postgres. Without it `SHOW x; RESET ROLE; SELECT
+// * FROM other.t` (no parse) and `SELECT 'a\'; RESET ROLE; SELECT … -- '`
+// (parsed as one SELECT) drop back to the RLS-bypassing owner. A lexer, not
+// a regex — a `;` inside a string, quoted identifier, dollar-quote or comment
+// is not a separator. Fails closed (`multi_statement`) on unterminated input
+// and on a `$` or `'` right after a number or `$n` (never valid SQL; Postgres
+// versions lex it differently). A backslash before a quote in a standard '…'
+// string is `backslash_quote`: Postgres takes it literally but node-sql-parser
+// reads it as an escape, so the walk would see a query Postgres never runs.
+export function splitReject(sql: string): "multi_statement" | "backslash_quote" | null {
   const n = sql.length;
   let afterSemi = false;
   for (let i = 0; i < n; ) {
     const c = sql[i] as string;
     const end = commentEnd(sql, i);
     const tag = c === "$" ? dollarTag(sql, i) : undefined;
-    if (end === -1) return true;
+    if (end === -1) return "multi_statement";
     if (end > i) {
       i = end;
     } else if (PG_SPACE.test(c)) {
       i++;
     } else if (afterSemi) {
-      return true;
+      return "multi_statement";
     } else if (c === ";") {
       afterSemi = true;
       i++;
     } else if (tag) {
       const close = sql.indexOf(tag, i + tag.length);
-      if (close === -1) return true;
+      if (close === -1) return "multi_statement";
       i = close + tag.length;
     } else if (c === "'" || c === '"') {
-      i = quotedEnd(sql, i, false);
-      if (i === -1) return true;
+      const end = quotedEnd(sql, i, false);
+      if (end === -1) return "multi_statement";
+      if (c === "'" && sql.slice(i, end).includes("\\'")) return "backslash_quote";
+      i = end;
     } else if (IDENT_CONT.test(c)) {
       // A whole identifier / number / `$n` run, so a `$` inside it is never
       // read as a dollar-quote (`é$$` is one identifier to Postgres).
       let j = i + 1;
       while (j < n && IDENT_CONT.test(sql[j] as string)) j++;
       const run = sql.slice(i, j);
-      if (/^[0-9$]/.test(run) && (run.includes("$", 1) || sql[j] === "'")) return true;
+      if (/^[0-9$]/.test(run) && (run.includes("$", 1) || sql[j] === "'")) return "multi_statement";
       i = (run === "e" || run === "E") && sql[j] === "'" ? quotedEnd(sql, j, true) : j;
-      if (i === -1) return true;
+      if (i === -1) return "multi_statement";
     } else {
       i++;
     }
   }
-  return false;
+  return null;
 }
 
 function dollarTag(sql: string, i: number): string | undefined {
@@ -335,7 +355,8 @@ export function validateSql(rawSql: string): SqlValidationResult {
   // refuses both ("not supported"); short-circuit instead of demanding
   // a parse.
   if (leading === "show" || leading === "explain") {
-    return hasSecondStatement(sql) ? { ok: false, reason: "multi_statement" } : { ok: true };
+    const split = splitReject(sql);
+    return split ? { ok: false, reason: split } : { ok: true };
   }
 
   let asts: AstNode[];
@@ -349,8 +370,10 @@ export function validateSql(rawSql: string): SqlValidationResult {
   // Multi-statement reject (SK-SQLAL-009). `SELECT 1; DELETE FROM x
   // WHERE id=1` parses as two sibling statements; the per-statement
   // walk below would clear each one, so a benign-looking lead statement
-  // can smuggle a second. A plan is exactly one statement — fail closed.
-  if (asts.length > 1) return { ok: false, reason: "multi_statement" };
+  // can smuggle a second. A plan is exactly one statement — fail closed,
+  // by Postgres's split as well as the parser's (`splitReject`).
+  const split = splitReject(sql) ?? (asts.length > 1 ? "multi_statement" : null);
+  if (split) return { ok: false, reason: split };
 
   for (const root of asts) {
     const embedded = walkForRejected(root);

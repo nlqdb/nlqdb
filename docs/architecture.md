@@ -191,15 +191,14 @@ the user to approve a diff that names the wrong table (`SK-ASK-004` /
 
 #### 3.6.5 Validator architecture — read/write vs DDL paths
 
-Two non-overlapping validators: the **read/write** path
-(`SELECT/INSERT/UPDATE/DELETE/WITH/EXPLAIN/SHOW` only, `EXPLAIN ANALYZE` and
-multi-statement rejected — the LLM never gets DDL rights here) and the **DDL**
-path (only the §3.6.2 compiler's `CREATE TABLE/INDEX/FK`, re-parsed with
-libpg_query). Canonical:
+Two non-overlapping validators, both re-parsed with libpg_query: the
+**read/write** path (one `SELECT/INSERT/UPDATE/DELETE/WITH/EXPLAIN/SHOW`
+statement, no `EXPLAIN ANALYZE`, no DDL) and the **DDL** path (only the
+§3.6.2 compiler's `CREATE TABLE/INDEX/FK`). Canonical:
 [`hosted-db-create`](./features/hosted-db-create/FEATURE.md) `SK-HDC-006` +
-[`sql-allowlist`](./features/sql-allowlist/FEATURE.md). Both follow the
-**layered guardrails** principle ([`research-receipts.md §1`](./research-receipts.md)):
-AST reject-list, role isolation, RLS, statement timeout, transactional wrapper.
+[`sql-allowlist`](./features/sql-allowlist/FEATURE.md). Layered guardrails
+([`research-receipts.md §1`](./research-receipts.md)): AST reject-list, role
+isolation, RLS, statement timeout, transactional wrapper.
 
 #### 3.6.6 Tenancy and storage
 
@@ -223,7 +222,7 @@ Not in Phase 1. Shape locked now to avoid painting into a corner:
 
 **Cancel on write.** Write and DDL queries run inside `BEGIN; … COMMIT;` with a live `executing for Xs [Cancel]` label. Cancel → `ROLLBACK` + `pg_cancel_backend(pid)`. Layered under `SK-TRUST-001` diff-confirm (pre-exec gate); this is the during-exec gate.
 
-**Function reject-list.** Filesystem/network builtins (`pg_read_file`, `pg_ls_dir`, `lo_import`, `dblink*`, `COPY ... FROM PROGRAM`, `pg_sleep`) rejected by the validator (`SK-SQLAL-008`, sql-allowlist feature). User-defined functions opaque — user owns their DB.
+**Function reject-list.** File/network IO, `pg_sleep`, the GUC setters and query-string executors are rejected by the validator (`SK-SQLAL-008`). User-defined functions opaque — user owns their DB.
 
 Sibling concern for BYO ClickHouse: `readonly = 1` does *not* block DDL — see `docs/research/personas.md` P6 open questions.
 
