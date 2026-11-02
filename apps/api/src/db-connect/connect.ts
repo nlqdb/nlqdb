@@ -10,8 +10,10 @@
 // SchemaPlan + compiled DDL (the typed-plan create pipeline); a BYO
 // connection has neither — the schema is read out of the live database
 // by introspection, not authored by us. So the flow here is its own:
-// validate → introspect+render (+ Tier 0 proposals on Postgres, the
-// `GLOBAL-043` attach door) → seal → register.
+// validate → introspect+render (+ Tier 0 proposals on Postgres and D1, the
+// `GLOBAL-043` attach door) → seal → register. A D1 attaches with an API
+// token + account id + database id over Cloudflare's REST API (`d1RestBatch`,
+// a fixed host, so no egress guard); its sealed secret is that triple.
 //
 // Ordering is load-bearing (see the numbered steps): the KEK check
 // happens BEFORE any network I/O so a misconfigured deployment fails
@@ -32,9 +34,14 @@ import {
   type ByoPostgresConnection,
   type ClickhouseConnSpec,
   type ClickhouseQueryFn,
+  type D1BatchFn,
+  type D1Target,
   type DnsResolver,
+  d1RestBatch,
   introspectClickhouse,
+  introspectD1Schema,
   introspectPostgres,
+  observeD1Catalog,
   observePostgresCatalog,
   type Proposal,
   renderByoClickhouseSchema,
@@ -66,11 +73,14 @@ export type ConnectByoDeps = {
   // orchestrator closes after the read.
   buildClickhouseQuery: (spec: ClickhouseConnSpec) => ClickhouseQueryFn;
   buildPostgresQuery: (rawUrl: string) => ByoPostgresConnection;
+  // The D1 REST client; tests answer it from a local D1. Throws on a malformed id.
+  buildD1Batch?: (target: D1Target) => D1BatchFn;
 };
 
-export type ConnectByoArgs = {
-  engine: "clickhouse" | "postgres";
-  connectionUrl: string;
+export type ConnectByoArgs = (
+  | { engine: "clickhouse" | "postgres"; connectionUrl: string }
+  | { engine: "d1"; d1: D1Target }
+) & {
   name?: string;
   tenantId: string;
   // SK-GTM-005 — request self-identified as nlqdb-generated (walker UA /
@@ -86,7 +96,7 @@ export type ConnectByoResult =
       engine: string;
       schemaPreview: string;
       pkLive: string | null;
-      // Postgres only: the attach door's Tier 0 proposals (`GLOBAL-043`),
+      // Postgres and D1: the attach door's Tier 0 proposals (`GLOBAL-043`),
       // each with its ledger row id. `[]` when the schema needs nothing.
       proposals: (Proposal & { id: number })[];
     }
@@ -112,6 +122,8 @@ export async function connectByoDb(
         "Connection sealing is not configured on this deployment; set BYO_SECRET_KEK and retry.",
     };
   }
+
+  if (args.engine === "d1") return attachD1({ ...deps, kek: deps.kek }, args);
 
   // b. Validate the URL shape + egress-guard the host (GLOBAL-035). The
   //    message is already a single safe sentence that never echoes the
@@ -189,11 +201,87 @@ export async function connectByoDb(
     context: `dbconn:${dbId}`,
   });
 
-  // f. Register the row and its proposals in one batch, so an attached DB
-  //    never lacks the proposals its response listed. `connection_secret_ref`
-  //    is the BYO sentinel (there is no env var to resolve); the sealed URL
-  //    rides `connection_blob`. Seed the three timestamps with unixepoch() so
-  //    the row matches the hosted-create shape.
+  const ledger = await register(deps, args, dbId, blob, rendered, proposals);
+
+  // g. Mint a pk_live_ key for the copy-snippet CTA. Failure is
+  //    non-fatal — the DB is already committed and queryable.
+  const pkLive = deps.mintPkLive
+    ? await deps.mintPkLive(dbId, args.tenantId).catch(() => null)
+    : null;
+
+  return {
+    ok: true,
+    dbId,
+    name: args.name ?? slug,
+    engine: args.engine,
+    schemaPreview: rendered.schemaText.slice(0, SCHEMA_PREVIEW_LIMIT),
+    pkLive,
+    proposals: ledger,
+  };
+}
+
+// The D1 door: ids checked before any request, then the schema and the Tier 0
+// proposals read in parallel (4 REST requests), then seal and register as
+// above. No pk_live key: an attached D1 is the DBA's, not `/v1/ask`'s.
+async function attachD1(
+  deps: ConnectByoDeps & { kek: string },
+  args: ConnectByoArgs & { engine: "d1" },
+): Promise<ConnectByoResult> {
+  let batch: D1BatchFn;
+  try {
+    batch = (deps.buildD1Batch ?? d1RestBatch)(args.d1);
+  } catch (err) {
+    return { ok: false, status: 400, message: (err as Error).message };
+  }
+  const slug = makeSlug(args.name ?? "d1");
+  const dbId = await mintUniqueDbId(deps.d1, slug, deps.randomSuffix);
+  if (!dbId) {
+    return {
+      ok: false,
+      status: 502,
+      message: "Could not allocate a database id; retry in a moment.",
+    };
+  }
+  let rendered: { schemaText: string; schemaHash: string };
+  let proposals: Proposal[];
+  try {
+    [rendered, proposals] = await Promise.all([introspectD1Schema(batch), observeD1Catalog(batch)]);
+  } catch {
+    return {
+      ok: false,
+      status: 502,
+      message:
+        "Could not read the D1 catalog; check the token has D1 Read on that account and the ids are right.",
+    };
+  }
+  const blob = await sealSecret(JSON.stringify(args.d1), {
+    kek: deps.kek,
+    context: `dbconn:${dbId}`,
+  });
+  return {
+    ok: true,
+    dbId,
+    name: args.name ?? slug,
+    engine: "d1",
+    schemaPreview: rendered.schemaText.slice(0, SCHEMA_PREVIEW_LIMIT),
+    pkLive: null,
+    proposals: await register(deps, args, dbId, blob, rendered, proposals),
+  };
+}
+
+// f. Register the row and its proposals in one batch, so an attached DB never
+//    lacks the proposals its response listed. `connection_secret_ref` is the
+//    BYO sentinel (there is no env var to resolve); the sealed secret rides
+//    `connection_blob`. Seed the three timestamps with unixepoch() so the row
+//    matches the hosted-create shape.
+async function register(
+  deps: ConnectByoDeps,
+  args: ConnectByoArgs,
+  dbId: string,
+  blob: string,
+  rendered: { schemaText: string; schemaHash: string },
+  proposals: Proposal[],
+): Promise<(Proposal & { id: number })[]> {
   const dbRow = deps.d1
     .prepare(
       "INSERT INTO databases " +
@@ -214,22 +302,7 @@ export async function connectByoDb(
     dbRow,
     ...proposals.map((p) => proposalStatement(deps.d1, dbId, p)),
   ]);
-
-  // g. Mint a pk_live_ key for the copy-snippet CTA. Failure is
-  //    non-fatal — the DB is already committed and queryable.
-  const pkLive = deps.mintPkLive
-    ? await deps.mintPkLive(dbId, args.tenantId).catch(() => null)
-    : null;
-
-  return {
-    ok: true,
-    dbId,
-    name: args.name ?? slug,
-    engine: args.engine,
-    schemaPreview: rendered.schemaText.slice(0, SCHEMA_PREVIEW_LIMIT),
-    pkLive,
-    proposals: proposals.map((p, i) => ({ ...p, id: Number(ledger[i]?.meta.last_row_id) })),
-  };
+  return proposals.map((p, i) => ({ ...p, id: Number(ledger[i]?.meta.last_row_id) }));
 }
 
 // Extract the password from the raw connection URL. The parsed shapes

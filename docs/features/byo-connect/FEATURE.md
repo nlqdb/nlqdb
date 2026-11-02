@@ -25,7 +25,10 @@ one-click **OAuth** button and runs over the **Management-API HTTPS transport**
 `POST /v1/projects/{ref}/database/query`, not a socket, because postgres.js over
 Workers sockets (`SK-DBCONN-002`) hangs ~18s against the Supavisor pooler in
 production (Open question (g)). A **pasted** non-Neon Postgres DSN still uses the
-`SK-DBCONN-002` socket path (same known risk). Open gaps (ClickHouse SQL dialect,
+`SK-DBCONN-002` socket path (same known risk). A **D1** attaches DBA-only
+(`GLOBAL-043`, no `/v1/ask`): `{engine:"d1", account_id, database_id, token}`,
+ids checked before the fixed `api.cloudflare.com` host (no egress guard), the
+triple sealed as the blob. Open gaps (ClickHouse SQL dialect,
 validator, TOCTOU residual, socket reachability, token-refresh concurrency)
 tracked under *Open questions* below.
 **Owners (code):** `apps/api/src/db-connect/connect.ts` (orchestrator) +

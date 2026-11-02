@@ -85,7 +85,7 @@ D1 is the dogfood engine; Postgres is the market.
 
 | Number | Value |
 |---|---|
-| KPI A — attach → first proposal | unmeasured here; synthetic local D1, catalog → first proposal: 106.2 ms (run 270) |
+| KPI A — attach → first proposal | unmeasured here; synthetic local D1 through the API door, credentials → proposals in the ledger: 117.3 ms (run 271) |
 | KPI B — applied with measured p95 gain (and rows-read Δ) | 0 |
 | KPI C — regressions auto-reverted / applied | — |
 | Verified GraphQL fields + token scopes | pending first attach |

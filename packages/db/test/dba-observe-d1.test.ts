@@ -1,58 +1,21 @@
-// The D1 Tier 0 observer against a local D1 (`GLOBAL-043` roadmap 1a, the D1
-// slice): miniflare runs workerd's own D1, so its authorizer and pragma rules
-// are D1's. Every read goes through `d1RestBatch` — the client a real attach
-// uses — with `fetch` answered in the REST `query` endpoint's shape.
+// The D1 Tier 0 observer and schema reader against a local D1 (`GLOBAL-043`
+// roadmap 1a, the D1 slice), through `d1RestBatch` — the client a real attach
+// uses (`fixtures/local-d1.ts`).
 
 import { createTestTelemetry, type TestTelemetry } from "@nlqdb/otel/test";
-import { Miniflare } from "miniflare";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { d1RestBatch, observeD1Catalog } from "../src/index.ts";
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import { introspectD1Schema, observeD1Catalog } from "../src/index.ts";
+import { localD1 as createLocalD1 } from "./fixtures/local-d1.ts";
 
-const ACCOUNT = "0123456789abcdef0123456789abcdef";
-const DATABASE = "01234567-89ab-cdef-0123-456789abcdef";
-
-let mf: Miniflare;
-let fresh = 0;
-let requests = 0;
-
-// A fresh local D1 behind the REST client: one database per test.
-async function localD1(schema: string) {
-  const name = `DB${fresh++}`;
-  await mf.setOptions({
-    modules: true,
-    script: "export default { fetch() { return new Response('') } }",
-    d1Databases: Array.from({ length: fresh }, (_, i) => `DB${i}`),
-  });
-  const db = await mf.getD1Database(name);
-  if (schema) await db.exec(schema.replace(/\n\s*/g, " ").replace(/;\s*/g, ";\n"));
-  const fetchFn = (async (_url: string, init: RequestInit) => {
-    requests++;
-    const { batch } = JSON.parse(String(init.body)) as { batch: { sql: string }[] };
-    try {
-      const rs = await db.batch(batch.map((s) => db.prepare(s.sql)));
-      return Response.json({
-        success: true,
-        errors: [],
-        result: rs.map((r) => ({ results: r.results, success: true, meta: r.meta })),
-      });
-    } catch (err) {
-      return Response.json(
-        { success: false, errors: [{ code: 7500, message: (err as Error).message }] },
-        { status: 400 },
-      );
-    }
-  }) as typeof fetch;
-  return d1RestBatch({ accountId: ACCOUNT, databaseId: DATABASE, token: "t" }, fetchFn);
-}
+const d1 = createLocalD1();
+const localD1 = async (schema: string) => (await d1.open(schema)).batch;
+let requestsBefore = 0;
 
 let telemetry: TestTelemetry;
-beforeAll(() => {
-  mf = new Miniflare({ modules: true, script: "export default {}", d1Databases: [] });
-}, 60_000);
-afterAll(() => mf.dispose());
+afterAll(() => d1.dispose());
 beforeEach(() => {
   telemetry = createTestTelemetry();
-  requests = 0;
+  requestsBefore = d1.requests();
 });
 afterEach(() => telemetry.reset());
 
@@ -95,8 +58,8 @@ describe("observeD1Catalog on a local D1", () => {
       inverse: 'DROP INDEX IF EXISTS "nlqdb_posts_user_id_dac06227"',
       evidence: { rowEstimate: 0, tableBytes: 0 },
     });
-    // Three requests whatever the table count.
-    expect(requests).toBe(3);
+    // Three requests whatever the table count (the seed itself makes none).
+    expect(d1.requests() - requestsBefore).toBe(3);
   });
 
   it("orders by sqlite_stat1 row counts once ANALYZE has run", async () => {
@@ -129,6 +92,17 @@ describe("observeD1Catalog on a local D1", () => {
         `),
       ),
     ).toEqual([]);
+  });
+
+  it("reads the schema as the app's own DDL, one request, no internal tables", async () => {
+    const batch = await localD1(APP);
+    const before = d1.requests();
+    const { schemaText, schemaHash } = await introspectD1Schema(batch);
+    expect(d1.requests() - before).toBe(1);
+    expect(schemaText).toContain("CREATE TABLE posts (id INTEGER PRIMARY KEY");
+    expect(schemaText).toContain("CREATE INDEX comments_post ON comments(post_id, id);");
+    expect(schemaText).not.toMatch(/_cf_|sqlite_/);
+    expect(schemaHash).toBe((await introspectD1Schema(batch)).schemaHash);
   });
 
   it("records one db.observe span with the proposal count", async () => {
