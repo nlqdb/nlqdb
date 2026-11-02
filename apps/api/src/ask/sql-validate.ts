@@ -201,13 +201,17 @@ const collapseComments = (s: string): string => {
   return out;
 };
 
-// Statement-split check for the SHOW / EXPLAIN short-circuit, which skips
-// the parser and so its multi-statement reject (SK-SQLAL-009): without it
-// `SHOW x; RESET ROLE; SELECT * FROM other.t` drops back to the RLS-
-// bypassing owner. A lexer, not a regex — a `;` inside a string, quoted
-// identifier, dollar-quote or comment is not a separator. Unterminated
-// input fails closed, and so does a `$` or `'` right after a number or
-// `$n` (never valid SQL; Postgres versions lex it differently).
+// Postgres's own statement split (SK-SQLAL-009), run on every statement:
+// node-sql-parser's split is not authoritative, because it lexes some
+// strings differently from Postgres. Without it `SHOW x; RESET ROLE; SELECT
+// * FROM other.t` (no parse) and `SELECT 'a\'; RESET ROLE; SELECT … -- '`
+// (parsed as one SELECT) drop back to the RLS-bypassing owner. A lexer, not
+// a regex — a `;` inside a string, quoted identifier, dollar-quote or comment
+// is not a separator. Fails closed on: unterminated input; a `$` or `'`
+// right after a number or `$n` (never valid SQL; Postgres versions lex it
+// differently); and a backslash before a quote in a standard '…' string,
+// which Postgres takes literally but node-sql-parser reads as an escape, so
+// the validator's walk would see a different query than Postgres runs.
 export function hasSecondStatement(sql: string): boolean {
   const n = sql.length;
   let afterSemi = false;
@@ -230,8 +234,9 @@ export function hasSecondStatement(sql: string): boolean {
       if (close === -1) return true;
       i = close + tag.length;
     } else if (c === "'" || c === '"') {
-      i = quotedEnd(sql, i, false);
-      if (i === -1) return true;
+      const end = quotedEnd(sql, i, false);
+      if (end === -1 || (c === "'" && /\\'/.test(sql.slice(i, end)))) return true;
+      i = end;
     } else if (IDENT_CONT.test(c)) {
       // A whole identifier / number / `$n` run, so a `$` inside it is never
       // read as a dollar-quote (`é$$` is one identifier to Postgres).
@@ -349,8 +354,9 @@ export function validateSql(rawSql: string): SqlValidationResult {
   // Multi-statement reject (SK-SQLAL-009). `SELECT 1; DELETE FROM x
   // WHERE id=1` parses as two sibling statements; the per-statement
   // walk below would clear each one, so a benign-looking lead statement
-  // can smuggle a second. A plan is exactly one statement — fail closed.
-  if (asts.length > 1) return { ok: false, reason: "multi_statement" };
+  // can smuggle a second. A plan is exactly one statement — fail closed,
+  // by Postgres's split as well as the parser's (`hasSecondStatement`).
+  if (asts.length > 1 || hasSecondStatement(sql)) return { ok: false, reason: "multi_statement" };
 
   for (const root of asts) {
     const embedded = walkForRejected(root);

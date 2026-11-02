@@ -150,6 +150,43 @@ describe("validateSql", () => {
     });
   });
 
+  // Postgres's statement split governs every statement, not node-sql-parser's:
+  // a backslash before a quote in a standard '…' string ends the string for
+  // Postgres but reads as an escape to node-sql-parser, which then saw one
+  // SELECT where Postgres ran three (reported 2026-11-01; read another
+  // tenant's schema over the simple protocol on Postgres 16).
+  it.each([
+    `SELECT 'a\\'; RESET ROLE; SELECT secret FROM "db_other_xxxxxx".orders -- '`,
+    "SELECT 'a\\'; DELETE FROM t WHERE true -- '",
+    "WITH x AS (SELECT 'a\\') SELECT 1; RESET ROLE -- '",
+    // One statement to Postgres, but the walk would miss the call.
+    "SELECT 'a\\', pg_sleep(1) -- '",
+    "SELECT 'it\\''s', pg_sleep(1) -- '",
+  ])("rejects a statement node-sql-parser lexes differently %j", (sql) => {
+    expect(validateSql(sql).ok).toBe(false);
+    expect(containsWriteVerb(sql)).toBe(false); // so the validator is the gate
+  });
+
+  it("names the reported payload a second statement, not a parse failure", () => {
+    expect(validateSql(`SELECT 'a\\'; RESET ROLE; SELECT 1 -- '`)).toEqual({
+      ok: false,
+      reason: "multi_statement",
+    });
+    expect(validateSql("SELECT 'a\\', pg_sleep(1) -- '")).toEqual({
+      ok: false,
+      reason: "multi_statement",
+    });
+  });
+
+  it.each([
+    "SELECT * FROM t WHERE name LIKE '50\\%'",
+    "SELECT E'it\\'s'",
+    "SELECT 'it''s'",
+    "SELECT 1;",
+  ])("accepts %j", (sql) => {
+    expect(validateSql(sql).ok).toBe(true);
+  });
+
   // A leading comment Postgres ends sooner than a naive strip (`--` at
   // \r, a nested `/* */`) must not hide the statement Postgres runs.
   it.each([

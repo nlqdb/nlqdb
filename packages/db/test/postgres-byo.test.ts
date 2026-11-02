@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import { openByoPostgres } from "../src/index.ts";
 import type { Row } from "../src/types.ts";
 
-type Recorded = { text: string; params?: unknown[] };
+type Recorded = { text: string; params?: unknown[]; opts?: { simple: boolean } };
 
 // A postgres.js-shaped `sql` fake. `unsafe`/tx.`unsafe` resolve to a row array
 // with a `.count` property, exactly like a postgres.js `Result`.
@@ -19,8 +19,8 @@ function fakeDriver(rowsFor?: (text: string) => Row[]) {
   const calls: Recorded[] = [];
   let ended = false;
   const result = (rows: Row[]) => Object.assign([...rows], { count: rows.length });
-  const unsafe = async (text: string, params?: unknown[]) => {
-    calls.push({ text, params });
+  const unsafe = async (text: string, params?: unknown[], opts?: { simple: boolean }) => {
+    calls.push({ text, params, ...(opts ? { opts } : {}) });
     return result(rowsFor ? rowsFor(text) : []);
   };
   const sql = {
@@ -77,6 +77,9 @@ describe("openByoPostgres", () => {
     ]);
     expect(out.rows).toEqual([{ id: 1 }, { id: 2 }]);
     expect(out.rowCount).toBe(2);
+    // The user statement goes over the extended protocol, so Postgres itself
+    // refuses a chained second statement (`SK-SQLAL-009`).
+    expect(fake.calls[1]?.opts).toEqual({ simple: false });
   });
 
   it("close() ends the underlying connection", async () => {

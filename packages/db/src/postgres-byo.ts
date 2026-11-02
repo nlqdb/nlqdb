@@ -48,7 +48,7 @@ import type { QueryResult, Row } from "./types.ts";
 // query both resolve to a row array carrying postgres.js's `.count`.
 type ByoResult = Row[] & { count?: number };
 type ByoSql = {
-  unsafe: (query: string, params?: unknown[]) => Promise<ByoResult>;
+  unsafe: (query: string, params?: unknown[], opts?: { simple: boolean }) => Promise<ByoResult>;
   begin: <T>(cb: (tx: { unsafe: ByoSql["unsafe"] }) => Promise<T>) => Promise<T>;
   end: (opts?: { timeout?: number }) => Promise<void>;
 };
@@ -125,7 +125,13 @@ export function openByoPostgres(url: string, opts: ByoPostgresOptions = {}): Byo
         // `SET LOCAL` scopes the timeout to this transaction only. The timeout
         // is a controlled constant from the caller, not user input.
         await tx.unsafe(`SET LOCAL statement_timeout = '${statementTimeout}'`);
-        return tx.unsafe(userSql, params);
+        // The extended protocol (an unnamed statement, pooler-safe) even with no
+        // params: postgres.js would otherwise use the simple protocol, which runs
+        // every `;`-separated statement, so one `sql-validate.ts` miss could chain
+        // a write behind a read-only principal's SELECT. Postgres refuses more
+        // than one command here ("cannot insert multiple commands into a
+        // prepared statement"), whatever the validator saw (`SK-SQLAL-009`).
+        return tx.unsafe(userSql, params, { simple: false });
       }),
     );
   };
