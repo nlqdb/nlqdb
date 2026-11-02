@@ -7,7 +7,7 @@
 // (connection string in → proposals in the ledger, in ms), the observe, and
 // KPIs B and C as the job judged them. The last case needs no Postgres.
 
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { createIndexProposal, openByoPostgres } from "@nlqdb/db";
 import { describe, expect, it, vi } from "vitest";
@@ -16,6 +16,7 @@ import { OBSERVE_WINDOW_SEC, observeDue } from "../dba-observe.ts";
 import { decideProposal, VERIFY_WINDOW_SEC, verifyDue } from "../dba-verbs.ts";
 import { connectByoDb } from "./connect.ts";
 import { BYO_SECRET_REF_SENTINEL } from "./constants.ts";
+import { sqliteD1 } from "./test-sqlite-d1.ts";
 
 // The api never depends on a Postgres driver (`GLOBAL-021`, lockfile guard);
 // test-time setup borrows the owner's copy, `@nlqdb/db`'s `postgres`.
@@ -26,19 +27,6 @@ type Sql = {
 const postgres = createRequire(new URL("../../../../packages/db/package.json", import.meta.url))(
   "postgres",
 ) as (url: string, opts: Record<string, unknown>) => Sql;
-
-// `node:sqlite` (Node 22) has no types under the Workers type set.
-type SQLInputValue = string | number | null;
-type Statement = {
-  get: (...p: SQLInputValue[]) => unknown;
-  all: (...p: SQLInputValue[]) => unknown[];
-  run: (...p: SQLInputValue[]) => { changes: number | bigint; lastInsertRowid: number | bigint };
-};
-const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite") as {
-  DatabaseSync: new (
-    path: string,
-  ) => { exec: (sql: string) => void; prepare: (sql: string) => Statement };
-};
 
 const url = process.env["PG_TEST_URL"];
 const DB = "attach_synth";
@@ -60,41 +48,6 @@ async function seedPublic(adminUrl: string): Promise<string> {
   await sql.unsafe(seed);
   await sql.end();
   return target.href;
-}
-
-// The api's own D1 schema (every migration) on an in-memory SQLite, behind
-// the slice of the D1 API the door, the verbs and verify call.
-function sqliteD1(): D1Database {
-  const db = new DatabaseSync(":memory:");
-  const dir = new URL("../../migrations/", import.meta.url);
-  for (const f of readdirSync(dir)
-    .filter((f) => f.endsWith(".sql"))
-    .sort()) {
-    db.exec(readFileSync(new URL(f, dir), "utf8"));
-  }
-  const bound = (sql: string, params: SQLInputValue[]) => ({
-    first: async () => db.prepare(sql).get(...params) ?? null,
-    all: async () => ({ results: db.prepare(sql).all(...params) }),
-    run: async () => {
-      if (/^\s*SELECT/i.test(sql)) return { results: db.prepare(sql).all(...params), meta: {} };
-      const r = db.prepare(sql).run(...params);
-      return {
-        results: [],
-        meta: { changes: Number(r.changes), last_row_id: Number(r.lastInsertRowid) },
-      };
-    },
-  });
-  return {
-    prepare: (sql: string) => ({
-      ...bound(sql, []),
-      bind: (...p: SQLInputValue[]) => bound(sql, p),
-    }),
-    batch: async (stmts: { run: () => Promise<unknown> }[]) => {
-      const out = [];
-      for (const s of stmts) out.push(await s.run());
-      return out;
-    },
-  } as unknown as D1Database;
 }
 
 describe.skipIf(!url)("the attach door on the seeded synthetic Postgres", () => {

@@ -4376,8 +4376,9 @@ app.post("/v1/db/connect/oauth/supabase/select", requirePrincipal, async (c) => 
 });
 
 // `POST /v1/db/connect` (alias `POST /v1/attach`, the `GLOBAL-043` API
-// door) — bring-your-own ClickHouse / Postgres. The caller posts
-// `{ engine?, connection_url, name? }` (engine defaults to "postgres"); we validate +
+// door) — bring-your-own ClickHouse / Postgres / D1. The caller posts
+// `{ engine?, connection_url, name? }` (engine defaults to "postgres"), or for
+// a D1 `{ engine: "d1", account_id, database_id, token, name? }`; we validate +
 // egress-guard the URL (GLOBAL-035), introspect the live schema, seal
 // the URL (GLOBAL-031), and register a BYO `databases` row with its Tier 0
 // proposals in the ledger, returned with their row ids. The schema
@@ -4395,7 +4396,7 @@ app.post("/v1/db/connect/oauth/supabase/select", requirePrincipal, async (c) => 
 // `byo_connect:<tenantId>:<key>` so a client retry returns the same dbId
 // instead of connecting (and minting a key for) a duplicate row.
 //
-// Secrets: the `connection_url` and any password never enter a span or
+// Secrets: the `connection_url`, a D1 `token` and any password never enter a span or
 // log. Only `nlqdb.engine` and (on success) `nlqdb.db.connect.db_id`.
 const connectByo = async (c: Context<AppEnv>) => {
   const tracer = trace.getTracer("@nlqdb/api");
@@ -4418,6 +4419,9 @@ const connectByo = async (c: Context<AppEnv>) => {
     const raw = await parseJsonBody<{
       engine?: unknown;
       connection_url?: unknown;
+      account_id?: unknown;
+      database_id?: unknown;
+      token?: unknown;
       name?: unknown;
       source?: unknown;
     }>(c);
@@ -4428,19 +4432,41 @@ const connectByo = async (c: Context<AppEnv>) => {
     }
 
     const engine = raw.body.engine ?? "postgres";
-    if (engine !== "clickhouse" && engine !== "postgres") {
+    if (engine !== "clickhouse" && engine !== "postgres" && engine !== "d1") {
       span.setAttribute("nlqdb.db.connect.outcome", "invalid_engine");
       span.end();
-      return fail(c, "invalid_request", { message: 'engine must be "clickhouse" or "postgres".' });
+      return fail(c, "invalid_request", {
+        message: 'engine must be "clickhouse", "postgres" or "d1".',
+      });
     }
     span.setAttribute("nlqdb.engine", engine);
 
-    const connectionUrl =
-      typeof raw.body.connection_url === "string" ? raw.body.connection_url.trim() : "";
-    if (connectionUrl === "") {
-      span.setAttribute("nlqdb.db.connect.outcome", "missing_connection_url");
-      span.end();
-      return fail(c, "invalid_request", { message: "connection_url is required." });
+    const field = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+    let credentials:
+      | { engine: "clickhouse" | "postgres"; connectionUrl: string }
+      | { engine: "d1"; d1: { accountId: string; databaseId: string; token: string } };
+    if (engine === "d1") {
+      const d1 = {
+        accountId: field(raw.body.account_id),
+        databaseId: field(raw.body.database_id),
+        token: field(raw.body.token),
+      };
+      if (!d1.accountId || !d1.databaseId || !d1.token) {
+        span.setAttribute("nlqdb.db.connect.outcome", "missing_d1_credentials");
+        span.end();
+        return fail(c, "invalid_request", {
+          message: "account_id, database_id and token are required for a D1.",
+        });
+      }
+      credentials = { engine, d1 };
+    } else {
+      const connectionUrl = field(raw.body.connection_url);
+      if (connectionUrl === "") {
+        span.setAttribute("nlqdb.db.connect.outcome", "missing_connection_url");
+        span.end();
+        return fail(c, "invalid_request", { message: "connection_url is required." });
+      }
+      credentials = { engine, connectionUrl };
     }
     const name =
       typeof raw.body.name === "string" && raw.body.name.trim().length > 0
@@ -4475,8 +4501,7 @@ const connectByo = async (c: Context<AppEnv>) => {
     try {
       const deps = buildConnectByoDeps(c.env);
       const result = await connectByoDb(deps, {
-        engine,
-        connectionUrl,
+        ...credentials,
         ...(name !== undefined ? { name } : {}),
         tenantId,
         // SK-GTM-005 — same stamp as the create arms.

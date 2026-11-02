@@ -291,12 +291,12 @@ jobs:
           PG_TEST_URL: postgres://postgres:pg@127.0.0.1:5432/postgres
         run: bunx vitest run --reporter=verbose test/*.pg.test.ts test/dba-observe-d1.test.ts
 
-      # The attach door (POST /v1/attach's orchestrator) on the same Postgres.
+      # The attach door (POST /v1/attach's orchestrator) on the same Postgres, and on a local D1.
       - name: Test the attach door
         working-directory: apps/api
         env:
           PG_TEST_URL: postgres://postgres:pg@127.0.0.1:5432/postgres
-        run: bunx vitest run --project unit --reporter=verbose src/db-connect/attach.pg.test.ts
+        run: bunx vitest run --project unit --reporter=verbose src/db-connect/attach.pg.test.ts src/db-connect/attach.d1.test.ts
 
   test-tools:
     name: tools/${{ matrix.tool }} (typecheck + bun test)

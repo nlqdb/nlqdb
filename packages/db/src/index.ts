@@ -102,6 +102,7 @@ export type {
   IntrospectedClickhouseTable,
 } from "./introspect-clickhouse.ts";
 export { introspectClickhouse } from "./introspect-clickhouse.ts";
+export { introspectD1Schema } from "./introspect-d1.ts";
 export type {
   IntrospectedColumn,
   IntrospectedForeignKey,
