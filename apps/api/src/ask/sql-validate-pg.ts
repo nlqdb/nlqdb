@@ -16,7 +16,7 @@
 //
 // The WASM loads once per isolate, on the first statement validated.
 
-import type { FuncCall, Node, RawStmt } from "libpg-query";
+import type { A_Indirection, FuncCall, Node, RawStmt } from "libpg-query";
 import {
   containsWriteVerb,
   DISALLOWED_FUNCTIONS,
@@ -90,17 +90,21 @@ function walk(node: unknown, facts: { writes: boolean; hit: SqlRejectReason | nu
       facts.hit = key === "DeleteStmt" ? "delete_without_where" : "update_without_where";
     } else if (key === "SelectStmt" && body["intoClause"]) {
       facts.hit = "disallowed_verb";
-    } else if (key === "FuncCall" && isDisallowed(value as FuncCall)) {
+    } else if (key === "FuncCall" && isDisallowed((value as FuncCall).funcname)) {
+      facts.hit = "disallowed_function";
+    } else if (key === "A_Indirection" && isDisallowed((value as A_Indirection).indirection)) {
+      // Field notation is a call too: `('search_path'::text).current_setting`.
       facts.hit = "disallowed_function";
     }
     walk(value, facts);
   }
 }
 
-// `pg_sleep` or `pg_catalog.pg_sleep`: the unqualified name decides.
-function isDisallowed(fc: FuncCall): boolean {
-  const parts = (fc.funcname ?? []).map(
-    (seg) => (seg as { String?: { sval?: string } }).String?.sval?.toLowerCase() ?? "",
+// `pg_sleep`, `pg_catalog.pg_sleep` or `(x).pg_sleep`: any denylisted name segment.
+function isDisallowed(names: Node[] | undefined): boolean {
+  return (names ?? []).some((seg) =>
+    DISALLOWED_FUNCTIONS.has(
+      (seg as { String?: { sval?: string } }).String?.sval?.toLowerCase() ?? "",
+    ),
   );
-  return DISALLOWED_FUNCTIONS.has(parts.at(-1) ?? "");
 }

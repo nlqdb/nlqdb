@@ -50,6 +50,7 @@ const REPRESENTATIVE: Partial<Record<ErrorCode, Record<string, unknown>[]>> = {
   sql_rejected: [
     { reason: "delete_without_where" },
     { reason: "parse_failed" },
+    { reason: "backslash_quote" },
     { reason: "params_mismatch" },
     {},
   ],

@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 import { containsWriteVerb, validateSql } from "../src/ask/sql-validate.ts";
-import { validateSqlPg } from "../src/ask/sql-validate-pg.ts";
+import { disagreement, validateSqlPg } from "../src/ask/sql-validate-pg.ts";
 
 describe("validateSql", () => {
   describe("rejects", () => {
@@ -351,6 +351,15 @@ describe("validateSqlPg", () => {
     ["EXPLAIN (ANALYZE) DELETE FROM t WHERE true", "disallowed_verb"],
   ])("rejects %j", async (sql, reason) => {
     expect(await validateSqlPg(sql)).toMatchObject({ ok: false, reason });
+  });
+
+  // Field notation calls a function too (Postgres 16 runs both); node-sql-parser
+  // can't parse it today, so this pins the walk for the day it can.
+  it.each([
+    "SELECT ('search_path'::text).current_setting",
+    "SELECT (x).pg_sleep FROM (SELECT 1::float8 AS x) s",
+  ])("names a field-notation call %j disallowed_function", async (sql) => {
+    expect(await disagreement(sql)).toBe("disallowed_function");
   });
 
   it.each([
