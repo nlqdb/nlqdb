@@ -1356,6 +1356,23 @@ describe("createClient", () => {
       connection_url: "postgresql://u:p@db.example.com:5432/app",
     });
     expect(out.proposals).toEqual([proposal]);
+
+    // A D1 attaches with its token + ids, in the body only.
+    await client.attach({
+      engine: "d1",
+      accountId: "0123456789abcdef0123456789abcdef",
+      databaseId: "01234567-89ab-cdef-0123-456789abcdef",
+      token: "cf_token",
+      name: "rateme",
+    });
+    expect(capturedUrl).toBe("https://app.nlqdb.com/v1/attach");
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({
+      engine: "d1",
+      account_id: "0123456789abcdef0123456789abcdef",
+      database_id: "01234567-89ab-cdef-0123-456789abcdef",
+      token: "cf_token",
+      name: "rateme",
+    });
   });
 
   // GLOBAL-043 item 5 — the two verbs on a proposal id.

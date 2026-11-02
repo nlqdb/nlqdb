@@ -339,8 +339,11 @@ export type DecideProposalResult = {
   replayed: boolean;
 };
 
-// Body for `client.attach()` — a Postgres connection string.
-export type AttachRequest = Omit<ConnectDatabaseRequest, "engine">;
+// Body for `client.attach()` — a Postgres connection string, or a Cloudflare D1's
+// API token + account id + database id (`GLOBAL-043`). Secrets ride the body only.
+export type AttachRequest =
+  | Omit<ConnectDatabaseRequest, "engine">
+  | { engine: "d1"; accountId: string; databaseId: string; token: string; name?: string };
 
 // `SK-SDK-009` — raw-SQL escape hatch (`GLOBAL-015`); same allow-list as `ask()`, DDL still rejected.
 export type RunSqlRequest = {
@@ -1166,8 +1169,8 @@ export type NlqClient = {
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<void>;
   /**
-   * `POST /v1/attach` — attach the Postgres a team already has (`GLOBAL-043`):
-   * `databases.connect` with `engine: "postgres"`, named for the DBA door.
+   * `POST /v1/attach` — attach the Postgres or D1 a team already has (`GLOBAL-043`):
+   * `databases.connect` named for the DBA door; a D1 takes `{ engine: "d1", accountId, databaseId, token }`.
    * Resolves with the DB and its first proposals, each already in the ledger.
    * Same errors and secret handling as `databases.connect`. Mutating:
    * auto-keyed (`SK-SDK-006`).
@@ -1764,7 +1767,14 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
       call<ConnectDatabaseResult>("/v1/attach", {
         method: "POST",
         body: JSON.stringify({
-          connection_url: req.connectionUrl,
+          ...("engine" in req
+            ? {
+                engine: req.engine,
+                account_id: req.accountId,
+                database_id: req.databaseId,
+                token: req.token,
+              }
+            : { connection_url: req.connectionUrl }),
           ...(req.name !== undefined ? { name: req.name } : {}),
         }),
         signal: callOpts?.signal,
