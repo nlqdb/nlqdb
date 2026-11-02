@@ -124,7 +124,7 @@ const ALLOWED_LEADING = new Set([
 // SQL is defense-in-depth so a `WITH x AS (SELECT set_config('app.
 // tenant_id', …)) …` CTE can never re-arm the RLS GUC from within a
 // query. The LLM has zero legitimate reason to call either on `/v1/ask`.
-const DISALLOWED_FUNCTIONS = new Set([
+export const DISALLOWED_FUNCTIONS: ReadonlySet<string> = new Set([
   "pg_sleep",
   "pg_sleep_for",
   "pg_sleep_until",

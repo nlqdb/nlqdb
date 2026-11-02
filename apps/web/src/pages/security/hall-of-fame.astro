@@ -35,7 +35,12 @@ import { appHref } from "../../lib/app-href";
       </p>
 
       <h2>Researchers</h2>
-      <p><em>No reports yet. Be the first.</em></p>
+      <ul class="hof__list">
+        <li>
+          <strong>kta1kri</strong> — November 2026 — SQL validator bypass that
+          let a crafted query reach other tenants' data (critical).
+        </li>
+      </ul>
 
       <p class="hof__note">
         nlqdb is pre-revenue and does not currently operate a paid bug-bounty
@@ -73,6 +78,10 @@ import { appHref } from "../../lib/app-href";
     margin-top: 2.5rem;
   }
   .hof p {
+    margin-top: 1rem;
+    line-height: 1.6;
+  }
+  .hof__list {
     margin-top: 1rem;
     line-height: 1.6;
   }

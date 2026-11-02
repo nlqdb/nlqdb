@@ -37,6 +37,7 @@
 import type { HostedExecStep } from "./ask/exec-steps.ts";
 import type { GrantScopeReject } from "./ask/grant-scope.ts";
 import { validateGrantScope } from "./ask/grant-scope.ts";
+import { disagreement } from "./ask/sql-validate-pg.ts";
 import { buildGrantExecSteps } from "./grant-exec.ts";
 import { grantRoleName } from "./grant-role.ts";
 import type { GrantRecord } from "./grants.ts";
@@ -77,6 +78,9 @@ export async function planGrantedRead(input: {
 
   const scope = validateGrantScope(rawSql, grant.scope);
   if (!scope.ok) return { ok: false, reason: scope.reason, detail: scope.detail };
+  // Postgres's own parse must agree with the scope check's (SK-SQLAL-009).
+  const pg = await disagreement(rawSql);
+  if (pg) return { ok: false, reason: "not_allowed", detail: pg };
 
   const grantRole = await grantRoleName(grant.id);
   const execSteps = buildGrantExecSteps(schemaName, grant.ownerTenantId, grantRole, {

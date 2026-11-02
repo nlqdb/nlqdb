@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 import { containsWriteVerb, validateSql } from "../src/ask/sql-validate.ts";
+import { validateSqlPg } from "../src/ask/sql-validate-pg.ts";
 
 describe("validateSql", () => {
   describe("rejects", () => {
@@ -336,5 +337,36 @@ describe("containsWriteVerb", () => {
     "",
   ])("returns false for the read %j", (sql) => {
     expect(containsWriteVerb(sql)).toBe(false);
+  });
+});
+
+// Postgres's own parser (libpg_query) must agree with `validateSql` on the
+// facts the gates act on (SK-SQLAL-009): one statement, its kind, whether it
+// writes, and no denylisted call — so a reading node-sql-parser gets wrong
+// fails closed instead of reaching Postgres.
+describe("validateSqlPg", () => {
+  it.each([
+    ["SELECT 'a\\'; RESET ROLE; SELECT secret FROM other.orders -- '", "multi_statement"],
+    ["SELECT 'a\\', pg_sleep(1) -- '", "multi_statement"],
+    ["SELECT pg_catalog.pg_sleep(1)", "disallowed_function"],
+    ["SELECT * INTO newt FROM t", "disallowed_verb"],
+    ["WITH d AS (UPDATE t SET a = 1 RETURNING *) SELECT * FROM d", "update_without_where"],
+    ["EXPLAIN (ANALYZE) DELETE FROM t WHERE true", "disallowed_verb"],
+  ])("rejects %j", async (sql, reason) => {
+    expect(await validateSqlPg(sql)).toMatchObject({ ok: false, reason });
+  });
+
+  it.each([
+    "SELECT DISTINCT ON (user_id) * FROM posts ORDER BY user_id, created_at DESC",
+    "SELECT count(*) FILTER (WHERE status = 'paid'), date_trunc('day', created_at)::date FROM orders GROUP BY 2",
+    "SELECT data->>'name' FROM events WHERE data @> '{\"a\":1}'::jsonb AND name ILIKE '%x%'",
+    "INSERT INTO t (a) VALUES ($1) ON CONFLICT (a) DO UPDATE SET a = EXCLUDED.a RETURNING *",
+    "UPDATE t SET a = 1 WHERE id = $1 RETURNING id",
+    "WITH d AS (DELETE FROM t WHERE id = 1 RETURNING *) SELECT * FROM d",
+    "EXPLAIN SELECT * FROM t",
+    "SHOW search_path",
+    "SELECT E'it\\'s'",
+  ])("accepts %j", async (sql) => {
+    expect((await validateSqlPg(sql)).ok).toBe(true);
   });
 });
