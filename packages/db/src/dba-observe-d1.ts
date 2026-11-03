@@ -23,7 +23,7 @@ import { withObserveSpan } from "./dba-span.ts";
 import type { Row } from "./types.ts";
 
 // SQLite's own tables and D1's internal ones (`_cf_KV`, `_cf_METADATA`).
-const isInternal = (name: string) => name.startsWith("sqlite_") || name.startsWith("_cf_");
+export const isInternal = (name: string) => name.startsWith("sqlite_") || name.startsWith("_cf_");
 
 export function observeD1Catalog(batch: D1BatchFn): Promise<Proposal[]> {
   return withObserveSpan(
@@ -139,7 +139,7 @@ function rowidAlias(table: Row, columns: Row[]): string | undefined {
 
 // An index serves the FK lookup when its first n key columns are the n FK
 // columns in any order. An expression key column (`name` null) never matches.
-function covers(keys: (string | null)[], fkColumns: string[]): boolean {
+export function covers(keys: (string | null)[], fkColumns: string[]): boolean {
   if (keys.length < fkColumns.length) return false;
   const lead = new Set(keys.slice(0, fkColumns.length));
   return fkColumns.every((c) => lead.has(c));
