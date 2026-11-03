@@ -10,12 +10,19 @@
 // Repeating the verb that decided a row returns that row (`SK-IDEMP-004`); the
 // other verb is refused.
 //
+// On a D1 the DDL runs over the REST client (`applyD1Proposal`) with the
+// sealed token triple; no counters are kept, since D1 has no Tier 1 yet.
+//
 // An apply also keeps its fingerprint's cumulative counters (`verify_from`);
 // `verifyDue` (the `dba_verify` job) diffs them against a fresh read once the
 // window has passed — the p95 re-read and auto-revert, `verifyApplied`.
 
 import {
+  applyD1Proposal,
   applyProposal,
+  type D1Target,
+  d1RestBatch,
+  isD1ProposalDdl,
   judgeApplied,
   type PostgresQueryFn,
   type Proposal,
@@ -29,7 +36,10 @@ import {
 import type { ConnectByoDeps } from "./db-connect/connect.ts";
 import { openSecret } from "./secret-envelope.ts";
 
-export type DecideDeps = Pick<ConnectByoDeps, "resolve" | "kek" | "d1" | "buildPostgresQuery">;
+export type DecideDeps = Pick<
+  ConnectByoDeps,
+  "resolve" | "kek" | "d1" | "buildPostgresQuery" | "buildD1Batch"
+>;
 
 export type DecideArgs = { id: number; tenantId: string; decidedBy: string } & (
   | { verb: "apply" }
@@ -58,6 +68,7 @@ const INDEX_DDL_TIMEOUT = "SET statement_timeout = '600s'";
 type Row = {
   id: number;
   dbId: string;
+  engine: string;
   status: "proposed" | "applied" | "rejected" | "reverted";
   proposal: string;
   blob: string | null;
@@ -69,7 +80,7 @@ type Row = {
 function readRow(d1: D1Database, id: number, tenantId: string): Promise<Row | null> {
   return d1
     .prepare(
-      "SELECT c.id, c.database_id AS dbId, c.status, c.proposal, d.connection_blob AS blob, c.decided_by AS decidedBy, c.decided_at AS decidedAt, c.reject_reason AS rejectReason FROM dba_changes c JOIN databases d ON d.id = c.database_id WHERE c.id = ? AND d.tenant_id = ? AND c.proposal IS NOT NULL",
+      "SELECT c.id, c.database_id AS dbId, d.engine, c.status, c.proposal, d.connection_blob AS blob, c.decided_by AS decidedBy, c.decided_at AS decidedAt, c.reject_reason AS rejectReason FROM dba_changes c JOIN databases d ON d.id = c.database_id WHERE c.id = ? AND d.tenant_id = ? AND c.proposal IS NOT NULL",
     )
     .bind(id, tenantId)
     .first<Row>();
@@ -94,7 +105,7 @@ export async function decideProposal(deps: DecideDeps, args: DecideArgs): Promis
   if (row.status !== "proposed") return { ok: false, code: "proposal_decided", status: row.status };
   if (args.verb === "apply" && !deps.kek) return { ok: false, code: "sealing_unconfigured" };
   const proposal = JSON.parse(row.proposal) as Proposal;
-  if (args.verb === "apply") await validate(row.id, proposal);
+  if (args.verb === "apply") await validate(row.id, proposal, row.engine);
 
   const claim = await deps.d1
     .prepare(
@@ -143,7 +154,11 @@ export async function decideProposal(deps: DecideDeps, args: DecideArgs): Promis
 }
 
 // `GLOBAL-043` item 7: only a proposal kind's own verbs run under the owner role.
-async function validate(id: number, proposal: Proposal): Promise<void> {
+async function validate(id: number, proposal: Proposal, engine: string): Promise<void> {
+  if (engine === "d1") {
+    if (!isD1ProposalDdl(proposal)) throw new Error(`proposal ${id} failed the D1 DDL check`);
+    return;
+  }
   const { validateProposalDdl } = await import("./ask/sql-validate-ddl.ts");
   const v = validateProposalDdl(proposal);
   if (!v.ok) throw new Error(`proposal ${id} failed the DDL validator: ${v.reason}`);
@@ -173,14 +188,28 @@ export async function onAttached<T>(
   }
 }
 
+// The REST client for an attached D1, from its sealed (account, database, token).
+async function attachedD1(deps: DecideDeps, row: { dbId: string; blob: string | null }) {
+  if (!row.blob) throw new Error("attached row has no connection_blob");
+  const target = JSON.parse(
+    await openSecret(row.blob, { kek: deps.kek as string, context: `dbconn:${row.dbId}` }),
+  ) as D1Target;
+  return (deps.buildD1Batch ?? d1RestBatch)(target);
+}
+
 // Runs the proposal's DDL, then reads its fingerprint's counters — the start
-// of the verify window. Null when it names no fingerprint (catalog tier) or
-// `pg_stat_statements` can't be read: the apply stands, verify says unmeasured.
-function applyOn(
+// of the verify window. Null when it names no fingerprint (catalog tier), the
+// DB is a D1, or `pg_stat_statements` can't be read: the apply stands, verify
+// says unmeasured.
+async function applyOn(
   deps: DecideDeps,
   row: Row,
   proposal: Proposal,
 ): Promise<StatementCounters | null> {
+  if (row.engine === "d1") {
+    await applyD1Proposal(await attachedD1(deps, row), proposal);
+    return null;
+  }
   return onAttached(deps, row, async (query) => {
     await applyProposal(query, proposal);
     const fingerprint = proposal.evidence.workload?.fingerprint;
@@ -261,7 +290,7 @@ async function verifyRow(deps: DecideDeps, row: DueRow): Promise<Verification> {
     return { verdict: "unmeasured", reason: "no counters kept at apply" };
   }
   if (!deps.kek) throw new Error("sealing unconfigured");
-  await validate(row.id, proposal);
+  await validate(row.id, proposal, "postgres");
   const from = JSON.parse(row.verifyFrom) as StatementCounters;
   return onAttached(deps, row, async (query) => {
     const window = statementWindow(
