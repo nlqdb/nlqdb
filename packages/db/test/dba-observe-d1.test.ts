@@ -54,7 +54,7 @@ describe("observeD1Catalog on a local D1", () => {
       kind: "create_index",
       tier: 0,
       schema: "main",
-      ddl: 'CREATE INDEX IF NOT EXISTS "nlqdb_posts_user_id_dac06227" ON "posts" ("user_id")',
+      ddl: 'CREATE INDEX IF NOT EXISTS "nlqdb_posts_user_id_dac06227" ON "posts" (`user_id`)',
       inverse: 'DROP INDEX IF EXISTS "nlqdb_posts_user_id_dac06227"',
       evidence: { rowEstimate: 0, tableBytes: 0 },
     });

@@ -75,11 +75,15 @@ export function createIndexProposal(
 // D1 (SQLite) has no `CONCURRENTLY` and no half-built index state, and the
 // name is nlqdb's own hash of (table, columns), so `IF NOT EXISTS` only makes
 // a retried apply a no-op (`002-rateme12-attach.md` §2). One schema: `main`.
+// Columns are backtick-quoted: D1 reads an unknown double-quoted column as a
+// string literal and would index that constant, never failing the build.
+const sqliteColumn = (name: string) => `\`${name.replaceAll("`", "``")}\``;
+
 export function createD1IndexProposal(
   p: Omit<CreateIndexProposal, "kind" | "schema" | "ddl" | "inverse">,
 ): CreateIndexProposal {
   const name = indexName(p.table, p.columns);
-  const cols = p.columns.map(quoteIdent).join(", ");
+  const cols = p.columns.map(sqliteColumn).join(", ");
   return {
     kind: "create_index",
     ...p,
