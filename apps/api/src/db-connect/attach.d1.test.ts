@@ -8,6 +8,7 @@ import { d1RestBatch } from "@nlqdb/db";
 import { afterAll, describe, expect, it } from "vitest";
 import { D1_TARGET, localD1 } from "../../../../packages/db/test/fixtures/local-d1.ts";
 import { listProposals } from "../dba-changes.ts";
+import { decideProposal, VERIFY_WINDOW_SEC, verifyDue } from "../dba-verbs.ts";
 import { openSecret } from "../secret-envelope.ts";
 import { type ConnectByoDeps, connectByoDb } from "./connect.ts";
 import { sqliteD1 } from "./test-sqlite-d1.ts";
@@ -24,7 +25,9 @@ const APP = `
 const userD1 = localD1();
 afterAll(() => userD1.dispose());
 
-async function deps(schema: string): Promise<ConnectByoDeps & { d1: D1Database }> {
+async function deps(
+  schema: string,
+): Promise<ConnectByoDeps & { d1: D1Database; fetchFn: typeof fetch }> {
   const { fetchFn } = await userD1.open(schema);
   let n = 0;
   return {
@@ -41,7 +44,18 @@ async function deps(schema: string): Promise<ConnectByoDeps & { d1: D1Database }
       throw new Error("not a Postgres attach");
     },
     buildD1Batch: (target) => d1RestBatch(target, fetchFn),
+    fetchFn,
   };
+}
+
+// One statement through the REST endpoint, with D1's own `meta.rows_read`.
+async function rowsRead(fetchFn: typeof fetch, sql: string): Promise<number> {
+  const res = await fetchFn("https://d1.test/query", {
+    method: "POST",
+    body: JSON.stringify({ batch: [{ sql }] }),
+  });
+  const body = (await res.json()) as { result: { meta: { rows_read: number } }[] };
+  return Number(body.result[0]?.meta.rows_read);
 }
 
 const attach = (d: ConnectByoDeps, d1 = D1_TARGET) =>
@@ -79,6 +93,80 @@ describe("the attach door on a local D1", () => {
 
     const ledger = await listProposals(d.d1, result.dbId, "user_synth");
     expect(ledger.map((p) => p.ddl)).toEqual(result.proposals.map((p) => p.ddl));
+  });
+
+  // The verbs on a D1 (`GLOBAL-043` items 4, 5, 7; `002-rateme12-attach.md` §3
+  // step 2): three proposals applied through the REST client with the sealed
+  // triple, one rejected; a tampered row is refused before it is claimed; the
+  // `dba_verify` job judges the applied Tier 0 rows without opening the DB.
+  // Prints D1 rows read by the app's hot FK lookup before → after its index.
+  it("apply / reject on a D1: indexes built, rows read on the FK lookup drop", async () => {
+    const d = await deps(APP);
+    const seq = (n: number) =>
+      `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ${n})`;
+    await rowsRead(
+      d.fetchFn,
+      `${seq(100)} INSERT INTO users (id, email) SELECT i, 'u' || i FROM n`,
+    );
+    await rowsRead(
+      d.fetchFn,
+      `${seq(5000)} INSERT INTO posts (user_id, title) SELECT 1 + i % 100, 'post ' || i FROM n`,
+    );
+    const HOT = "SELECT id, title FROM posts WHERE user_id = 7";
+    const before = await rowsRead(d.fetchFn, HOT);
+    const result = await attach(d);
+    if (!result.ok) throw new Error(result.message);
+    const [rejected, ...applied] = result.proposals;
+    // A ledger row whose DDL is not the one nlqdb renders never runs.
+    const tampered = applied[0] as { id: number; ddl: string };
+    const evil = { ...tampered, ddl: "DROP TABLE users" };
+    await d.d1
+      .prepare("UPDATE dba_changes SET proposal = ? WHERE id = ?")
+      .bind(JSON.stringify(evil), tampered.id)
+      .run();
+    const apply = (id: number) =>
+      decideProposal(d, { id, tenantId: "user_synth", decidedBy: "sk_live:synth", verb: "apply" });
+    await expect(apply(tampered.id)).rejects.toThrow(/failed the D1 DDL check/);
+    const still = await listProposals(d.d1, result.dbId, "user_synth");
+    expect(still.map((p) => p.id)).toContain(tampered.id); // still `proposed`
+    await d.d1
+      .prepare("UPDATE dba_changes SET proposal = ? WHERE id = ?")
+      .bind(JSON.stringify(tampered), tampered.id)
+      .run();
+
+    const t0 = performance.now();
+    for (const p of applied) {
+      expect(await apply(p.id)).toMatchObject({ ok: true, proposal: { status: "applied" } });
+    }
+    const applyMs = (performance.now() - t0) / applied.length;
+    expect(await apply(applied[0]?.id as number)).toMatchObject({ ok: true, replayed: true });
+    expect(
+      await decideProposal(d, {
+        id: (rejected as { id: number }).id,
+        tenantId: "user_synth",
+        decidedBy: "user:user_synth",
+        verb: "reject",
+        reason: "covered by a composite",
+      }),
+    ).toMatchObject({ ok: true, proposal: { status: "rejected" } });
+
+    const built = await d.buildD1Batch?.(D1_TARGET)([
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'nlqdb_%' ORDER BY name",
+    ]);
+    const nameOf = (p: { ddl: string }) => /EXISTS "([^"]+)"/.exec(p.ddl)?.[1];
+    expect(built?.[0]?.map((r) => r["name"])).toEqual(applied.map(nameOf).sort());
+    const after = await rowsRead(d.fetchFn, HOT);
+    expect(after).toBeLessThan(before);
+
+    // Tier 0 names no fingerprint: verify keeps it, claims no delta, no request.
+    const requests = userD1.requests();
+    const verified = await verifyDue(d, Math.floor(Date.now() / 1000) + VERIFY_WINDOW_SEC);
+    expect(verified.map((v) => v.verification.verdict)).toEqual(applied.map(() => "unmeasured"));
+    expect(userD1.requests()).toBe(requests);
+    // biome-ignore lint/suspicious/noConsole: the D1 apply reading belongs in the CI log
+    console.log(
+      `Verbs (synthetic, D1 API): ${applied.length} applied (${applyMs.toFixed(1)} ms each), 1 rejected; rows read by the posts(user_id) lookup ${before} → ${after}`,
+    );
   });
 
   it("a malformed id is refused before any request; nothing is recorded", async () => {
