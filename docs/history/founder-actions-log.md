@@ -138,7 +138,7 @@ well the queue bullet was prepared, not by the action itself.
 
 | Date | Action (surface) | Unblocked | Replay note |
 |---|---|---|---|
-| 2026-08-04 | Disabled Cloudflare's managed robots.txt AI-crawler block on `nlqdb.com` and `nlqdb.ai` (dash → AI Crawl Control) | AI crawlers reach every page; the block contradicted the repo's `robots.txt` | On a new zone, check AI Crawl Control **and** Security → Bots "Block AI bots" |
+| 2026-08-12 | Created the Supabase OAuth app (dashboard → Organization → OAuth Apps; `database:write` + `projects:read`; callback per SK-AUTH-008) → `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` in `.envrc`, mirrored to GHA | `SK-DBCONN-003` blocker B5 | ~5 min; Supabase shows the secret once — GHA holds the backup |
 
 ## Era 11 — 2026-08-14 (live review session — hosted-premium activation)
 
