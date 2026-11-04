@@ -217,6 +217,26 @@ describe("observeD1Workload on a local D1", () => {
     expect(before).toHaveLength(50);
   });
 
+  it("matches names case-insensitively, proposing in the catalog's spelling", async () => {
+    const { batch } = await d1.open(APP);
+    const proposals = await observeD1Workload(batch, [
+      insight("SELECT * FROM POSTS WHERE USER_ID = ? AND user_id = ?", 10, 5000, 1),
+    ]);
+    expect(proposals.map((p) => p.columns)).toEqual([["user_id"]]);
+  });
+
+  it("never sends a text with a second statement to the plan", async () => {
+    const sent: string[] = [];
+    const recording = async (statements: string[]) => {
+      sent.push(...statements);
+      return statements.map(() => []);
+    };
+    // A quote inside an identifier hides the `;` from literal stripping.
+    const injected = `SELECT "x'", 1; DROP TABLE posts; SELECT '" FROM posts WHERE user_id = 1`;
+    expect(await observeD1Workload(recording, [insight(injected, 10, 5000, 1)])).toEqual([]);
+    expect(sent).toEqual([]);
+  });
+
   it("an auth or network failure throws instead of reading as nothing to change", async () => {
     const refused = async () => {
       throw new D1RestError("D1 query failed: Authentication error", 403);

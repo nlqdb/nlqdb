@@ -53,8 +53,10 @@ type Filter = { table: string; alias: string; columns: string[] };
 // text isn't that shape (any other term — a range, an OR, an IN — would
 // credit the equality columns with selectivity they don't have alone).
 function equalityFilter(query: string): Filter | null {
+  // D1 runs every statement in a request's `sql`, so only one may reach the
+  // plan: any `;` but a trailing one (even in a literal) rejects the text.
+  if (query.replace(/;\s*$/, "").includes(";")) return null;
   const literalFree = query.replace(/'(?:[^']|'')*'/g, "''");
-  if (literalFree.includes(";") && !/;\s*$/.test(literalFree)) return null;
   if (MULTI_TABLE.test(literalFree)) return null;
   if (/^\s*UPDATE\b[\s\S]*\bFROM\b/i.test(literalFree)) return null;
   for (const shape of SHAPES) {
@@ -130,7 +132,9 @@ export function observeD1Workload(
       span.setAttribute("nlqdb.dba.unplanned", planned.filter((p) => p === null).length);
       const scanning = candidates.filter(({ filter }, i) =>
         (planned[i] ?? []).some((r) =>
-          new RegExp(`^SCAN (?:TABLE )?${regexLiteral(filter.alias)}$`).test(String(r["detail"])),
+          new RegExp(`^SCAN (?:TABLE )?${regexLiteral(filter.alias)}$`, "i").test(
+            String(r["detail"]),
+          ),
         ),
       );
       if (scanning.length === 0) return [];
@@ -164,23 +168,27 @@ export function observeD1Workload(
 
       const proposals = new Map<string, Proposal>();
       for (const { insight, filter } of scanning) {
-        const key = `${filter.table}\0${[...filter.columns].sort()}`;
-        if (proposals.has(key)) continue;
         const i = tables.indexOf(filter.table);
-        const known = new Set((catalog[i * 2] ?? []).map((c) => String(c["name"])));
-        if (!filter.columns.every((c) => known.has(c))) continue;
+        // SQLite names are case-insensitive: compare in the catalog's spelling.
+        const known = new Map(
+          (catalog[i * 2] ?? []).map((c) => [String(c["name"]).toLowerCase(), String(c["name"])]),
+        );
+        const columns = [...new Set(filter.columns.map((c) => known.get(c.toLowerCase())))];
+        if (!columns.every((c): c is string => c !== undefined)) continue;
+        const key = `${filter.table.toLowerCase()}\0${[...columns].sort()}`;
+        if (proposals.has(key)) continue;
         const indexes = (catalog[i * 2 + 1] ?? [])
           .filter((ix) => Number(ix["partial"]) === 0)
           .map((ix) => String(ix["name"]));
-        if (indexes.some((n) => covers(keyColumns.get(n) ?? [], filter.columns))) continue;
+        if (indexes.some((n) => covers(keyColumns.get(n) ?? [], columns))) continue;
         const rowsRead = Math.round(insight.rowsRead);
         proposals.set(
           key,
           createD1IndexProposal({
             tier: 1,
             table: filter.table,
-            columns: filter.columns,
-            reason: `A query that ran ${insight.calls} times (mean ${insight.meanMs.toFixed(2)} ms) reads all ${rowsRead} rows of ${filter.table} each run to filter on ${filter.columns.join(", ")}; an index on them serves it directly.`,
+            columns,
+            reason: `A query that ran ${insight.calls} times (mean ${insight.meanMs.toFixed(2)} ms) reads all ${rowsRead} rows of ${filter.table} each run to filter on ${columns.join(", ")}; an index on them serves it directly.`,
             evidence: {
               rowEstimate: rowsRead,
               tableBytes: 0,
