@@ -123,8 +123,8 @@ export const JOBS: Job[] = [
     },
   },
   {
-    // GLOBAL-043 item 7 (Tier 1) — the scheduled observer: diffs each attached
-    // Postgres DB's `pg_stat_statements` once a day and records the window's
+    // GLOBAL-043 item 7 (Tier 1) — the scheduled observer: reads each attached
+    // Postgres or D1 DB's workload once a day and records the window's
     // `create_index` proposals. :48, off the ticks the other jobs share.
     name: "dba_observe",
     when: hourlyAt(48),

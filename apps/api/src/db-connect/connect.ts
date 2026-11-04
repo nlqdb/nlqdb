@@ -35,6 +35,7 @@ import {
   type ClickhouseConnSpec,
   type ClickhouseQueryFn,
   type D1BatchFn,
+  type D1QueryInsight,
   type D1Target,
   type DnsResolver,
   d1RestBatch,
@@ -75,6 +76,11 @@ export type ConnectByoDeps = {
   buildPostgresQuery: (rawUrl: string) => ByoPostgresConnection;
   // The D1 REST client; tests answer it from a local D1. Throws on a malformed id.
   buildD1Batch?: (target: D1Target) => D1BatchFn;
+  // The D1 Tier 1 read (`readD1QueryInsights`); tests answer it from a recording.
+  readD1Insights?: (
+    target: D1Target,
+    window: { since: string; until: string },
+  ) => Promise<D1QueryInsight[]>;
 };
 
 export type ConnectByoArgs = (

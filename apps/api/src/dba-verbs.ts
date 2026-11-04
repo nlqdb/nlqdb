@@ -11,7 +11,7 @@
 // other verb is refused.
 //
 // On a D1 the DDL runs over the REST client (`applyD1Proposal`) with the
-// sealed token triple; no counters are kept, since D1 has no Tier 1 yet.
+// sealed token triple; no counters are kept: D1's verify does not re-read Tier 1 yet.
 //
 // An apply also keeps its fingerprint's cumulative counters (`verify_from`);
 // `verifyDue` (the `dba_verify` job) diffs them against a fresh read once the
@@ -38,7 +38,7 @@ import { openSecret } from "./secret-envelope.ts";
 
 export type DecideDeps = Pick<
   ConnectByoDeps,
-  "resolve" | "kek" | "d1" | "buildPostgresQuery" | "buildD1Batch"
+  "resolve" | "kek" | "d1" | "buildPostgresQuery" | "buildD1Batch" | "readD1Insights"
 >;
 
 export type DecideArgs = { id: number; tenantId: string; decidedBy: string } & (
