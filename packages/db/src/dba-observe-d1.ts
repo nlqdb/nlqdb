@@ -23,7 +23,7 @@ import { withObserveSpan } from "./dba-span.ts";
 import type { Row } from "./types.ts";
 
 // SQLite's own tables and D1's internal ones (`_cf_KV`, `_cf_METADATA`).
-export const isInternal = (name: string) => name.startsWith("sqlite_") || name.startsWith("_cf_");
+export const isInternal = (name: string) => /^(sqlite_|_cf_)/i.test(name);
 
 export function observeD1Catalog(batch: D1BatchFn): Promise<Proposal[]> {
   return withObserveSpan(

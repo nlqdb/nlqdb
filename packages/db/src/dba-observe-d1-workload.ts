@@ -4,7 +4,7 @@
 // `create_index` proposals. Needs D1 Read for the plan and catalog.
 //
 // A query text yields a proposal when it is one table filtered by an AND of
-// plain equalities, it keeps at most 5 % of the rows it reads (D1's
+// plain equalities and not aggregated, it keeps at most 5 % of the rows it reads (D1's
 // `queryEfficiency`, writes for an UPDATE / DELETE), `EXPLAIN QUERY PLAN`
 // scans that table, and no full index already leads with those columns.
 // D1 strips bound parameters to `?` and binds none into an `EXPLAIN`, so the
@@ -24,7 +24,7 @@ const MAX_EFFICIENCY = 0.05;
 
 const IDENT = String.raw`(?:[A-Za-z_][\w$]*|"(?:[^"]|"")+"|\`(?:[^\`]|\`\`)+\`|\[[^\]]+\])`;
 const VALUE = String.raw`(?:\?\d*|NULL|-?\d+(?:\.\d+)?|'(?:[^']|'')*')`;
-const TAIL = String.raw`(?:\s+(?:GROUP\s+BY|ORDER\s+BY|LIMIT|RETURNING)\b[\s\S]*)?\s*;?\s*$`;
+const TAIL = String.raw`(?:\s+(?:ORDER\s+BY|LIMIT|RETURNING)\b[\s\S]*)?\s*;?\s*$`;
 const SHAPES = [
   new RegExp(
     String.raw`^\s*SELECT\s[\s\S]+?\sFROM\s+(${IDENT})(?:\s+(?:AS\s+)?(${IDENT}))?\s+WHERE\s+([\s\S]+?)${TAIL}`,
@@ -39,7 +39,10 @@ const SHAPES = [
 const TERM = new RegExp(String.raw`^\(?\s*(?:(${IDENT})\.)?(${IDENT})\s*=\s*${VALUE}\s*\)?$`, "i");
 // A join, a subquery or a compound has more than one table: out of scope.
 const MULTI_TABLE = /\bJOIN\b|\(\s*SELECT\b|\b(UNION|INTERSECT|EXCEPT)\b|\bFROM\b[\s\S]*\bFROM\b/i;
-const KEYWORDS = /^(WHERE|GROUP|ORDER|LIMIT|SET)$/i;
+// An aggregate returns fewer rows than its filter keeps, so D1's efficiency can't vouch for it.
+const AGGREGATE =
+  /\b(?:count|sum|avg|total|min|max|group_concat)\s*\(|\bGROUP\s+BY\b|\bDISTINCT\b/i;
+const KEYWORDS = /^(WHERE|ORDER|LIMIT|SET)$/i;
 
 function unquote(ident: string): string {
   const q = ident[0];
@@ -57,7 +60,7 @@ function equalityFilter(query: string): Filter | null {
   // plan: any `;` but a trailing one (even in a literal) rejects the text.
   if (query.replace(/;\s*$/, "").includes(";")) return null;
   const literalFree = query.replace(/'(?:[^']|'')*'/g, "''");
-  if (MULTI_TABLE.test(literalFree)) return null;
+  if (MULTI_TABLE.test(literalFree) || AGGREGATE.test(literalFree)) return null;
   if (/^\s*UPDATE\b[\s\S]*\bFROM\b/i.test(literalFree)) return null;
   for (const shape of SHAPES) {
     const m = shape.exec(query);
@@ -139,18 +142,19 @@ export function observeD1Workload(
       );
       if (scanning.length === 0) return [];
 
-      // The catalog of each scanned table: its columns and full indexes.
+      // The catalog of each scanned table: its columns, full indexes and own spelling.
       const tables = [...new Set(scanning.map((c) => c.filter.table))];
       const catalog = await batch(
         tables.flatMap((t) => [
           `PRAGMA table_info(${d1Literal(t)})`,
           `PRAGMA index_list(${d1Literal(t)})`,
+          `PRAGMA table_list(${d1Literal(t)})`,
         ]),
       );
       const indexNames = [
         ...new Set(
           tables.flatMap((_, i) =>
-            (catalog[i * 2 + 1] ?? [])
+            (catalog[i * 3 + 1] ?? [])
               .filter((ix) => Number(ix["partial"]) === 0)
               .map((ix) => String(ix["name"])),
           ),
@@ -169,15 +173,20 @@ export function observeD1Workload(
       const proposals = new Map<string, Proposal>();
       for (const { insight, filter } of scanning) {
         const i = tables.indexOf(filter.table);
-        // SQLite names are case-insensitive: compare in the catalog's spelling.
+        // SQLite names are case-insensitive: compare and propose in the catalog's
+        // spelling, so the DDL matches Tier 0's for the same index.
+        const table = (catalog[i * 3 + 2] ?? []).find(
+          (t) => t["schema"] === "main" && t["type"] === "table",
+        )?.["name"];
+        if (typeof table !== "string" || isInternal(table)) continue;
         const known = new Map(
-          (catalog[i * 2] ?? []).map((c) => [String(c["name"]).toLowerCase(), String(c["name"])]),
+          (catalog[i * 3] ?? []).map((c) => [String(c["name"]).toLowerCase(), String(c["name"])]),
         );
         const columns = [...new Set(filter.columns.map((c) => known.get(c.toLowerCase())))];
         if (!columns.every((c): c is string => c !== undefined)) continue;
-        const key = `${filter.table.toLowerCase()}\0${[...columns].sort()}`;
+        const key = `${table}\0${[...columns].sort()}`;
         if (proposals.has(key)) continue;
-        const indexes = (catalog[i * 2 + 1] ?? [])
+        const indexes = (catalog[i * 3 + 1] ?? [])
           .filter((ix) => Number(ix["partial"]) === 0)
           .map((ix) => String(ix["name"]));
         if (indexes.some((n) => covers(keyColumns.get(n) ?? [], columns))) continue;
@@ -186,9 +195,9 @@ export function observeD1Workload(
           key,
           createD1IndexProposal({
             tier: 1,
-            table: filter.table,
+            table,
             columns,
-            reason: `A query that ran ${insight.calls} times (mean ${insight.meanMs.toFixed(2)} ms) reads all ${rowsRead} rows of ${filter.table} each run to filter on ${columns.join(", ")}; an index on them serves it directly.`,
+            reason: `A query that ran ${insight.calls} times (mean ${insight.meanMs.toFixed(2)} ms) reads all ${rowsRead} rows of ${table} each run to filter on ${columns.join(", ")}; an index on them serves it directly.`,
             evidence: {
               rowEstimate: rowsRead,
               tableBytes: 0,

@@ -222,7 +222,20 @@ describe("observeD1Workload on a local D1", () => {
     const proposals = await observeD1Workload(batch, [
       insight("SELECT * FROM POSTS WHERE USER_ID = ? AND user_id = ?", 10, 5000, 1),
     ]);
-    expect(proposals.map((p) => p.columns)).toEqual([["user_id"]]);
+    expect(proposals.map((p) => `${p.table}(${p.columns.join(",")})`)).toEqual(["posts(user_id)"]);
+    expect(proposals[0]?.ddl).toBe(
+      'CREATE INDEX IF NOT EXISTS "nlqdb_posts_user_id_dac06227" ON "posts" (`user_id`)',
+    );
+  });
+
+  it("skips an aggregate, whose rows returned understate the rows its filter keeps", async () => {
+    const { batch } = await d1.open(APP);
+    // `status = 'live'` keeps 2/3 of the posts, yet a count returns one row.
+    const proposals = await observeD1Workload(batch, [
+      insight("SELECT count(*) FROM posts WHERE status = ?", 100, 5000, 1),
+      insight("SELECT status FROM posts WHERE status = ? GROUP BY status", 100, 5000, 1),
+    ]);
+    expect(proposals).toEqual([]);
   });
 
   it("never sends a text with a second statement to the plan", async () => {
