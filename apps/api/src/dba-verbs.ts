@@ -11,7 +11,7 @@
 // other verb is refused.
 //
 // On a D1 the DDL runs over the REST client (`applyD1Proposal`) with the
-// sealed token triple; no counters are kept, since D1 has no Tier 1 yet.
+// sealed token triple; no counters are kept: D1's verify does not re-read Tier 1 yet.
 //
 // An apply also keeps its fingerprint's cumulative counters (`verify_from`);
 // `verifyDue` (the `dba_verify` job) diffs them against a fresh read once the
@@ -38,7 +38,7 @@ import { openSecret } from "./secret-envelope.ts";
 
 export type DecideDeps = Pick<
   ConnectByoDeps,
-  "resolve" | "kek" | "d1" | "buildPostgresQuery" | "buildD1Batch"
+  "resolve" | "kek" | "d1" | "buildPostgresQuery" | "buildD1Batch" | "readD1Insights"
 >;
 
 export type DecideArgs = { id: number; tenantId: string; decidedBy: string } & (
@@ -188,13 +188,14 @@ export async function onAttached<T>(
   }
 }
 
-// The REST client for an attached D1, from its sealed (account, database, token).
-async function attachedD1(deps: DecideDeps, row: { dbId: string; blob: string | null }) {
+// An attached D1's sealed (account, database, token) and its REST client;
+// also the `dba_observe` job's way in.
+export async function attachedD1(deps: DecideDeps, row: { dbId: string; blob: string | null }) {
   if (!row.blob) throw new Error("attached row has no connection_blob");
   const target = JSON.parse(
     await openSecret(row.blob, { kek: deps.kek as string, context: `dbconn:${row.dbId}` }),
   ) as D1Target;
-  return (deps.buildD1Batch ?? d1RestBatch)(target);
+  return { target, batch: (deps.buildD1Batch ?? d1RestBatch)(target) };
 }
 
 // Runs the proposal's DDL, then reads its fingerprint's counters — the start
@@ -207,7 +208,7 @@ async function applyOn(
   proposal: Proposal,
 ): Promise<StatementCounters | null> {
   if (row.engine === "d1") {
-    await applyD1Proposal(await attachedD1(deps, row), proposal);
+    await applyD1Proposal((await attachedD1(deps, row)).batch, proposal);
     return null;
   }
   return onAttached(deps, row, async (query) => {

@@ -4,10 +4,11 @@
 // seals the triple and records the DB row with its proposals in the api's own
 // D1. Prints KPI A through the door (credentials in → proposals in the ledger).
 
-import { d1RestBatch } from "@nlqdb/db";
+import { type D1QueryInsight, d1RestBatch } from "@nlqdb/db";
 import { afterAll, describe, expect, it } from "vitest";
 import { D1_TARGET, localD1 } from "../../../../packages/db/test/fixtures/local-d1.ts";
 import { listProposals } from "../dba-changes.ts";
+import { OBSERVE_WINDOW_SEC, observeDue } from "../dba-observe.ts";
 import { decideProposal, VERIFY_WINDOW_SEC, verifyDue } from "../dba-verbs.ts";
 import { openSecret } from "../secret-envelope.ts";
 import { type ConnectByoDeps, connectByoDb } from "./connect.ts";
@@ -166,6 +167,81 @@ describe("the attach door on a local D1", () => {
     // biome-ignore lint/suspicious/noConsole: the D1 apply reading belongs in the CI log
     console.log(
       `Verbs (synthetic, D1 API): ${applied.length} applied (${applyMs.toFixed(1)} ms each), 1 rejected; rows read by the posts(user_id) lookup ${before} → ${after}`,
+    );
+  });
+
+  // The `dba_observe` job on a D1 (`GLOBAL-043` item 7, `002-rateme12-attach.md`
+  // §3 step 1): no baseline to wait for — Cloudflare keeps the insights — so the
+  // first tick proposes from the day before, with no caller. The FK lookup's
+  // index is already a Tier 0 row, so it is not recorded twice.
+  it("the dba_observe job records a D1's Tier 1 proposals from its first tick", async () => {
+    const d = await deps(APP);
+    const insight = (query: string, rowsRead: number, rowsReturned: number): D1QueryInsight => ({
+      query,
+      calls: 400,
+      meanMs: 1.2,
+      rowsRead,
+      rowsReturned,
+      rowsWritten: 0,
+      totalRowsRead: rowsRead * 400,
+    });
+    const windows: { since: string; until: string }[] = [];
+    d.readD1Insights = async (target, window) => {
+      expect(target).toEqual(D1_TARGET);
+      windows.push(window);
+      return [
+        insight("SELECT id FROM users WHERE email = ?", 100, 1),
+        insight("SELECT id, user_id FROM posts WHERE title = ? LIMIT 1", 5000, 1),
+        insight("SELECT id, title FROM posts WHERE user_id = ?", 5000, 50),
+      ];
+    };
+    const result = await attach(d);
+    if (!result.ok) throw new Error(result.message);
+
+    const t0 = Date.UTC(2026, 10, 4, 9, 48) / 1000;
+    const observeAt = performance.now();
+    const [observed] = await observeDue(d, t0);
+    const observeMs = performance.now() - observeAt;
+    expect(windows).toEqual([{ since: "2026-11-03T09:00:00Z", until: "2026-11-04T09:00:00Z" }]);
+    const ledger = await listProposals(d.d1, result.dbId, "user_synth");
+    const tier1 = ledger.filter((p) => observed?.proposalIds.includes(p.id));
+    expect(tier1.map((p) => `${p.table}(${p.columns}) t${p.tier}`)).toEqual([
+      "posts(title) t1",
+      "users(email) t1",
+    ]);
+    expect(ledger.filter((p) => p.ddl.includes('"posts" (`user_id`)'))).toHaveLength(1);
+
+    // Inside the window: not due. After it: the next window starts where this
+    // one ended, and the same texts add nothing.
+    expect(await observeDue(d, t0 + OBSERVE_WINDOW_SEC - 1)).toEqual([]);
+    expect(await observeDue(d, t0 + OBSERVE_WINDOW_SEC)).toEqual([
+      { dbId: result.dbId, proposalIds: [] },
+    ]);
+    expect(windows[1]).toEqual({ since: "2026-11-04T09:00:00Z", until: "2026-11-05T09:00:00Z" });
+
+    // A refused insights read keeps the window start, so nothing is lost.
+    d.readD1Insights = async () => {
+      throw new Error("Authentication error");
+    };
+    expect(await observeDue(d, t0 + 2 * OBSERVE_WINDOW_SEC)).toEqual([]);
+    const row = await d.d1
+      .prepare("SELECT observe_from AS f FROM databases WHERE id = ?")
+      .bind(result.dbId)
+      .first<{ f: string }>();
+    expect(row?.f).toBe("2026-11-05T09:00:00Z");
+    // A window that fell behind starts inside the 31-day retention.
+    d.readD1Insights = async (_target, window) => {
+      windows.push(window);
+      return [];
+    };
+    await observeDue(d, t0 + 40 * OBSERVE_WINDOW_SEC);
+    expect(windows.at(-1)).toEqual({
+      since: "2026-11-14T09:00:00Z",
+      until: "2026-12-14T09:00:00Z",
+    });
+    // biome-ignore lint/suspicious/noConsole: the observe reading belongs in the CI log
+    console.log(
+      `Tier 1 observe (synthetic, D1, dba_observe job): ${tier1.length} proposals recorded with no caller on the first tick, ${observeMs.toFixed(1)} ms for the DB`,
     );
   });
 
