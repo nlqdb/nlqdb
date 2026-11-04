@@ -229,6 +229,16 @@ describe("the attach door on a local D1", () => {
       .bind(result.dbId)
       .first<{ f: string }>();
     expect(row?.f).toBe("2026-11-05T09:00:00Z");
+    // A window that fell behind starts inside the 31-day retention.
+    d.readD1Insights = async (_target, window) => {
+      windows.push(window);
+      return [];
+    };
+    await observeDue(d, t0 + 40 * OBSERVE_WINDOW_SEC);
+    expect(windows.at(-1)).toEqual({
+      since: "2026-11-14T09:00:00Z",
+      until: "2026-12-14T09:00:00Z",
+    });
     // biome-ignore lint/suspicious/noConsole: the observe reading belongs in the CI log
     console.log(
       `Tier 1 observe (synthetic, D1, dba_observe job): ${tier1.length} proposals recorded with no caller on the first tick, ${observeMs.toFixed(1)} ms for the DB`,
