@@ -9,54 +9,6 @@ Operator actions also get one metadata line in
 [`history/founder-actions-log.md`](./history/founder-actions-log.md) — never
 a secret value.
 
-## Approve the held `Deploy events-worker` and `Deploy MCP server` runs on `main`
-
-⏱ ~2 min · blocked since 2026-10-26. Both hold at `action_required` on
-every merge, so the events-worker serves the 10-22 build and
-`mcp.nlqdb.com` lacks the attach tools that `@nlqdb/mcp` 0.4.0 ships over
-stdio. Deploy API and Deploy web run.
-
-1. Approve the newest held runs, which deploy `main`'s head `d8e38ea`:
-   events-worker
-   ([41266559539](https://github.com/nlqdb/nlqdb/actions/runs/41266559539)),
-   MCP server ([41266559502](https://github.com/nlqdb/nlqdb/actions/runs/41266559502)).
-   Older held runs deploy older commits — skip them.
-2. If a deploy re-holds on the next merge, set Settings → Actions → General
-   back to auto-run for `main`.
-3. Log a line in `history/founder-actions-log.md` and delete this bullet.
-
-## Pick the spike database and hand its connection string to CI
-
-⏱ ~10 min · blocked since 2026-10-22. `/daily` step 2's item 1b is the
-2-week Postgres spike, run once item 1a's Postgres slices land ([`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md));
-it needs a real-traffic database only you can pick and grant.
-
-1. Choose a real-traffic Postgres you own (Supabase / Neon / RDS).
-2. Create a role with `pg_read_all_stats`, granted membership in the role
-   that owns the app's tables (only a table's owner can add its indexes).
-3. Make sure `pg_stat_statements` is enabled (and HypoPG, if the host
-   offers it).
-4. Set the connection string as the repo secret `SPIKE_PG_URL`
-   (`gh secret set SPIKE_PG_URL -R nlqdb/nlqdb`).
-5. Log a line in `history/founder-actions-log.md` (no secret) and delete
-   this bullet.
-
-## Hand CI a Cloudflare API token for rateme12's D1
-
-⏱ ~5 min · blocked since 2026-10-22. The dogfood attaches nlqdb to the real
-rateme12's D1 ([`002-rateme12-attach.md`](./history/dogfood-iterations/002-rateme12-attach.md));
-only the account owner can mint the token.
-
-1. In the Cloudflare dashboard, create an API token limited to rateme12's
-   account: D1 Edit, Account Analytics Read (D1 Edit is account-wide, so it
-   reaches every D1 database in that account; exact scopes are verified on
-   first attach).
-2. Set it as the repo secret `RATEME12_D1_TOKEN`, plus the account id and
-   database id (`gh secret set RATEME12_D1_TOKEN -R nlqdb/nlqdb`;
-   `RATEME12_D1_ACCOUNT_ID`, `RATEME12_D1_DATABASE_ID` the same way).
-3. Log a line in `history/founder-actions-log.md` (no secret) and delete
-   this bullet.
-
 ## Claim the `nlqdb` npm name for the `npx nlqdb attach` door
 
 ⏱ ~5 min · blocked since 2026-10-31. [`END_GOAL.md`](./END_GOAL.md) row 1

@@ -138,7 +138,7 @@ well the queue bullet was prepared, not by the action itself.
 
 | Date | Action (surface) | Unblocked | Replay note |
 |---|---|---|---|
-| 2026-08-12 | Created the Supabase OAuth app (Supabase dashboard → Organization → OAuth Apps; scopes `database:write` + `projects:read`; callback `https://app.nlqdb.com/v1/db/connect/oauth/supabase/callback` per SK-AUTH-008) → set `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` in `.envrc`, mirrored to GHA (`scripts/mirror-secrets-gha.sh`) | `SK-DBCONN-003` (PR #981) blocker B5 — both OAuth creds provisioned ahead of the connect-routes build; Supabase shows the client secret once, now backed up in GHA | ~5 min; agent-buildable from here with **no founder step** — the build PR adds both names to `mirror-secrets-workers.sh` (api subset) + deploys, CI self-heals them GHA→Worker. Only a local live-E2E still needs `.envrc` (GHA secrets are write-only, so the raw value can't be read back) — tests stub the provider |
+| 2026-08-12 | Created the Supabase OAuth app (dashboard → Organization → OAuth Apps; `database:write` + `projects:read`; callback per SK-AUTH-008) → `SUPABASE_OAUTH_CLIENT_ID`/`_SECRET` in `.envrc`, mirrored to GHA | `SK-DBCONN-003` blocker B5 | ~5 min; Supabase shows the secret once — GHA holds the backup |
 
 ## Era 11 — 2026-08-14 (live review session — hosted-premium activation)
 
@@ -181,3 +181,4 @@ well the queue bullet was prepared, not by the action itself.
 |---|---|---|---|
 | 2026-10-16 | On the founder's word, agent-performed with the operator's `CLOUDFLARE_API_TOKEN`: re-ran `Deploy API` on `main`, set `TENANT_ROLE_REAP=1` on `nlqdb-api`, deleted the 261 `synthetic` anon D1 rows (0 asks) | `SK-HDC-024` reaper drops orphan `tenant_*` roles (499/500 → ~18 live); hosted create off the 500-role cap | ~5 min; `wrangler secret put` refuses while a PR preview version is newest, so redeploy first |
 | 2026-10-19 | Merged PR #1185 (GitHub) | END_GOAL + `GLOBAL-041` 2026-10-16 revision locked; SHOW/EXPLAIN cross-tenant validator fix live | — |
+| 2026-11-04 | Approved the held `Deploy MCP server` / `events-worker` runs → success; set secrets `SPIKE_PG_URL` and `RATEME12_D1_TOKEN` / `_ACCOUNT_ID` / `_DATABASE_ID` | `GLOBAL-043` item 1b unblocked | Supabase: the direct host is IPv6-only, so CI uses the session pooler (port 5432); its `postgres` role can't grant `pg_read_all_stats` to a new role |
