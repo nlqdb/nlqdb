@@ -28,8 +28,9 @@ import { attachedD1, type DecideDeps, onAttached } from "./dba-verbs.ts";
 // One day: a window spans the app's daily cycle.
 export const OBSERVE_WINDOW_SEC = 24 * 3600;
 // DBs per tick, under Workers Free's 50 subrequests: a Postgres DB is one
-// socket, a D1 two requests (insights + plans) — more only when a text no
-// longer plans and each is sent alone; an overrun DB fails and is retried.
+// socket, a D1 up to four requests (insights, plans, and for a scan its catalog
+// and index keys) — more when a text no longer plans and each is sent alone;
+// an overrun DB fails and is retried.
 // Hourly, that is 120 DBs a day before a window stretches past 24 h.
 const OBSERVE_BATCH = 5;
 // D1 keeps query insights 31 days; a window starts a day inside that.
