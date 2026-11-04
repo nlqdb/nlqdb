@@ -20,11 +20,20 @@ export type CreateIndexProposal = {
   // One sentence a user can read on the proposal card.
   reason: string;
   // What the observer saw — the card's cost line (`END_GOAL.md` row 3). Tier 1
-  // adds the fingerprint it would speed up, over the observed window.
+  // adds the query it would speed up, over the observed window: a Postgres
+  // fingerprint (`workload`), or a D1 query text with its per-run rows read
+  // (`d1Workload` — D1's analytics keep no percentile, so no p95).
   evidence: {
     rowEstimate: number;
     tableBytes: number;
     workload?: { fingerprint: string; calls: number; meanMs: number; p95EstimateMs: number };
+    d1Workload?: {
+      query: string;
+      calls: number;
+      meanMs: number;
+      rowsRead: number;
+      rowsReturned: number;
+    };
   };
 };
 
