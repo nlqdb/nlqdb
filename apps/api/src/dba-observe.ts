@@ -12,8 +12,6 @@
 // re-proposed.
 
 import {
-  type D1Target,
-  d1RestBatch,
   observeD1Workload,
   observePostgresWorkload,
   type Proposal,
@@ -25,15 +23,14 @@ import {
 } from "@nlqdb/db";
 import { BYO_SECRET_REF_SENTINEL } from "./db-connect/constants.ts";
 import { proposalStatement } from "./dba-changes.ts";
-import { type DecideDeps, onAttached } from "./dba-verbs.ts";
-import { openSecret } from "./secret-envelope.ts";
+import { attachedD1, type DecideDeps, onAttached } from "./dba-verbs.ts";
 
 // One day: a window spans the app's daily cycle.
 export const OBSERVE_WINDOW_SEC = 24 * 3600;
 // DBs per tick: each opens a socket to a user's DB (Workers' subrequest cap).
 // Hourly, that is 120 DBs a day before a window stretches past 24 h.
 const OBSERVE_BATCH = 5;
-// D1 keeps query insights 31 days: a window never starts before that.
+// D1 keeps query insights 31 days; a window starts a day inside that.
 const D1_RETENTION_SEC = 30 * 24 * 3600;
 
 type DueRow = { dbId: string; engine: string; blob: string | null; observeFrom: string | null };
@@ -132,14 +129,10 @@ async function observePostgres(deps: DecideDeps, row: DueRow): Promise<Observed>
 // The insights from the hour the last window ended (the day before, at first)
 // to this one's; the hour shared by two windows only re-proposes known DDL.
 async function observeD1(deps: DecideDeps, row: DueRow, nowSec: number): Promise<Observed> {
-  if (!row.blob) throw new Error("attached row has no connection_blob");
-  const target = JSON.parse(
-    await openSecret(row.blob, { kek: deps.kek as string, context: `dbconn:${row.dbId}` }),
-  ) as D1Target;
+  const { target, batch } = await attachedD1(deps, row);
   const oldest = isoHour(nowSec - D1_RETENTION_SEC);
   const from = row.observeFrom ?? isoHour(nowSec - OBSERVE_WINDOW_SEC);
   const window = { since: from < oldest ? oldest : from, until: isoHour(nowSec) };
   const insights = await (deps.readD1Insights ?? readD1QueryInsights)(target, window);
-  const proposals = await observeD1Workload((deps.buildD1Batch ?? d1RestBatch)(target), insights);
-  return { next: window.until, proposals };
+  return { next: window.until, proposals: await observeD1Workload(batch, insights) };
 }
