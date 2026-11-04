@@ -9,7 +9,7 @@
 // scans that table, and no full index already leads with those columns.
 // D1 strips bound parameters to `?` and binds none into an `EXPLAIN`, so the
 // plan reads them as `NULL` — an equality on `NULL` plans like any other.
-// A scan reads every row, so the per-run rows read is the table's row count.
+// A scan under a `LIMIT` can stop early, so the evidence is the per-run rows read, not the table's size.
 
 import { type D1BatchFn, type D1QueryInsight, D1RestError, d1Literal } from "./d1/rest.ts";
 import { covers, isInternal } from "./dba-observe-d1.ts";
@@ -197,7 +197,7 @@ export function observeD1Workload(
             tier: 1,
             table,
             columns,
-            reason: `A query that ran ${insight.calls} times (mean ${insight.meanMs.toFixed(2)} ms) reads all ${rowsRead} rows of ${table} each run to filter on ${columns.join(", ")}; an index on them serves it directly.`,
+            reason: `A query that ran ${insight.calls} times (mean ${insight.meanMs.toFixed(2)} ms) reads ${rowsRead} rows of ${table} each run to filter on ${columns.join(", ")}; an index on them serves it directly.`,
             evidence: {
               rowEstimate: rowsRead,
               tableBytes: 0,
