@@ -49,7 +49,10 @@ import type { QueryResult, Row } from "./types.ts";
 type ByoResult = Row[] & { count?: number };
 type ByoSql = {
   unsafe: (query: string, params?: unknown[], opts?: { simple: boolean }) => Promise<ByoResult>;
-  begin: <T>(cb: (tx: { unsafe: ByoSql["unsafe"] }) => Promise<T>) => Promise<T>;
+  begin: {
+    <T>(cb: (tx: { unsafe: ByoSql["unsafe"] }) => Promise<T>): Promise<T>;
+    <T>(mode: string, cb: (tx: { unsafe: ByoSql["unsafe"] }) => Promise<T>): Promise<T>;
+  };
   end: (opts?: { timeout?: number }) => Promise<void>;
 };
 
@@ -57,6 +60,12 @@ export type ByoPostgresOptions = {
   // Injected for tests (the `SK-DB-006` seam): a postgres.js-shaped factory.
   // Production uses the real `postgres` driver with Workers-tuned options.
   driver?: (url: string) => ByoSql;
+  // Every `query` runs as its own `BEGIN READ ONLY` transaction, one statement
+  // over the extended protocol, so the server refuses any write. Transaction-
+  // scoped on purpose: a `SET SESSION` would survive onto the backend a pooler
+  // (Supavisor session mode) hands the next client when its reset query is
+  // unset, and would be lost on a silent reconnect.
+  readOnly?: boolean;
 };
 
 export type ByoPostgresConnection = {
@@ -110,7 +119,10 @@ export function openByoPostgres(url: string, opts: ByoPostgresOptions = {}): Byo
 
   const query: PostgresQueryFn = async (text, params, signal) => {
     signal?.throwIfAborted();
-    return toResult(await sql.unsafe(text, params ?? []));
+    if (!opts.readOnly) return toResult(await sql.unsafe(text, params ?? []));
+    return toResult(
+      await sql.begin("read only", (tx) => tx.unsafe(text, params ?? [], { simple: false })),
+    );
   };
 
   const runBounded = async (
