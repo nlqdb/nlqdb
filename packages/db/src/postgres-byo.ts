@@ -66,7 +66,9 @@ export type ByoPostgresOptions = {
   // client when its reset query is unset, and would be lost on a silent
   // reconnect. The protocol stays `query`'s own (simple when there are no
   // params): over the extended one, Tier 1's `EXPLAIN (GENERIC_PLAN)` of a
-  // `$1` fingerprint fails "bind message supplies 0 parameters".
+  // `$1` fingerprint fails "bind message supplies 0 parameters". The simple one
+  // runs every `;`-separated statement, so a chained `COMMIT; <write>` would
+  // escape the transaction: a text holding `;` is refused before it is sent.
   readOnly?: boolean;
 };
 
@@ -122,6 +124,7 @@ export function openByoPostgres(url: string, opts: ByoPostgresOptions = {}): Byo
   const query: PostgresQueryFn = async (text, params, signal) => {
     signal?.throwIfAborted();
     if (!opts.readOnly) return toResult(await sql.unsafe(text, params ?? []));
+    if (text.includes(";")) throw new Error("read-only query refused: `;` could chain a write");
     return toResult(await sql.begin("read only", (tx) => tx.unsafe(text, params ?? [])));
   };
 

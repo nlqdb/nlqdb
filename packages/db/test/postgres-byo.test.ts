@@ -105,6 +105,8 @@ describe("openByoPostgres", () => {
       { text: "SELECT 1", params: [] },
       { text: "SELECT $1", params: [2] },
     ]);
+    await expect(conn.query("SELECT 1; COMMIT; DELETE FROM t", [])).rejects.toThrow(/`;`/);
+    expect(fake.calls).toHaveLength(2);
   });
 
   it("close() ends the underlying connection", async () => {
