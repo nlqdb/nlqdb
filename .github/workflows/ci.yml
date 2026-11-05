@@ -314,7 +314,7 @@ jobs:
       - name: Attach
         working-directory: apps/api
         env:
-          SPIKE_PG_URL: ${{ secrets.SPIKE_PG_URL }}
+          SPIKE_ATTACH_URL: ${{ secrets.SPIKE_PG_URL }}
         run: bunx vitest run --project unit --reporter=verbose src/db-connect/spike.pg.test.ts
 
   test-tools:
