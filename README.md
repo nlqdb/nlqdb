@@ -192,8 +192,9 @@ One loop — observe → propose → apply → verify → revert — on your Pos
   `mcp.nlqdb.com` serves the MCP tools once its held deploy runs; verify
   runs on its own once an applied proposal's 72 h window has passed; on D1
   the API door attaches, applies and rejects so far), tested in CI
-- ◯ Postgres spike — one index proposed, applied and measured (before/after
-  p95) on a real-traffic database
+- ~ Postgres spike — one index proposed, applied and measured (before/after
+  p95) on a real-traffic database (the spike DB attaches read-only in CI,
+  first proposal in 2.7 s; no index applied yet)
 - ◯ D1 attach on the real rateme12 — the dogfood
 - ◯ The playbook — unused-index drops, bloat, retypes, partitioning,
   retention, placement

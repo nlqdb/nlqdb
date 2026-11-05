@@ -17,6 +17,7 @@ type Recorded = { text: string; params?: unknown[]; opts?: { simple: boolean } }
 // with a `.count` property, exactly like a postgres.js `Result`.
 function fakeDriver(rowsFor?: (text: string) => Row[]) {
   const calls: Recorded[] = [];
+  const modes: (string | undefined)[] = [];
   let ended = false;
   const result = (rows: Row[]) => Object.assign([...rows], { count: rows.length });
   const unsafe = async (text: string, params?: unknown[], opts?: { simple: boolean }) => {
@@ -25,7 +26,15 @@ function fakeDriver(rowsFor?: (text: string) => Row[]) {
   };
   const sql = {
     unsafe,
-    begin: async <T>(cb: (tx: { unsafe: typeof unsafe }) => Promise<T>) => cb({ unsafe }),
+    begin: async <T>(
+      ...args:
+        | [(tx: { unsafe: typeof unsafe }) => Promise<T>]
+        | [string, (tx: { unsafe: typeof unsafe }) => Promise<T>]
+    ) => {
+      modes.push(args.length === 2 ? args[0] : undefined);
+      const cb = args.length === 2 ? args[1] : args[0];
+      return cb({ unsafe });
+    },
     end: async () => {
       ended = true;
     },
@@ -33,6 +42,7 @@ function fakeDriver(rowsFor?: (text: string) => Row[]) {
   return {
     driver: () => sql as never,
     calls,
+    modes,
     wasEnded: () => ended,
   };
 }
@@ -80,6 +90,23 @@ describe("openByoPostgres", () => {
     // The user statement goes over the extended protocol, so Postgres itself
     // refuses a chained second statement (`SK-SQLAL-009`).
     expect(fake.calls[1]?.opts).toEqual({ simple: false });
+  });
+
+  it("readOnly: each query() is its own BEGIN READ ONLY transaction, on query()'s own protocol", async () => {
+    const fake = fakeDriver();
+    const conn = openByoPostgres("postgres://u:p@byo.example.com/shop", {
+      driver: fake.driver,
+      readOnly: true,
+    });
+    await conn.query("SELECT 1", []);
+    await conn.query("SELECT $1", [2]);
+    expect(fake.modes).toEqual(["read only", "read only"]);
+    expect(fake.calls).toEqual([
+      { text: "SELECT 1", params: [] },
+      { text: "SELECT $1", params: [2] },
+    ]);
+    await expect(conn.query("SELECT 1; COMMIT; DELETE FROM t", [])).rejects.toThrow(/`;`/);
+    expect(fake.calls).toHaveLength(2);
   });
 
   it("close() ends the underlying connection", async () => {
