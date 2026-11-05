@@ -48,10 +48,14 @@ const window = (query: string, totalMs = 100): FingerprintWindow => ({
   p95EstimateMs: totalMs / 25,
 });
 
+// The attached schema's relations, as the candidate filter reads them.
+const relations = { rows: [{ relname: "users" }, { relname: "Gone" }] };
+
 // A stub that answers EXPLAIN with `plan` and the table check with `table`.
 function stub(plan: unknown, table: Record<string, number>) {
   const sqls: string[] = [];
   const query: PostgresQueryFn = async (sql) => {
+    if (sql.includes("relkind IN")) return relations;
     sqls.push(sql);
     if (sql.startsWith("EXPLAIN"))
       return { rows: [{ "QUERY PLAN": JSON.stringify([{ Plan: plan }]) }] };
@@ -88,7 +92,7 @@ describe("observePostgresWorkload", () => {
       ...bigTable,
       known_columns: 1,
     });
-    const [p] = await observePostgresWorkload(query, "app", [window("SELECT 1")]);
+    const [p] = await observePostgresWorkload(query, "app", [window("SELECT 1 FROM users")]);
     expect(p?.columns).toEqual(["email"]);
     expect(sqls).toHaveLength(2);
   });
@@ -102,11 +106,15 @@ describe("observePostgresWorkload", () => {
     });
     const table = { ...bigTable, known_columns: 1 };
     expect(
-      await observePostgresWorkload(stub(gather(200), table).query, "app", [window("SELECT 1")]),
+      await observePostgresWorkload(stub(gather(200), table).query, "app", [
+        window("SELECT 1 FROM users"),
+      ]),
     ).toHaveLength(1);
     // 250 x 2.4 = 600: 6 % — unselective, though 250 alone would read 2.5 %.
     expect(
-      await observePostgresWorkload(stub(gather(250), table).query, "app", [window("SELECT 1")]),
+      await observePostgresWorkload(stub(gather(250), table).query, "app", [
+        window("SELECT 1 FROM users"),
+      ]),
     ).toEqual([]);
   });
 
@@ -119,7 +127,9 @@ describe("observePostgresWorkload", () => {
     ["another schema", { ...seqScan("(u.a = $1)"), Schema: "other" }, bigTable],
   ])("proposes nothing for %s", async (_, plan, table) => {
     const { query } = stub(plan, { ...table, known_columns: 1 });
-    expect(await observePostgresWorkload(query, "app", [window("SELECT 1")])).toEqual([]);
+    expect(await observePostgresWorkload(query, "app", [window("SELECT 1 FROM users")])).toEqual(
+      [],
+    );
   });
 
   it("never EXPLAINs DDL, multi-statement text or utility commands", async () => {
@@ -132,9 +142,26 @@ describe("observePostgresWorkload", () => {
     expect(sqls).toEqual([]);
   });
 
+  it("plans only fingerprints naming a relation of the attached schema, so the host's own heavy statements don't spend the budget", async () => {
+    const { query, sqls } = stub(seqScan("(u.a = $1)"), { ...bigTable, known_columns: 1 });
+    const hostOwn = Array.from({ length: 25 }, (_, i) =>
+      window(`SELECT * FROM realtime.subscription WHERE id = $${i + 1}`, 1_000 - i),
+    );
+    const proposals = await observePostgresWorkload(query, "app", [
+      ...hostOwn,
+      window("SELECT * FROM gone WHERE a = $1"), // unquoted folds to `gone`, not `Gone`
+      window("SELECT * FROM USERS u WHERE a = $1", 1),
+    ]);
+    expect(sqls.filter((s) => s.startsWith("EXPLAIN"))).toEqual([
+      "EXPLAIN (GENERIC_PLAN, VERBOSE, FORMAT JSON) SELECT * FROM USERS u WHERE a = $1",
+    ]);
+    expect(proposals).toHaveLength(1);
+  });
+
   it("skips a fingerprint that fails to plan and keeps going", async () => {
     let n = 0;
     const query: PostgresQueryFn = async (sql) => {
+      if (sql.includes("relkind IN")) return relations;
       if (sql.startsWith("EXPLAIN") && n++ === 0)
         throw Object.assign(new Error("relation does not exist"), {
           severity: "ERROR",
@@ -145,7 +172,7 @@ describe("observePostgresWorkload", () => {
       return { rows: [{ ...bigTable, known_columns: 1 }] };
     };
     const proposals = await observePostgresWorkload(query, "app", [
-      window("SELECT a FROM gone WHERE a = $1", 200),
+      window('SELECT a FROM "Gone" WHERE a = $1', 200),
       window("SELECT a FROM users WHERE a = $1"),
     ]);
     expect(proposals.map((p) => p.columns)).toEqual([["a"]]);

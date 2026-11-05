@@ -12,7 +12,11 @@
 // A fingerprint yields a proposal when its plan (`EXPLAIN (GENERIC_PLAN)` on
 // the normalized text, Postgres 16+ — never executed) seq-scans a table of the
 // attached schema with a selective AND of equality filters, and no valid btree
-// / hash index already leads with those columns.
+// / hash index already leads with those columns. Only fingerprints naming a
+// relation of the attached schema are planned: on a managed host the heaviest
+// statements are often the host's own (auth, storage, realtime, its dashboard),
+// and they would spend the per-observe EXPLAIN budget on tables nlqdb never
+// proposes for.
 
 import { createIndexProposal, type Proposal } from "./dba-proposal.ts";
 import { withDbaSpan, withObserveSpan } from "./dba-span.ts";
@@ -128,6 +132,36 @@ const MAX_SELECTIVITY = 0.05;
 const EXPLAINABLE = /^\s*(SELECT|UPDATE|DELETE|WITH)\b/i;
 
 const IDENT = String.raw`(?:[A-Za-z_][\w$]*|"(?:[^"]|"")+")`;
+const unquote = (ident: string): string =>
+  ident.startsWith('"') ? ident.slice(1, -1).replaceAll('""', '"') : ident;
+
+// The relations of `schema` a fingerprint can scan: tables, partitioned
+// tables, views and materialized views (a view's plan scans its base tables).
+const RELATIONS_SQL = `
+SELECT c.relname FROM pg_catalog.pg_class c
+JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = $1 AND c.relkind IN ('r', 'p', 'v', 'm')`;
+
+// The window's fingerprints Tier 1 plans, heaviest first: explainable single
+// statements that name a relation of `schema` (an unquoted identifier folded
+// to lower case, as Postgres does). A name shared with another schema's table
+// costs one EXPLAIN; the plan's schema check then drops it.
+export async function tier1Candidates(
+  query: PostgresQueryFn,
+  schema: string,
+  window: FingerprintWindow[],
+): Promise<FingerprintWindow[]> {
+  const { rows } = await query(RELATIONS_SQL, [schema]);
+  const relations = new Set(rows.map((r) => String(r["relname"])));
+  const namesRelation = (sql: string) =>
+    [...sql.matchAll(new RegExp(IDENT, "g"))].some(([id]) =>
+      relations.has(id.startsWith('"') ? unquote(id) : id.toLowerCase()),
+    );
+  return window.filter(
+    (w) => EXPLAINABLE.test(w.query) && !w.query.includes(";") && namesRelation(w.query),
+  );
+}
+
 const VALUE = String.raw`(?:\$\d+|\(\$\d+\)::[^()]+?|'(?:[^']|'')*'(?:::[\w ]+)?|-?\d+(?:\.\d+)?)`;
 // One `(alias.column = value)` term of a VERBOSE plan's Filter. A varchar
 // column (Rails' and Django's string) plans relabelled as
@@ -137,9 +171,6 @@ const EQUALITY_TERM = new RegExp(
   String.raw`\((?:${IDENT}\.(${IDENT})|\(${IDENT}\.(${IDENT})\)::text) = ${VALUE}\)`,
   "g",
 );
-
-const unquote = (ident: string): string =>
-  ident.startsWith('"') ? ident.slice(1, -1).replaceAll('""', '"') : ident;
 
 type PlanNode = {
   "Node Type"?: string;
@@ -234,9 +265,7 @@ export function observePostgresWorkload(
   return withObserveSpan("observe_workload", schema, async (span) => {
     const proposals = new Map<string, Proposal>();
     let unplanned = 0;
-    const candidates = window
-      .filter((w) => EXPLAINABLE.test(w.query) && !w.query.includes(";"))
-      .slice(0, MAX_FINGERPRINTS);
+    const candidates = (await tier1Candidates(query, schema, window)).slice(0, MAX_FINGERPRINTS);
     for (const w of candidates) {
       let plan: PlanNode;
       try {

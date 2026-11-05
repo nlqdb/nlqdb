@@ -90,6 +90,7 @@ export {
   observePostgresWorkload,
   snapshotPostgresStatements,
   statementWindow,
+  tier1Candidates,
 } from "./dba-observe-postgres-workload.ts";
 export type { CreateIndexProposal, Proposal } from "./dba-proposal.ts";
 export { createD1IndexProposal, createIndexProposal, indexName } from "./dba-proposal.ts";
