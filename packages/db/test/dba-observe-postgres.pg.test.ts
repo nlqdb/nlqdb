@@ -111,6 +111,17 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
       "posts(title) t1",
       "users(email) t1",
     ]);
+    // The spike's read-only transport plans the same `$1` fingerprints.
+    const ro = openByoPostgres(url as string, {
+      driver: (u) => postgres(u, { max: 1, prepare: false, fetch_types: false }) as never,
+      readOnly: true,
+    });
+    try {
+      const roProposals = await observePostgresWorkload(ro.query, SCHEMA, before);
+      expect(roProposals.map((p) => p.ddl)).toEqual(proposals.map((p) => p.ddl));
+    } finally {
+      await ro.close();
+    }
     expect(proposals[0]?.evidence.workload).toMatchObject({
       fingerprint: hot(before, HOT[0] as string).fingerprint,
       calls: 300,

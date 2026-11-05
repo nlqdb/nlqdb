@@ -92,7 +92,7 @@ describe("openByoPostgres", () => {
     expect(fake.calls[1]?.opts).toEqual({ simple: false });
   });
 
-  it("readOnly: each query() is its own BEGIN READ ONLY transaction, one statement over the extended protocol", async () => {
+  it("readOnly: each query() is its own BEGIN READ ONLY transaction, on query()'s own protocol", async () => {
     const fake = fakeDriver();
     const conn = openByoPostgres("postgres://u:p@byo.example.com/shop", {
       driver: fake.driver,
@@ -102,8 +102,8 @@ describe("openByoPostgres", () => {
     await conn.query("SELECT $1", [2]);
     expect(fake.modes).toEqual(["read only", "read only"]);
     expect(fake.calls).toEqual([
-      { text: "SELECT 1", params: [], opts: { simple: false } },
-      { text: "SELECT $1", params: [2], opts: { simple: false } },
+      { text: "SELECT 1", params: [] },
+      { text: "SELECT $1", params: [2] },
     ]);
   });
 

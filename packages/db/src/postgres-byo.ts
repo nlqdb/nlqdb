@@ -60,11 +60,13 @@ export type ByoPostgresOptions = {
   // Injected for tests (the `SK-DB-006` seam): a postgres.js-shaped factory.
   // Production uses the real `postgres` driver with Workers-tuned options.
   driver?: (url: string) => ByoSql;
-  // Every `query` runs as its own `BEGIN READ ONLY` transaction, one statement
-  // over the extended protocol, so the server refuses any write. Transaction-
-  // scoped on purpose: a `SET SESSION` would survive onto the backend a pooler
-  // (Supavisor session mode) hands the next client when its reset query is
-  // unset, and would be lost on a silent reconnect.
+  // Every `query` runs as its own `BEGIN READ ONLY` transaction, so the server
+  // refuses any write. Transaction-scoped on purpose: a `SET SESSION` would
+  // survive onto the backend a pooler (Supavisor session mode) hands the next
+  // client when its reset query is unset, and would be lost on a silent
+  // reconnect. The protocol stays `query`'s own (simple when there are no
+  // params): over the extended one, Tier 1's `EXPLAIN (GENERIC_PLAN)` of a
+  // `$1` fingerprint fails "bind message supplies 0 parameters".
   readOnly?: boolean;
 };
 
@@ -120,9 +122,7 @@ export function openByoPostgres(url: string, opts: ByoPostgresOptions = {}): Byo
   const query: PostgresQueryFn = async (text, params, signal) => {
     signal?.throwIfAborted();
     if (!opts.readOnly) return toResult(await sql.unsafe(text, params ?? []));
-    return toResult(
-      await sql.begin("read only", (tx) => tx.unsafe(text, params ?? [], { simple: false })),
-    );
+    return toResult(await sql.begin("read only", (tx) => tx.unsafe(text, params ?? [])));
   };
 
   const runBounded = async (
