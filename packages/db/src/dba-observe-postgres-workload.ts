@@ -132,6 +132,7 @@ const MAX_SELECTIVITY = 0.05;
 const EXPLAINABLE = /^\s*(SELECT|UPDATE|DELETE|WITH)\b/i;
 
 const IDENT = String.raw`(?:[A-Za-z_][\w$]*|"(?:[^"]|"")+")`;
+const IDENTS = new RegExp(IDENT, "g");
 const unquote = (ident: string): string =>
   ident.startsWith('"') ? ident.slice(1, -1).replaceAll('""', '"') : ident;
 
@@ -154,7 +155,7 @@ async function tier1Candidates(
   const { rows } = await query(RELATIONS_SQL, [schema]);
   const relations = new Set(rows.map((r) => String(r["relname"])));
   const namesRelation = (sql: string) =>
-    [...sql.matchAll(new RegExp(IDENT, "g"))].some(([id]) =>
+    [...sql.matchAll(IDENTS)].some(([id]) =>
       relations.has(id.startsWith('"') ? unquote(id) : id.toLowerCase()),
     );
   return window.filter(
@@ -258,11 +259,12 @@ export type Tier1Funnel = {
   candidates: number;
   planned: number;
   unplanned: number;
-  // Seq scan nodes on the attached schema, and those whose filter is an AND of
-  // equalities (the only shape Tier 1 proposes for).
-  seqScans: number;
+  // Seq scan nodes on the attached schema that filter rows, and those whose
+  // filter is an AND of equalities (the only shape Tier 1 proposes for).
+  filteredScans: number;
   equalityScans: number;
-  // Not a plain table of the schema (a partition, or dropped since the plan).
+  // Not a plain table of the schema (a partition, a materialized view, or
+  // dropped since the plan).
   notTable: number;
   covered: number;
   unknownColumns: number;
@@ -274,7 +276,7 @@ export const newTier1Funnel = (): Tier1Funnel => ({
   candidates: 0,
   planned: 0,
   unplanned: 0,
-  seqScans: 0,
+  filteredScans: 0,
   equalityScans: 0,
   notTable: 0,
   covered: 0,
@@ -283,9 +285,9 @@ export const newTier1Funnel = (): Tier1Funnel => ({
   unselective: 0,
 });
 
-function countSeqScans(node: PlanNode, schema: string): number {
-  const here = node["Node Type"] === "Seq Scan" && node.Schema === schema ? 1 : 0;
-  return (node.Plans ?? []).reduce((n, child) => n + countSeqScans(child, schema), here);
+function countFilteredScans(node: PlanNode, schema: string): number {
+  const here = node["Node Type"] === "Seq Scan" && node.Schema === schema && node.Filter ? 1 : 0;
+  return (node.Plans ?? []).reduce((n, child) => n + countFilteredScans(child, schema), here);
 }
 
 // Turn the window's hot fingerprints into Tier 1 proposals, heaviest first;
@@ -317,7 +319,7 @@ export function observePostgresWorkload(
         continue;
       }
       funnel.planned++;
-      funnel.seqScans += countSeqScans(plan, schema);
+      funnel.filteredScans += countFilteredScans(plan, schema);
       for (const scan of seqScanFilters(plan, schema)) {
         funnel.equalityScans++;
         const key = `${scan.table}\0${[...scan.columns].sort()}`;

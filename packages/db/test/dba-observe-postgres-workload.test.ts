@@ -191,7 +191,7 @@ describe("observePostgresWorkload", () => {
       funnel,
     );
     expect(proposals.map((p) => p.columns)).toEqual([["a"]]);
-    expect(funnel).toMatchObject({ planned: 1, unplanned: 1, seqScans: 1, equalityScans: 1 });
+    expect(funnel).toMatchObject({ planned: 1, unplanned: 1, filteredScans: 1, equalityScans: 1 });
   });
 
   it("counts a scan on a partition (no plain-table row) apart from a covered one, on the span", async () => {
