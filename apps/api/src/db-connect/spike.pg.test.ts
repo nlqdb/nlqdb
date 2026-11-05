@@ -65,14 +65,6 @@ describe.skipIf(!url)("the attach door on the spike Postgres (read-only)", () =>
       const snapshot = await snapshotPostgresStatements(conn.query, "public");
       const window = statementWindow(new Map(), snapshot);
       const candidates = await tier1Candidates(conn.query, "public", window);
-      // Before this run's candidate filter: the 20 heaviest explainable fingerprints.
-      const oldTop20 = window
-        .filter((w) => /^\s*(SELECT|UPDATE|DELETE|WITH)\b/i.test(w.query) && !w.query.includes(";"))
-        .slice(0, 20);
-      // biome-ignore lint/suspicious/noConsole: one-off before reading
-      console.log(
-        `before: ${oldTop20.filter((w) => candidates.includes(w)).length}/20 of the old top 20 name a public relation`,
-      );
       const funnel = newTier1Funnel();
       const tier1 = await observePostgresWorkload(conn.query, "public", window, funnel);
       const { rows: version } = await conn.query("SHOW server_version_num", []);
