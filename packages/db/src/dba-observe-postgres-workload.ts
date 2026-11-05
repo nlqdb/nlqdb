@@ -146,7 +146,7 @@ WHERE n.nspname = $1 AND c.relkind IN ('r', 'p', 'v', 'm')`;
 // statements that name a relation of `schema` (an unquoted identifier folded
 // to lower case, as Postgres does). A name shared with another schema's table
 // costs one EXPLAIN; the plan's schema check then drops it.
-export async function tier1Candidates(
+async function tier1Candidates(
   query: PostgresQueryFn,
   schema: string,
   window: FingerprintWindow[],
@@ -254,12 +254,16 @@ WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind = 'r' AND NOT c.relisparti
 // Where each planned fingerprint dropped out, counted per observe and set on
 // the span; the spike's CI log prints it (counts only, never a query).
 export type Tier1Funnel = {
+  // Candidates before the per-observe cap; those past it wait for a later observe.
+  candidates: number;
   planned: number;
   unplanned: number;
   // Seq scan nodes on the attached schema, and those whose filter is an AND of
   // equalities (the only shape Tier 1 proposes for).
   seqScans: number;
   equalityScans: number;
+  // Not a plain table of the schema (a partition, or dropped since the plan).
+  notTable: number;
   covered: number;
   unknownColumns: number;
   unanalyzed: number;
@@ -267,10 +271,12 @@ export type Tier1Funnel = {
 };
 
 export const newTier1Funnel = (): Tier1Funnel => ({
+  candidates: 0,
   planned: 0,
   unplanned: 0,
   seqScans: 0,
   equalityScans: 0,
+  notTable: 0,
   covered: 0,
   unknownColumns: 0,
   unanalyzed: 0,
@@ -296,8 +302,9 @@ export function observePostgresWorkload(
 ): Promise<Proposal[]> {
   return withObserveSpan("observe_workload", schema, async (span) => {
     const proposals = new Map<string, Proposal>();
-    const candidates = (await tier1Candidates(query, schema, window)).slice(0, MAX_FINGERPRINTS);
-    for (const w of candidates) {
+    const candidates = await tier1Candidates(query, schema, window);
+    funnel.candidates = candidates.length;
+    for (const w of candidates.slice(0, MAX_FINGERPRINTS)) {
       let plan: PlanNode;
       try {
         const { rows } = await query(`EXPLAIN (GENERIC_PLAN, VERBOSE, FORMAT JSON) ${w.query}`, []);
@@ -322,7 +329,11 @@ export function observePostgresWorkload(
           JSON.stringify(scan.textCast),
         ]);
         const t = rows[0];
-        if (!t || Number(t["covered"]) === 1) {
+        if (!t) {
+          funnel.notTable++;
+          continue;
+        }
+        if (Number(t["covered"]) === 1) {
           funnel.covered++;
           continue;
         }
@@ -361,7 +372,9 @@ export function observePostgresWorkload(
         );
       }
     }
-    for (const [k, v] of Object.entries(funnel)) span.setAttribute(`nlqdb.dba.tier1.${k}`, v);
+    // snake_case like every other attribute; `nlqdb.dba.unplanned` matches D1's.
+    for (const [k, v] of Object.entries(funnel))
+      span.setAttribute(`nlqdb.dba.${k.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)}`, v);
     return [...proposals.values()];
   });
 }

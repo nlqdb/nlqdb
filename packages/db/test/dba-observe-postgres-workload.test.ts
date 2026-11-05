@@ -1,3 +1,4 @@
+import { createTestTelemetry } from "@nlqdb/otel/test";
 import { describe, expect, it } from "vitest";
 import {
   type FingerprintWindow,
@@ -148,11 +149,18 @@ describe("observePostgresWorkload", () => {
     const hostOwn = Array.from({ length: 25 }, (_, i) =>
       window(`SELECT * FROM realtime.subscription WHERE id = $${i + 1}`, 1_000 - i),
     );
-    const proposals = await observePostgresWorkload(query, "app", [
-      ...hostOwn,
-      window("SELECT * FROM gone WHERE a = $1"), // unquoted folds to `gone`, not `Gone`
-      window("SELECT * FROM USERS u WHERE a = $1", 1),
-    ]);
+    const funnel = newTier1Funnel();
+    const proposals = await observePostgresWorkload(
+      query,
+      "app",
+      [
+        ...hostOwn,
+        window("SELECT * FROM gone WHERE a = $1"), // unquoted folds to `gone`, not `Gone`
+        window("SELECT * FROM USERS u WHERE a = $1", 1),
+      ],
+      funnel,
+    );
+    expect(funnel.candidates).toBe(1);
     expect(sqls.filter((s) => s.startsWith("EXPLAIN"))).toEqual([
       "EXPLAIN (GENERIC_PLAN, VERBOSE, FORMAT JSON) SELECT * FROM USERS u WHERE a = $1",
     ]);
@@ -184,6 +192,33 @@ describe("observePostgresWorkload", () => {
     );
     expect(proposals.map((p) => p.columns)).toEqual([["a"]]);
     expect(funnel).toMatchObject({ planned: 1, unplanned: 1, seqScans: 1, equalityScans: 1 });
+  });
+
+  it("counts a scan on a partition (no plain-table row) apart from a covered one, on the span", async () => {
+    const telemetry = createTestTelemetry();
+    const query: PostgresQueryFn = async (sql) => {
+      if (sql.includes("relkind IN")) return relations;
+      if (sql.startsWith("EXPLAIN"))
+        return { rows: [{ "QUERY PLAN": [{ Plan: seqScan("(u.a = $1)") }] }] };
+      return { rows: [] };
+    };
+    try {
+      expect(
+        await observePostgresWorkload(query, "app", [window("SELECT a FROM users WHERE a = $1")]),
+      ).toEqual([]);
+      const span = telemetry.spanExporter
+        .getFinishedSpans()
+        .find((s) => s.attributes["db.operation.name"] === "observe_workload");
+      expect(span?.attributes).toMatchObject({
+        "nlqdb.dba.candidates": 1,
+        "nlqdb.dba.unplanned": 0,
+        "nlqdb.dba.equality_scans": 1,
+        "nlqdb.dba.not_table": 1,
+        "nlqdb.dba.covered": 0,
+      });
+    } finally {
+      telemetry.reset();
+    }
   });
 
   it("throws on a failure the server didn't answer, rather than report nothing to change", async () => {
