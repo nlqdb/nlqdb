@@ -85,8 +85,10 @@ export type {
   FingerprintWindow,
   StatementCounters,
   StatementSnapshot,
+  Tier1Funnel,
 } from "./dba-observe-postgres-workload.ts";
 export {
+  newTier1Funnel,
   observePostgresWorkload,
   snapshotPostgresStatements,
   statementWindow,

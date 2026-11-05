@@ -12,7 +12,11 @@
 // A fingerprint yields a proposal when its plan (`EXPLAIN (GENERIC_PLAN)` on
 // the normalized text, Postgres 16+ — never executed) seq-scans a table of the
 // attached schema with a selective AND of equality filters, and no valid btree
-// / hash index already leads with those columns.
+// / hash index already leads with those columns. Only fingerprints naming a
+// relation of the attached schema are planned: on a managed host the heaviest
+// statements are often the host's own (auth, storage, realtime, its dashboard),
+// and they would spend the per-observe EXPLAIN budget on tables nlqdb never
+// proposes for.
 
 import { createIndexProposal, type Proposal } from "./dba-proposal.ts";
 import { withDbaSpan, withObserveSpan } from "./dba-span.ts";
@@ -128,6 +132,37 @@ const MAX_SELECTIVITY = 0.05;
 const EXPLAINABLE = /^\s*(SELECT|UPDATE|DELETE|WITH)\b/i;
 
 const IDENT = String.raw`(?:[A-Za-z_][\w$]*|"(?:[^"]|"")+")`;
+const IDENTS = new RegExp(IDENT, "g");
+const unquote = (ident: string): string =>
+  ident.startsWith('"') ? ident.slice(1, -1).replaceAll('""', '"') : ident;
+
+// The relations of `schema` a fingerprint can scan: tables, partitioned
+// tables, views and materialized views (a view's plan scans its base tables).
+const RELATIONS_SQL = `
+SELECT c.relname FROM pg_catalog.pg_class c
+JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = $1 AND c.relkind IN ('r', 'p', 'v', 'm')`;
+
+// The window's fingerprints Tier 1 plans, heaviest first: explainable single
+// statements that name a relation of `schema` (an unquoted identifier folded
+// to lower case, as Postgres does). A name shared with another schema's table
+// costs one EXPLAIN; the plan's schema check then drops it.
+async function tier1Candidates(
+  query: PostgresQueryFn,
+  schema: string,
+  window: FingerprintWindow[],
+): Promise<FingerprintWindow[]> {
+  const { rows } = await query(RELATIONS_SQL, [schema]);
+  const relations = new Set(rows.map((r) => String(r["relname"])));
+  const namesRelation = (sql: string) =>
+    [...sql.matchAll(IDENTS)].some(([id]) =>
+      relations.has(id.startsWith('"') ? unquote(id) : id.toLowerCase()),
+    );
+  return window.filter(
+    (w) => EXPLAINABLE.test(w.query) && !w.query.includes(";") && namesRelation(w.query),
+  );
+}
+
 const VALUE = String.raw`(?:\$\d+|\(\$\d+\)::[^()]+?|'(?:[^']|'')*'(?:::[\w ]+)?|-?\d+(?:\.\d+)?)`;
 // One `(alias.column = value)` term of a VERBOSE plan's Filter. A varchar
 // column (Rails' and Django's string) plans relabelled as
@@ -137,9 +172,6 @@ const EQUALITY_TERM = new RegExp(
   String.raw`\((?:${IDENT}\.(${IDENT})|\(${IDENT}\.(${IDENT})\)::text) = ${VALUE}\)`,
   "g",
 );
-
-const unquote = (ident: string): string =>
-  ident.startsWith('"') ? ident.slice(1, -1).replaceAll('""', '"') : ident;
 
 type PlanNode = {
   "Node Type"?: string;
@@ -220,6 +252,44 @@ FROM pg_catalog.pg_class c
 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind = 'r' AND NOT c.relispartition`;
 
+// Where each planned fingerprint dropped out, counted per observe and set on
+// the span; the spike's CI log prints it (counts only, never a query).
+export type Tier1Funnel = {
+  // Candidates before the per-observe cap; those past it wait for a later observe.
+  candidates: number;
+  planned: number;
+  unplanned: number;
+  // Seq scan nodes on the attached schema that filter rows, and those whose
+  // filter is an AND of equalities (the only shape Tier 1 proposes for).
+  filteredScans: number;
+  equalityScans: number;
+  // Not a plain table of the schema (a partition, a materialized view, or
+  // dropped since the plan).
+  notTable: number;
+  covered: number;
+  unknownColumns: number;
+  unanalyzed: number;
+  unselective: number;
+};
+
+export const newTier1Funnel = (): Tier1Funnel => ({
+  candidates: 0,
+  planned: 0,
+  unplanned: 0,
+  filteredScans: 0,
+  equalityScans: 0,
+  notTable: 0,
+  covered: 0,
+  unknownColumns: 0,
+  unanalyzed: 0,
+  unselective: 0,
+});
+
+function countFilteredScans(node: PlanNode, schema: string): number {
+  const here = node["Node Type"] === "Seq Scan" && node.Schema === schema && node.Filter ? 1 : 0;
+  return (node.Plans ?? []).reduce((n, child) => n + countFilteredScans(child, schema), here);
+}
+
 // Turn the window's hot fingerprints into Tier 1 proposals, heaviest first;
 // one proposal per (table, column set). A fingerprint that doesn't plan under
 // the observer's role (search_path, a dropped table, a missing privilege,
@@ -230,14 +300,13 @@ export function observePostgresWorkload(
   query: PostgresQueryFn,
   schema: string,
   window: FingerprintWindow[],
+  funnel: Tier1Funnel = newTier1Funnel(),
 ): Promise<Proposal[]> {
   return withObserveSpan("observe_workload", schema, async (span) => {
     const proposals = new Map<string, Proposal>();
-    let unplanned = 0;
-    const candidates = window
-      .filter((w) => EXPLAINABLE.test(w.query) && !w.query.includes(";"))
-      .slice(0, MAX_FINGERPRINTS);
-    for (const w of candidates) {
+    const candidates = await tier1Candidates(query, schema, window);
+    funnel.candidates = candidates.length;
+    for (const w of candidates.slice(0, MAX_FINGERPRINTS)) {
       let plan: PlanNode;
       try {
         const { rows } = await query(`EXPLAIN (GENERIC_PLAN, VERBOSE, FORMAT JSON) ${w.query}`, []);
@@ -246,10 +315,13 @@ export function observePostgresWorkload(
       } catch (err) {
         // postgres.js and Neon both set `severity` on an error the server sent.
         if (!(err as { severity?: unknown }).severity) throw err;
-        unplanned++;
+        funnel.unplanned++;
         continue;
       }
+      funnel.planned++;
+      funnel.filteredScans += countFilteredScans(plan, schema);
       for (const scan of seqScanFilters(plan, schema)) {
+        funnel.equalityScans++;
         const key = `${scan.table}\0${[...scan.columns].sort()}`;
         if (proposals.has(key)) continue;
         const { rows } = await query(TABLE_CHECK_SQL, [
@@ -259,10 +331,27 @@ export function observePostgresWorkload(
           JSON.stringify(scan.textCast),
         ]);
         const t = rows[0];
-        if (!t || Number(t["covered"]) === 1) continue;
-        if (Number(t["known_columns"]) !== scan.columns.length) continue;
+        if (!t) {
+          funnel.notTable++;
+          continue;
+        }
+        if (Number(t["covered"]) === 1) {
+          funnel.covered++;
+          continue;
+        }
+        if (Number(t["known_columns"]) !== scan.columns.length) {
+          funnel.unknownColumns++;
+          continue;
+        }
         const rowEstimate = Number(t["row_estimate"]);
-        if (rowEstimate <= 0 || scan.planRows / rowEstimate > MAX_SELECTIVITY) continue;
+        if (rowEstimate <= 0) {
+          funnel.unanalyzed++;
+          continue;
+        }
+        if (scan.planRows / rowEstimate > MAX_SELECTIVITY) {
+          funnel.unselective++;
+          continue;
+        }
         proposals.set(
           key,
           createIndexProposal({
@@ -285,7 +374,9 @@ export function observePostgresWorkload(
         );
       }
     }
-    span.setAttribute("nlqdb.dba.unplanned", unplanned);
+    // snake_case like every other attribute; `nlqdb.dba.unplanned` matches D1's.
+    for (const [k, v] of Object.entries(funnel))
+      span.setAttribute(`nlqdb.dba.${k.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)}`, v);
     return [...proposals.values()];
   });
 }

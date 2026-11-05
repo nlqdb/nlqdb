@@ -14,6 +14,7 @@
 
 import { promises as dns } from "node:dns";
 import {
+  newTier1Funnel,
   observePostgresWorkload,
   openByoPostgres,
   snapshotPostgresStatements,
@@ -62,10 +63,12 @@ describe.skipIf(!url)("the attach door on the spike Postgres (read-only)", () =>
     try {
       const snapshot = await snapshotPostgresStatements(conn.query, "public");
       const window = statementWindow(new Map(), snapshot);
-      const tier1 = await observePostgresWorkload(conn.query, "public", window);
+      const funnel = newTier1Funnel();
+      const tier1 = await observePostgresWorkload(conn.query, "public", window, funnel);
+      const { rows: version } = await conn.query("SHOW server_version_num", []);
       // biome-ignore lint/suspicious/noConsole: the Tier 1 reading belongs in the CI log
       console.log(
-        `Tier 1 (spike, cumulative since the stats reset): ${snapshot.size} fingerprints readable, ${window.length} with calls, ${tier1.length} proposals`,
+        `Tier 1 (spike, cumulative since the stats reset, server ${version[0]?.["server_version_num"]}): ${snapshot.size} fingerprints readable, ${window.length} with calls, ${funnel.candidates} explainable naming a public relation, ${tier1.length} proposals; funnel ${JSON.stringify(funnel)}`,
       );
       const { rows } = await conn.query("SHOW transaction_read_only", []);
       expect(rows[0]?.["transaction_read_only"]).toBe("on");
