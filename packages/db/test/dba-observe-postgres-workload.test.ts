@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type FingerprintWindow,
+  newTier1Funnel,
   observePostgresWorkload,
   type StatementSnapshot,
   statementWindow,
@@ -171,11 +172,18 @@ describe("observePostgresWorkload", () => {
         return { rows: [{ "QUERY PLAN": [{ Plan: seqScan("(u.a = $1)") }] }] };
       return { rows: [{ ...bigTable, known_columns: 1 }] };
     };
-    const proposals = await observePostgresWorkload(query, "app", [
-      window('SELECT a FROM "Gone" WHERE a = $1', 200),
-      window("SELECT a FROM users WHERE a = $1"),
-    ]);
+    const funnel = newTier1Funnel();
+    const proposals = await observePostgresWorkload(
+      query,
+      "app",
+      [
+        window('SELECT a FROM "Gone" WHERE a = $1', 200),
+        window("SELECT a FROM users WHERE a = $1"),
+      ],
+      funnel,
+    );
     expect(proposals.map((p) => p.columns)).toEqual([["a"]]);
+    expect(funnel).toMatchObject({ planned: 1, unplanned: 1, seqScans: 1, equalityScans: 1 });
   });
 
   it("throws on a failure the server didn't answer, rather than report nothing to change", async () => {
