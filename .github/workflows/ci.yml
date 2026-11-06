@@ -84,9 +84,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # setup-go v6+ exports GOTOOLCHAIN=local; gofumpt@latest may need a
-          # newer Go than cli/go.mod pins, so let this one install auto-switch.
-          GOTOOLCHAIN=auto go install mvdan.cc/gofumpt@latest
+          go install mvdan.cc/gofumpt@latest
           out=$(gofumpt -d .)
           if [ -n "$out" ]; then
             echo "::group::gofumpt diff"
