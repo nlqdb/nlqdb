@@ -69,7 +69,7 @@ jobs:
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
 
       # Fail fast with a clear pointer if any required secret is
@@ -284,7 +284,7 @@ jobs:
       - name: Sticky preview comment
         if: always()
         continue-on-error: true
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
           NEON_OUTCOME: ${{ steps.neon.outcome }}

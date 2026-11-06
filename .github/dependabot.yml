@@ -91,3 +91,7 @@ updates:
       actions-major:
         patterns: ["*"]
         update-types: ["major"]
+    # changesets/action v2 renames inputs and needs @changesets/cli v3 — a migration, not a bump.
+    ignore:
+      - dependency-name: changesets/action
+        update-types: ["version-update:semver-major"]
