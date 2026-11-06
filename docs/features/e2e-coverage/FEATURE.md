@@ -130,8 +130,8 @@ commentary is nested under the rule.
 
 Operator reference — the free-model table (Groq/Cerebras/OpenRouter `:free`
 only per GLOBAL-013), the model-switching steps, and the append-only run
-tracker live in [`opencheck-operations.md`](opencheck-operations.md). Split
-out per D4 so the tracker can grow without breaching the 20 KB cap.
+tracker live in [`opencheck-operations.md`](opencheck-operations.md), so the
+tracker can grow without crowding this file.
 
 ## Open questions / known unknowns
 

@@ -10,7 +10,7 @@
 // exchanges it for an access token, and calls the Search Analytics API. The
 // same token drives `## Index status` (URL Inspection API) — verified live
 // 2026-07-27, no extra role needed. Setup steps live in
-// docs/blocked-by-human.md.
+// blocked-by-human.md.
 //
 // Usage:
 //   bun scripts/gsc-pull.ts            # last 28 days
@@ -44,7 +44,7 @@ function pemToDer(pem: string): Uint8Array {
 async function accessToken(): Promise<string> {
   const raw = process.env.GSC_SERVICE_ACCOUNT_JSON;
   if (!raw)
-    die("GSC_SERVICE_ACCOUNT_JSON is unset — see docs/blocked-by-human.md for the one-time setup.");
+    die("GSC_SERVICE_ACCOUNT_JSON is unset — see blocked-by-human.md for the one-time setup.");
   let sa: { client_email: string; private_key: string };
   try {
     sa = JSON.parse(raw);

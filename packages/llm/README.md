@@ -71,11 +71,11 @@ Names + label keys pinned in
 
 ## Why an in-house router (no Vercel AI SDK / LangChain)
 
-Per [`../../docs/guidelines.md`](../../docs/guidelines.md) §1: every provider's wire
+Per `rules://guidelines` (dependencies): every provider's wire
 format is a small fetch call (~50 lines), and we'd rather own the
 ~400-line router than carry a multi-megabyte SDK tree on the Workers
 critical path. Each provider's HTTP shape is researched against the
-official docs before implementation (GUIDELINES §2).
+official docs before implementation (`rules://general` rule 6).
 
 ## Tests
 

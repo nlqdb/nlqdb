@@ -29,7 +29,7 @@ was not enough — the failure mode was stylistic, not procedural.
   defend with generic value claims; it reads as damage control and
   invites the pile-on.
 
-**Why documented** (D5): the cost was real (reputation burn in a target
+**Why documented**: the cost was real (reputation burn in a target
 community listed across the queue's pending venue pointers) and the
 failure is non-obvious — the draft *passed* a norms review and still
 failed on voice.

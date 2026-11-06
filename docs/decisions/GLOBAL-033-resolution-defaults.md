@@ -5,7 +5,7 @@
   **decidable from the documented values** — the `architecture.md §0`
   core values, the [`GLOBAL-025`](./GLOBAL-025-north-star.md) north-star,
   the [`GLOBAL-026`](./GLOBAL-026-llm-strategy-byollm-hosted-premium.md)
-  LLM strategy, the `docs/guidelines.md` habits, or the `architecture.md §8`
+  LLM strategy, the engineering bar (`rules://guidelines`, `rules://general` rule 6), or the `architecture.md §8`
   build/don't-build list — the agent **resolves it** using the default
   ladder below, records the resulting `SK-*` / `GLOBAL-*` (or rewrites the
   bullet as a parked-with-trigger line), and does **not** escalate to the
@@ -19,7 +19,7 @@
   one-off answer that leaves the next agent re-asking (founder-directed
   2026-08-04: "teach to fish, don't provide the fish"). Escalations
   surface **only** as 🔒 *decision-to-lock* bullets in
-  [`blocked-by-human.md`](../blocked-by-human.md) — the single channel the
+  [`blocked-by-human.md`](../../blocked-by-human.md) — the single channel the
   founder reads — capped at **3** live 🔒 bullets; a fourth means merge or
   re-derive from the ladder first.
 
@@ -45,15 +45,15 @@
   | Open-question class | Default resolution | Source value |
   |---|---|---|
   | Speculative scope / new surface / product mode | Defer until a paying or design-partner customer asks; never build speculatively. Park with a named trigger in `phase-plan.md`. | Simple (`§0`); `§8` not-building; `GLOBAL-025` |
-  | Pin a number (TTL / threshold / cap / retention / cadence) | Mirror the proven incumbent (Stripe = 24h idempotency), make it env-tunable, choose the value that fails safe / bounds staleness. | guidelines habits 1–2; bullet-proof-by-design |
-  | Security trade-off (fail-open/closed, validation layer, denylist) | Layered guardrails — never one control. Destructive or secret paths fail **closed**; non-destructive read paths bias to availability. | guidelines §7; research-receipts §1 (Replit) |
+  | Pin a number (TTL / threshold / cap / retention / cadence) | Mirror the proven incumbent (Stripe = 24h idempotency), make it env-tunable, choose the value that fails safe / bounds staleness. | `rules://guidelines`; bullet-proof-by-design |
+  | Security trade-off (fail-open/closed, validation layer, denylist) | Layered guardrails — never one control. Destructive or secret paths fail **closed**; non-destructive read paths bias to availability. | guidelines §3; research-receipts §1 (Replit) |
   | Surface-parity gap (capability on some surfaces, not all) | `GLOBAL-003`: ship to all surfaces in the same slice, or record the gap in the feature. Never widen the divergence. | `GLOBAL-003` |
   | Silent-drift risk (cardinality, naming, word-count, tool-name) | Add the cheap CI assertion / counter now. | bullet-proof ("make bad states unreachable, not caught") |
   | Wire-format / transport / "how to surface X" | Reuse what's already built (SSE for streaming, the existing event schema). One way to do each thing. | Simple (`§0`) |
   | UX micro-decision (modal? confirm? prompt copy?) | Zero modals; zero "are you sure" except destructive ops; goal-first; keyboard-first. | Effortless UX (`§0`) |
   | Cost vs scaffolding (absorb LLM cost? charge? add spend?) | Invest in scaffolding; keep the free chain free forever; never gate first value behind cost. | `GLOBAL-026`; Free (`§0`) |
-  | Build vs adopt (write our own, or use a library?) | Adopt a small mature package unless it is one of the seven `§8` "build-our-own"; DIY only after the 10-minute research (habit 2). | guidelines habits 1–2; `§8` |
-  | Genuinely deferred (needs traffic / a future slice / a pipeline that doesn't exist yet) | Keep parked, but rewrite the bullet as **"Parked until `<trigger>`"** so it is a decision-to-defer, not an unresolved question. | `P4` / `D1` |
+  | Build vs adopt (write our own, or use a library?) | Adopt a small mature package unless it is one of the seven `§8` "build-our-own"; DIY only after the research (`rules://general` rule 6). | `rules://guidelines`; `§8` |
+  | Genuinely deferred (needs traffic / a future slice / a pipeline that doesn't exist yet) | Keep parked, but rewrite the bullet as **"Parked until `<trigger>`"** so it is a decision-to-defer, not an unresolved question. | `rules://workflow` (resolve open questions first) |
   | **True founder bet** (money out the door, strategic positioning, legal/compliance — and no codified decision decides it) | **The only escalation class.** Apply the conservative default so work isn't blocked; queue a 🔒 decision-to-lock bullet in `blocked-by-human.md` (cite what was checked, pre-draft the options); the founder **locks** a `GLOBAL-*`/`SK-*` — never hands an unrecorded answer. | founder-directed 2026-08-04 |
 
   New open questions are triaged against this ladder **before** any

@@ -1,8 +1,7 @@
 # SK-LLM-013 — `PlanResponse` carries `model` + `confidence` for SK-TRUST-002
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Sharded out
-unchanged to keep that doc under the 20 KB cap per `CLAUDE.md` §2 D4 —
-this body is verbatim, only the location moved.
+unchanged — this body is verbatim, only the location moved.
 
 - **Decision:** `PlanResponse` is `{ sql, model, confidence }`. Providers populate `model` from their per-operation model name (`impl.models.plan`); `confidence` is a placeholder `1.0` until the [`quality-eval`](../../quality-eval/FEATURE.md) harness (Phase 3) calibrates per-stage floors per [`SK-TRUST-003`](../../trust-ux/FEATURE.md). The orchestrator threads both into the response `trace` block.
 - **Core value:** Honest latency, Bullet-proof

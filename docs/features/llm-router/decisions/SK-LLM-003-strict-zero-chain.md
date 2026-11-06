@@ -1,8 +1,7 @@
 # SK-LLM-003 — Day-1 strict-$0 chain: Gemini Flash → Groq → Workers-AI → OpenRouter free
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Sharded out
-unchanged to keep that doc under the 20 KB cap per `CLAUDE.md` §2 D4 —
-this body is verbatim, only the location moved.
+unchanged — this body is verbatim, only the location moved.
 
 - **Decision:** Until startup credits land, the `plan` tier chain is `[gemini_flash_free, groq_gptoss120b_free, openrouter_free]` (with `workers_ai` as a non-US backup). The `route` tier uses `groq_gptoss20b_free` with `workers_ai` as the geo backup. Embeddings use Workers AI bge-base-en-v1.5. The chain is configured via env var, not code. **Groq model slugs (2026-08-16 migration):** Groq decommissioned `llama-3.1-8b-instant` and `llama-3.3-70b-versatile` on 2026-08-16; this chain follows Groq's own recommended replacements — `openai/gpt-oss-20b` for the cheap (route / engine_classify) tier and `openai/gpt-oss-120b` for the planner (plan / summarize / schema_infer) tier. The slugs live once in `packages/llm/src/providers/groq.ts`.
 - **Core value:** Free, Bullet-proof, Honest latency

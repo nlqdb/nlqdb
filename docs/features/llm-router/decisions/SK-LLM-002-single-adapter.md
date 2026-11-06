@@ -1,8 +1,7 @@
 # SK-LLM-002 — Single adapter: `(tier, prompt, options) → response` over a cost-ordered provider chain
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Sharded out
-unchanged to keep that doc under the 20 KB cap per `CLAUDE.md` §2 D4 —
-this body is verbatim, only the location moved.
+unchanged — this body is verbatim, only the location moved.
 
 - **Decision:** Every LLM call routes through one `packages/llm/` adapter (`createLLMRouter()`). The adapter takes a `tier` and a cost-ordered provider chain; the chain is "swappable via env var" (per `docs/architecture.md §7.1`). No application code calls a provider SDK directly.
 - **Core value:** Simple, Bullet-proof, Free

@@ -2,7 +2,7 @@
 // `apps/api/src/https-enforce.ts` — duplicated rather than packaged because a
 // shared workspace package for two pure functions is heavier than the copy.
 // The zone-level "Always Use HTTPS" toggle needs a dashboard click the deploy
-// token can't perform (docs/blocked-by-human.md), so the worker 301s
+// token can't perform (blocked-by-human.md), so the worker 301s
 // http→https itself and stamps HSTS. Scoped to nlqdb.com hosts: `wrangler
 // dev` / localhost / *.workers.dev previews are left untouched.
 

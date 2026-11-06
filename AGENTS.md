@@ -1,129 +1,43 @@
-# Agents Guide — nlqdb
+# nlqdb — Agent Instructions
 
-Index for any agent editing this repo. Read fully **before** the first
-edit. Per-area `AGENTS.md` files narrow this guide to their directory.
+*nlqdb — your autonomous DBA.* It attaches to the database a team already has
+(Postgres; D1 second) and runs one deterministic loop — observe → propose →
+apply → verify → revert. The product: [`docs/END_GOAL.md`](docs/END_GOAL.md);
+numbers: [`docs/scorecard.md`](docs/scorecard.md). Per-area `AGENTS.md` files
+narrow this guide to their directory.
+
+## Shared rules — read first
+
+Read every resource on https://mcp.hochly.com/mcp before anything else:
+Omer's rules for all his repos (rules://general is the baseline). A run
+that cannot reach the server says so and stops; it never improvises the
+rules. Send Authorization: Bearer $RULES_MCP_TOKEN (set in the run's
+environment); without it the server answers 404. This file adds only this
+repo's facts and firm calls.
 
 ## 1. What nlqdb is
 
-> *nlqdb — your autonomous DBA.*
-
 It exists for the [mission](docs/END_GOAL.md#mission): encapsulate the
 trial-and-error journey every company walks to a good database infrastructure.
+Bet: [`GLOBAL-043`](docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md);
+its roadmap, [`docs/ROADMAP.md`](docs/ROADMAP.md), is the work queue, run by `/daily` step 2 (1a attach build on
+synthetic DBs → 1b Postgres spike + rateme12 D1 attach,
+[`002`](docs/history/dogfood-iterations/002-rateme12-attach.md) → 2 deletion
+series → 3 playbook). Depth only; Show HN waits on the love gate.
 
-nlqdb attaches to the database a team already has (Postgres; D1 second)
-and runs one deterministic loop — observe → propose → apply → verify →
-revert — never on the app's request path, no LLM in any hot path. Bet:
-[`GLOBAL-043`](docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md).
+## 2. Firm calls — do not re-litigate
 
-### Build for this
-
-The work queue is `GLOBAL-043`'s roadmap, run by `/daily` step 2: build the
-attach product end to end on synthetic databases (1a), then a 2-week spike on
-a founder-picked Postgres that applies one index and measures its p95,
-alongside attaching to the real rateme12's D1 (1b)
-([`002`](docs/history/dogfood-iterations/002-rateme12-attach.md)). Every
-engine PR names the KPI (A, B or C) it moves. What the loop adds up to,
-flow by flow, is [`docs/END_GOAL.md`](docs/END_GOAL.md) — the top-ranked doc:
-it outranks P1–P6 and every decision doc; whatever contradicts it is the
-bug, fixed in the same PR. Depth only; Show HN waits on the love gate.
-Numbers: [`docs/scorecard.md`](docs/scorecard.md).
-
-### North-star — what every PR moves
-
-Four pillars per
-[`GLOBAL-025`](docs/decisions/GLOBAL-025-north-star.md): **engine
-quality** (`GLOBAL-043`), **onboarding**, **UX**, **performance**. Every PR
-advances ≥ 1 AND degrades 0 — §8 item 7. LLM strategy per
-[`GLOBAL-026`](docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
-
-## 2. Six behavioral principles (non-negotiable)
-
-Apply to every edit, whatever the user asked for.
-
-### P1. Never contradict documented decisions silently
-
-[`docs/END_GOAL.md`](docs/END_GOAL.md) (highest), then `docs/decisions.md`
-(cross-cutting `GLOBAL-NNN`) and the per-feature
-`docs/features/<feature>/FEATURE.md` (local `SK-<FEATURE>-NNN`) are the
-canonical record of why the system is the way it is. If a request would
-violate one — even subtly — **stop and raise it with the user**, citing the
-specific ID(s). Don't rationalise around it. The user may delete or archive
-it and write the new stance clean; follow `P3`.
-
-### P2. On any ambiguity or unfamiliar error, web-research first
-
-If a task is even a little ambiguous, or an error is unfamiliar, **do a
-web search for current best practices before jumping to a fix**. The fast
-wrong answer is more expensive than the slower right one. State the
-sources you checked when you propose the fix.
-
-**Also:** When selecting any 3rd party package, SDK, or API, always web-search for
-the latest stable version before using it — your knowledge cutoff is stale for
-any external dependency.
-
-### P3. Decisions live in one place
-
-Each decision has one canonical home — cite it, never restate it.
-`docs/END_GOAL.md` states principles directly, no ID; a decision that needs
-the five-field record takes one of two IDs:
-
-- `GLOBAL-NNN` lives in `docs/decisions/GLOBAL-NNN-<slug>.md` — the only
-  place its body text exists; `docs/decisions.md` indexes every GLOBAL.
-  Features affected by a GLOBAL cite it by ID + title under their
-  `## GLOBALs governing this feature` section, never the body
-  (`docs/feature-conventions.md` §5).
-- `SK-<FEATURE>-NNN` lives in that feature's `FEATURE.md` — the only
-  place its body text exists.
-
-When a decision changes:
-- Edit the canonical file (one place — the per-GLOBAL file under
-  `docs/decisions/`, or the feature's `FEATURE.md`).
-- If the change affects how a feature applies the decision, update the
-  feature-local commentary in that feature's FEATURE.md.
-- New GLOBALs / SK-IDs land in their canonical home before any code
-  change that depends on them.
-
-### P4. Four documentation rules
-
-Before documenting any decision or plan:
-
-- **D1. Resolve open questions first** — Don't document vague decisions. **Push the user to answer open questions** before you document.
-- **D2. Never document ambiguity** — Vague or ambiguous decisions are worse than no documentation. If it's not clear enough to document, it's not ready.
-- **D3. Clarity always increases** — When documenting, **the next steps must be clearer than before**. Never document in a way that leaves the reader more confused.
-- **D4. No doc over 20 KB** — When a markdown file would cross 20 KB, split it before adding text and route from the §5 path map / §6 long-form index / feature index so agents land on the right shard. Edits to a file already over 20 KB must net-shrink it (revisit with D5; keep cross-refs in sync). **Exempt** (append-only by design): the acquisition tracker `docs/research/automated-icp-validation-plan.md` + its mirror ([GLOBAL-028](docs/decisions/GLOBAL-028-acquisition-progress-tracker.md)/[GLOBAL-029](docs/decisions/GLOBAL-029-acquisition-verification-tracker.md)) and the evidence log `docs/progress/quality-score-verification-log.md`.
-- **D5. Document only load-bearing decisions** — Keep docs simple. Never document a decision that could be undoubtedly inferred from `docs/guidelines.md` or the code itself, or whose cost to change is negligible. Document only what is both non-obvious *and* expensive to reverse — where a reader lacking the record would plausibly choose differently and pay for it. On every doc edit, find one section that fails this test and trim it off.
-
-### P5. Keep functions simple. Keep high level architecture simple.
-
-Simplify rather than complexify; reach each goal in the fewest steps. A fix or
-feature first looks for code to remove or simplify, never only to add — same
-for docs and comments. Clean code beats backward compatibility; we are still
-building. The no-patch-on-patch rule for the DBA architecture is stated once,
-in [`END_GOAL.md` § Architecture](docs/END_GOAL.md#architecture--simple-and-scalable).
-
-### P6. Customer journeys must be world-class, not merely functional
-
-For every customer-facing change, design and verify the whole journey before
-calling the surface done: entry point → one primary action → unavoidable
-identity or permission handoffs → visible progress → persistent proof of value
-→ a clear next step and a safe way to undo, reset, or delete.
-
-- Minimize product-side clicks and decisions. Preserve the user's intent across
-  sign-in, OAuth, redirects, refreshes, and retries, then resume automatically;
-  never make them re-enter information the product already has.
-- Ask for the least permission only when it becomes necessary. If a useful
-  read-only path works without an account or third-party connection, use it
-  before presenting that wall.
-- Show honest progress in user-meaningful units (items found, processed,
-  skipped, and why), not a spinner or invented percentage. Errors state what
-  happened and the single next action without discarding completed work.
-- Completion must leave durable, inspectable evidence on reload. Reversible
-  flows expose proportionate cleanup. Empty, partial, interrupted, denied, and
-  retry states receive the same design care as the happy path.
-- A customer journey is not done until its critical path has a real E2E walk
-  and the owner has manually used the production-shaped experience. Optimize
-  for time-to-value, successful completion, and recovery rate—not shipped
-  screen count.
+- **`END_GOAL.md` outranks everything** — P1–P6 and every decision doc; whatever contradicts it is the bug, fixed in the same PR.
+- **Attach-first, never on the request path** — the loop runs off the app's request path with no LLM in any hot path; every engine PR names the KPI (A, B or C) it moves (`GLOBAL-043`).
+- **Four pillars** — engine quality, onboarding, UX, performance: every PR advances ≥ 1 and degrades 0 (`GLOBAL-025`, §8 item 7).
+- **LLM strategy** — BYO-LLM plus hosted premium (`GLOBAL-026`).
+- **Cloudflare Workers at $0** — the stack and its bundle budget (`GLOBAL-013`); rationale in [`docs/architecture.md`](docs/architecture.md) §2, §6.
+- **P1. Never contradict documented decisions silently** — if a request would violate `END_GOAL.md`, a `GLOBAL-NNN` or an `SK-<FEATURE>-NNN`, stop and raise it with the user citing the ID; never rationalise around it.
+- **P2. Web-research first** — on any ambiguity or unfamiliar error, and before picking any dependency's version (`rules://general` rule 6); state the sources checked when proposing the fix.
+- **P3. Decisions live in one place** — `GLOBAL-NNN` only in `docs/decisions/GLOBAL-NNN-<slug>.md` (indexed in `docs/decisions.md`), `SK-<FEATURE>-NNN` only in that feature's `FEATURE.md`; cite by ID, never restate; the canonical home lands before dependent code ([`docs/feature-conventions.md`](docs/feature-conventions.md)).
+- **P4. Documentation rules** — `rules://workflow` and `rules://general` rule 10.
+- **P5. Simplest path** — `rules://general` rule 10; clean code beats backward compatibility while we are still building; the no-patch-on-patch rule is [`END_GOAL.md` § Architecture](docs/END_GOAL.md#architecture--simple-and-scalable).
+- **P6. World-class customer journeys** — `rules://general` and `rules://guidelines`.
 
 ## 3. Tech stack (high-level)
 
@@ -218,18 +132,29 @@ supported; else read manually before editing.)
 | [`docs/END_GOAL.md`](docs/END_GOAL.md) | The finished product, flow by flow — **top-ranked**: outranks P1–P6 and every decision doc. |
 | [`docs/feature-conventions.md`](docs/feature-conventions.md) | How `docs/features/` is structured. Read before adding/editing a feature. |
 | [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, tech-stack rationale, risks. |
-| [`docs/phase-plan.md`](docs/phase-plan.md) | Roadmap pointer (`GLOBAL-043`) + the §6 monetization + scaling trigger. |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | The task queue: `GLOBAL-043`'s phases as boxes. |
+| [`docs/phase-plan.md`](docs/phase-plan.md) | Exit gate + the §6 monetization + scaling trigger. |
 | [`docs/runbook.md`](docs/runbook.md) | Operations: env, secrets, deploy, recovery; design-partner ref (§10). |
 | [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview script, inbound triage SLA. |
 | [`docs/performance.md`](docs/performance.md) | Span/metric/label catalog + perf goals. |
-| [`docs/guidelines.md`](docs/guidelines.md) | Code-review heuristics, the four habits. |
+| [`docs/guidelines.md`](docs/guidelines.md) | This repo's additions to `rules://guidelines`: eagle-eye checks, bullet-proof checklist, build-vs-reuse. |
 | [`docs/progress.md`](docs/progress.md) | Platform integration tiers (P0–P3). |
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
 | [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — threat matrix + gap analysis. |
-| [`docs/history/`](docs/history/) | Lessons learnt + [`founder-actions-log.md`](docs/history/founder-actions-log.md) (every human operator action) — one doc per topic. |
+| [`docs/history/`](docs/history/) | Lessons learnt — one doc per topic; the open dogfood iteration brief. |
 | [`docs/research/`](docs/research/) | Strategic research. |
 | [`docs/research/acquisition-channels.md`](docs/research/acquisition-channels.md) + [`-mechanisms.md`](docs/research/acquisition-channels-mechanisms.md) | Acquisition-channel ledger + its mechanism-notes shard. |
 | [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature. |
+| [`docs/scorecard.md`](docs/scorecard.md) | Current numbers; the `/daily` measurement tracker. |
+| [`blocked-by-human.md`](blocked-by-human.md) | The founder mailbox — open asks only. |
+| [`docs/cost-ladder.md`](docs/cost-ladder.md) | Cost policy: $0/month until someone pays. |
+| [`docs/weekly-review.md`](docs/weekly-review.md) | `/weekly`'s direction check and focus number. |
+| [`docs/architecture-build-vs-buy.md`](docs/architecture-build-vs-buy.md) · [`docs/progress-p3-catalog.md`](docs/progress-p3-catalog.md) | Build-vs-buy calls · P3 integration catalog. |
+| [`.claude/commands/`](.claude/commands/) | `/daily`, `/review`, `/weekly` (+ `/founder-summary`, `/ek`). |
+| [`.github/pull_request_template.md`](.github/pull_request_template.md) | PR body: roadmap item + KPI, `Walked:`, blockers. |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | The CI gate (typecheck, Biome, tests). |
+| [`.github/dependabot.yml`](.github/dependabot.yml) | Weekly grouped dependency bumps, `tests/` suites included. |
+| [`docs/AGENTS.md`](docs/AGENTS.md) | The scheduled run: cron prompt, modes, merge gate, deploys. |
 
 Each `FEATURE.md`'s `Status:` line is the canonical feature status.
 
@@ -260,8 +185,8 @@ lint` / `format` check 0 files (exit 1) — pass explicit paths. CI is unaffecte
 5. Every mutating endpoint accepts `Idempotency-Key` (`GLOBAL-005`).
 6. New capability added → SDK + CLI + MCP + elements all updated, or
    gap tracked in the affected feature (`GLOBAL-003`).
-7. PR body names the `GLOBAL-025` KPI advanced **and** the `GLOBAL-043`
-   roadmap item it moves (1a attach build, 1b spike/attach, 2 deletion, 3 playbook) or `none`;
+7. PR body names the `GLOBAL-025` KPI advanced **and** the
+   [`docs/ROADMAP.md`](docs/ROADMAP.md) phase it moves (1a attach build, 1b spike/attach, 2 deletion, 3 playbook) or `none`;
    no other KPI degrades. The
    [PR template](.github/pull_request_template.md) pre-fills the line.
 

@@ -6,8 +6,7 @@
 > Every `FLOW-NNN` below appears in that file with the same ID. The
 > impl plan tracks *what is shipped*; this file tracks *what has
 > been walked end-to-end by an agent*. Adding, modifying, or
-> superseding a `FLOW-NNN` updates BOTH files in the same PR. Both
-> files exempt from the 20 KB cap per
+> superseding a `FLOW-NNN` updates BOTH files in the same PR, per
 > [`GLOBAL-028`](../decisions/GLOBAL-028-acquisition-progress-tracker.md) /
 > [`GLOBAL-029`](../decisions/GLOBAL-029-acquisition-verification-tracker.md).
 

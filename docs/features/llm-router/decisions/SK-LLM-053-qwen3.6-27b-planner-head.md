@@ -72,7 +72,7 @@ from [`SK-LLM-023`](./SK-LLM-023-cerebras-planner-tier.md).
   404-dead so prod was already on the gpt-oss-120b/Gemini fallback — a working
   77%-SWE-bench head cannot regress below today's floor, and revert is one line.
   A confirming BIRD-dev + Spider dispatch may still be run post-merge; the gate
-  no longer blocks. See [`history/founder-actions-log.md`](../../../history/founder-actions-log.md).
+  no longer blocks. See `history/founder-actions-log.md` (deleted; git history).
 - **Measurement gate (the rule that was waived):** This changes the planner head — the
   single most engine-quality-sensitive component — so, per the
   the retired engine-quality tracker (history: `quality-score-verification-log.md`) ("measured, not assumed") and

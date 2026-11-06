@@ -141,7 +141,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 
 - **R2 lifecycle policy** — Resolved (`GLOBAL-033`): **90-day retention** on the date-partitioned keys (events are Dashboard-replayable). One-time R2 config; **parked until** bucket size is load-bearing.
 - **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (PLAN §11): the signal exists; the ops cron + alert lands when a dispatch first slips by.
-- **Usage metering — live (2026-08-14).** Overage rides Stripe Billing Meters per [`SK-PREMIUM-017`](../premium-tier/decisions/SK-PREMIUM-017-stripe-billing-meters.md) (no Lago); provisioning logged in `history/founder-actions-log.md` Era 11.
+- **Usage metering — live (2026-08-14).** Overage rides Stripe Billing Meters per [`SK-PREMIUM-017`](../premium-tier/decisions/SK-PREMIUM-017-stripe-billing-meters.md) (no Lago); provisioning logged in `history/founder-actions-log.md` Era 11 (deleted; git history).
 - **Re-subscribe against a customer deleted in Stripe** (SK-STRIPE-014). A `stripe_customer_id` manually deleted in the Dashboard surfaces as a `500 internal` on the next re-subscribe. **Parked** — it can't arise from our own flow (we never delete customers), and the operator who deleted it is the one who sees the error.
 
 ## Billing constraints and philosophy

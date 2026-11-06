@@ -1,7 +1,6 @@
 # P3 platform integrations — catalog
 
-Sharded from [`docs/progress.md`](./progress.md) §4 to keep that doc
-under the 20 KB cap from [`CLAUDE.md` §2 D4](../CLAUDE.md). Content
+Sharded from [`docs/progress.md`](./progress.md) §4. Content
 unchanged — only the location moved. All sub-tables intact.
 
 P3 = long-tail / community. Templates in [`examples/`](../examples)

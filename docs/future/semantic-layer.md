@@ -4,8 +4,8 @@
 > semantic-layer adoption plan from the deleted `docs/design.md §17`
 > (PR #81 consolidation). Promote any decision below into a `SK-HDC-NNN` /
 > `SK-ASK-NNN` block — or a `GLOBAL-NNN` if cross-cutting — once it's
-> firm. Per `P4 / D1` of `CLAUDE.md §2`, vague decisions are worse than
-> no decision; do not promote until the underlying choice is resolved.
+> firm. Vague decisions are worse than no decision (`rules://workflow`);
+> do not promote until the underlying choice is resolved.
 >
 > **Promotion trigger:** promote into a feature **when the `quality-eval`
 > harness (see [`quality-eval/FEATURE.md`](../features/quality-eval/FEATURE.md))

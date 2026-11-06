@@ -1,6 +1,6 @@
 // HTTPS enforcement for the production hosts (`GLOBAL-039`). The zone-level
 // "Always Use HTTPS" toggle needs a dashboard click the deploy token can't
-// perform (docs/blocked-by-human.md), so every worker that fronts a dynamic
+// perform (blocked-by-human.md), so every worker that fronts a dynamic
 // nlqdb.com host 301s http→https itself and stamps HSTS so returning browsers
 // never retry plaintext. Scoped to nlqdb.com hosts: `wrangler dev` /
 // localhost / *.workers.dev previews are left untouched.

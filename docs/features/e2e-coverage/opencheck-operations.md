@@ -1,8 +1,7 @@
 # Opencheck operations — model selection + progress tracker
 
-Operational shard of [`e2e-coverage/FEATURE.md`](FEATURE.md), split out per
-P4/D4 (FEATURE.md was at the 20 KB cap and the append-only tracker keeps
-growing). Decisions stay in FEATURE.md; this file holds only the operator
+Operational shard of [`e2e-coverage/FEATURE.md`](FEATURE.md), split out
+because the append-only tracker keeps growing. Decisions stay in FEATURE.md; this file holds only the operator
 reference + the run log.
 
 ## Free LLM model selection (opencheck)

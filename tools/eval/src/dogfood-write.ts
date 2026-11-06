@@ -89,11 +89,12 @@ export function deltaWrites(run: string, before: string, after: string): Write[]
 
 type Blocked = { title: string; estimate: string; since: string };
 
-// Pure: `docs/blocked-by-human.md` bullets — a `## Title` whose first line
-// reads `<estimate> · blocked since <date>`.
+// Pure: `blocked-by-human.md` entries — a `## Title` whose first line
+// reads `- **Type:** <type> · ⏱ <estimate> · since <date>`.
 export function parseBlocked(md: string): Blocked[] {
   const out: Blocked[] = [];
-  for (const m of md.matchAll(/^## (.+)\n+(.+?) · blocked since (\d{4}-\d{2}-\d{2})/gm)) {
+  const entry = /^## (.+)\n+- \*\*Type:\*\* .+? · ⏱ (.+?) · since (\d{4}-\d{2}-\d{2})/gm;
+  for (const m of md.matchAll(entry)) {
     const [, title = "", estimate = "", since = ""] = m;
     out.push({ title: title.trim(), estimate: estimate.trim(), since });
   }
@@ -190,8 +191,8 @@ async function main(): Promise<void> {
     console.warn(`dogfood-write: no scorecard at ${since} — skipping row deltas.`);
   const prev = parseLastChange(cardBefore ?? "");
   const newRun = process.env["GITHUB_EVENT_NAME"] !== "push" || prev?.run !== record.run;
-  const queueBefore = fileAt("docs/blocked-by-human.md", since);
-  const queueNow = fileAt("docs/blocked-by-human.md", null) ?? "";
+  const queueBefore = fileAt("blocked-by-human.md", since);
+  const queueNow = fileAt("blocked-by-human.md", null) ?? "";
   if (queueBefore === null)
     console.warn(`dogfood-write: no blocked queue at ${since} — skipping bullets.`);
   const writes: Write[] = [

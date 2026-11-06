@@ -10,7 +10,7 @@
   2026-07-27): accounts, credential *metadata* (service, key name, scope,
   date — **never secret values**), external listings/submissions, and the
   human-actions log — seeded from
-  [`docs/history/founder-actions-log.md`](../../../history/founder-actions-log.md)
+  `docs/history/founder-actions-log.md` (deleted; git history)
   and answering the builder's replay queries ("what did I have to do by
   hand before first deploy, in order?", "which submissions are pending?",
   "replay this launch for product X").

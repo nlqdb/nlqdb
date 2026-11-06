@@ -144,38 +144,15 @@ iterate → retro → cleanup loop stand.
   ([docs PR](https://github.com/cloudflare/cloudflare-docs/pull/32323)).
 
 - **Consequence in code & docs:**
-  - **Roadmap — the `/daily` step-2 sequence**, each item with its number:
-    1. **Attach.**
-       - **1a — build the attach product on synthetic databases** (no
-         founder secret). One slice per run, in order: Postgres attach +
-         Tier 0 proposals; Tier 1 workload → `create_index` proposal;
-         apply → verify → auto-revert, in the ledger; the four doors
-         (item 6); the D1 observer + apply. Each slice is tested in CI
-         against a Postgres with `pg_stat_statements` preloaded (HypoPG
-         where installable) under a seeded workload, and the D1 slice
-         against a throwaway D1 in nlqdb's own Cloudflare account. Numbers:
-         KPIs A–C on the synthetic DB, labelled synthetic.
-       - **1b — real-traffic proof:** the Postgres spike (market proof;
-         `SPIKE_PG_URL`, item 10) and the D1 attach on the real rateme12
-         (dogfood; `RATEME12_D1_TOKEN`). A track starts once its secret is
-         set and 1a's slices for its engine are merged; until then runs
-         take 1a. Numbers: KPI A on attach; KPI B = 1 applied index with
-         its before/after p95.
-    2. **Deletion PR series** — one subsystem per PR, deletion-only, CI
-       green. Number: LOC removed, KPIs A–C unchanged.
-    3. **Playbook proposal kinds** in item 8's order, Postgres and D1 each.
-       Number: KPI B per kind, KPI C held at 100 %.
+  - **Roadmap** — [`docs/ROADMAP.md`](../ROADMAP.md): 1a attach build on
+    synthetic DBs → 1b Postgres spike + rateme12 D1 attach → 2 deletion
+    series → 3 playbook kinds, the `/daily` step-2 sequence.
   - **KPIs A–C and the love gate live only here**; `GLOBAL-025`'s engine
     row routes here.
-  - **Deletion list (after a pass):** the hosted/infer path (`insert()` +
-    widen: `apps/api/src/insert/**`, `db-create/**` provisioning and
-    compile-write-ddl, tenant roles), the NL-specific `/v1/ask` machinery,
-    `tools/eval` (BIRD/Spider), anonymous mode, agent-memory and
-    expert-knowledge rails, ICP-mining / GTM / PMF, marketing content pages,
-    other-language SDKs and framework wrappers — one per PR. The rateme12
-    clone (`apps/rateme12`) went first, ahead of the spike (founder,
-    2026-10-27). The dogfood canary stays a regression check until
-    `insert()` goes.
+  - **Deletion list (after a pass):** its order is
+    [`docs/ROADMAP.md`](../ROADMAP.md) §2. The rateme12 clone went first,
+    ahead of the spike (founder, 2026-10-27). The dogfood canary stays a
+    regression check until `insert()` goes.
   - **Kept and reused:** the `dba_changes` ledger (migration `0038`), the
     `libpg_query` DDL validator, the BYO egress guard + sealed secrets
     (`GLOBAL-031`, `GLOBAL-035`), `packages/db` adapters, OTel, the job

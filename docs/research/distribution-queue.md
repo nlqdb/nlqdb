@@ -12,8 +12,7 @@ agent prose was flagged as "ChatGPT copy-paste" and downvoted on r/SQL
 (2026-07-16); the founder writes the post in their own voice
 ([lesson](../history/reddit-ai-voice-rejection.md)).
 
-**Retention (D4, 20 KB cap):** keep as many of the newest full drafts inline as
-fit under the cap; older ones collapse to a one-line title + venue + gist (full
+**Retention:** keep the newest full drafts inline; older ones collapse to a one-line title + venue + gist (full
 body in git history). Earliest drafts: archive (archived).
 
 ## Drafts — unpublished, newest first

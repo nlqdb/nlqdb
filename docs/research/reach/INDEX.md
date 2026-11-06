@@ -44,7 +44,7 @@ acting on it is one free command** (the per-host strings in
   in `distribution-queue.md` for the founder, never final copy
   (`docs/history/reddit-ai-voice-rejection.md`).
 - **Submissions needing a human account** (sign-in wall, OAuth, payment) →
-  numbered steps + links in `docs/blocked-by-human.md`. No **Answer** field.
+  numbered steps + links in `blocked-by-human.md`. No **Answer** field.
   Delete the bullet when done. Other docs list the title only.
 - **Every new CTA emits a GLOBAL-024 demand signal.**
 - **Every externally published URL carries its channel's `utm_source`
@@ -148,7 +148,7 @@ with memory (SK-PIVOT-003) + the one command.
 *document* ingestion; every other venue needs its own account-walled submit.
 Per-venue mechanism and exact payloads live in
 [`acquisition-channels.md`](../acquisition-channels.md) +
-[`blocked-by-human.md`](../../blocked-by-human.md) — status only here.
+[`blocked-by-human.md`](../../../blocked-by-human.md) — status only here.
 - ✅ #1 official MCP registry — **published 2026-07-22** (`com.nlqdb/nlqdb` v0.1.1, DNS domain-verify;
   `?utm_source=mcp-registry`). Cascade reached only Glama #4 (badge + connector claim done by the founder
   2026-08-04, awaiting external review); PulseMCP #3 absent 07-25 (re-check 08-22); Smithery #2 needs its own `smithery
@@ -260,7 +260,7 @@ in our repo), **crawl** (aggregators index it; nothing to submit), **submit**
   directory ([`ananddtyagi/cc-marketplace`](https://github.com/ananddtyagi/cc-marketplace)); passes
   the trust bar #5 failed. Submit (cross-repo PR / form) is out of scope; `nlqdb-memory` payload in
   [notes](../acquisition-channels-mechanisms.md#row-27) (ledger #27),
-  **founder-queued** 2026-09-04 ([blocked-by-human #4](../../blocked-by-human.md));
+  **founder-queued** 2026-09-04 ([blocked-by-human #4](../../../blocked-by-human.md));
   repo-linked → `github`-ref like #24.
 - ⬜ **Install-yield gate:** closes when `/app/admin` shows one real `claude-plugin`
   visit (same bar R-07 carries; why `plugin.json`'s `homepage` keeps its own key).
@@ -281,7 +281,7 @@ only surface earning agent-memory impressions) into a citable standalone page;
 (`AHREF_API_KEY`; free public endpoint).
 **Honest constraint:** at $0 the largest referring-domain events are launches
 and community posts, which are founder-shaped (hard rule 3 /
-[`blocked-by-human.md`](../../blocked-by-human.md) #1) — this slice
+[`blocked-by-human.md`](../../../blocked-by-human.md) #1) — this slice
 maximized what's agent-doable; it does not replace the launch.
 **Done when:** ✅ homepage-link sweep done across all live venues (live-verified
 2026-08-05 — see [`NUMBERS.md`](NUMBERS.md)) · ✅ linkable asset live + in
