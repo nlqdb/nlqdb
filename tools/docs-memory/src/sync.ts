@@ -15,8 +15,6 @@
 // env below is present (the CI `memory-sync.yml` supplies it); otherwise it
 // prints a reason and exits 0, never red, so the workflow is committed-but-dark
 // until the `NLQDB_API_KEY` secret lands (blocked-by-human queue #2).
-//
-// Docs: docs/archive/prior-bet/agent-memory-pivot-worksheets/dogfood/D-02-resync-hook.md
 
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";

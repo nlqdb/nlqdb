@@ -86,7 +86,7 @@ bet (see Q5).
    what it replaced). "Newest silently wins" and "confidence-weighted
    blend" are both rejected: the first loses history a paid buyer may need to
    audit, the second invents a number we cannot yet calibrate. Source:
-   guidelines §7 (layered, fail-safe) + bullet-proof.
+   guidelines §3 (layered, fail-safe) + bullet-proof.
 
 3. **Voice vs text.** **Text-first; voice parked until a pilot expert asks.**
    Card-edit verification (stake 3) is clean in text and complicates under

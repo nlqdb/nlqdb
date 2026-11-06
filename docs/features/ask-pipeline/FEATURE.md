@@ -276,7 +276,7 @@ the same-key retry replays the stored success ahead of it (`index.ts`).
 
 ## The LLM loop
 
-Canonical step order is SK-ASK-002. Intentional reinventions on this path are catalogued in `docs/guidelines.md §7`.
+Canonical step order is SK-ASK-002. Intentional reinventions on this path are catalogued in `docs/guidelines.md` §4.
 
 ## GLOBALs governing this feature
 

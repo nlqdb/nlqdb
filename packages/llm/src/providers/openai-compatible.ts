@@ -1,8 +1,8 @@
 // Shared chat-completions caller for OpenAI-compatible HTTP APIs
 // (Groq, OpenRouter). Lean by design: no SDK deps, just fetch.
 //
-// Per @nlqdb GUIDELINES §1: we'd rather write 60 lines than pull in
-// the OpenAI / Vercel-AI / LangChain SDK trees for what is ultimately
+// Per rules://guidelines (platform → stdlib → dependency): we'd rather
+// write 60 lines than pull in the OpenAI / Vercel-AI / LangChain SDK trees for what is ultimately
 // `POST /v1/chat/completions` with a JSON body.
 
 import { type CallOpts, ProviderError, type TokenUsage } from "../types.ts";

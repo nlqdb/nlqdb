@@ -23,8 +23,6 @@
 // GUCs from `plan.scope`, so both the tenant policy and the restrictive
 // `agent_isolation` / `end_user_isolation` / `thread_isolation` policies
 // (SK-PIVOT-009) govern the row at write time too.
-//
-// Sibling: `docs/archive/prior-bet/agent-memory-pivot-worksheets/engine/E-02-remember-tool.md`.
 
 import type { RateLimiter } from "../ask/rate-limit.ts";
 import { type AskError, DbConfigError, type DbRecord, type QueryResult } from "../ask/types.ts";

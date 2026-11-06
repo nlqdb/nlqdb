@@ -31,8 +31,7 @@
 // column); the TTL sweep that consumes it is E-04.
 //
 // Sibling skill: `docs/features/hosted-db-create/FEATURE.md` (the
-// create path E-01 extends) and
-// `docs/archive/prior-bet/agent-memory-pivot-worksheets/engine/E-01-memory-schema-preset.md`.
+// create path E-01 extends).
 
 import type { Column, ColumnType, ForeignKey, SchemaPlan, Table } from "@nlqdb/db";
 

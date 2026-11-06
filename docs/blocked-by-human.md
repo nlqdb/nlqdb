@@ -82,6 +82,29 @@ attach over MCP needs an `sk_live_` key.
    attaches only once per-database scoping ships.
 2. Record it in `SK-APIKEYS-015`, then delete this bullet.
 
+## Shared rules: what the server is missing for nlqdb
+
+⏱ ~10 min · blocked since 2026-11-06 · **Type:** decision. The move onto
+https://mcp.hochly.com/mcp (`rules://transition`) kept every nlqdb rule that
+differs from a served one. Each line: rule · where it is kept · recommendation.
+
+1. Decision record (`GLOBAL-NNN`, `SK-*` in `FEATURE.md`) · `CLAUDE.md` P1/P3, `docs/feature-conventions.md` · keep as an nlqdb firm call; served "no decisions file" stays as is.
+2. Abandoned bets move to `docs/archive/` · `docs/feature-conventions.md` §2 · adopt served: delete them, git holds them (the archive itself was deleted in this move).
+3. No doc over 20 KB; split first · `CLAUDE.md` P4 D4 · move to `rules/structure.md`.
+4. Resolve open questions before documenting; never document ambiguity · `CLAUDE.md` P4 D1–D3 · move to `rules/workflow.md` § Keeping rules.
+5. Journey design + "done = real E2E walk and owner used it" · `docs/guidelines.md` §5, `CLAUDE.md` P6 · move to `rules/guidelines.md`.
+6. Append-only founder-actions log · `docs/history/founder-actions-log.md` · adopt served: delete it, git log of this file holds it.
+7. Mailbox in `docs/`, no **Answer** field, ⏱ rank format · this file · adopt served: root `blocked-by-human.md` with its template.
+8. Scheduled run as `/daily` · `/review` · `/weekly`, no 5-bullet report · `.claude/commands/` · keep `/daily` as this repo's own steps; add `docs/AGENTS.md` with the served cron prompt.
+9. Roadmap is `GLOBAL-043`'s list, no `docs/ROADMAP.md` · `docs/decisions/GLOBAL-043-*.md` · move the list to `docs/ROADMAP.md`.
+10. Founder is never pinged · `.claude/commands/daily.md` · adopt served: notify only when blocked on your action (`rules://general` rule 17).
+11. Renovate, not Dependabot · `renovate.json5` · adopt served `.github/dependabot.yml` (bun + github-actions), delete Renovate.
+12. PR template line `Roadmap item / KPI` · `.github/pull_request_template.md` · keep (the KPI is nlqdb's §8 item 7).
+13. `CLAUDE.md` ~200 lines (path map) · `CLAUDE.md` §4–§5 · keep; the path map has no narrower home.
+14. Merge tools missing from the allow list · `.claude/settings.json` · adopt served: add `mcp__github__merge_pull_request`, `mcp__github__update_pull_request`, `mcp__github__pull_request_review_write` — open <https://github.com/nlqdb/nlqdb/edit/main/.claude/settings.json>, add the three lines to `permissions.allow`, **Commit changes**.
+
+Reply `ok` to take every recommendation, or name the lines to change.
+
 ## Recruit 10 builders once rateme12's attach shows a measured delta
 
 ⏱ ~5 h · blocked since 2026-10-14. Gated — opens when KPI B > 0 on

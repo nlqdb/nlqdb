@@ -24,7 +24,7 @@
   mutations have their own guards (key mint is `SK-APIKEYS-002`
   copy-once; billing is Stripe-side). If a future audit needs a tighter
   bound, revisit with a fail-closed-within-TTL variant. A KV-unreachable
-  fail-open emits one `warn` log per `guidelines.md §5`.
+  fail-open emits one `warn` log per `rules://guidelines` (Logs).
 - **Alternatives rejected:**
   - **Always fail-closed** — a KV blip logs everyone out and breaks
     `GLOBAL-009` silent refresh; trades broad availability for a rare

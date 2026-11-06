@@ -46,7 +46,7 @@
   |---|---|---|
   | Speculative scope / new surface / product mode | Defer until a paying or design-partner customer asks; never build speculatively. Park with a named trigger in `phase-plan.md`. | Simple (`§0`); `§8` not-building; `GLOBAL-025` |
   | Pin a number (TTL / threshold / cap / retention / cadence) | Mirror the proven incumbent (Stripe = 24h idempotency), make it env-tunable, choose the value that fails safe / bounds staleness. | guidelines habits 1–2; bullet-proof-by-design |
-  | Security trade-off (fail-open/closed, validation layer, denylist) | Layered guardrails — never one control. Destructive or secret paths fail **closed**; non-destructive read paths bias to availability. | guidelines §7; research-receipts §1 (Replit) |
+  | Security trade-off (fail-open/closed, validation layer, denylist) | Layered guardrails — never one control. Destructive or secret paths fail **closed**; non-destructive read paths bias to availability. | guidelines §3; research-receipts §1 (Replit) |
   | Surface-parity gap (capability on some surfaces, not all) | `GLOBAL-003`: ship to all surfaces in the same slice, or record the gap in the feature. Never widen the divergence. | `GLOBAL-003` |
   | Silent-drift risk (cardinality, naming, word-count, tool-name) | Add the cheap CI assertion / counter now. | bullet-proof ("make bad states unreachable, not caught") |
   | Wire-format / transport / "how to surface X" | Reuse what's already built (SSE for streaming, the existing event schema). One way to do each thing. | Simple (`§0`) |

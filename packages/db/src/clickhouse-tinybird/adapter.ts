@@ -252,7 +252,7 @@ export class TinybirdRequestError extends Error {
 
 // Wraps malformed Tinybird response bodies — when the HTTP request
 // succeeded (2xx) but the JSON parse failed. Truncated body keeps the
-// error one log line (`docs/guidelines.md §5`).
+// error one log line (`docs/guidelines.md` §2 Logs).
 export class TinybirdResponseParseError extends Error {
   readonly bodySnippet: string;
   readonly hint: string;
