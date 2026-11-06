@@ -49,7 +49,7 @@ jobs:
 
       - name: Create Version PR or publish
         # Held at v1: action v2 needs @changesets/cli v3 and renamed inputs.
-        uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           version: bun run changeset:version
           publish: bun run changeset:publish
