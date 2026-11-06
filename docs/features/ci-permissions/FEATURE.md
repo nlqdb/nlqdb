@@ -11,7 +11,7 @@ when-to-load:
 # Feature: CI permissions
 
 **One-liner:** Least-privilege GitHub Actions `permissions:` blocks across reusable workflows. Default-deny; explicit grants per job; OIDC for publish.
-**Status:** partial — reusable workflow contract locked (`SK-CIPERM-001..004`); `nlqdb/actions@v1` lives in its own repo, consumer repos call it with `secrets: inherit`. The CI-permissions linter (`SK-CIPERM-005`) is open work.
+**Status:** partial — reusable workflow contract locked (`SK-CIPERM-001..004`, `SK-CIPERM-006`); `nlqdb/actions@v1` lives in its own repo, consumer repos call it with `secrets: inherit`. The CI-permissions linter (`SK-CIPERM-005`) is open work.
 **Owners (code):** `.github/workflows/**` in every consumer repo; `nlqdb/actions/.github/workflows/ci.yml` in the reusable-workflow repo.
 **Cross-refs:** [`docs/architecture.md §9`](../../architecture.md#9-cicd) (CI/CD overview) · [`docs/history/ci-actions-repo-layout.md`](../../history/ci-actions-repo-layout.md) (repo layout, inputs, secrets, gates)
 
@@ -73,10 +73,20 @@ when-to-load:
 - **Decision:** `nlqdb/actions` has a self-test job (`actionlint` + a custom rule) that fails any push if `ci.yml` / `release.yml` declare a workflow-root `permissions:` block with anything other than `{}`, or if a job grants a scope outside the canonical set without a referenced `SK-CIPERM-NNN` decision in the commit message.
 - **Core value:** Bullet-proof
 - **Why:** The contract above is grep-enforceable; an automated check is cheaper than a code-review checklist and doesn't drift. Tying the override path to a `SK-CIPERM-NNN` reference forces the conversation to happen in the decision record rather than in a commit nobody re-reads.
-- **Consequence in code:** Status: not yet implemented. When it lands, `nlqdb/actions/.github/workflows/self-test.yml` runs `actionlint` plus a small bash check (`grep -E "^permissions:" .github/workflows/*.yml | grep -v "permissions: {}"`). The override mechanism is `# SK-CIPERM-006` (the next available ID) appended on the line that broadens the grant.
+- **Consequence in code:** Status: not yet implemented. When it lands, `nlqdb/actions/.github/workflows/self-test.yml` runs `actionlint` plus a small bash check (`grep -E "^permissions:" .github/workflows/*.yml | grep -v "permissions: {}"`). The override mechanism is a `# SK-CIPERM-NNN` reference to the decision that justifies it, appended on the line that broadens the grant.
 - **Alternatives rejected:**
   - Code-review checklist only — drifts; reviewers miss it; permissions sneak in.
   - GitHub branch-protection rule requiring "permissions audit" — bureaucratic, slows merges, doesn't catch the actual content.
+
+### SK-CIPERM-006 — A workflow passes each secret by name, never `toJSON(secrets)`
+
+- **Decision:** A step's `env:` names every secret it reads (`FOO: ${{ secrets.FOO }}`). No workflow expands `${{ toJSON(secrets) }}` or any other all-secrets dump.
+- **Core value:** Bullet-proof
+- **Why:** On 2026-11-06, with the repo public, every run of the three deploy workflows that dumped all secrets into one env var (`deploy-api`, `deploy-mcp`, `deploy-events-worker`) ended `action_required` with zero jobs, manual dispatch too; every workflow naming its secrets ran. GitHub holds public-repo runs it judges potentially malicious until a human approves in the web UI ([changelog, 2026-07-28](https://github.blog/changelog/2026-07-28-github-actions-holds-unproven-workflows-for-approval)), and a full secret dump is the exfiltration shape it guards against. Naming each secret also hands a step only what it reads.
+- **Consequence in code:** The `Sync Worker secrets` steps list the app's `select_secrets()` subset from `scripts/mirror-secrets-workers.sh` (plus `GRAFANA_CLOUD_INSTANCE_ID` / `GRAFANA_CLOUD_API_KEY`); a secret added there is added to that deploy workflow's `env:` in the same PR, or it never reaches the Worker.
+- **Alternatives rejected:**
+  - Approve each held run by hand — a human click per deploy, and prod lags main until someone does.
+  - Keep the dump in a reusable workflow — the expression still reads every secret; the hold follows the run, not the file.
 
 ## GLOBALs governing this feature
 

@@ -20,19 +20,6 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   context · benefits · risks · alternatives, ≤ 5 words each>
 -->
 
-## Unblock the API, MCP and events-worker deploys
-
-- **Type:** account action · ⏱ ~2 min · since 2026-11-06
-- **Done so far:** since #1235 (2026-11-06 11:29 UTC), every `Deploy API`,
-  `Deploy MCP server` and `Deploy events-worker` run, manual dispatch too,
-  ends `action_required` with zero jobs. Prod serves the pre-#1235 build, so
-  today's security fixes (#1250) are not live. Web, docs and elements deploy fine.
-- **Ask:**
-  1. Open <https://github.com/nlqdb/nlqdb/actions/runs/42245429314> and click
-     **Approve and run**, or follow the banner it shows.
-  2. If the banner names a setting, fix it in
-     <https://github.com/nlqdb/nlqdb/settings/actions> so it doesn't recur.
-
 ## Claim the `nlqdb` npm name for the `npx nlqdb attach` door
 
 - **Type:** account action · ⏱ ~5 min · since 2026-10-31
