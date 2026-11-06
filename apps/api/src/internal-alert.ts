@@ -53,6 +53,12 @@ export type AlertInput = {
   utcDay: string;
 };
 
+// Collapses digit runs so one bug whose message carries a timestamp, id or
+// count dedups as one signature instead of mailing on every occurrence.
+export function stableSignature(text: string): string {
+  return text.replace(/\d+/g, "#");
+}
+
 async function sha256Hex(input: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
   return Array.from(new Uint8Array(digest))

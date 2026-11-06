@@ -5,7 +5,7 @@
 // is swallowed. MOCK_IDP routes the send to the KV sink so a hit is a `put`.
 
 import { describe, expect, it, vi } from "vitest";
-import { type AlertEnv, alertRnd } from "../src/internal-alert.ts";
+import { type AlertEnv, alertRnd, stableSignature } from "../src/internal-alert.ts";
 
 function fakeKv() {
   const store = new Map<string, string>();
@@ -85,5 +85,18 @@ describe("alertRnd", () => {
     await expect(alertRnd(env, input("X"))).resolves.toBeUndefined();
     expect(err).toHaveBeenCalled();
     err.mockRestore();
+  });
+});
+
+describe("stableSignature", () => {
+  it("dedups one bug whose message carries a changing number", () => {
+    const at = (n: number) =>
+      stableSignature(
+        `server::GET /api/auth/get-session::Error::KV PUT failed: 400 Invalid expiration of ${n}.`,
+      );
+    expect(at(1793999745)).toBe(at(1794000246));
+    expect(stableSignature("server::GET /a::TypeError::x")).not.toBe(
+      stableSignature("server::GET /b::TypeError::x"),
+    );
   });
 });

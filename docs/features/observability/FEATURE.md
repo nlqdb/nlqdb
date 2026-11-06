@@ -133,7 +133,7 @@ Exception triage lives in **Sentry** (canonical grouping/alerting UI); traces + 
 ### SK-OBS-012 — Unexpected server/client errors also fire a throttled, redacted R&D alert email
 
 **Body:** [`decisions/SK-OBS-012-rnd-error-alert-email.md`](./decisions/SK-OBS-012-rnd-error-alert-email.md).
-Unexpected errors (`app.onError` 500s, `/v1/errors/web` client crashes) send a best-effort diagnostic email to `rnd@nlqdb.com` via the `notify()` rail + `internalErrorAlertEmail` template (`alertRnd()`). Complementary to Sentry (`SK-OBS-011`), not a replacement. Two hard constraints: a KV throttle (per-signature hourly dedup + 20/day cap) so it can't drain the **shared 3k/mo Resend quota** and break sign-in email, and `redactPii` on every field (`SK-OBS-008`) so it's never a raw-PII side channel through Resend. Expected 4xx never trigger it.
+Unexpected errors (`app.onError` 500s, `/v1/errors/web` client crashes) send a best-effort diagnostic email to `rnd@nlqdb.com` via the `notify()` rail + `internalErrorAlertEmail` template (`alertRnd()`). Complementary to Sentry (`SK-OBS-011`), not a replacement. Two hard constraints: a KV throttle (per-signature hourly dedup, digit runs collapsed so a message carrying a timestamp or id is one signature, + 20/day cap) so it can't drain the **shared 3k/mo Resend quota** and break sign-in email, and `redactPii` on every field (`SK-OBS-008`) so it's never a raw-PII side channel through Resend. Expected 4xx never trigger it.
 
 ## GLOBALs governing this feature
 
