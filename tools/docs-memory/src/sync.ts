@@ -15,8 +15,6 @@
 // env below is present (the CI `memory-sync.yml` supplies it); otherwise it
 // prints a reason and exits 0, never red, so the workflow is committed-but-dark
 // until the `NLQDB_API_KEY` secret lands (blocked-by-human queue #2).
-//
-// Docs: docs/archive/prior-bet/agent-memory-pivot-worksheets/dogfood/D-02-resync-hook.md
 
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -29,9 +27,9 @@ const DOCS = resolve(REPO_ROOT, "docs");
 function corpusFiles(): { path: string; content: string }[] {
   const files: { path: string; content: string }[] = [];
 
-  const blocked = resolve(DOCS, "blocked-by-human.md");
+  const blocked = resolve(REPO_ROOT, "blocked-by-human.md");
   try {
-    files.push({ path: "docs/blocked-by-human.md", content: readFileSync(blocked, "utf8") });
+    files.push({ path: "blocked-by-human.md", content: readFileSync(blocked, "utf8") });
   } catch {
     // absent in a shallow checkout — the extractor simply yields no queue rows
   }

@@ -1,16 +1,14 @@
 # Phase plan
 
-Canonical phase plan and exit gates. Extracted from `architecture.md` §10
-to keep that doc under the D4 20 KB shard cap; cross-refs there now link
-here.
+Canonical phase plan and exit gates. Extracted from `architecture.md` §10;
+cross-refs there now link here.
 
 **Navigation:** [architecture.md](./architecture.md) (system design) ·
 [decisions.md](./decisions.md) (cross-cutting `GLOBAL-NNN`) ·
 [features/](./features/) (per-feature `FEATURE.md` with status) ·
 [performance.md](./performance.md) (SLOs and budgets).
 
-**The roadmap is [`GLOBAL-043`](./decisions/GLOBAL-043-attach-first-autonomous-dba.md)'s
-three items** (`/daily` step 2): 1a the attach product built on synthetic
+**The roadmap is [`ROADMAP.md`](./ROADMAP.md)** (`GLOBAL-043`, `/daily` step 2): 1a the attach product built on synthetic
 databases, 1b the Postgres spike + the D1 attach on rateme12, 2 the deletion PR series, 3 the playbook's proposal kinds. **Exit
 gate:** the spike's measured delta (`GLOBAL-043` item 10) — pass starts item
 2, fail deletes nothing. Onboarding / UX / performance floors:
@@ -135,7 +133,7 @@ capacity-driven).
   `GLOBAL-043`'s. Recruitment +
   interview cadence in [`docs/founder-playbook.md`](./founder-playbook.md).
 - Security hygiene: Trivy + CodeQL on every PR; secret rotation
-  quarterly; Renovate (`renovate.json5`) for dependency updates.
+  quarterly; Dependabot (`.github/dependabot.yml`) for dependency updates.
 - Inference cost monitoring: weekly Grafana; if any free provider hits
   70% of daily quota for 3 days → light up paid tier.
 - Free-tier abuse: per-IP + per-account rate limits day 1; PoW on

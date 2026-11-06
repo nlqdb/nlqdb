@@ -19,7 +19,7 @@ digging into linked rows) goes to a sub-agent — keep the main thread lean.
   — agent-drafted publishable artifacts. Canonical `/blog` publishing is
   autonomous (`SK-BLOG-001` — no founder gate); surface queue depth and any
   venue variants still waiting to post.
-- [`docs/blocked-by-human.md`](../../docs/blocked-by-human.md) — the
+- [`blocked-by-human.md`](../../blocked-by-human.md) — the
   canonical list of actions only the founder can do (prod secrets, console
   clicks, money/legal). Surface the outstanding human-only actions.
 

@@ -1,7 +1,7 @@
 # SK-E2E-007 — Staging spin-up purges the fixture account's registry rows
 
 Part of [`e2e-coverage/FEATURE.md`](../FEATURE.md); sharded per
-`docs/feature-conventions.md` §1 (FEATURE.md is at the D4 cap).
+`docs/feature-conventions.md` §1.
 
 - **Decision:** `_e2e-staging.yml` recreates the Neon `e2e` branch, then
   immediately deletes every `databases` and `chat_message` row owned by the

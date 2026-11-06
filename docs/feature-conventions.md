@@ -21,7 +21,7 @@ docs/features/
 ├── <feature-name>/
 │   ├── FEATURE.md                   # canonical decisions + scope for this feature
 │   └── decisions/                   # optional: one file per SK-* once the feature
-│       └── SK-<PREFIX>-NNN-<slug>.md  # crosses CLAUDE.md D4's 20 KB ceiling
+│       └── SK-<PREFIX>-NNN-<slug>.md  # once inline bodies make FEATURE.md hard to scan
 └── …
 ```
 
@@ -32,10 +32,9 @@ breadcrumb pointing at it, so don't.
 Feature docs have no "imports." If a decision applies to multiple features
 it is referenced by ID or link (see §5), never duplicated.
 
-**Sharding (when `FEATURE.md` crosses 20 KB).** CLAUDE.md `D4` caps every
-markdown file at 20 KB. Small features keep all decisions inline in
-`FEATURE.md`. When the accumulating decision bodies would push the file
-over the cap, extract the bodies into a sibling `decisions/` directory —
+**Sharding (optional).** Small features keep all decisions inline in
+`FEATURE.md`. When the accumulating decision bodies make the file hard to
+scan, extract the bodies into a sibling `decisions/` directory —
 one file per `SK-*-*`, named `<ID>-<slug>.md` (e.g.
 `SK-AUTH-007-cookie-cache-with-kv-revocation.md`) — and rewrite the
 `## Decisions` section of `FEATURE.md` as an index of links (see §3).
@@ -65,8 +64,8 @@ mint a new, self-contained ID (`SK-AUTH-014` replaces `SK-AUTH-007`; fold any
 still-live substance forward), remove the old shard/entry, and repoint every
 reference so nothing cites the deleted ID. No tombstone stubs, no
 "replaced-by" status lines. Git history keeps the old body; a gap in the
-sequence just means a decision was removed. Whole abandoned bets move under
-`docs/archive/` (`git mv`, no live doc links into it). One exception: a
+sequence just means a decision was removed. Whole abandoned bets are deleted
+(git holds them; no live doc links into them). One exception: a
 superseding GLOBAL may add a one-line `Status:` pointer on the GLOBAL it
 supersedes (in whole or in part), whose body stays as history.
 
@@ -147,10 +146,9 @@ fields — they reference the GLOBAL by ID (see §5).
 Optional: `Source:` line on `SK-*` blocks that points at where the
 long-form rationale lived before the feature doc existed.
 
-### 4a. Sharded layout (when `FEATURE.md` would cross 20 KB)
+### 4a. Sharded layout
 
-Once the decision bodies push `FEATURE.md` over CLAUDE.md `D4`'s 20 KB
-cap, extract each `### SK-*-*` body into a sibling file under
+Once the decision bodies make `FEATURE.md` hard to scan, extract each `### SK-*-*` body into a sibling file under
 `decisions/` and replace the inline `## Decisions` section with a link
 index:
 

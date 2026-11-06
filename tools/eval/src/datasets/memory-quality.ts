@@ -3,8 +3,7 @@
 // persona-bench (SK-QUAL-018) measures NL→SQL EX over an ICP schema.
 // memory-quality measures whether the *memory itself is good*: it seeds
 // `agent_memory_v1`-shaped corpora deliberately built to exercise the four
-// quality axes the research landscape names
-// (`docs/archive/prior-bet/agent-memory-quality-landscape.md`), then scores each
+// quality axes of the agent-memory research landscape, then scores each
 // question with the existing result-set EX comparator (`score.ts`):
 //
 //   - retrieval    — return the correct SET of memory rows, and only those

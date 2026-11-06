@@ -176,7 +176,7 @@ P2 ships in Phase 3 — depends on Pro tier / multi-engine, or partner co-market
 
 ## 4. P3 — explicitly out of scope
 
-**Body:** [`docs/progress-p3-catalog.md`](./progress-p3-catalog.md) — all 8 sub-tables, sharded out under the §2 D4 cap. Long-tail / community; templates in `examples/` invite PRs.
+**Body:** [`docs/progress-p3-catalog.md`](./progress-p3-catalog.md) — all 8 sub-tables, sharded out. Long-tail / community; templates in `examples/` invite PRs.
 
 ---
 

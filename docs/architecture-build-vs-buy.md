@@ -1,8 +1,6 @@
 # Build vs Buy — alternative technologies (evaluated, not just listed)
 
-Sharded from [`docs/architecture.md`](./architecture.md) §11 to keep the
-architecture doc under the 20 KB cap from
-[`CLAUDE.md` §2 D4](../CLAUDE.md). Content unchanged — only the
+Sharded from [`docs/architecture.md`](./architecture.md) §11. Content unchanged — only the
 location moved.
 
 We lean toward tools with real APIs, generous free tiers, and no mandatory UI step. UI-first vendors are disqualified — we cannot automate them.

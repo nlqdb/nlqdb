@@ -1,8 +1,7 @@
 # SK-WEB-013 — `/pricing` surfaces a scheduled cancellation; the current-tier CTA becomes one-click "Resubscribe"
 
-Body shard of [`web-app/FEATURE.md`](../FEATURE.md) (the FEATURE is over the
-20 KB cap, so new decision bodies live beside it — same pattern as
-`stripe-billing/decisions/`). Summary line lives in FEATURE.md under
+Body shard of [`web-app/FEATURE.md`](../FEATURE.md) (new decision bodies live
+beside it — same pattern as `stripe-billing/decisions/`). Summary line lives in FEATURE.md under
 `## Decisions`.
 
 - **Decision:** When `GET /v1/billing/status` (SK-STRIPE-009) reports

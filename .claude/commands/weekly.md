@@ -3,8 +3,8 @@
 You audit the daily loop and point it in the right direction. There are no
 time-boxed goals: the job is week-over-week **direction** and **honesty of
 the numbers**, not deadlines. Work autonomously; the founder is not
-watching. Human-only needs go to `docs/blocked-by-human.md`, nothing else
-pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
+watching. Human-only needs go to `blocked-by-human.md`; notify only per
+`rules://general` rule 17. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
 
 ## Inputs (read all before judging)
 
@@ -12,7 +12,7 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
   per row, not the day.
 - `git log --since='7 days ago'` — every daily PR: title, body, the delta
   it claims.
-- `docs/blocked-by-human.md`.
+- `blocked-by-human.md`.
 - [`.claude/commands/daily.md`](daily.md) — the prompt under audit.
 - [`GLOBAL-043`](../../docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md) — the
   KPIs A–C, love gate and roadmap the week is measured against; the dogfood
@@ -46,7 +46,7 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
 7. **Public-roadmap truth (`README.md § Roadmap`).** The README is the one
    roadmap strangers read, and no daily loop owns it. Each week: tick/untick
    markers against shipped reality, and confirm the "Now"/"Next" sections
-   still name the live focus (`GLOBAL-043` roadmap). A marker claiming ✓
+   still name the live focus ([`docs/ROADMAP.md`](../../docs/ROADMAP.md)). A marker claiming ✓
    for something dark is a P6 honesty bug, same class as a phantom
    capability.
 
@@ -57,7 +57,7 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
    this environment is also in Actions and Workers). Web-research the current
    best free models (P2, cite sources) and cross-check. A better model
    missing from the roster: its key already exists → add it at the right
-   position in this PR; no key → one ranked `docs/blocked-by-human.md` bullet
+   position in this PR; no key → one ranked `blocked-by-human.md` bullet
    with the research and why that key is worth the founder's minute.
 
 ## Outputs (one PR)
@@ -66,7 +66,7 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
    agent-movable number + a one-line why, chosen from the audit. If the
    founder wrote one this week, keep theirs — never overwrite a founder
    edit. **Default: the number of the first unfinished step in `daily.md`
-   step 2's fixed sequence** (`GLOBAL-043` roadmap items 1 → 2 → 3); once the
+   step 2's fixed sequence** (`docs/ROADMAP.md` phases 1 → 2 → 3); once the
    founder's builders are recruited, **returning builders in week 2 (n/10)** —
    the love gate (`GLOBAL-043`).
    Agent-movable means **movable at $0** (`docs/cost-ladder.md` — no spend
@@ -89,3 +89,9 @@ pings the founder. Obey `CLAUDE.md` P1–P5 and the §8 quality gates.
 Everything above ships as **one PR** — the check-8 roster change or its
 blocked-by-human bullet included. One focus number, not three. Don't re-litigate documented decisions —
 flag genuine contradictions with their ID in `weekly-review.md` instead.
+
+## Report
+
+End the session with the five-bullet report of `rules://scheduled-run`
+§ Report (Roadmap · Walked · Try it · To do · Blocked), nothing else; the
+Roadmap bullet reads [`docs/ROADMAP.md`](../../docs/ROADMAP.md).

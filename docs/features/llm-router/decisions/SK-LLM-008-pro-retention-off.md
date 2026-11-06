@@ -1,8 +1,7 @@
 # SK-LLM-008 — Pro customers route only through paid / retention-off providers (data-privacy promise)
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Sharded out
-unchanged to keep that doc under the 20 KB cap per `CLAUDE.md` §2 D4 —
-this body is verbatim, only the location moved.
+unchanged — this body is verbatim, only the location moved.
 
 - **Decision:** Free-tier providers may train on inputs (per their terms); we disclose this in our privacy policy. **Pro customers** route exclusively through paid providers configured for retention-off (Anthropic / OpenAI on their retention-off plans, Bedrock with default retention-off). This is the one meaningful free→paid capability upgrade.
 - **Core value:** Bullet-proof, Free, Open source

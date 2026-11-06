@@ -1,7 +1,7 @@
 # Acquisition channels — venue mechanism notes
 
-Companion shard to [`acquisition-channels.md`](acquisition-channels.md) (D4
-split, 2026-08-12). The lean ledger table + tallies + "why this order" live in
+Companion shard to [`acquisition-channels.md`](acquisition-channels.md) (split
+2026-08-12). The lean ledger table + tallies + "why this order" live in
 that file; this shard holds the detailed **P2-verified mechanism notes and
 parked founder payloads** for the heaviest venues, keyed by ledger row number.
 When a row's inline status cell would grow past a one-line summary, relocate the
@@ -163,7 +163,7 @@ listing URL, then watch `/app/admin` for `explainx` yield → live.
 
 **blocked-by-human** — cross-repo PR / account-walled, founder-gated (P2
 2026-09-03); founder-queued 2026-09-04 as
-[blocked-by-human #4](../blocked-by-human.md). A
+[blocked-by-human #4](../../blocked-by-human.md). A
 688★, actively maintained (68 commits, ~28 open PRs) community directory of
 Claude Code plugins + commands, built by @ananddtyagi and fronted by
 `claudecodecommands.directory` (one-click `/plugin marketplace add
