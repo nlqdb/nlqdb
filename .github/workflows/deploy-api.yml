@@ -136,11 +136,9 @@ jobs:
         run: bun run build
 
       # SLSA L3 build-provenance attestation. Requires GitHub Pro/
-      # Team/Enterprise OR a public repository — `nlqdb/nlqdb` is
-      # private + Free, so the attestation API rejects with "Feature
-      # not available". `continue-on-error` keeps the deploy
-      # unblocked; once the repo flips public or we're on a paid
-      # plan, attestations start publishing with no further change.
+      # Team/Enterprise OR a public repository; `nlqdb/nlqdb` is
+      # public. `continue-on-error` keeps an attestation-API failure
+      # from blocking the deploy.
       - name: SLSA build provenance attestation
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         continue-on-error: true
@@ -173,14 +171,50 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          ALL_SECRETS: ${{ toJSON(secrets) }}
+          # Each secret by name, never `toJSON(secrets)` (SK-CIPERM-006): with
+          # the repo public, runs that dumped every secret were held at
+          # `action_required`. Keep in sync with select_secrets() in the script;
+          # GRAFANA_CLOUD_* build GRAFANA_OTLP_AUTHORIZATION there.
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          API_KEY_SECRET: ${{ secrets.API_KEY_SECRET }}
+          BYO_SECRET_KEK: ${{ secrets.BYO_SECRET_KEK }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+          AI_GATEWAY_ACCOUNT_ID: ${{ secrets.AI_GATEWAY_ACCOUNT_ID }}
+          AI_GATEWAY_ID: ${{ secrets.AI_GATEWAY_ID }}
+          AI_GATEWAY_TOKEN: ${{ secrets.AI_GATEWAY_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          EVAL_INGEST_TOKEN: ${{ secrets.EVAL_INGEST_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LOGSNAG_TOKEN: ${{ secrets.LOGSNAG_TOKEN }}
+          LOGSNAG_PROJECT: ${{ secrets.LOGSNAG_PROJECT }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OAUTH_GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
+          OAUTH_GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}
+          OAUTH_GITHUB_CLIENT_ID_DEV: ${{ secrets.OAUTH_GITHUB_CLIENT_ID_DEV }}
+          OAUTH_GITHUB_CLIENT_SECRET_DEV: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET_DEV }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          SUPABASE_OAUTH_CLIENT_ID: ${{ secrets.SUPABASE_OAUTH_CLIENT_ID }}
+          SUPABASE_OAUTH_CLIENT_SECRET: ${{ secrets.SUPABASE_OAUTH_CLIENT_SECRET }}
+          GRAFANA_OTLP_ENDPOINT: ${{ secrets.GRAFANA_OTLP_ENDPOINT }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_PRICE_HOBBY: ${{ secrets.STRIPE_PRICE_HOBBY }}
+          STRIPE_PRICE_PRO: ${{ secrets.STRIPE_PRICE_PRO }}
+          STRIPE_PRICE_OVERAGE_ANTHROPIC: ${{ secrets.STRIPE_PRICE_OVERAGE_ANTHROPIC }}
+          STRIPE_PREMIUM_METER_ID: ${{ secrets.STRIPE_PREMIUM_METER_ID }}
+          PREMIUM_ANTHROPIC_API_KEY: ${{ secrets.PREMIUM_ANTHROPIC_API_KEY }}
+          PREMIUM_METER_LIVE: ${{ secrets.PREMIUM_METER_LIVE }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          TAWK_TO_API_KEY: ${{ secrets.TAWK_TO_API_KEY }}
+          GRAFANA_CLOUD_INSTANCE_ID: ${{ secrets.GRAFANA_CLOUD_INSTANCE_ID }}
+          GRAFANA_CLOUD_API_KEY: ${{ secrets.GRAFANA_CLOUD_API_KEY }}
         run: |
-          # Reconstruct an .envrc that the script can source. Every
-          # GHA secret is exported as a shell variable; the script's
-          # `select_secrets()` filters to the api Worker's runtime
-          # subset. `@sh` quotes safely; values with newlines/quotes
-          # round-trip correctly. The script uses `bunx wrangler`
-          # internally so no PATH dance is needed here.
-          jq -r 'to_entries[] | "export \(.key)=\(.value | @sh)"' <<<"$ALL_SECRETS" > .envrc
+          # The script sources .envrc; the values above are already in env.
+          : > .envrc
           ./scripts/mirror-secrets-workers.sh remote api
           rm -f .envrc

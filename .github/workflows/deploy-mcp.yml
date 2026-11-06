@@ -61,8 +61,16 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          ALL_SECRETS: ${{ toJSON(secrets) }}
+          # Each secret by name, never `toJSON(secrets)` (SK-CIPERM-006): with
+          # the repo public, runs that dumped every secret were held at
+          # `action_required`. Keep in sync with select_secrets() in the script;
+          # GRAFANA_CLOUD_* build GRAFANA_OTLP_AUTHORIZATION there.
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          GRAFANA_OTLP_ENDPOINT: ${{ secrets.GRAFANA_OTLP_ENDPOINT }}
+          GRAFANA_CLOUD_INSTANCE_ID: ${{ secrets.GRAFANA_CLOUD_INSTANCE_ID }}
+          GRAFANA_CLOUD_API_KEY: ${{ secrets.GRAFANA_CLOUD_API_KEY }}
         run: |
-          jq -r 'to_entries[] | "export \(.key)=\(.value | @sh)"' <<<"$ALL_SECRETS" > .envrc
+          # The script sources .envrc; the values above are already in env.
+          : > .envrc
           ./scripts/mirror-secrets-workers.sh remote mcp
           rm -f .envrc
