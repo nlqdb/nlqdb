@@ -12,11 +12,11 @@
 // A fingerprint yields a proposal when its plan (`EXPLAIN (GENERIC_PLAN)` on
 // the normalized text, Postgres 16+ — never executed) seq-scans a table of the
 // attached schema with a selective AND of equality (or `= ANY`) filters, and
-// no valid btree / hash index already leads with those columns. Only fingerprints naming a
-// relation of the attached schema are planned: on a managed host the heaviest
-// statements are often the host's own (auth, storage, realtime, its dashboard),
-// and they would spend the per-observe EXPLAIN budget on tables nlqdb never
-// proposes for.
+// no valid btree / hash index already leads with those columns. Only
+// fingerprints naming a relation of the attached schema are planned: on a
+// managed host the heaviest statements are often the host's own (auth,
+// storage, realtime, its dashboard), and they would spend the per-observe
+// EXPLAIN budget on tables nlqdb never proposes for.
 
 import { createIndexProposal, type Proposal } from "./dba-proposal.ts";
 import { withDbaSpan, withObserveSpan } from "./dba-span.ts";
@@ -199,7 +199,7 @@ type SeqScanFilter = {
 };
 
 // The plan's seq scans on `schema` whose filter is only an AND of plain
-// equalities: with any other term (a range, an OR) `Plan Rows` would credit
+// equalities (`= ANY` included): with any other term (a range, an OR) `Plan Rows` would credit
 // the equality columns with selectivity they don't have alone.
 function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = [], workers = 0) {
   const filter = node.Filter;
