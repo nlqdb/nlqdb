@@ -138,7 +138,7 @@ import {
 import { httpsRedirectTarget, withHsts } from "./https-enforce.ts";
 import { idempotencyLookup, idempotencyStore } from "./idempotency.ts";
 import { orchestrateInsert } from "./insert/orchestrate.ts";
-import { alertRnd } from "./internal-alert.ts";
+import { alertRnd, stableSignature } from "./internal-alert.ts";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { isMarketingMirrorPath, marketingMirrorRedirect } from "./marketing-mirror.ts";
@@ -225,7 +225,9 @@ app.onError((err, c) => {
       alertRnd(c.env, {
         kind: "server",
         summary: `500 ${c.req.method} ${c.req.path} — ${errText}`.slice(0, 160),
-        signature: `server::${c.req.method} ${c.req.path}::${e?.name ?? ""}::${(e?.message ?? "").slice(0, 120)}`,
+        signature: stableSignature(
+          `server::${c.req.method} ${c.req.path}::${e?.name ?? ""}::${(e?.message ?? "").slice(0, 120)}`,
+        ),
         utcDay: new Date().toISOString().slice(0, 10),
         fields: [
           ["when", new Date().toISOString()],
@@ -641,7 +643,9 @@ app.post("/v1/errors/web", async (c) => {
       alertRnd(c.env, {
         kind: "client",
         summary: `client ${surface} — ${message}`.slice(0, 160),
-        signature: `client::${String(body["surface"] ?? "")}::${String(body["message"] ?? "").slice(0, 120)}`,
+        signature: stableSignature(
+          `client::${String(body["surface"] ?? "")}::${String(body["message"] ?? "").slice(0, 120)}`,
+        ),
         utcDay: new Date().toISOString().slice(0, 10),
         fields: [
           ["when", new Date().toISOString()],

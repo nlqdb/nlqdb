@@ -83,6 +83,25 @@ const magicLinkThrottle = makeMagicLinkThrottle(env.KV, { max: 3, windowSeconds:
 // delivers.
 export const authWaitUntil = new AsyncLocalStorage<(p: Promise<unknown>) => void>();
 
+// Fixed-window counter for Better Auth's rate limit. The window's end rides
+// in metadata so later increments keep it instead of sliding it (KV `put`
+// resets expiry). The put uses a relative `expirationTtl`, never an absolute
+// `expiration`: KV measures the TTL from its own receipt time, so a second
+// boundary crossed in flight can't land it under KV's 60 s floor (that 400
+// was a 500 on `/api/auth/get-session`).
+export async function kvIncrement(kv: KVNamespace, key: string, ttl: number): Promise<number> {
+  const now = Math.floor(Date.now() / 1000);
+  const { value, metadata } = await kv.getWithMetadata<{ exp: number }>(key);
+  const live = value !== null && metadata?.exp !== undefined && metadata.exp > now;
+  const exp = live ? metadata.exp : now + ttl;
+  const count = (live ? Number(value) || 0 : 0) + 1;
+  await kv.put(key, String(count), {
+    expirationTtl: Math.max(exp - now, KV_MIN_TTL_SECONDS),
+    metadata: { exp },
+  });
+  return count;
+}
+
 const kv = env.KV;
 const secondaryStorage = {
   get: async (key: string) => kv.get(key),
@@ -98,20 +117,7 @@ const secondaryStorage = {
     if (value !== null) await kv.delete(key);
     return value;
   },
-  // Fixed window: the expiry set on creation rides in metadata so later
-  // increments keep it instead of sliding it (KV `put` resets expiry).
-  increment: async (key: string, ttl: number) => {
-    const now = Math.floor(Date.now() / 1000);
-    const { value, metadata } = await kv.getWithMetadata<{ exp: number }>(key);
-    const live = value !== null && metadata?.exp !== undefined && metadata.exp > now;
-    const exp = live ? metadata.exp : now + ttl;
-    const count = (live ? Number(value) || 0 : 0) + 1;
-    await kv.put(key, String(count), {
-      expiration: Math.max(exp, now + KV_MIN_TTL_SECONDS),
-      metadata: { exp },
-    });
-    return count;
-  },
+  increment: (key: string, ttl: number) => kvIncrement(kv, key, ttl),
 };
 
 export const auth = betterAuth({
