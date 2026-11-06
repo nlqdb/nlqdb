@@ -34,10 +34,10 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.4",
-    "@changesets/cli": "^2.31.1",
+    "@changesets/cli": "^3.0.3",
     "@playwright/test": "~1.64.1",
     "bun-types": "latest",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   },
   "overrides": {
     "@modelcontextprotocol/sdk": "1.29.0",
