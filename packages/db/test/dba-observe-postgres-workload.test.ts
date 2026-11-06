@@ -104,6 +104,7 @@ describe("observePostgresWorkload", () => {
     ["PostgREST's `in` filter", "((u.a = ANY ($1)) AND (u.b = $2))", ["a", "b"], []],
     ["a varchar `IN` list", "((u.a)::text = ANY ((ARRAY[$1, $2])::text[]))", ["a"], ["a"]],
     ["a constant array", "(u.a = ANY ('{1,2}'::bigint[]))", ["a"], []],
+    ["a mixed list", "(u.a = ANY (ARRAY[$1, ($2)::bigint, 'x)]'::text, -3]))", ["a"], []],
   ])("reads %s as an equality a btree serves", async (_, filter, columns, textCast) => {
     const { query } = stub(seqScan(filter), { ...bigTable, known_columns: columns.length });
     const params: unknown[][] = [];
@@ -142,6 +143,9 @@ describe("observePostgresWorkload", () => {
     ["an OR filter", seqScan("((u.a = $1) OR (u.b = $2))"), bigTable],
     ["a non-equality filter", seqScan("(u.a > $1)"), bigTable],
     ["an equality ANDed with a range", seqScan("((u.a = $1) AND (u.b > $2))"), bigTable],
+    ["a `<> ALL` (a `NOT IN` list)", seqScan("(u.a <> ALL (ARRAY[$1, $2]))"), bigTable],
+    ["an `= ANY` over the row's own columns", seqScan("(u.a = ANY (ARRAY[u.b, u.c]))"), bigTable],
+    ["an `= ANY` ORed with an equality", seqScan("((u.a = ANY ($1)) OR (u.b = $2))"), bigTable],
     ["an unselective filter", seqScan("(u.a = $1)", 2_000), bigTable],
     ["an already covered column set", seqScan("(u.a = $1)"), { ...bigTable, covered: 1 }],
     ["another schema", { ...seqScan("(u.a = $1)"), Schema: "other" }, bigTable],

@@ -169,7 +169,11 @@ const SCALAR = String.raw`(?:\$\d+|\(\$\d+\)::[^()]+?|'(?:[^']|'')*'(?:::[\w ]+)
 // `ANY ($1)`, `ANY (ARRAY[$1, $2])`, `ANY ((ARRAY[$1, $2])::text[])` or a
 // constant `ANY ('{…}'::type[])`. A btree on the column serves it like an
 // equality, and the generic plan's `Plan Rows` already assumes its length.
-const ARRAY = String.raw`ANY \((?:\$\d+|ARRAY\[[^\]]*\]|\(ARRAY\[[^\]]*\]\)::[\w ]+\[\]|'(?:[^']|'')*'::[\w ]+\[\])\)`;
+// The elements are parameters or constants only: a column or a function call
+// in the list (`ARRAY[u.b]`) is not a lookup an index on the column serves.
+const ELEMENT = String.raw`(?:\$\d+|\(\$\d+\)::[^()\],]+|'(?:[^']|'')*'(?:::[\w ]+)?|-?\d+(?:\.\d+)?)`;
+const ELEMENTS = String.raw`ARRAY\[${ELEMENT}(?:, ${ELEMENT})*\]`;
+const ARRAY = String.raw`ANY \((?:\$\d+|${ELEMENTS}|\(${ELEMENTS}\)::[\w ]+\[\]|'(?:[^']|'')*'::[\w ]+\[\])\)`;
 // One `(alias.column = value)` term of a VERBOSE plan's Filter. A varchar
 // column (Rails' and Django's string) plans relabelled as
 // `((alias.column)::text = value)`, which a plain index on it still serves;
@@ -199,8 +203,9 @@ type SeqScanFilter = {
 };
 
 // The plan's seq scans on `schema` whose filter is only an AND of plain
-// equalities (`= ANY` included): with any other term (a range, an OR) `Plan Rows` would credit
-// the equality columns with selectivity they don't have alone.
+// equalities (`= ANY` included): with any other term (a range, an OR, `<> ALL`)
+// `Plan Rows` would credit the equality columns with selectivity they don't
+// have alone.
 function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = [], workers = 0) {
   const filter = node.Filter;
   const planWorkers = node["Workers Planned"] ?? workers;
