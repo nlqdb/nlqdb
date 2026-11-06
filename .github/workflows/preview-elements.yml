@@ -34,13 +34,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # `bunx wrangler` resolves wrangler's bin via `#!/usr/bin/env
       # node`, so wrangler runs on the runner's Node — not Bun.
       # Wrangler ≥4.x requires Node ≥22; ubuntu-latest currently
       # ships Node 20.
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
 
@@ -65,7 +65,7 @@ jobs:
           command: pages deploy packages/elements/dist --project-name=nlqdb-elements --branch=pr-${{ github.event.number }} --commit-dirty=true
 
       - name: Sticky preview comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const aliasUrl = `${{ steps.deploy.outputs.pages-deployment-alias-url }}`;

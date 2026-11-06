@@ -72,7 +72,7 @@ jobs:
     # without flaking the run.
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
 
       # BIRD Mini-Dev's questions JSON is on HuggingFace; the SQLite
@@ -81,7 +81,7 @@ jobs:
       # download.
       - name: Cache BIRD Mini-Dev fixtures
         id: bird-cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: bird_data
           key: bird-mini-dev-v2-${{ hashFiles('.github/workflows/quality-eval-bird-mini.yml') }}
@@ -121,7 +121,7 @@ jobs:
       # re-burning quota. Keyed by sha so two code versions never share a
       # canonical run's partial scores.
       - name: Restore full-run checkpoint
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tools/eval/results/*.partial.jsonl
           key: eval-full-bird-${{ github.sha }}-${{ github.run_id }}
@@ -194,13 +194,13 @@ jobs:
 
       - name: Save full-run checkpoint
         if: always() && steps.ckpt.outputs.exists == 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tools/eval/results/*.partial.jsonl
           key: eval-full-bird-${{ github.sha }}-${{ github.run_id }}
 
       - name: Upload report JSON
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: quality-eval-bird-mini-${{ github.run_id }}
@@ -280,12 +280,12 @@ jobs:
       SC_SAMPLES: ${{ inputs.self_consistency || '1' }}
       SC_TEMPERATURE: ${{ inputs.sc_temperature || '0.7' }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
 
       - name: Cache BIRD Mini-Dev fixtures
         id: bird-cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: bird_data
           key: bird-mini-dev-v2-${{ hashFiles('.github/workflows/quality-eval-bird-mini.yml') }}
@@ -321,7 +321,7 @@ jobs:
       # next `mode: smoke` dispatch. Rolling key (run_id) + restore-keys
       # prefix gives the standard restore-latest / save-new cache pattern.
       - name: Restore eval state
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: eval-state
           key: eval-state-bird-${{ github.run_id }}
@@ -394,7 +394,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload smoke report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: quality-eval-bird-smoke-${{ github.run_id }}
           path: eval-state/*.json
@@ -410,7 +410,7 @@ jobs:
 
       - name: Save eval state
         if: always()
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: eval-state
           key: eval-state-bird-${{ github.run_id }}

@@ -83,13 +83,13 @@ jobs:
     steps:
       # SHA-pinned; Dependabot rolls these forward when the upstream
       # tag moves.
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # `bunx wrangler` resolves wrangler's bin via `#!/usr/bin/env
       # node`, so wrangler runs on the runner's Node — not Bun.
       # Wrangler ≥4.x requires Node ≥22; ubuntu-latest currently
       # ships Node 20.
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
 
@@ -142,7 +142,7 @@ jobs:
       # unblocked; once the repo flips public or we're on a paid
       # plan, attestations start publishing with no further change.
       - name: SLSA build provenance attestation
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         continue-on-error: true
         with:
           subject-path: "apps/api/dist/**"

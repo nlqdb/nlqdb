@@ -95,7 +95,7 @@ jobs:
       # volume) when triaging a stuck case. Off by default — keeps job logs readable.
       LANGCHAIN_VERBOSE: "false"
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # opencheck deps intentionally excluded from root workspaces (LangChain v1 + Playwright MCP would bloat global CI install).
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -104,7 +104,7 @@ jobs:
 
       # Playwright bins live at ~/.cache/ms-playwright; no postinstall — explicit install step below writes them.
       - name: Restore Playwright browser cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('tests/opencheck/package.json') }}
@@ -113,7 +113,7 @@ jobs:
 
       # Skip LLM re-derivation on unchanged UI; keyed on app + config file; cleared below and re-saved fresh.
       - name: Restore opencheck step cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tests/opencheck/.opencheck-cache
           key: opencheck-cache-${{ runner.os }}-${{ inputs.config_file }}-${{ hashFiles('apps/web/src/**', 'apps/api/src/**', format('tests/opencheck/{0}', inputs.config_file)) }}
@@ -434,7 +434,7 @@ jobs:
       # Always upload even on success — failure runs drag trace.zip into trace.playwright.dev for triage.
       - name: Upload recordings
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: opencheck-recordings-${{ inputs.config_file }}-${{ github.run_id }}
           path: tests/opencheck/.opencheck-recordings/
