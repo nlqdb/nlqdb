@@ -60,7 +60,7 @@ content or marketplace lever; existing pages stay live.
    leverage, before any code.
 2. **No change without a number.** Before touching code, name the scorecard
    number you intend to move, and its current value. If you cannot name one,
-   either do D5 deletion/cleanup (dead code, stale prose)
+   either do deletion/cleanup (dead code, stale prose)
    or end the run as a null run (step 2) — never build. **Suite pass-counts
    and new-test counts are never the number moved:** a test is evidence,
    not a delta. Name the scorecard row (or a named direct input to one) the
