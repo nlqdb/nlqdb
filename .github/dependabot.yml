@@ -19,6 +19,20 @@ updates:
       bun-major:
         patterns: ["*"]
         update-types: ["major"]
+    # OTel JS SDK 2.x peers @opentelemetry/api <1.10.0, and the 0.300 exporters are the
+    # SDK 3.x line: these move together in one SDK 3.x migration, not a minor bump.
+    ignore:
+      - dependency-name: "@opentelemetry/api"
+        versions: [">=1.10.0"]
+      - dependency-name: "@opentelemetry/exporter-*-otlp-http"
+        versions: [">=0.300.0"]
+      # agents pins @modelcontextprotocol/sdk exactly (root override keeps one copy);
+      # 0.33 also wants zod 4 and the split @modelcontextprotocol/server, so the
+      # three move together in one migration of apps/mcp, not a minor bump.
+      - dependency-name: "agents"
+        versions: [">=0.13.0"]
+      - dependency-name: "@modelcontextprotocol/sdk"
+        versions: [">=1.30.0"]
   - package-ecosystem: npm
     directory: /tests/opencheck
     schedule:
