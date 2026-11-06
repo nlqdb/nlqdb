@@ -91,6 +91,27 @@ const secondaryStorage = {
     await kv.put(key, value, { expirationTtl });
   },
   delete: async (key: string) => kv.delete(key),
+  // KV has no atomic primitives: both are read-then-write, the same
+  // best-effort semantics Better Auth < 1.7 had over this KV binding.
+  getAndDelete: async (key: string) => {
+    const value = await kv.get(key);
+    if (value !== null) await kv.delete(key);
+    return value;
+  },
+  // Fixed window: the expiry set on creation rides in metadata so later
+  // increments keep it instead of sliding it (KV `put` resets expiry).
+  increment: async (key: string, ttl: number) => {
+    const now = Math.floor(Date.now() / 1000);
+    const { value, metadata } = await kv.getWithMetadata<{ exp: number }>(key);
+    const live = value !== null && metadata?.exp !== undefined && metadata.exp > now;
+    const exp = live ? metadata.exp : now + ttl;
+    const count = (live ? Number(value) || 0 : 0) + 1;
+    await kv.put(key, String(count), {
+      expiration: Math.max(exp, now + KV_MIN_TTL_SECONDS),
+      metadata: { exp },
+    });
+    return count;
+  },
 };
 
 export const auth = betterAuth({
@@ -248,14 +269,17 @@ export const auth = betterAuth({
       ],
   // No `crossSubDomainCookies` → no `Domain=` → host-only session cookie
   // on `app.nlqdb.com` (`SK-WEB-009`).
-  ...(isDev
-    ? {}
-    : {
-        advanced: {
+  advanced: {
+    // D1 schema is owned by `apps/api/migrations`; Better Auth 1.7's init-time
+    // introspection runs before they apply in tests and caches the mismatch.
+    database: { validateSchema: false },
+    ...(isDev
+      ? {}
+      : {
           cookiePrefix: "__Secure",
           defaultCookieAttributes: { sameSite: "lax", secure: true, httpOnly: true },
-        },
-      }),
+        }),
+  },
   plugins: [
     magicLink({
       expiresIn: MAGIC_LINK_TTL_SECONDS,
