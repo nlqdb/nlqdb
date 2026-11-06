@@ -32,18 +32,15 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
      Scheduled run for nlqdb/nlqdb: read every resource at https://mcp.hochly.com/mcp, then follow rules://scheduled-run and this repo's docs/AGENTS.md once main has it, opening, reviewing and merging pull requests yourself. End with the report.
      ```
 
-## Uninstall the Renovate app
+## Turn on Dependabot security updates
 
 - **Type:** account action · ⏱ ~1 min · since 2026-11-06
-- **Done so far:** `renovate.json5` is deleted for `.github/dependabot.yml`
-  (shared rules). With the app still installed and no config, Renovate opens
-  an onboarding PR.
+- **Done so far:** `.github/dependabot.yml` replaces the unused
+  `renovate.json5` (the Renovate app was never installed); version bumps run
+  from the file alone, CVE PRs need the repo toggle.
 - **Ask:**
-  1. <https://github.com/organizations/nlqdb/settings/installations> →
-     Renovate → **Configure** → remove `nlqdb/nlqdb` (or **Uninstall**).
-  2. <https://github.com/nlqdb/nlqdb/settings/security_analysis> → enable
-     **Dependabot security updates** if it is off (Renovate raised CVE PRs
-     before).
+  1. <https://github.com/nlqdb/nlqdb/settings/security_analysis> → enable
+     **Dependabot alerts** and **Dependabot security updates** if either is off.
 
 ## Add the two rules you named to the rules server
 
