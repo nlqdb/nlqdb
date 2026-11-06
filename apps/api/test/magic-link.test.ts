@@ -86,7 +86,8 @@ describe("magic-link lifecycle", () => {
     // `/magic-link` rather than `/sign-in/magic-link`), the global
     // 100/min default applies and there's no per-IP gate distinct from
     // the rest of `/api/auth/*`. This test pins the actual behavior:
-    // 5 successful sends from one X-Forwarded-For, then the 6th gets
+    // 5 successful sends from one `cf-connecting-ip` (the only client-IP
+    // header a Worker receives), then the 6th gets
     // a 4xx (Better Auth returns 429 for rate-limit; we assert >=400
     // so a non-429 4xx from a future BA bump still flags here).
     //
@@ -95,7 +96,7 @@ describe("magic-link lifecycle", () => {
     const ip = "203.0.113.42";
     const headers = {
       "content-type": "application/json",
-      "x-forwarded-for": ip,
+      "cf-connecting-ip": ip,
       origin: ORIGIN,
     };
     for (let i = 0; i < 5; i++) {
@@ -119,6 +120,18 @@ describe("magic-link lifecycle", () => {
     });
     expect(blocked.status).toBeGreaterThanOrEqual(400);
     expect(blocked.status).toBeLessThan(500);
+
+    // Another visitor keeps their own bucket — an unresolved IP would put
+    // everyone in one shared bucket and lock them all out together.
+    const other = await SELF.fetch(`${ORIGIN}/api/auth/sign-in/magic-link`, {
+      method: "POST",
+      headers: { ...headers, "cf-connecting-ip": "198.51.100.7" },
+      body: JSON.stringify({
+        email: `t-ip-other-${crypto.randomUUID()}@example.com`,
+        callbackURL: `${ORIGIN}/app`,
+      }),
+    });
+    expect(other.status).toBe(200);
   });
 
   it("a previously-redeemed token cannot mint a second session (single-use)", async () => {
