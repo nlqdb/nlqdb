@@ -93,8 +93,8 @@ out of scope here until §1 resolves) ·
     feature folder.
   - **Leave as `planned` stub.** Both interpretations had distinct
     answers; the direction question was resolvable on principle
-    (`GLOBAL-019`) without waiting for traffic. Per D1, resolve
-    open questions; per D3, clarity always increases.
+    (`GLOBAL-019`) without waiting for traffic. Open questions
+    are resolved, not carried.
 
 ### SK-BYOTEL-002 — Egress configuration model: per-account, dual-emit default, inherit `SK-OBS-003` sampling, reuse the `SK-DB-011` KEK envelope
 

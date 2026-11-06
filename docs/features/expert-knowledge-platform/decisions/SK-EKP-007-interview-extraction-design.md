@@ -68,7 +68,7 @@ bet (see Q5).
    the *ceiling*, never the *driver* — and **the session-end criterion is
    the time-box alone** (reconciled 2026-08-07; stake 4): schema-fill state
    informs what the *next* session opens with, never extends the current
-   one. Source: guidelines habits + Goal-first (`§0`).
+   one. Source: `rules://guidelines` + Goal-first (`§0`).
 
 2. **Contested facts at paid query time.** **Validity-window model, never
    overwrite.** A contradiction invalidates the prior fact's window and
@@ -160,7 +160,7 @@ EK-01's research is settled (`P2`, receipts in the worksheet); what was
 missing was a *record fixing the choices* so EK-04 and EK-05 build to one
 seam instead of each re-deriving it. Each of the five questions is a fork a
 later agent would otherwise re-litigate — documenting the resolution is
-exactly the D5 "non-obvious and expensive to reverse" bar (the interview
+exactly the "non-obvious and expensive to reverse" bar (the interview
 shape is the product's competitive surface and its hardest UX problem). The
 boundary invariant is load-bearing and cheaply testable now, so it is stated
 now (bullet-proof: make the bad state unreachable, not caught later).

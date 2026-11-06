@@ -30,9 +30,7 @@ jobs:
     timeout-minutes: 6
     container:
       # Pinned to a digest. `:latest` was a known supply-chain hole;
-      # Renovate's `github-actions` manager does NOT pin container
-      # images in `container:` blocks (only `uses:` step actions),
-      # so the pin is manual. Roll forward by replacing both the tag
+      # the pin is manual. Roll forward by replacing both the tag
       # comment and the digest after pulling a new image and copying
       # the value from `docker images --digests semgrep/semgrep`.
       # Latest at pin time: 1.160.0 (Apr 2026). Tag remains in the
