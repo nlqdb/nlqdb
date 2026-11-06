@@ -30,16 +30,16 @@
     "hono": "^4.13.16",
     "kysely": "^0.29.8",
     "kysely-d1": "^0.4.0",
-    "libpg-query": "^17.7.3",
+    "libpg-query": "^18.2.2",
     "node-sql-parser": "^5.4.0",
-    "stripe": "^22.1.0",
-    "zod": "^3.25.76"
+    "stripe": "^23.1.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "latest",
     "@cloudflare/workers-types": "latest",
-    "typescript": "^5.6.0",
-    "vitest": "^4.1.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0",
     "wrangler": "^4.157.0"
   }
 }
