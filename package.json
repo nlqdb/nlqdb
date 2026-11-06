@@ -42,17 +42,20 @@
   "overrides": {
     "@modelcontextprotocol/sdk": "1.29.0",
     "hono": "^4.12.25",
-    "shell-quote": "^1.8.4",
-    "devalue": "^5.8.1",
+    "shell-quote": "^1.12.0",
+    "devalue": "^5.9.4",
     "ws": "^8.21.0",
     "qs": "^6.15.2",
     "yaml": "^2.9.0",
     "postcss": "^8.5.14",
-    "fast-uri": "^3.1.4",
-    "sharp": "^0.35.3",
+    "fast-uri": "^3.1.9",
+    "sharp": "^0.35.5",
     "tar": "^7.5.22",
-    "brace-expansion": "^5.0.8",
+    "brace-expansion": "^5.0.12",
     "esbuild": "^0.28.1",
-    "@hono/node-server": "^2.0.11"
+    "@hono/node-server": "^2.0.11",
+    "seroval": "~1.6.11",
+    "dompurify": "^3.4.17",
+    "proxy-addr": "^2.0.8"
   }
 }
