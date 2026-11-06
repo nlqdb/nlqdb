@@ -12,7 +12,7 @@
 #
 # Committed-but-dark until `NLQDB_MEMORY_DB` (the ops memory DB provisioned by
 # D-04) exists: `NLQDB_API_KEY` (a self-minted `sk_mcp_*` key) was set
-# 2026-08-04 (`founder-actions-log.md` Era 5). When either is absent the run prints the
+# 2026-08-04 (`founder-actions-log.md` Era 5, deleted; git history). When either is absent the run prints the
 # reason and exits 0 — green, never red — so this workflow lights up as a flag
 # flip once the secret + DB land, not a refactor.
 #
