@@ -6,7 +6,7 @@
   "type": "module",
   "dependencies": {
     "@langchain/openai": "^1.4.5",
-    "@playwright/mcp": "0.0.60",
+    "@playwright/mcp": "0.0.84",
     "opencheck": "^0.3.0"
   }
 }
