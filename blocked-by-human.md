@@ -20,18 +20,6 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   context · benefits · risks · alternatives, ≤ 5 words each>
 -->
 
-## Point the scheduled routine at the shared rules
-
-- **Type:** account action · ⏱ ~1 min · since 2026-11-06
-- **Done so far:** [`docs/AGENTS.md`](docs/AGENTS.md) holds the cron prompt
-  per `rules://structure`; `/daily` stays this repo's own steps.
-- **Ask:**
-  1. Open <https://claude.ai/code/routines>, edit the nlqdb routine.
-  2. Replace its prompt with:
-     ```
-     Scheduled run for nlqdb/nlqdb: read every resource at https://mcp.hochly.com/mcp, then follow rules://scheduled-run and this repo's docs/AGENTS.md once main has it, opening, reviewing and merging pull requests yourself. End with the report.
-     ```
-
 ## Turn on Dependabot security updates
 
 - **Type:** account action · ⏱ ~1 min · since 2026-11-06
@@ -41,17 +29,6 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
 - **Ask:**
   1. <https://github.com/nlqdb/nlqdb/settings/security_analysis> → enable
      **Dependabot alerts** and **Dependabot security updates** if either is off.
-
-## Add the two rules you named to the rules server
-
-- **Type:** account action · ⏱ ~10 min · since 2026-11-06
-- **Done so far:** nlqdb keeps both until they are served (`CLAUDE.md` P4
-  D1–D3, P6 + [`docs/guidelines.md`](docs/guidelines.md) §5); the run that
-  sees them on https://mcp.hochly.com/mcp deletes the repo copies.
-- **Ask:**
-  1. Add to `rules/workflow.md`: resolve open questions before documenting
-     (web search + short Fable 5.1 consult sessions); never document ambiguity.
-  2. Add to `rules/guidelines.md`: done = a real E2E walk of the critical path.
 
 ## Claim the `nlqdb` npm name for the `npx nlqdb attach` door
 

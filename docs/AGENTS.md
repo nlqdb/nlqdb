@@ -5,8 +5,11 @@ This repo's part of the scheduled run, read alongside `rules://scheduled-run`.
 ## Cron prompt
 
 ```
-Scheduled run for nlqdb/nlqdb: read every resource at https://mcp.hochly.com/mcp, then follow rules://scheduled-run and this repo's docs/AGENTS.md once main has it, opening, reviewing and merging pull requests yourself. End with the report.
+Invoke /daily scheduled run
 ```
+
+`CLAUDE.md` loads every session and its first section sends the run to the
+shared rules, so the prompt only names the entry point.
 
 ## Modes
 
