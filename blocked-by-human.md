@@ -20,16 +20,6 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   context · benefits · risks · alternatives, ≤ 5 words each>
 -->
 
-## Turn on Dependabot security updates
-
-- **Type:** account action · ⏱ ~1 min · since 2026-11-06
-- **Done so far:** `.github/dependabot.yml` replaces the unused
-  `renovate.json5` (the Renovate app was never installed); version bumps run
-  from the file alone, CVE PRs need the repo toggle.
-- **Ask:**
-  1. <https://github.com/nlqdb/nlqdb/settings/security_analysis> → enable
-     **Dependabot alerts** and **Dependabot security updates** if either is off.
-
 ## Claim the `nlqdb` npm name for the `npx nlqdb attach` door
 
 - **Type:** account action · ⏱ ~5 min · since 2026-10-31
