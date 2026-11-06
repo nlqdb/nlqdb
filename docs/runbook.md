@@ -419,10 +419,10 @@ and never controls access (`GLOBAL-007`).
 
 Deploys via `.github/workflows/deploy-web.yml` on merge to main when
 `apps/web/**` or `packages/elements/**` changes. SLSA L3 build
-provenance is attested via `actions/attest-build-provenance@v2`,
-with `continue-on-error: true` until the repo flips public or
-moves to a paid GitHub plan (the attestation API is gated on
-either; PR #56 made the step non-blocking).
+provenance is attested via `actions/attest-build-provenance` (the
+API needs a public repo or a paid plan; the repo is public), with
+`continue-on-error: true` so an attestation failure never blocks
+the deploy.
 
 Manual re-deploy: workflow_dispatch on the Actions tab, or
 `bun run --cwd apps/web deploy` from a dev machine.

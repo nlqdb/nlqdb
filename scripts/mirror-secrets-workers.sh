@@ -85,7 +85,9 @@ set +a
 
 # --- per-app Worker-runtime subset --------------------------------------
 # What each app reads from c.env / Cloudflare.Env at request time. Keep
-# in sync with the corresponding `apps/<app>/src/env.d.ts`. Secrets for
+# in sync with the corresponding `apps/<app>/src/env.d.ts`.
+# CI passes each name in deploy-<app>.yml's `Sync Worker secrets` env:
+# (SK-CIPERM-006) — a name added here is added there too. Secrets for
 # slices not yet shipped are deliberately omitted until the slice that
 # adds the runtime read.
 select_secrets() {
