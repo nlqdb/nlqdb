@@ -279,6 +279,11 @@ export const auth = betterAuth({
     // D1 schema is owned by `apps/api/migrations`; Better Auth 1.7's init-time
     // introspection runs before they apply in tests and caches the mismatch.
     database: { validateSchema: false },
+    // Workers carry the client IP only in Cloudflare's `cf-connecting-ip`
+    // (set by the edge, not client-spoofable); Better Auth's default
+    // `x-forwarded-for` is absent, which collapsed every visitor into one
+    // shared rate-limit bucket per auth path.
+    ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
     ...(isDev
       ? {}
       : {
