@@ -77,19 +77,26 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
     expect(rows).toHaveLength(1);
   });
 
-  // The synthetic app's workload: two hot lookups on unindexed columns, and
+  // The synthetic app's workload: three hot lookups on unindexed columns (the
+  // third an ORM's `IN` list, planned as `= ANY (ARRAY[…])`), and
   // three decoys an index on the column wouldn't help — a filter keeping 25 %
   // of its table, a lookup already served by comments_user_id_idx, and a
   // bigint compared as text.
   const HOT = [
     "SELECT id FROM dba_synth.posts WHERE title = $1",
     "SELECT id FROM dba_synth.users WHERE email = $1",
+    "SELECT id FROM dba_synth.posts WHERE author_id IN ($1, $2, $3)",
   ];
   async function runWorkload(): Promise<FingerprintWindow[]> {
     const before = await snapshotPostgresStatements(conn.query, SCHEMA);
     for (let i = 0; i < 300; i++) {
       await conn.query(HOT[0] as string, [`post ${1 + ((i * 37) % 20000)}`]);
       await conn.query(HOT[1] as string, [`u${1 + ((i * 7) % 2000)}@example.com`]);
+      await conn.query(HOT[2] as string, [
+        1 + (i % 2000),
+        1 + ((i * 7) % 2000),
+        1 + ((i * 13) % 2000),
+      ]);
       await conn.query("SELECT count(*) FROM dba_synth.memberships WHERE region = $1", [
         `r${i % 4}`,
       ]);
@@ -107,7 +114,9 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
     await conn.query("SELECT pg_stat_statements_reset()", []);
     const before = await runWorkload();
     const proposals = await observePostgresWorkload(conn.query, SCHEMA, before);
-    expect(proposals.map((p) => `${p.table}(${p.columns.join(",")}) t${p.tier}`)).toEqual([
+    // Heaviest first, so the order follows the run's timings: compare as a set.
+    expect(proposals.map((p) => `${p.table}(${p.columns.join(",")}) t${p.tier}`).sort()).toEqual([
+      "posts(author_id) t1",
       "posts(title) t1",
       "users(email) t1",
     ]);
@@ -122,7 +131,7 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
     } finally {
       await ro.close();
     }
-    expect(proposals[0]?.evidence.workload).toMatchObject({
+    expect(proposals.find((p) => p.columns[0] === "title")?.evidence.workload).toMatchObject({
       fingerprint: hot(before, HOT[0] as string).fingerprint,
       calls: 300,
     });
@@ -147,7 +156,9 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
 
   it("auto-reverts an apply whose fingerprint regressed in the verify window", async () => {
     await conn.query("SELECT pg_stat_statements_reset()", []);
-    const [proposal] = await observePostgresWorkload(conn.query, SCHEMA, await runWorkload());
+    const proposal = (await observePostgresWorkload(conn.query, SCHEMA, await runWorkload())).find(
+      (p) => p.table === "posts" && p.columns[0] === "title",
+    );
     if (!proposal) throw new Error("no proposal to apply");
     await applyProposal(conn.query, proposal);
     // The regression is injected, not caused by the index: JIT forced on every
