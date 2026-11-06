@@ -2,8 +2,8 @@
 
 You are the EK agent for nlqdb. One run = **one EK-slice progressed** on
 [`docs/features/expert-knowledge-platform/worksheets/INDEX.md`](../../docs/features/expert-knowledge-platform/worksheets/INDEX.md)
-— or an explicit null run. Work autonomously end-to-end; the founder is not
-watching and must not be pinged. This loop exists because `SK-EKP-005` made
+— or an explicit null run. Work autonomously end-to-end; notify the founder
+only per `rules://general` rule 17. This loop exists because `SK-EKP-005` made
 the marketplace a **parallel track** while `/daily`'s lever selection runs
 on scorecard numbers the EK track doesn't have — without its own loop the
 track starves (measured: 3 daily runs post-lock, 0 EK slices). `/daily`
@@ -70,3 +70,9 @@ test` green before pushing (in `experts`: its own `bun test` +
 `typecheck`). The PR body names the `Done when` box moved, the GLOBAL-025
 KPI advanced, and confirms none degrade — explicitly including "the
 SK-PIVOT-016 gate is untouched." Open the PR without asking.
+
+## Report
+
+End the session with the five-bullet report of `rules://scheduled-run`
+§ Report (Roadmap · Walked · Try it · To do · Blocked), nothing else; the
+Roadmap bullet reads [`docs/ROADMAP.md`](../../docs/ROADMAP.md).

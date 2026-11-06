@@ -1,7 +1,7 @@
 # Scorecard — current state
 
 Point-in-time tracker, regenerated each [`/daily`](../.claude/commands/daily.md)
-run. Current state only — no changelog (≤20 KB cap). History: `git log` +
+run. Current state only — no changelog. History: `git log` +
 `progress/quality-score-verification-log.md`.
 
 **Goal ([`GLOBAL-043`](decisions/GLOBAL-043-attach-first-autonomous-dba.md)):** attach, propose, apply, verify, revert — the Postgres spike (market proof) and [rateme12's D1 attached](history/dogfood-iterations/002-rateme12-attach.md) (dogfood); KPIs A–C below are the measure.
@@ -55,7 +55,7 @@ run. Current state only — no changelog (≤20 KB cap). History: `git log` +
 | 21 | Channels live with attributable yield | **4 live** — organic search + dev.to + npm + GitHub. MCP official registry published 07-22; Glama crawl-listed; Smithery/PulseMCP 0. First-touch attribution live since 07-19; `source_json` non-null **0**, for want of strangers, not instrument | → ≥ 5 live. Growth comes only from not-yet-live channels (R-05 registries, human-norm venues) |
 | | **Dogfood iteration** — [`GLOBAL-042`](decisions/GLOBAL-042-dogfood-iteration-loop.md) loop | | brief: [`002-rateme12-attach.md`](history/dogfood-iterations/002-rateme12-attach.md) |
 | 22 | Dogfood 002 — rateme12 attached (D1) | **unmeasured on the real D1** — the attach builds the instrument; its API door shipped run 271 (synthetic KPI A 117.3 ms through the door, row EA), the D1 apply run 272 (rows read 5000 → 51, row EB), Tier 1 run 273 (3/3), scheduled in the `dba_observe` job run 274 (2/2 on the first tick) and runs here once 1a's D1 slices merge (`RATEME12_D1_TOKEN` set 11-04) | KPI A–C on rateme12's D1 |
-| | **Human queue** — the one non-automatable actor | **depth 11**. Head: **claim the `nlqdb` npm name for `npx nlqdb attach`** (6 d). #2 delete the `rateme12` Worker and its domain (9 d). #3 🔒 `/v1/ask` deletion scope. #4 🔒 public-copy switch date. #5 🔒 `sk_mcp_` attach. #6 recruit 10 builders (gated on KPI B > 0 on rateme12). #7 **Show HN launch** (gated on the love gate). #8 email-router deploy+walk. #9 Anthropic connector (gated on the attach MCP tools). #10 PulseMCP + mcp.directory (gated likewise). #11 nlqdb-memory → cc-marketplace (parked on the spike). | [`blocked-by-human.md`](blocked-by-human.md). Open PRs at step 0: **0 non-draft + 1 draft** (#1179, 23 d). After this run: **1 non-draft** (#1234, run 277). |
+| | **Human queue** — the one non-automatable actor | **depth 11**. Head: **claim the `nlqdb` npm name for `npx nlqdb attach`** (6 d). #2 delete the `rateme12` Worker and its domain (9 d). #3 🔒 `/v1/ask` deletion scope. #4 🔒 public-copy switch date. #5 🔒 `sk_mcp_` attach. #6 recruit 10 builders (gated on KPI B > 0 on rateme12). #7 **Show HN launch** (gated on the love gate). #8 email-router deploy+walk. #9 Anthropic connector (gated on the attach MCP tools). #10 mcp.directory (gated likewise; PulseMCP paused upstream). #11 nlqdb-memory → cc-marketplace (parked on the spike). | [`blocked-by-human.md`](../blocked-by-human.md). Open PRs at step 0: **0 non-draft + 1 draft** (#1179, 23 d). After this run: **1 non-draft** (#1234, run 277). |
 
 ## Shipped distribution
 

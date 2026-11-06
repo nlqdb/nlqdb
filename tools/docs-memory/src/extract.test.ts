@@ -102,7 +102,7 @@ Only #1 can move real strangers.
 `;
 
 describe("extractBlockedQueue", () => {
-  const { entities, facts } = extractBlockedQueue("docs/blocked-by-human.md", BLOCKED_MD);
+  const { entities, facts } = extractBlockedQueue("blocked-by-human.md", BLOCKED_MD);
 
   test("skips the header/separator and reads only numbered rows", () => {
     expect(entities).toEqual([
@@ -116,21 +116,21 @@ describe("extractBlockedQueue", () => {
     expect(at(facts, 0).content).toBe(
       "blocked (queue #1, since 2026-06-13): Fire the Show HN launch sequence",
     );
-    expect(at(facts, 0).source.key).toBe("docs/blocked-by-human.md#queue:1");
+    expect(at(facts, 0).source.key).toBe("blocked-by-human.md#queue:1");
   });
 });
 
 describe("convergence keys and digests", () => {
   test("re-extracting an unchanged corpus yields identical keys and digests (idempotent)", () => {
-    const first = extractCorpus([{ path: "docs/blocked-by-human.md", content: BLOCKED_MD }]);
-    const second = extractCorpus([{ path: "docs/blocked-by-human.md", content: BLOCKED_MD }]);
+    const first = extractCorpus([{ path: "blocked-by-human.md", content: BLOCKED_MD }]);
+    const second = extractCorpus([{ path: "blocked-by-human.md", content: BLOCKED_MD }]);
     expect(second).toEqual(first);
   });
 
   test("editing a row's value changes only that row's digest, not its key", () => {
-    const before = extractBlockedQueue("docs/blocked-by-human.md", BLOCKED_MD);
+    const before = extractBlockedQueue("blocked-by-human.md", BLOCKED_MD);
     const after = extractBlockedQueue(
-      "docs/blocked-by-human.md",
+      "blocked-by-human.md",
       BLOCKED_MD.replace("2026-06-13", "2026-06-20"),
     );
     expect(at(after.facts, 0).source.key).toBe(at(before.facts, 0).source.key);

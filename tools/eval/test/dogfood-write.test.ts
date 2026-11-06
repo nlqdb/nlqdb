@@ -87,7 +87,9 @@ describe("deltaWrites", () => {
 describe("blockedWrites", () => {
   const q = (...titles: string[]) =>
     titles
-      .map((t) => `## ${t}\n\n~5 min · blocked since 2026-09-18. Why.\n\n1. Step.\n`)
+      .map(
+        (t) => `## ${t}\n\n- **Type:** decision · ⏱ ~5 min · since 2026-09-18\n- **Ask:** step.\n`,
+      )
       .join("\n");
   it("one write per bullet the run added, none for kept ones", () => {
     expect(blockedWrites("227", q("Old"), q("Old", "New"))).toEqual([

@@ -1,7 +1,6 @@
 # Billing constraints and philosophy
 
-Reference shard of [`stripe-billing/FEATURE.md`](FEATURE.md), split out per
-P4/D4 (FEATURE.md reached the 20 KB cap). Decisions (`SK-STRIPE-*`) stay in
+Reference shard of [`stripe-billing/FEATURE.md`](FEATURE.md), split out. Decisions (`SK-STRIPE-*`) stay in
 FEATURE.md; this file holds the cross-cutting billing philosophy that
 constrains every billing surface, not just the webhook handler.
 

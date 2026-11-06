@@ -1,0 +1,73 @@
+# Weekly and grouped to bound PR noise: minor+patch bumps arrive as one PR per
+# ecosystem, which the scheduled run's reviewer mode merges on green
+# (rules://scheduled-run § Bot PRs). Majors are left out of the group on
+# purpose: a major can change compiler or bundler behavior, so it is a
+# migration to adopt deliberately as its own PR, and one red major must never
+# block the whole group.
+# nlqdb: the non-workspace suites under tests/ are listed explicitly — they
+# are CI infrastructure and once piled up 19 unflagged advisories.
+version: 2
+updates:
+  - package-ecosystem: bun
+    directories: ["/", "/tests/e2e/examples", "/tests/e2e/mcp", "/tests/e2e/sdk"]
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      bun-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+  - package-ecosystem: npm
+    directory: /tests/opencheck
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      npm-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+  - package-ecosystem: gomod
+    directories: ["/cli", "/tests/e2e/cli"]
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      go-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+  - package-ecosystem: cargo
+    directory: /packages/nlqdb-rs
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      cargo-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+  - package-ecosystem: bundler
+    directory: /packages/nlqdb-rb
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      bundler-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+  - package-ecosystem: swift
+    directory: /packages/nlqdb-swift
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      swift-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+  - package-ecosystem: github-actions
+    directories: ["/", "/.github/actions/setup"]
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      actions-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

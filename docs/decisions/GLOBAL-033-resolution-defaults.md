@@ -19,7 +19,7 @@
   one-off answer that leaves the next agent re-asking (founder-directed
   2026-08-04: "teach to fish, don't provide the fish"). Escalations
   surface **only** as 🔒 *decision-to-lock* bullets in
-  [`blocked-by-human.md`](../blocked-by-human.md) — the single channel the
+  [`blocked-by-human.md`](../../blocked-by-human.md) — the single channel the
   founder reads — capped at **3** live 🔒 bullets; a fourth means merge or
   re-derive from the ladder first.
 

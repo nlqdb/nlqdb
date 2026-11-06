@@ -3,7 +3,7 @@
 The reach loop's scorecard-equivalent: **overwrite in place, no changelog**
 (`/reach` step 1). Slices, hard rules and the owed-work tracker live in
 [`INDEX.md`](INDEX.md); this file holds only the latest measured state, so it
-can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
+can be rewritten every cycle without growing that file.
 
 - **Cycle 2026-09-04 — DR holds 0.1 (third consecutive read); R-09's parked
   cc-marketplace venue surfaced into the founder queue so it is actionable, not
@@ -41,7 +41,7 @@ can be rewritten every cycle without pushing that file past CLAUDE.md `D4`.
   venue #6) had its exact `nlqdb-memory` payload parked only in the ledger +
   [mechanism notes](../acquisition-channels-mechanisms.md#row-27),
   which the founder does not read — so the venue was findable but **not
-  submittable**. Surfaced it into [`blocked-by-human.md` #4](../../blocked-by-human.md)
+  submittable**. Surfaced it into [`blocked-by-human.md` #4](../../../blocked-by-human.md)
   (the single file the founder reads; hard rule: account-walled submissions →
   founder queue), pointing at the parked payload rather than duplicating it, and
   flipped the ledger #27 disposition to founder-queued. Now actionable in ~10 min

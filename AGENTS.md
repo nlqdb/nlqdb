@@ -20,7 +20,7 @@ repo's facts and firm calls.
 It exists for the [mission](docs/END_GOAL.md#mission): encapsulate the
 trial-and-error journey every company walks to a good database infrastructure.
 Bet: [`GLOBAL-043`](docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md);
-its roadmap is the work queue, run by `/daily` step 2 (1a attach build on
+its roadmap, [`docs/ROADMAP.md`](docs/ROADMAP.md), is the work queue, run by `/daily` step 2 (1a attach build on
 synthetic DBs → 1b Postgres spike + rateme12 D1 attach,
 [`002`](docs/history/dogfood-iterations/002-rateme12-attach.md) → 2 deletion
 series → 3 playbook). Depth only; Show HN waits on the love gate.
@@ -35,7 +35,7 @@ series → 3 playbook). Depth only; Show HN waits on the love gate.
 - **P1. Never contradict documented decisions silently** — if a request would violate `END_GOAL.md`, a `GLOBAL-NNN` or an `SK-<FEATURE>-NNN`, stop and raise it with the user citing the ID; never rationalise around it.
 - **P2. Web-research first** — on any ambiguity or unfamiliar error, and before picking any dependency's version (`rules://general` rule 6); state the sources checked when proposing the fix.
 - **P3. Decisions live in one place** — `GLOBAL-NNN` only in `docs/decisions/GLOBAL-NNN-<slug>.md` (indexed in `docs/decisions.md`), `SK-<FEATURE>-NNN` only in that feature's `FEATURE.md`; cite by ID, never restate; the canonical home lands before dependent code ([`docs/feature-conventions.md`](docs/feature-conventions.md)).
-- **P4. Documentation rules** — D1 push the user to resolve open questions before documenting; D2 never document ambiguity; D3 clarity always increases; D4 no doc over 20 KB: split first, and an edit to a file already over must net-shrink it (exempt, append-only: `docs/research/automated-icp-validation-plan.md` + its mirror, `docs/progress/quality-score-verification-log.md`); D5 is `rules://general` rule 10.
+- **P4. Documentation rules** — D1 push the user to resolve open questions before documenting; D2 never document ambiguity; D3 clarity always increases; D5 is `rules://general` rule 10.
 - **P5. Simplest path** — `rules://general` rule 10; clean code beats backward compatibility while we are still building; the no-patch-on-patch rule is [`END_GOAL.md` § Architecture](docs/END_GOAL.md#architecture--simple-and-scalable).
 - **P6. World-class customer journeys** — `rules://general` rules 8 and 15 plus [`docs/guidelines.md`](docs/guidelines.md) §5; not done until a real E2E walk and the owner has used it.
 
@@ -132,7 +132,8 @@ supported; else read manually before editing.)
 | [`docs/END_GOAL.md`](docs/END_GOAL.md) | The finished product, flow by flow — **top-ranked**: outranks P1–P6 and every decision doc. |
 | [`docs/feature-conventions.md`](docs/feature-conventions.md) | How `docs/features/` is structured. Read before adding/editing a feature. |
 | [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, tech-stack rationale, risks. |
-| [`docs/phase-plan.md`](docs/phase-plan.md) | Roadmap pointer (`GLOBAL-043`) + the §6 monetization + scaling trigger. |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | The task queue: `GLOBAL-043`'s phases as boxes. |
+| [`docs/phase-plan.md`](docs/phase-plan.md) | Exit gate + the §6 monetization + scaling trigger. |
 | [`docs/runbook.md`](docs/runbook.md) | Operations: env, secrets, deploy, recovery; design-partner ref (§10). |
 | [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview script, inbound triage SLA. |
 | [`docs/performance.md`](docs/performance.md) | Span/metric/label catalog + perf goals. |
@@ -140,19 +141,20 @@ supported; else read manually before editing.)
 | [`docs/progress.md`](docs/progress.md) | Platform integration tiers (P0–P3). |
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
 | [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — threat matrix + gap analysis. |
-| [`docs/history/`](docs/history/) | Lessons learnt + [`founder-actions-log.md`](docs/history/founder-actions-log.md) (every human operator action) — one doc per topic. |
+| [`docs/history/`](docs/history/) | Lessons learnt — one doc per topic; the open dogfood iteration brief. |
 | [`docs/research/`](docs/research/) | Strategic research. |
 | [`docs/research/acquisition-channels.md`](docs/research/acquisition-channels.md) + [`-mechanisms.md`](docs/research/acquisition-channels-mechanisms.md) | Acquisition-channel ledger + its mechanism-notes shard. |
 | [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature. |
 | [`docs/scorecard.md`](docs/scorecard.md) | Current numbers; the `/daily` measurement tracker. |
-| [`docs/blocked-by-human.md`](docs/blocked-by-human.md) | The founder mailbox — open asks only. |
+| [`blocked-by-human.md`](blocked-by-human.md) | The founder mailbox — open asks only. |
 | [`docs/cost-ladder.md`](docs/cost-ladder.md) | Cost policy: $0/month until someone pays. |
 | [`docs/weekly-review.md`](docs/weekly-review.md) | `/weekly`'s direction check and focus number. |
 | [`docs/architecture-build-vs-buy.md`](docs/architecture-build-vs-buy.md) · [`docs/progress-p3-catalog.md`](docs/progress-p3-catalog.md) | Build-vs-buy calls · P3 integration catalog. |
-| [`.claude/commands/`](.claude/commands/) | The scheduled run: `/daily`, `/review`, `/weekly` (+ `/founder-summary`, `/ek`). |
+| [`.claude/commands/`](.claude/commands/) | `/daily`, `/review`, `/weekly` (+ `/founder-summary`, `/ek`). |
 | [`.github/pull_request_template.md`](.github/pull_request_template.md) | PR body: roadmap item + KPI, `Walked:`, blockers. |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | The CI gate (typecheck, Biome, tests). |
-| [`renovate.json5`](renovate.json5) | Dependency bumps (in place of Dependabot). |
+| [`.github/dependabot.yml`](.github/dependabot.yml) | Weekly grouped dependency bumps, `tests/` suites included. |
+| [`docs/AGENTS.md`](docs/AGENTS.md) | The scheduled run: cron prompt, modes, merge gate, deploys. |
 
 Each `FEATURE.md`'s `Status:` line is the canonical feature status.
 
@@ -183,8 +185,8 @@ lint` / `format` check 0 files (exit 1) — pass explicit paths. CI is unaffecte
 5. Every mutating endpoint accepts `Idempotency-Key` (`GLOBAL-005`).
 6. New capability added → SDK + CLI + MCP + elements all updated, or
    gap tracked in the affected feature (`GLOBAL-003`).
-7. PR body names the `GLOBAL-025` KPI advanced **and** the `GLOBAL-043`
-   roadmap item it moves (1a attach build, 1b spike/attach, 2 deletion, 3 playbook) or `none`;
+7. PR body names the `GLOBAL-025` KPI advanced **and** the
+   [`docs/ROADMAP.md`](docs/ROADMAP.md) phase it moves (1a attach build, 1b spike/attach, 2 deletion, 3 playbook) or `none`;
    no other KPI degrades. The
    [PR template](.github/pull_request_template.md) pre-fills the line.
 

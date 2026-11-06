@@ -36,7 +36,7 @@ copy never exceeds substance).
 Per [`GLOBAL-033`](../../../decisions/GLOBAL-033-resolution-defaults.md)
 the agent-doable remainder (drafting, substance mapping, placement) is done.
 The one genuinely founder-shaped item — signing off the legal wording — was
-queued in [`blocked-by-human.md`](../../../blocked-by-human.md) and
+queued in [`blocked-by-human.md`](../../../../blocked-by-human.md) and
 **resolved 2026-08-10** (see `history/founder-actions-log.md` Era 9). It was
 a **legal human action, not a `🔒` decision-to-lock**: `SK-EKP-001` is
 already locked, so publishing only *executes* it — there is no new

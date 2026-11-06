@@ -17,7 +17,7 @@ on:
     branches: [main]
     paths:
       - "docs/scorecard.md"
-      - "docs/blocked-by-human.md"
+      - "blocked-by-human.md"
   workflow_dispatch:
 
 # Default-deny at the root (SK-CIPERM-001); the job reads its checkout and

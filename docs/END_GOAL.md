@@ -11,7 +11,7 @@ already run — no phase labels in the flow. Shaping every row:
 P1–P6, every `GLOBAL` and every `FEATURE.md`. Read before taking an item or
 judging a PR: whatever contradicts a flow or principle here is the bug, fixed
 in that PR (or the founder amends this doc in that PR). A
-gap is a [`blocked-by-human.md`](blocked-by-human.md) decision (`GLOBAL-033`),
+gap is a [`blocked-by-human.md`](../blocked-by-human.md) decision (`GLOBAL-033`),
 never a licence to invent.
 
 ## Mission

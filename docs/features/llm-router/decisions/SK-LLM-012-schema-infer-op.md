@@ -1,8 +1,7 @@
 # SK-LLM-012 — `schema_infer` is a distinct router operation, not an alias of `plan`
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Sharded out
-unchanged to keep that doc under the 20 KB cap per `CLAUDE.md` §2 D4 —
-this body is verbatim, only the location moved.
+unchanged — this body is verbatim, only the location moved.
 
 - **Decision:** Hosted db.create's schema-inference call is its own router operation (`router.schemaInfer(...)` → span `llm.schema_infer`), not a re-use of `plan`. The two share the planner-tier provider chain and model defaults, but they ship distinct system prompts (`packages/llm/src/prompts/schema-inference.ts` vs the SQL-shaped `PLAN_SYSTEM`), distinct request shapes (`{goal}` vs `{goal, schema, dialect}`), and distinct response shapes (`{plan: Record<string, unknown>, model, confidence}` vs `{sql, model, confidence}` — both carry `model` + placeholder `confidence` for the SK-TRUST-002 trace block).
 - **Core value:** Honest latency, Bullet-proof, Simple

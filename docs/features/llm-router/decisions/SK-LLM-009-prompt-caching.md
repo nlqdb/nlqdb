@@ -1,8 +1,7 @@
 # SK-LLM-009 — Prompt caching on every provider that supports it (~80% input reduction)
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Sharded out
-unchanged to keep that doc under the 20 KB cap per `CLAUDE.md` §2 D4 —
-this body is verbatim, only the location moved.
+unchanged — this body is verbatim, only the location moved.
 
 - **Decision:** Every paid-provider call uses the provider's prompt-caching feature (Anthropic prompt caching, OpenAI cached tokens, Gemini context caching, AI Gateway response cache). System prompts and few-shot examples are written once per chain so the cache hits.
 - **Core value:** Free, Fast, Honest latency

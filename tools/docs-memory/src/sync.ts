@@ -27,9 +27,9 @@ const DOCS = resolve(REPO_ROOT, "docs");
 function corpusFiles(): { path: string; content: string }[] {
   const files: { path: string; content: string }[] = [];
 
-  const blocked = resolve(DOCS, "blocked-by-human.md");
+  const blocked = resolve(REPO_ROOT, "blocked-by-human.md");
   try {
-    files.push({ path: "docs/blocked-by-human.md", content: readFileSync(blocked, "utf8") });
+    files.push({ path: "blocked-by-human.md", content: readFileSync(blocked, "utf8") });
   } catch {
     // absent in a shallow checkout — the extractor simply yields no queue rows
   }

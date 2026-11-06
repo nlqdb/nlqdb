@@ -10,7 +10,7 @@ starting to scale. nlqdb **attaches** to its D1 — it does not move it:
 
 1. **Attach** with a Cloudflare API token + account id + database id
    (`RATEME12_D1_TOKEN` + `_ACCOUNT_ID` / `_DATABASE_ID`, set 2026-11-04 —
-   [`founder-actions-log.md`](../founder-actions-log.md)).
+   `founder-actions-log.md` (deleted; git history)).
 2. **First proposals within minutes** (KPI A < 5 min).
 3. **One index applied** with before/after on rateme12's hottest query
    (KPI B ≥ 1), on two deltas: p95 query time **and** rows read.
