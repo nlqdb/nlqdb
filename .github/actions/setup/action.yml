@@ -16,8 +16,8 @@
 # Node.js v22.0.0" unless we pin Node here. Locking it in the shared
 # setup keeps every wrangler-using workflow on the same version.
 #
-# Pin policy: every third-party `uses:` is SHA-pinned (renovate.json5
-# `pinDigests: true` keeps these rolling forward). Don't loosen back
+# Pin policy: every third-party `uses:` is SHA-pinned (Dependabot's
+# github-actions updater keeps these rolling forward). Don't loosen back
 # to floating tags — supply-chain compromise via tag hijack is the
 # whole reason for the SHA discipline.
 name: Setup nlqdb workspace

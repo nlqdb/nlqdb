@@ -30,8 +30,7 @@ Non-obvious path: `apps/web/src/lib/attribution.ts` captures the SK-GTM-007 firs
 ## Decisions
 
 Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-GTM-NNN`
-(the feature-conventions §4a sharded layout, adopted when `FEATURE.md` reached
-D4's 20 KB cap). The list below is the index; open the linked file for the full
+(the feature-conventions §4a sharded layout). The list below is the index; open the linked file for the full
 five-field block.
 
 - [**SK-GTM-001**](decisions/SK-GTM-001-one-module-owns-metric-definitions.md) — One module owns the metric definitions, including the internal-email split

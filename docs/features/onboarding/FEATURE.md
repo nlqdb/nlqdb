@@ -41,7 +41,7 @@ when-to-load:
 - **Why:** Surprise charges are the single fastest way to turn a free-tier user into a vocal detractor. The free-tier economics (`GLOBAL-013`) work because users trust that nothing expensive happens silently. A user who gets an unexpected $25 charge tells five people; a user who gets a clear "you're about to be charged $25 — confirm?" tells nobody.
 - **Consequence in code:** Stripe billing uses setup-intents only at card entry; actual charge requires a second explicit action on the billing surface. No code path in `apps/api/src/billing/**` fires a Stripe `PaymentIntent.create` without a user-initiated request. CI should fail any PR that adds a background-triggered charge.
 - **Alternatives rejected:** Auto-upgrade on limit hit ("upgrade to continue") — common pattern but fundamentally dishonest; contradicts `GLOBAL-013`. Trial period that auto-charges — explicitly rejected in the pricing design; the free tier *is* the trial.
-- **Source:** docs/guidelines.md §6 (bullet-proof checklist) · `docs/features/stripe-billing/FEATURE.md` (SK-STRIPE-001)
+- **Source:** docs/guidelines.md §3 (bullet-proof checklist) · `docs/features/stripe-billing/FEATURE.md` (SK-STRIPE-001)
 
 ### SK-ONBOARD-003 — Anonymous-first: first query before signup prompt
 
@@ -58,7 +58,7 @@ when-to-load:
 - **Why:** The trust-building moment for destructive ops is the diff preview — the user sees "this will delete 183 rows" before it happens, not after. The second-Enter is the minimum friction needed to prevent finger-slip mass deletes. It also de-risks the NL ambiguity problem: if the LLM misunderstood "delete old orders" and the diff shows 50k rows, the user catches it before any data is gone.
 - **Consequence in code:** The confidence gate in the `/v1/ask` pipeline (step 5 of the LLM loop — see `SK-ASK-002`) sets `requires_confirm: true` on destructive plans. The web surface renders the diff chip and blocks the approve button until a second interaction. CLI prompts "Press Enter to approve (Ctrl-C to cancel)." MCP returns the diff in the tool result and waits for a `nlqdb_query("...", "approve")` follow-up.
 - **Alternatives rejected:** Single-click approve — too fast; users approve without reading. Require typing "DELETE" to confirm — patronizing for small deletes; still necessary for mass-delete (add this as a per-surface escalation for >10k rows). No confirmation at all — explicitly rejected; the Replit incident (`docs/research-receipts.md §1`) shows what happens without guardrails.
-- **Source:** docs/guidelines.md §6 (bullet-proof checklist row "Accidental mass delete")
+- **Source:** docs/guidelines.md §3 (bullet-proof checklist row "Accidental mass delete")
 
 ### SK-ONBOARD-005 — Instrument the remaining onboarding funnel KPIs in [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)
 

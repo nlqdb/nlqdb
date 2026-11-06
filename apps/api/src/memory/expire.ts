@@ -25,8 +25,6 @@
 // `episodes` / `entities` are append-only / long-lived (E-01 DDL) and so
 // never expire — the same shape the write side enforces by rejecting a
 // `ttlSeconds` on them (one-sentence error, GLOBAL-012).
-//
-// Sibling: `docs/archive/prior-bet/agent-memory-pivot-worksheets/engine/E-04-ttl-decay.md`.
 
 import { DbConfigError, type DbRecord, type QueryResult } from "../ask/types.ts";
 import { isAgentMemoryV1Db } from "../db-create/presets/agent-memory-v1.ts";

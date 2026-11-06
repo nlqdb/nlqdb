@@ -83,7 +83,7 @@ builds on.
 
 ### SK-PIVOT-016 — The launch is condition-gated on a lived dogfood workload; conditions, never calendar dates
 
-**Body:** [`decisions/SK-PIVOT-016-dogfood-launch-gate.md`](./decisions/SK-PIVOT-016-dogfood-launch-gate.md). Founder-directed 2026-07-26: the launch-sequence bullet in `docs/blocked-by-human.md` fires when the dogfood gate's five criteria are green (≥ 100 real public-MCP asks from the ops workload, first-10 ≥ 95 % on it, zero silent data loss, temporal golden queries pass, live `/agents` dashboard) — agents may tighten criteria, only the founder loosens; calendar dates are banned from the gate. `/daily` restates gate progress (n/5) beside the bullet's age.
+**Body:** [`decisions/SK-PIVOT-016-dogfood-launch-gate.md`](./decisions/SK-PIVOT-016-dogfood-launch-gate.md). Founder-directed 2026-07-26: the launch-sequence bullet in `blocked-by-human.md` fires when the dogfood gate's five criteria are green (≥ 100 real public-MCP asks from the ops workload, first-10 ≥ 95 % on it, zero silent data loss, temporal golden queries pass, live `/agents` dashboard) — agents may tighten criteria, only the founder loosens; calendar dates are banned from the gate. `/daily` restates gate progress (n/5) beside the bullet's age.
 
 ### SK-PIVOT-017 — The dogfood workload is a productized docs→memory skill: structured extraction, one-way sync, markdown canonical
 
@@ -91,7 +91,7 @@ builds on.
 
 ### SK-PIVOT-018 — Memory ships persona-goal packs on the one canonical schema, never per-vertical schemas
 
-**Body:** [`decisions/SK-PIVOT-018-goal-packs.md`](./decisions/SK-PIVOT-018-goal-packs.md). Goal packs = extraction recipe + seed entities + golden queries, all on the one `agent_memory_v1` schema (the seed). Pack #1 repo-ops (`SK-PIVOT-017`); pack #2 founder-ops (accounts, credential *metadata* — never values — listings, the human-actions log, seeded from [`docs/history/founder-actions-log.md`](../../history/founder-actions-log.md)). A pack adds no pack-specific schema, endpoint or tool; `SK-PIVOT-021` supplies one shared product runner for all packs. Candidates for packs #3..N are proposals awaiting founder ranking in the archived `pack-candidates.md` (#1 founder-set 2026-07-29); none is decided.
+**Body:** [`decisions/SK-PIVOT-018-goal-packs.md`](./decisions/SK-PIVOT-018-goal-packs.md). Goal packs = extraction recipe + seed entities + golden queries, all on the one `agent_memory_v1` schema (the seed). Pack #1 repo-ops (`SK-PIVOT-017`); pack #2 founder-ops (accounts, credential *metadata* — never values — listings, the human-actions log, seeded from `docs/history/founder-actions-log.md` (deleted; git history)). A pack adds no pack-specific schema, endpoint or tool; `SK-PIVOT-021` supplies one shared product runner for all packs. Candidates for packs #3..N are proposals awaiting founder ranking in the archived `pack-candidates.md` (#1 founder-set 2026-07-29); none is decided.
 
 ### SK-PIVOT-019 — nlqdb publishes a reproducible cross-strategy memory benchmark; honest per-purpose winners, never an integrations program
 

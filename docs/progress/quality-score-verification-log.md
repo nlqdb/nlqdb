@@ -1,7 +1,7 @@
 # Engine quality — verification log
 
 > Append-only, dated, evidence-referenced log of every shipped engine-quality
-> lever; D4-exempt (append-only carve-out). The progress-bar tracker it was
+> lever. The progress-bar tracker it was
 > split from was retired 2026-09-05 — BIRD/Spider is a CI regression alarm,
 > not a KPI ([`GLOBAL-041`](../decisions/GLOBAL-041-autonomous-dba.md),
 > `SK-QUAL-002`). On any conflict the canonical `SK-*`/`GLOBAL-*` homes win.

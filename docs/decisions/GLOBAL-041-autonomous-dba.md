@@ -130,7 +130,7 @@
   - **Unchanged:** `GLOBAL-026` (LLM lanes), `GLOBAL-013` (strict $0), the
     infrastructure. The agent-memory pivot is archived; its rails survive
     only as far as the expert-knowledge platform needs them. Prior-bet docs
-    live under `docs/archive/` (nothing there is canonical). Docs pivot
+    are deleted (git holds them). Docs pivot
     executed in PR #1097 (2026-09-04); Q1–Q5 below resolved 2026-09-05.
 
 - **Alternatives rejected:**

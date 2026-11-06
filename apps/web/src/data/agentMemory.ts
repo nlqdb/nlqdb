@@ -17,8 +17,7 @@
 // counts. The `docs/` corpus was extracted by the D-01 skill and written
 // through the D-02 convergent `/v1/memory/remember` sync; the analytical
 // asks ran through the published `@nlqdb/mcp` stdio server (`nlqdb_query`
-// → `/v1/ask`, free chain). See
-// `docs/archive/prior-bet/agent-memory-pivot-worksheets/dogfood/D-04-first-corpus-sync.md`.
+// → `/v1/ask`, free chain).
 //
 // AGGREGATES ONLY (SK-PIVOT-016 hard rule). Counts, distributions,
 // timestamps, and the result tables of GROUP-BY golden queries — never

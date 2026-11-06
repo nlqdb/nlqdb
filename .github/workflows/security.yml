@@ -5,10 +5,9 @@
 # finding. CodeQL nightly is a separate workflow (CodeQL is heavier
 # and only matters once a week).
 #
-# Renovate covers dependency upgrades; vulnerabilityAlerts in
-# renovate.json5 surface CVEs as PRs the same day they're published.
-# That reach now extends to the non-workspace suites under `tests/`,
-# which the preset's `ignorePaths` used to exclude.
+# Dependabot (.github/dependabot.yml) covers dependency upgrades and,
+# with security updates on, raises CVE PRs the day they're published —
+# the non-workspace suites under `tests/` included.
 
 name: Security
 
@@ -31,9 +30,7 @@ jobs:
     timeout-minutes: 6
     container:
       # Pinned to a digest. `:latest` was a known supply-chain hole;
-      # Renovate's `github-actions` manager does NOT pin container
-      # images in `container:` blocks (only `uses:` step actions),
-      # so the pin is manual. Roll forward by replacing both the tag
+      # the pin is manual. Roll forward by replacing both the tag
       # comment and the digest after pulling a new image and copying
       # the value from `docker images --digests semgrep/semgrep`.
       # Latest at pin time: 1.160.0 (Apr 2026). Tag remains in the

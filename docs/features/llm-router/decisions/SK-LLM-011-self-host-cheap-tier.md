@@ -1,8 +1,7 @@
 # SK-LLM-011 — Self-host the cheap-tier router once we hit ~50 k queries/day
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Sharded out
-unchanged to keep that doc under the 20 KB cap per `CLAUDE.md` §2 D4 —
-this body is verbatim, only the location moved.
+unchanged — this body is verbatim, only the location moved.
 
 - **Decision:** When traffic crosses ~50 k queries/day, we self-host the cheap-tier `route` (and `engine_classify`) calls on a single A10G on Modal (quantized 8B Llama). Cost: ~$200/mo flat. Plan and hard tiers stay on hosted providers indefinitely.
 - **Core value:** Free, Bullet-proof, Open source

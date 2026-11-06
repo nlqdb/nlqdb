@@ -43,9 +43,7 @@ when-to-load:
 ## Decisions
 
 Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-HDC-NNN`
-(the `docs/decisions/`-for-GLOBALs pattern, per `feature-conventions.md §4a`;
-sharded because the inline bodies pushed this file past CLAUDE.md `D4`'s 20 KB
-cap). The list below is the index; open the linked file for the full five-field
+(the `docs/decisions/`-for-GLOBALs pattern, per `feature-conventions.md §4a`). The list below is the index; open the linked file for the full five-field
 block.
 
 - [**SK-HDC-001**](decisions/SK-HDC-001-one-classifier-routed-endpoint.md) — One classifier-routed endpoint: `/v1/ask` does create, query, and write; there is no `/v1/db/new`.

@@ -6,8 +6,7 @@
 > This is the canonical acquisition **implementation** progress tracker.
 > Its mirror, [`automated-icp-validation-plan-verification.md`](./automated-icp-validation-plan-verification.md),
 > is the canonical **verification** tracker — every `FLOW-NNN` in §8
-> below appears there with the same ID. Both files are exempt from
-> the 20 KB cap and both are agent-ran: every PR that implements a
+> below appears there with the same ID. Both files are agent-ran: every PR that implements a
 > section here must update `## Current status` and append a row to
 > `## Progress log`; every PR that adds, modifies, or supersedes a
 > flow updates BOTH files in lockstep. Evidence/status edits must name

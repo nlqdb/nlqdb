@@ -81,8 +81,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      # SHA-pinned per renovate.json5 (`pinDigests: true`); Renovate
-      # rolls these forward when the upstream tag moves.
+      # SHA-pinned; Dependabot rolls these forward when the upstream
+      # tag moves.
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       # `bunx wrangler` resolves wrangler's bin via `#!/usr/bin/env
