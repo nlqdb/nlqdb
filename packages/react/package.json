@@ -16,17 +16,17 @@
   "peerDependencies": {
     "@nlqdb/elements": "workspace:*",
     "@nlqdb/sdk": "workspace:*",
-    "react": "^19.0.0"
+    "react": "^19.3.1"
   },
   "devDependencies": {
     "@nlqdb/elements": "workspace:*",
     "@nlqdb/sdk": "workspace:*",
-    "@testing-library/react": "^16.1.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "happy-dom": "^21.0.4",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "typescript": "^5.6.0",
     "vitest": "^4.1.0"
   }
