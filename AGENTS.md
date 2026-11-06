@@ -35,9 +35,9 @@ series → 3 playbook). Depth only; Show HN waits on the love gate.
 - **P1. Never contradict documented decisions silently** — if a request would violate `END_GOAL.md`, a `GLOBAL-NNN` or an `SK-<FEATURE>-NNN`, stop and raise it with the user citing the ID; never rationalise around it.
 - **P2. Web-research first** — on any ambiguity or unfamiliar error, and before picking any dependency's version (`rules://general` rule 6); state the sources checked when proposing the fix.
 - **P3. Decisions live in one place** — `GLOBAL-NNN` only in `docs/decisions/GLOBAL-NNN-<slug>.md` (indexed in `docs/decisions.md`), `SK-<FEATURE>-NNN` only in that feature's `FEATURE.md`; cite by ID, never restate; the canonical home lands before dependent code ([`docs/feature-conventions.md`](docs/feature-conventions.md)).
-- **P4. Documentation rules** — D1 push the user to resolve open questions before documenting; D2 never document ambiguity; D3 clarity always increases; D5 is `rules://general` rule 10.
+- **P4. Documentation rules** — `rules://workflow` and `rules://general` rule 10.
 - **P5. Simplest path** — `rules://general` rule 10; clean code beats backward compatibility while we are still building; the no-patch-on-patch rule is [`END_GOAL.md` § Architecture](docs/END_GOAL.md#architecture--simple-and-scalable).
-- **P6. World-class customer journeys** — `rules://general` rules 8 and 15 plus [`docs/guidelines.md`](docs/guidelines.md) §5; not done until a real E2E walk and the owner has used it.
+- **P6. World-class customer journeys** — `rules://general` and `rules://guidelines`.
 
 ## 3. Tech stack (high-level)
 
@@ -137,7 +137,7 @@ supported; else read manually before editing.)
 | [`docs/runbook.md`](docs/runbook.md) | Operations: env, secrets, deploy, recovery; design-partner ref (§10). |
 | [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview script, inbound triage SLA. |
 | [`docs/performance.md`](docs/performance.md) | Span/metric/label catalog + perf goals. |
-| [`docs/guidelines.md`](docs/guidelines.md) | This repo's additions to `rules://guidelines`: eagle-eye checks, bullet-proof checklist, build-vs-reuse, customer journeys. |
+| [`docs/guidelines.md`](docs/guidelines.md) | This repo's additions to `rules://guidelines`: eagle-eye checks, bullet-proof checklist, build-vs-reuse. |
 | [`docs/progress.md`](docs/progress.md) | Platform integration tiers (P0–P3). |
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
 | [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — threat matrix + gap analysis. |
