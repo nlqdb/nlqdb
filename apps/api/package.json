@@ -26,7 +26,7 @@
     "@nlqdb/llm": "workspace:*",
     "@nlqdb/otel": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
-    "better-auth": "1.7.15",
+    "better-auth": "1.7.16",
     "hono": "^4.13.16",
     "kysely": "^0.29.8",
     "kysely-d1": "^0.4.0",
