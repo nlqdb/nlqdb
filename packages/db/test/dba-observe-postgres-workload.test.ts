@@ -99,6 +99,24 @@ describe("observePostgresWorkload", () => {
     expect(sqls).toHaveLength(2);
   });
 
+  it.each([
+    ["an `IN` list", "(u.a = ANY (ARRAY[$1, $2, $3]))", ["a"], []],
+    ["PostgREST's `in` filter", "((u.a = ANY ($1)) AND (u.b = $2))", ["a", "b"], []],
+    ["a varchar `IN` list", "((u.a)::text = ANY ((ARRAY[$1, $2])::text[]))", ["a"], ["a"]],
+    ["a constant array", "(u.a = ANY ('{1,2}'::bigint[]))", ["a"], []],
+  ])("reads %s as an equality a btree serves", async (_, filter, columns, textCast) => {
+    const { query } = stub(seqScan(filter), { ...bigTable, known_columns: columns.length });
+    const params: unknown[][] = [];
+    const spy: PostgresQueryFn = (sql, p) => {
+      params.push(p);
+      return query(sql, p);
+    };
+    const [p] = await observePostgresWorkload(spy, "app", [window("SELECT 1 FROM users")]);
+    expect(p?.columns).toEqual(columns);
+    // The table check confirms a `::text`-compared column is varchar.
+    expect(params.at(-1)?.[3]).toBe(JSON.stringify(textCast));
+  });
+
   it("scales a parallel scan's per-process rows back before judging selectivity", async () => {
     // 200 rows per process x (2 workers + 0.4 leader) = 480 of 10 000: 4.8 % ≤ 5 %.
     const gather = (planRows: number) => ({

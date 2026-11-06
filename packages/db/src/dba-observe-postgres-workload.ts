@@ -11,8 +11,8 @@
 //
 // A fingerprint yields a proposal when its plan (`EXPLAIN (GENERIC_PLAN)` on
 // the normalized text, Postgres 16+ — never executed) seq-scans a table of the
-// attached schema with a selective AND of equality filters, and no valid btree
-// / hash index already leads with those columns. Only fingerprints naming a
+// attached schema with a selective AND of equality (or `= ANY`) filters, and
+// no valid btree / hash index already leads with those columns. Only fingerprints naming a
 // relation of the attached schema are planned: on a managed host the heaviest
 // statements are often the host's own (auth, storage, realtime, its dashboard),
 // and they would spend the per-observe EXPLAIN budget on tables nlqdb never
@@ -121,8 +121,9 @@ export function statementWindow(
 }
 
 // Bounds the EXPLAIN round-trips per observe to the window's heaviest
-// fingerprints — where an index pays back the most.
-const MAX_FINGERPRINTS = 20;
+// fingerprints — where an index pays back the most. Sized to plan a whole
+// app's explainable fingerprints (the spike's: 32) in one observe.
+const MAX_FINGERPRINTS = 50;
 // An equality filter keeping more than this share of a table's rows is better
 // served by the scan than by an index.
 const MAX_SELECTIVITY = 0.05;
@@ -163,13 +164,18 @@ async function tier1Candidates(
   );
 }
 
-const VALUE = String.raw`(?:\$\d+|\(\$\d+\)::[^()]+?|'(?:[^']|'')*'(?:::[\w ]+)?|-?\d+(?:\.\d+)?)`;
+const SCALAR = String.raw`(?:\$\d+|\(\$\d+\)::[^()]+?|'(?:[^']|'')*'(?:::[\w ]+)?|-?\d+(?:\.\d+)?)`;
+// `= ANY (array)`: an `IN` list or PostgREST's `in` filter, planned as
+// `ANY ($1)`, `ANY (ARRAY[$1, $2])`, `ANY ((ARRAY[$1, $2])::text[])` or a
+// constant `ANY ('{…}'::type[])`. A btree on the column serves it like an
+// equality, and the generic plan's `Plan Rows` already assumes its length.
+const ARRAY = String.raw`ANY \((?:\$\d+|ARRAY\[[^\]]*\]|\(ARRAY\[[^\]]*\]\)::[\w ]+\[\]|'(?:[^']|'')*'::[\w ]+\[\])\)`;
 // One `(alias.column = value)` term of a VERBOSE plan's Filter. A varchar
 // column (Rails' and Django's string) plans relabelled as
 // `((alias.column)::text = value)`, which a plain index on it still serves;
 // the table check confirms that column really is varchar.
 const EQUALITY_TERM = new RegExp(
-  String.raw`\((?:${IDENT}\.(${IDENT})|\(${IDENT}\.(${IDENT})\)::text) = ${VALUE}\)`,
+  String.raw`\((?:${IDENT}\.(${IDENT})|\(${IDENT}\.(${IDENT})\)::text) = (?:${ARRAY}|${SCALAR})\)`,
   "g",
 );
 
