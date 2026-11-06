@@ -1,9 +1,8 @@
-# Weekly and grouped to bound PR noise: minor+patch bumps arrive as one PR per
-# ecosystem, which the scheduled run's reviewer mode merges on green
-# (rules://scheduled-run § Bot PRs). Majors are left out of the group on
-# purpose: a major can change compiler or bundler behavior, so it is a
-# migration to adopt deliberately as its own PR, and one red major must never
-# block the whole group.
+# Weekly and grouped to bound PR noise: at most two PRs per ecosystem a week —
+# minor+patch as one PR, which the scheduled run's reviewer mode merges on green
+# (rules://scheduled-run § Bot PRs), and majors as a second, so one red major
+# never blocks the safe group. A red majors PR is fixed or trimmed by the
+# reviewer, never split back into one PR per package.
 # nlqdb: the non-workspace suites under tests/ are listed explicitly — they
 # are CI infrastructure and once piled up 19 unflagged advisories.
 version: 2
@@ -17,6 +16,9 @@ updates:
       bun-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+      bun-major:
+        patterns: ["*"]
+        update-types: ["major"]
   - package-ecosystem: npm
     directory: /tests/opencheck
     schedule:
@@ -26,6 +28,9 @@ updates:
       npm-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+      npm-major:
+        patterns: ["*"]
+        update-types: ["major"]
   - package-ecosystem: gomod
     directories: ["/cli", "/tests/e2e/cli"]
     schedule:
@@ -35,6 +40,9 @@ updates:
       go-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+      go-major:
+        patterns: ["*"]
+        update-types: ["major"]
   - package-ecosystem: cargo
     directory: /packages/nlqdb-rs
     schedule:
@@ -44,6 +52,9 @@ updates:
       cargo-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+      cargo-major:
+        patterns: ["*"]
+        update-types: ["major"]
   - package-ecosystem: bundler
     directory: /packages/nlqdb-rb
     schedule:
@@ -53,6 +64,9 @@ updates:
       bundler-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+      bundler-major:
+        patterns: ["*"]
+        update-types: ["major"]
   - package-ecosystem: swift
     directory: /packages/nlqdb-swift
     schedule:
@@ -62,6 +76,9 @@ updates:
       swift-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+      swift-major:
+        patterns: ["*"]
+        update-types: ["major"]
   - package-ecosystem: github-actions
     directories: ["/", "/.github/actions/setup"]
     schedule:
@@ -71,3 +88,6 @@ updates:
       actions-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+      actions-major:
+        patterns: ["*"]
+        update-types: ["major"]
