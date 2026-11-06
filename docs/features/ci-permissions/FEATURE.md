@@ -11,7 +11,7 @@ when-to-load:
 # Feature: CI permissions
 
 **One-liner:** Least-privilege GitHub Actions `permissions:` blocks across reusable workflows. Default-deny; explicit grants per job; OIDC for publish.
-**Status:** partial — reusable workflow contract locked (`SK-CIPERM-001..004`, `SK-CIPERM-006`); `nlqdb/actions@v1` lives in its own repo, consumer repos call it with `secrets: inherit`. The CI-permissions linter (`SK-CIPERM-005`) is open work.
+**Status:** partial — reusable workflow contract locked (`SK-CIPERM-001..004`); deploy workflows name each secret (`SK-CIPERM-006`); `nlqdb/actions@v1` lives in its own repo, consumer repos call it with `secrets: inherit`. The CI-permissions linter (`SK-CIPERM-005`) is open work.
 **Owners (code):** `.github/workflows/**` in every consumer repo; `nlqdb/actions/.github/workflows/ci.yml` in the reusable-workflow repo.
 **Cross-refs:** [`docs/architecture.md §9`](../../architecture.md#9-cicd) (CI/CD overview) · [`docs/history/ci-actions-repo-layout.md`](../../history/ci-actions-repo-layout.md) (repo layout, inputs, secrets, gates)
 
@@ -82,7 +82,7 @@ when-to-load:
 
 - **Decision:** A step's `env:` names every secret it reads (`FOO: ${{ secrets.FOO }}`). No workflow expands `${{ toJSON(secrets) }}` or any other all-secrets dump.
 - **Core value:** Bullet-proof
-- **Why:** On 2026-11-06, with the repo public, every run of the three deploy workflows that dumped all secrets into one env var (`deploy-api`, `deploy-mcp`, `deploy-events-worker`) ended `action_required` with zero jobs, manual dispatch too; every workflow naming its secrets ran. GitHub holds public-repo runs it judges potentially malicious until a human approves in the web UI ([changelog, 2026-07-28](https://github.blog/changelog/2026-07-28-github-actions-holds-unproven-workflows-for-approval)), and a full secret dump is the exfiltration shape it guards against. Naming each secret also hands a step only what it reads.
+- **Why:** With the repo public, from `4789177` (#1242, 2026-11-06) every run of the three deploy workflows that dumped all secrets into one env var (`deploy-api`, `deploy-mcp`, `deploy-events-worker`) ended `action_required` with zero jobs, manual dispatch too, while every workflow naming its secrets ran, including ones the same commit edited. GitHub holds some public-repo runs until a write-access human approves them in the web UI, to stop malicious workflows pushed with stolen credentials ([changelog, 2026-07-28](https://github.blog/changelog/2026-07-28-github-actions-holds-unproven-workflows-for-approval)); it does not publish its heuristic, and a full secret dump is the exfiltration shape it guards against. Naming each secret also hands a step only what it reads.
 - **Consequence in code:** The `Sync Worker secrets` steps list the app's `select_secrets()` subset from `scripts/mirror-secrets-workers.sh` (plus `GRAFANA_CLOUD_INSTANCE_ID` / `GRAFANA_CLOUD_API_KEY`); a secret added there is added to that deploy workflow's `env:` in the same PR, or it never reaches the Worker.
 - **Alternatives rejected:**
   - Approve each held run by hand — a human click per deploy, and prod lags main until someone does.

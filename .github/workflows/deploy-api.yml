@@ -136,11 +136,9 @@ jobs:
         run: bun run build
 
       # SLSA L3 build-provenance attestation. Requires GitHub Pro/
-      # Team/Enterprise OR a public repository — `nlqdb/nlqdb` is
-      # private + Free, so the attestation API rejects with "Feature
-      # not available". `continue-on-error` keeps the deploy
-      # unblocked; once the repo flips public or we're on a paid
-      # plan, attestations start publishing with no further change.
+      # Team/Enterprise OR a public repository; `nlqdb/nlqdb` is
+      # public. `continue-on-error` keeps an attestation-API failure
+      # from blocking the deploy.
       - name: SLSA build provenance attestation
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         continue-on-error: true
@@ -173,8 +171,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # Each secret by name, never `toJSON(secrets)` (SK-CIPERM-006): GitHub
-          # holds a public repo's run that dumps every secret at
+          # Each secret by name, never `toJSON(secrets)` (SK-CIPERM-006): with
+          # the repo public, runs that dumped every secret were held at
           # `action_required`. Keep in sync with select_secrets() in the script;
           # GRAFANA_CLOUD_* build GRAFANA_OTLP_AUTHORIZATION there.
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}

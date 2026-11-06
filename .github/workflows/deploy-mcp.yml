@@ -61,8 +61,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # Each secret by name, never `toJSON(secrets)` (SK-CIPERM-006): GitHub
-          # holds a public repo's run that dumps every secret at
+          # Each secret by name, never `toJSON(secrets)` (SK-CIPERM-006): with
+          # the repo public, runs that dumped every secret were held at
           # `action_required`. Keep in sync with select_secrets() in the script;
           # GRAFANA_CLOUD_* build GRAFANA_OTLP_AUTHORIZATION there.
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
