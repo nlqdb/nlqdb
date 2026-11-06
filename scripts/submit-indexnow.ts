@@ -56,7 +56,7 @@ async function readSitemapUrls(): Promise<string[]> {
 // Documented status codes (https://www.indexnow.org/documentation):
 // 200 OK / 202 Accepted (validation pending) — success; 400 bad request;
 // 403 key not found at keyLocation; 422 URL/key host mismatch; 429 spam.
-function describe(status: number): string {
+function statusMeaning(status: number): string {
   switch (status) {
     case 200:
       return "OK — accepted";
@@ -87,7 +87,7 @@ async function main(): Promise<void> {
     body: JSON.stringify({ host: HOST, key: KEY, keyLocation: KEY_LOCATION, urlList }),
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
-  const line = `indexnow: HTTP ${res.status} — ${describe(res.status)} (${urlList.length} URLs → ${ENDPOINT})`;
+  const line = `indexnow: HTTP ${res.status} — ${statusMeaning(res.status)} (${urlList.length} URLs → ${ENDPOINT})`;
   // 200/202 are the only success codes; everything else is a real failure
   // when the key file is already live — exit 1 so the CI step surfaces it
   // as an annotation. The step is continue-on-error (SK-WEB-023), so this

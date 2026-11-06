@@ -23,7 +23,7 @@ export function nlqdbServer(opts: NlqdbServerOptions = {}): NlqClient {
 // Lazy single client — defers the env-var read until first request reaches the route.
 export function createAskRoute(opts: NlqdbServerOptions = {}) {
   let client: NlqClient | null = null;
-  return async function POST(req: Request): Promise<Response> {
+  return async function askRoute(req: Request): Promise<Response> {
     let body: AskRequest;
     try {
       body = (await req.json()) as AskRequest;
