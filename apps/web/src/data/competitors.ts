@@ -64,12 +64,9 @@ export type Competitor = {
   // The demo embedded on the page. Goals chosen to highlight a dimension
   // the competitor doesn't ship.
   demo: ComparisonDemo;
-  // Optional hand-written SEO overrides for the `<title>` / `<meta
-  // description>`. `name`/`oneLiner` render on-page, so they're written for
-  // the reader; `[slug].astro` word-boundary-clamps them for the ~60/~155-char
-  // SERP snippet by default (lib/meta.ts). Set these where that auto-clamp
-  // lands on an awkward fragment — the visible copy is untouched. Bounds:
-  // metaTitle ≤60, metaDescription ≤155 (guarded by meta-length-integrity.test.ts).
+  // Hand-written SERP `<title>` / `<meta description>` — required when the
+  // on-page source field is over ~60 / ~155 chars; the visible copy is
+  // untouched (lib/meta.ts, guarded by meta-length-integrity.test.ts).
   metaTitle?: string;
   metaDescription?: string;
 };
@@ -77,6 +74,8 @@ export type Competitor = {
 export const COMPETITORS: Competitor[] = [
   {
     slug: "supabase",
+    metaDescription:
+      "Pick Supabase for a full BaaS: auth, storage, edge functions and a SQL Studio. Pick nlqdb to ship data features in English, schema and indexes handled.",
     name: "Supabase",
     url: "https://supabase.com/",
     tagline: "Open-source Firebase alternative — Postgres, auth, storage, edge functions.",
@@ -156,6 +155,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "neon",
+    metaDescription:
+      "Pick Neon for serverless Postgres with branching and scale-to-zero. Pick nlqdb for one HTML element that turns English into validated SQL in your product.",
     name: "Neon",
     url: "https://neon.com/",
     // P1 marquee — the other "scariest direct P1 competitor" alongside
@@ -278,6 +279,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "vanna",
+    metaDescription:
+      "Pick Vanna for an open-source English-to-SQL layer over your database. Pick nlqdb to also get the database, queryable via SDK, CLI and MCP.",
     name: "Vanna AI",
     url: "https://vanna.ai/",
     tagline: "Open-source text-to-SQL trained on your schema and prior queries.",
@@ -420,6 +423,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "outerbase",
+    metaDescription:
+      "Pick Outerbase for an AI admin UI over a database you already run. Pick nlqdb for a provisioned database with answers rendered in your app.",
     name: "Outerbase",
     url: "https://outerbase.com/",
     // Acquired by Cloudflare 2025-04-07 per https://www.cloudflare.com/press/press-releases/2025/cloudflare-acquires-outerbase-to-expand-developer-experience/ (full landscape entry in docs/competitors.md §3).
@@ -529,6 +534,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "wrenai",
+    metaDescription:
+      "Pick Wren AI for a semantic layer of metrics and row/column access over your warehouse. Pick nlqdb for a provisioned Postgres answered inside your app.",
     name: "Wren AI",
     // Commercial homepage; OSS at github.com/Canner/WrenAI (see docs/competitors.md §2).
     url: "https://www.getwren.ai/",
@@ -641,6 +648,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "askyourdatabase",
+    metaDescription:
+      "Pick AskYourDatabase for a BI chatbot with charts over your warehouse. Pick nlqdb for a provisioned database and answers rendered in your product.",
     name: "AskYourDatabase",
     url: "https://www.askyourdatabase.com/",
     tagline:
@@ -1629,6 +1638,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "julius",
+    metaDescription:
+      "Pick Julius AI to chat with a spreadsheet and get charts. Pick nlqdb if your product or agent needs English-to-SQL over a database, API-first.",
     name: "Julius AI",
     url: "https://julius.ai/",
     // P3 analyst slot (the pre-pivot slate the comparison-pages FEATURE names
@@ -1754,6 +1765,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "retool",
+    metaDescription:
+      "Pick Retool to build internal admin tools over your database. Pick nlqdb to skip the UI: ask in English and render the answer inline in your product.",
     name: "Retool",
     url: "https://retool.com/",
     // P4 backend-engineer slot — the internal-tools incumbent with the
@@ -1881,6 +1894,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "basedash",
+    metaDescription:
+      "Pick Basedash for governed BI dashboards over 750+ sources. Pick nlqdb to own the database: ask in English and embed the answer in your product or agent.",
     name: "Basedash",
     url: "https://www.basedash.com/",
     // P3 analyst slot — Basedash repositioned from "admin UI" (the stale
@@ -2000,6 +2015,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "metabase",
+    metaDescription:
+      "Pick Metabase for open-source BI dashboards (Metabot AI is a paid add-on). Pick nlqdb if your product or AI agent needs English-to-SQL via API or MCP.",
     name: "Metabase",
     url: "https://www.metabase.com/",
     // P3 analyst/BI slot — the comparison-pages FEATURE names Metabase Metabot
@@ -2124,6 +2141,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "hex",
+    metaDescription:
+      "Pick Hex for collaborative SQL + Python notebooks over your warehouse. Pick nlqdb if your product or agent needs English-to-SQL, embeddable and API-first.",
     name: "Hex",
     url: "https://hex.tech/",
     // P3 analyst slot — the notebook-AI cluster the comparison-pages FEATURE
@@ -2545,6 +2564,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "mode",
+    metaDescription:
+      "Pick Mode for a SQL editor, Python/R notebooks and shared reports. Pick nlqdb if your product or agent needs English-to-SQL, embeddable and API-first.",
     name: "Mode",
     url: "https://mode.com",
     // P3 analyst slot — the next entry in the notebook-first AI BI cluster the
@@ -2672,6 +2693,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "fabi",
+    metaDescription:
+      "Pick Fabi.ai for AI-assisted SQL + Python notebooks and scheduled dashboards. Pick nlqdb if your product or agent needs embeddable English-to-SQL.",
     name: "Fabi.ai",
     url: "https://www.fabi.ai/",
     // P3 analyst slot — completes the notebook-first AI BI cluster the
@@ -2798,6 +2821,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "count",
+    metaDescription:
+      "Pick Count for a collaborative AI canvas of SQL, Python and visuals. Pick nlqdb if your product or agent needs embeddable, API-first English-to-SQL.",
     name: "Count",
     url: "https://count.co/",
     // P3 analyst slot — the last uncovered member of the notebook-first AI
@@ -2922,6 +2947,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "mindsdb",
+    metaDescription:
+      "Pick MindsDB to federate many data sources and train ML models in SQL. Pick nlqdb for a Postgres queried in plain English, with the compiled SQL shown.",
     name: "MindsDB",
     url: "https://github.com/mindsdb/mindsdb",
     // P4 backend-engineer slot — the federated-query-engine member of the §4
@@ -3052,6 +3079,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "langchain-sql-agent",
+    metaDescription:
+      "Pick the LangChain SQL agent to build and own the agent loop. Pick nlqdb for hosted NL-to-SQL today, with the SQL shown and every write diff-previewed.",
     name: "LangChain SQL agent",
     url: "https://docs.langchain.com/oss/python/langchain/overview",
     // P4 backend-engineer slot — the OSS text2sql-framework cluster
@@ -3178,6 +3207,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "llamaindex",
+    metaDescription:
+      "Pick LlamaIndex to assemble your own text-to-SQL query engine. Pick nlqdb for hosted NL-to-SQL today, with the SQL shown and writes diff-previewed.",
     name: "LlamaIndex",
     url: "https://www.llamaindex.ai/",
     // P4 backend-engineer slot — the OSS text2sql-framework cluster
@@ -3301,6 +3332,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "dataherald",
+    metaDescription:
+      "Pick Dataherald for an open-source NL-to-SQL engine tuned on your warehouse. Pick nlqdb for a Postgres with the SQL shown and nothing to host.",
     name: "Dataherald",
     url: "https://github.com/Dataherald/dataherald",
     // P3-analyst slot, the OSS NL→SQL-engine twin of Vanna (also P3): a data
@@ -3413,6 +3446,8 @@ export const COMPETITORS: Competitor[] = [
   },
   {
     slug: "pandasai",
+    metaDescription:
+      "Pick PandasAI to chat with DataFrames and CSVs in Python. Pick nlqdb for a Postgres queried in English, with validated SQL shown and writes diff-previewed.",
     name: "PandasAI",
     url: "https://pandas-ai.com/",
     // P3-analyst slot, the "chat with data you already have" member of the §6

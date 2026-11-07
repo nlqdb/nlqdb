@@ -1,6 +1,7 @@
 # GLOBAL-043 — Attach-first: the autonomous DBA acts on the database a team already has
 
-**Status:** active · **Set by the founder:** 2026-10-22 · **Supersedes:**
+**Status:** active · **Set by the founder:** 2026-10-22 · **Amended:**
+2026-11-07 (the organic-search lane, below) · **Supersedes:**
 [`GLOBAL-041`](./GLOBAL-041-autonomous-dba.md) items 1–2 (host the DB, infer
 the schema from inserts), its Phase A/B/C plan and KPIs 1–2;
 [`GLOBAL-004`](./GLOBAL-004-logical-schema-evolves.md) in part (inference
@@ -162,8 +163,14 @@ iterate → retro → cleanup loop stand.
     ([`GLOBAL-014`](./GLOBAL-014-otel-on-external-calls.md)); Postgres
     indexes build `CONCURRENTLY` in a low-load window. A role that cannot
     apply gets each proposal as a copy-paste migration — never a silent skip.
-  - **Carried from `GLOBAL-041`, unchanged:** acquisition paused and depth
-    only; the ~10 builders are recruited once rateme12's attach shows
+  - **Carried from `GLOBAL-041`:** acquisition paused and depth
+    only — except the **organic-search (SEO) lane**, un-paused by the
+    founder 2026-11-07: a standing lane with its own goal — **1,000 Google
+    clicks / 28 d** across `nlqdb.com` + `docs.nlqdb.com` (GSC; 22 on
+    2026-11-07) and **Ahrefs DR4 ≥ 20** for `nlqdb.com` (0), by
+    2027-05-07 — worked from its own [`ROADMAP.md`](../ROADMAP.md) section
+    whenever no sequence box is open and unblocked. The `/solve`, `/vs` and
+    `/blog` pages are its surface, so they leave the deletion series; the ~10 builders are recruited once rateme12's attach shows
     KPI B > 0; the shipped premium tier stays; BIRD/Spider is a regression
     alarm until deleted.
 

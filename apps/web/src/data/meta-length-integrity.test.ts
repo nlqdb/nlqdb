@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { clampDescription, clampTitle } from "../lib/meta";
+import { serpDescription, serpTitle } from "../lib/meta";
 import { STATIC_ROUTES } from "../pages/sitemap.xml";
 import { BLOG_POSTS } from "./blog";
 import { COMPETITORS } from "./competitors";
@@ -13,15 +13,15 @@ import { SOLVE_ENTRIES } from "./solve";
 // and a `<meta name="description">` past ~155 in the result snippet, and a
 // too-short one wastes the pitch — an Ahrefs audit flagged both classes across
 // the data-driven `/solve`, `/vs`, `/blog` pages and the static marketing
-// surface. `lib/meta.ts` word-boundary-clamps the data-page meta to the upper
-// bound, and the P2 cluster carries hand-written overrides (lib/meta.ts); the
-// static pages carry hand-tuned literals. This test pins the whole set inside
+// surface. `lib/meta.ts` never truncates: a data page whose source field is
+// over the bound carries a hand-written override; the static pages carry
+// hand-tuned literals. This test pins the whole set inside
 // 30–60 / 110–155 so a new page, a re-worded oneLiner, or a dropped override
 // can't silently ship a clipped or thin snippet.
 //
 // The two halves mirror how the meta is actually produced:
 //   • data pages — recompute the EXACT expression `[slug].astro` passes to
-//     Base (`clampTitle`/`clampDescription` over the source field + optional
+//     Base (`serpTitle`/`serpDescription` over the source field + optional
 //     override), so the assertion tracks the rendered `<title>`/description,
 //     not the raw source field (which is the on-page <h1>/lede and may be far
 //     longer — that decoupling is the whole point of the clamp helpers).
@@ -54,8 +54,8 @@ describe("SERP meta-length integrity", () => {
     const t: Record<string, string> = {};
     const d: Record<string, string> = {};
     for (const s of SOLVE_ENTRIES) {
-      titleOffender(`solve/${s.slug}`, clampTitle(`${s.searchTitle} — nlqdb`, s.metaTitle), t);
-      descOffender(`solve/${s.slug}`, clampDescription(s.oneLiner, s.metaDescription), d);
+      titleOffender(`solve/${s.slug}`, serpTitle(`${s.searchTitle} — nlqdb`, s.metaTitle), t);
+      descOffender(`solve/${s.slug}`, serpDescription(s.oneLiner, s.metaDescription), d);
     }
     expect(t).toEqual({});
     expect(d).toEqual({});
@@ -67,10 +67,10 @@ describe("SERP meta-length integrity", () => {
     for (const c of COMPETITORS) {
       titleOffender(
         `vs/${c.slug}`,
-        clampTitle(`nlqdb vs ${c.name} — natural-language databases`, c.metaTitle),
+        serpTitle(`nlqdb vs ${c.name} — natural-language databases`, c.metaTitle),
         t,
       );
-      descOffender(`vs/${c.slug}`, clampDescription(c.oneLiner, c.metaDescription), d);
+      descOffender(`vs/${c.slug}`, serpDescription(c.oneLiner, c.metaDescription), d);
     }
     expect(t).toEqual({});
     expect(d).toEqual({});
@@ -80,8 +80,8 @@ describe("SERP meta-length integrity", () => {
     const t: Record<string, string> = {};
     const d: Record<string, string> = {};
     for (const p of BLOG_POSTS) {
-      titleOffender(`blog/${p.slug}`, clampTitle(`${p.title} — nlqdb blog`, p.metaTitle), t);
-      descOffender(`blog/${p.slug}`, clampDescription(p.description, p.metaDescription), d);
+      titleOffender(`blog/${p.slug}`, serpTitle(`${p.title} — nlqdb blog`, p.metaTitle), t);
+      descOffender(`blog/${p.slug}`, serpDescription(p.description, p.metaDescription), d);
     }
     expect(t).toEqual({});
     expect(d).toEqual({});

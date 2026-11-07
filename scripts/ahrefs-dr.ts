@@ -13,6 +13,8 @@
 import { curlRequest } from "./lib/curl.ts";
 
 const TARGETS = ["nlqdb.com", "docs.nlqdb.com", "mem0.ai"];
+// DR4 (ahrefs.com/blog/domain-rating-dr4, 2026-11-05) becomes the default on
+// 2026-12-01; pinning it now keeps the scorecard series on one method.
 const API = "https://api.ahrefs.com/v3/public/domain-rating-free";
 
 function die(msg: string): never {
@@ -24,7 +26,7 @@ const key = process.env.AHREF_API_KEY;
 if (!key) die("AHREF_API_KEY is unset — the free public-tier Ahrefs API v3 key.");
 
 for (const target of TARGETS) {
-  const res = await curlRequest("GET", `${API}?target=${encodeURIComponent(target)}`, [
+  const res = await curlRequest("GET", `${API}?target=${encodeURIComponent(target)}&version=dr4`, [
     "Accept: application/json",
     `Authorization: Bearer ${key}`,
   ]).catch((e: Error) => die(e.message));

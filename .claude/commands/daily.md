@@ -49,7 +49,9 @@ dogfood iteration — read its brief
 [`002-rateme12-attach.md`](../../docs/history/dogfood-iterations/002-rateme12-attach.md)
 first (001, the migrate plan, is retired) — and, when one ends, log its retro and clean up before the next.
 Acquisition, content and the EK track are paused (`GLOBAL-043`): no channel,
-content or marketplace lever; existing pages stay live.
+content or marketplace lever; existing pages stay live — **except the SEO
+lane** (founder, 2026-11-07): its own [`ROADMAP.md`](../../docs/ROADMAP.md)
+section, goal 1,000 Google clicks / 28 d and DR4 ≥ 20 by 2027-05-07.
 
 ## Operating rules (non-negotiable)
 
@@ -132,8 +134,9 @@ table + the header lines, no changelog):
   users (D1 `user`, real strangers vs founder/test), DBs with a first
   answer, **first-10-queries success rate** (target ≥ 95 %), session
   retention (≥ 2 queries). Reported, never a lever.
-- **Distribution (paused lane):** carry rows #6–#7; `bun scripts/gsc-pull.ts`
-  only when `GSC_SERVICE_ACCOUNT_JSON` is set. Never a lever.
+- **SEO lane:** rows #6–#7 — `bun scripts/gsc-pull.ts` (when
+  `GSC_SERVICE_ACCOUNT_JSON` is set) and `bun scripts/ahrefs-dr.ts` (DR4),
+  against the lane goal. Other distribution stays paused.
 - **Ops:** p50/p95 ask latency, error rate, $ spend (expect ~0).
 - **E2E (manual suites, not in CI):** `e2e-sdk`, `e2e-mcp`, `e2e-examples`,
   `e2e-opencheck`. Per suite: `pass` = latest completed run succeeded;
@@ -176,7 +179,9 @@ says when 1b outranks 1a. A box spanning runs takes the next run too; a
 human-blocked box is skipped to the next. The PR that finishes a box
 deletes it.
 
-**If every step is done or human-blocked, don't manufacture a lever:** record the finding
+**When no sequence box is open and unblocked, take the first open,
+unblocked box of the ROADMAP's SEO section** (founder steer 2026-11-07).
+**If that is done or human-blocked too, don't manufacture a lever:** record the finding
 and end the run with only the step-1 scorecard update — a null run is a
 valid outcome; busywork is not.
 
