@@ -170,9 +170,10 @@ iterate → retro → cleanup loop stand.
     2026-11-07) and **Ahrefs DR4 ≥ 20** for `nlqdb.com` (0), by
     2027-05-07 — worked from its own [`ROADMAP.md`](../ROADMAP.md) section
     whenever no sequence box is open and unblocked. The `/solve`, `/vs` and
-    `/blog` pages are its surface, so they leave the deletion series; the ~10 builders are recruited once rateme12's attach shows
-    KPI B > 0; the shipped premium tier stays; BIRD/Spider is a regression
-    alarm until deleted.
+    `/blog` pages are its surface, so they leave the deletion series. The
+    ~10 builders are recruited once rateme12's attach shows KPI B > 0; the
+    shipped premium tier stays; BIRD/Spider is a regression alarm until
+    deleted.
 
 - **Alternatives rejected:**
   - **Keep hosting + inference (`GLOBAL-041`)** — value gated on a

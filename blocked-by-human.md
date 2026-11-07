@@ -69,7 +69,7 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   and the registry copy in `docs/research/acquisition-channels-mechanisms.md`
   (the directory entries below are gated on it). `GLOBAL-043` sets no
   messaging date. Default until locked: copy stays — it is still true of what
-  is live, and acquisition is paused.
+  is live, and acquisition is paused except the SEO lane.
 - **Ask:** pick one — (a) switch all copy now, the hosted product framed as
   "live today"; (b) switch when the spike passes; (c) switch with the
   deletion PR that removes `insert()`. The agent records it in `GLOBAL-043`.
