@@ -26,6 +26,12 @@ updates:
         versions: [">=1.10.0"]
       - dependency-name: "@opentelemetry/exporter-*-otlp-http"
         versions: [">=0.300.0"]
+      - dependency-name: "@opentelemetry/sdk-*"
+        versions: [">=3.0.0"]
+      - dependency-name: "@opentelemetry/resources"
+        versions: [">=3.0.0"]
+      - dependency-name: "@opentelemetry/context-async-hooks"
+        versions: [">=3.0.0"]
       # agents pins @modelcontextprotocol/sdk exactly (root override keeps one copy);
       # 0.33 also wants zod 4 and the split @modelcontextprotocol/server, so the
       # three move together in one migration of apps/mcp, not a minor bump.
@@ -33,6 +39,26 @@ updates:
         versions: [">=0.13.0"]
       - dependency-name: "@modelcontextprotocol/sdk"
         versions: [">=1.30.0"]
+      - dependency-name: "zod"
+        versions: [">=4.0.0"]
+      # TypeScript 7 (the native port) ships no JS compiler API: astro check refuses it
+      # and typedoc's gen crashes; wait until those tools support it.
+      - dependency-name: "typescript"
+        versions: [">=7.0.0"]
+      # @cloudflare/vitest-pool-workers (latest 0.23) peers vitest ^4.1.
+      - dependency-name: "vitest"
+        versions: [">=5.0.0"]
+      # 1.x needs a canonical resource matching every live KV grant (else all users
+      # re-sign-in) and a stricter redirect-URI policy: an apps/mcp OAuth migration.
+      - dependency-name: "@cloudflare/workers-oauth-provider"
+        versions: [">=1.0.0"]
+      # v4 is ESM-only and lets the server type parameters (v3 inferred them): a
+      # BYO-connect migration verified on the synthetic-Postgres job, not a bump.
+      - dependency-name: "postgres"
+        versions: [">=4.0.0"]
+      # v3 is the other half of the changesets/action v2 migration ignored below.
+      - dependency-name: "@changesets/cli"
+        versions: [">=3.0.0"]
   - package-ecosystem: npm
     directory: /tests/opencheck
     schedule:

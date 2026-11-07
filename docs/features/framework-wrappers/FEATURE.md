@@ -98,7 +98,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-013** — $0/month free tier; Workers bundle ≤3 MiB compressed.
   - *In this feature:* per-wrapper bundle target ≤2 KB gzipped over `@nlqdb/sdk` + `@nlqdb/elements`. Astro integration ≤1 KB.
 - **GLOBAL-016** — Reach for small mature packages; hard-pass on RC.
-  - *In this feature:* peer-dep ranges are pinned to current stable majors (React 19, Vue 3.5, Svelte 5, Astro 6–7, Next 15, Nuxt 4, Solid 1.9). RC framework releases are not supported on the wrapper's critical path.
+  - *In this feature:* peer-dep ranges are pinned to current stable majors (React 19, Vue 3.5, Svelte 5, Astro 6–7, Next 15–16, Nuxt 4, Solid 1.9). RC framework releases are not supported on the wrapper's critical path.
 - **GLOBAL-019** — Free + Open Source core (FSL-1.1-ALv2 → Apache-2.0).
 
 ## Open questions / known unknowns

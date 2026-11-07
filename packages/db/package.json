@@ -21,12 +21,12 @@
     "@nlqdb/otel": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
     "node-sql-parser": "^5.4.0",
-    "postgres": "^4.0.0",
-    "zod": "^4.6.7"
+    "postgres": "^3.4.9",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "miniflare": "^4.20260730.0",
-    "typescript": "^7.0.2",
-    "vitest": "^5.1.0"
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.0"
   }
 }

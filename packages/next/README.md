@@ -1,6 +1,6 @@
 # @nlqdb/next
 
-Next.js 15 App Router helpers around [`@nlqdb/react`](../react) and [`@nlqdb/sdk`](../sdk).
+Next.js 15–16 App Router helpers around [`@nlqdb/react`](../react) and [`@nlqdb/sdk`](../sdk).
 
 ## Install
 

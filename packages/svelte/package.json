@@ -21,6 +21,6 @@
   "devDependencies": {
     "@nlqdb/elements": "workspace:*",
     "svelte": "^5.57.3",
-    "typescript": "^7.0.2"
+    "typescript": "^5.6.0"
   }
 }
