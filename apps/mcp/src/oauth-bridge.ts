@@ -27,6 +27,11 @@ type BridgeStateBlob = {
   st: string;
   cc?: string;
   cm?: string;
+  // RFC 9207 issuer. OAuthProvider advertises
+  // `authorization_response_iss_parameter_supported`, so MCP clients
+  // reject a callback without `iss` (MCP spec, Authorization Response
+  // Validation) — it must survive the consent round-trip.
+  is?: string;
 };
 
 export const bridgeHandler: ExportedHandler<BridgeEnv> = {
@@ -60,7 +65,7 @@ async function handleAuthorize(req: Request, env: BridgeEnv): Promise<Response> 
   // already validated the client + redirect_uri, so we can fail back to
   // the client per RFC 6749 §4.1.2.1 with `error=server_error` instead.
   if (!env.BETTER_AUTH_SECRET) {
-    return redirectError(oauthReq.redirectUri, oauthReq.state, "server_error");
+    return redirectError(oauthReq.redirectUri, oauthReq.state, oauthReq.issuer, "server_error");
   }
 
   const blob: BridgeStateBlob = {
@@ -71,6 +76,7 @@ async function handleAuthorize(req: Request, env: BridgeEnv): Promise<Response> 
     st: oauthReq.state,
     ...(oauthReq.codeChallenge ? { cc: oauthReq.codeChallenge } : {}),
     ...(oauthReq.codeChallengeMethod ? { cm: oauthReq.codeChallengeMethod } : {}),
+    ...(oauthReq.issuer ? { is: oauthReq.issuer } : {}),
   };
 
   const consentUrl = new URL(
@@ -87,10 +93,16 @@ async function handleAuthorize(req: Request, env: BridgeEnv): Promise<Response> 
 // OAuth error (RFC 6749 §4.1.2.1). Used only after parseAuthRequest has
 // validated the redirect_uri belongs to the client. Custom schemes
 // (e.g. `cursor://…`) parse fine through `URL`.
-function redirectError(redirectUri: string, state: string, error: string): Response {
+function redirectError(
+  redirectUri: string,
+  state: string,
+  issuer: string | undefined,
+  error: string,
+): Response {
   const target = new URL(redirectUri);
   target.searchParams.set("error", error);
   if (state) target.searchParams.set("state", state);
+  if (issuer) target.searchParams.set("iss", issuer);
   return Response.redirect(target.toString(), 302);
 }
 
@@ -126,6 +138,7 @@ async function handleBridgeCallback(url: URL, env: BridgeEnv): Promise<Response>
     state: blob.st,
     ...(blob.cc ? { codeChallenge: blob.cc } : {}),
     ...(blob.cm ? { codeChallengeMethod: blob.cm } : {}),
+    ...(blob.is ? { issuer: blob.is } : {}),
   };
   const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({
     request: authReq,
