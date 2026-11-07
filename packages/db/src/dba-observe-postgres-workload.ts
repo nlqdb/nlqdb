@@ -258,10 +258,12 @@ SELECT GREATEST(c.reltuples, 0)::float8 AS row_estimate,
                   FROM unnest((i.indkey::int2[])[0:(SELECT count(*) FROM cols)::int - 1]) AS k(attnum)
                   JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attnum = k.attnum)
              = (SELECT array_agg(name ORDER BY name) FROM cols)
-       ) THEN 1 ELSE 0 END AS covered
+       ) THEN 1 ELSE 0 END AS covered,
+       c.relkind = 'm' AS is_matview,
+       c.relispartition AS is_partition
 FROM pg_catalog.pg_class c
 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind = 'r' AND NOT c.relispartition`;
+WHERE n.nspname = $1 AND c.relname = $2 AND (c.relkind = 'r' OR c.relkind = 'm')`;
 
 // Where each planned fingerprint dropped out, counted per observe and set on
 // the span; the spike's CI log prints it (counts only, never a query).
@@ -274,13 +276,17 @@ export type Tier1Funnel = {
   // filter is an AND of equalities (the only shape Tier 1 proposes for).
   filteredScans: number;
   equalityScans: number;
-  // Not a plain table of the schema (a partition, a materialized view, or
-  // dropped since the plan).
+  // Not a plain table of the schema: a partition, a materialized view, or
+  // gone since the plan.
+  partitions: number;
+  matviews: number;
   notTable: number;
   covered: number;
   unknownColumns: number;
   unanalyzed: number;
   unselective: number;
+  // Each unselective scan's estimated share of its table's rows, in whole %.
+  unselectivePct: number[];
 };
 
 export const newTier1Funnel = (): Tier1Funnel => ({
@@ -289,11 +295,14 @@ export const newTier1Funnel = (): Tier1Funnel => ({
   unplanned: 0,
   filteredScans: 0,
   equalityScans: 0,
+  partitions: 0,
+  matviews: 0,
   notTable: 0,
   covered: 0,
   unknownColumns: 0,
   unanalyzed: 0,
   unselective: 0,
+  unselectivePct: [],
 });
 
 function countFilteredScans(node: PlanNode, schema: string): number {
@@ -346,6 +355,14 @@ export function observePostgresWorkload(
           funnel.notTable++;
           continue;
         }
+        if (t["is_partition"] === true) {
+          funnel.partitions++;
+          continue;
+        }
+        if (t["is_matview"] === true) {
+          funnel.matviews++;
+          continue;
+        }
         if (Number(t["covered"]) === 1) {
           funnel.covered++;
           continue;
@@ -361,6 +378,7 @@ export function observePostgresWorkload(
         }
         if (scan.planRows / rowEstimate > MAX_SELECTIVITY) {
           funnel.unselective++;
+          funnel.unselectivePct.push(Math.round((100 * scan.planRows) / rowEstimate));
           continue;
         }
         proposals.set(
