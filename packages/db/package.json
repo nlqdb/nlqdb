@@ -27,6 +27,6 @@
   "devDependencies": {
     "miniflare": "^4.20260730.0",
     "typescript": "^5.6.0",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.12"
   }
 }
