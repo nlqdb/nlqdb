@@ -153,6 +153,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "cheap-internal-dashboard",
     persona: "P3 analyst",
+    metaTitle: "Build an internal dashboard without per-seat pricing",
+    metaDescription:
+      "Build an internal dashboard without per-seat fees: drop an <nlq-data> tag in any HTML page, ask for the report in plain English, and see the SQL below.",
     searchTitle: "How do I build an internal dashboard without per-seat pricing?",
     oneLiner:
       "If you need an internal view over your data and per-seat tooling is out of budget, drop an `<nlq-data>` tag in any HTML page and ask for the report in English — no SQL, no schema setup, no per-viewer fee.",
@@ -324,6 +327,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "skip-postgres-setup-side-project",
     persona: "P1 solo builder",
+    metaTitle: "Add a database to a side project without Postgres setup",
+    metaDescription:
+      "Skip Postgres setup: one <nlq-data> tag provisions a real Postgres on your first English query and infers the schema — no CREATE TABLE, no migrations.",
     searchTitle: "How do I add a database to a side project without setting up Postgres?",
     oneLiner:
       "If your side project needs a database but you don't want to provision Postgres, choose an engine, or wire migrations, drop one `<nlq-data>` tag in any HTML page — nlqdb mints the database, infers the schema from your first English query, and exposes the same data via SDK / CLI / MCP.",
@@ -377,6 +383,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "natural-language-sql-without-training-data",
     persona: "P3 analyst",
+    metaTitle: "Natural-language SQL without training on your schema",
+    metaDescription:
+      "Run English-to-SQL on your data with no training corpus or RAG layer: nlqdb prompts from your live schema, caches the plan, and shows the SQL to verify.",
     searchTitle:
       "How do I run natural-language queries on a database without training a model on my schema?",
     oneLiner:
@@ -431,6 +440,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "ship-leaderboard-no-sql",
     persona: "P1 solo builder",
+    metaTitle: "Add a leaderboard to your product without writing SQL",
+    metaDescription:
+      "Add a leaderboard or top-N table by writing the goal in English in one <nlq-data> tag — nlqdb handles the database, schema, and index, and shows the SQL.",
     searchTitle: "How do I add a leaderboard to a small product without writing SQL?",
     oneLiner:
       'If your product needs a leaderboard, a top-N table, or a ranked list and you don\'t want to author SQL or wire a ranking ORM call, write the goal in English in one `<nlq-data goal="top players by score">` tag — the database, the schema, and the index decisions are all behind the element.',
@@ -957,6 +969,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "query-existing-postgres-in-natural-language",
     persona: "P4 backend engineer",
+    metaTitle: "Query your existing Postgres in plain English — nlqdb",
+    metaDescription:
+      "Connect your Postgres with nlq db connect and ask it questions in English — nlqdb introspects the live schema, runs SQL in place, and shows it every time.",
     searchTitle: "How do I add a natural-language query layer over my existing Postgres?",
     oneLiner:
       "If you already run Postgres and want to ask it questions in English — without building or training a text-to-SQL stack — connect it to nlqdb with `nlq db connect` (or `POST /v1/db/connect`). nlqdb introspects your live schema, compiles English to SQL, runs it on your own database, and shows the SQL every time. Your data never leaves your Postgres.",
@@ -1014,6 +1029,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "store-form-submissions-without-backend",
     persona: "P1 solo builder",
+    metaDescription:
+      "Store waitlist, contact, or survey submissions without a backend: write each with the SDK or POST /v1/run, then ask 'signups per day' in plain English.",
     searchTitle: "How do I store and query form submissions without a backend?",
     oneLiner:
       "If your landing page needs to capture form submissions — a waitlist, contact form, or survey — without running a backend, give nlqdb a database: write each submission with the SDK or a `POST /v1/run` insert, then ask 'signups per day' or 'replies by source' in plain English.",
@@ -1069,6 +1086,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "answer-data-questions-without-the-data-team",
     persona: "P3 analyst",
+    metaTitle: "Answer ad-hoc data questions without the data team",
+    metaDescription:
+      "Skip the data ticket: ask in plain English in the nlqdb chat or an <nlq-data> tag, and get the rows back with the SQL to audit — no analyst in the loop.",
     searchTitle: "How do I answer ad-hoc data questions without waiting on the data team?",
     oneLiner:
       "If a simple number means filing a data ticket and waiting days, ask the question in English instead — drop an `<nlq-data>` tag in any page or open the chat, and nlqdb compiles the SQL, runs it, and returns the rows plus the query to audit. No ticket, no analyst in the loop.",
@@ -1125,6 +1145,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "add-ask-your-data-feature-without-building-text-to-sql",
     persona: "P4 backend engineer",
+    metaTitle: "Add an ask-your-data feature without building text-to-SQL",
+    metaDescription:
+      "Ship an ask-your-data feature without building text-to-SQL: embed <nlq-data> or call POST /v1/ask, and nlqdb returns rows plus the SQL. Buy, don't build.",
     searchTitle: "How do I add an ask-your-data feature to my app without building text-to-SQL?",
     oneLiner:
       "If you want to ship an 'ask your data' feature in your app but don't want to build and maintain a text-to-SQL pipeline, embed nlqdb: drop the `<nlq-data>` element (or call `POST /v1/ask` from your backend), and it compiles English to SQL, runs it, and returns rows plus the SQL — buy the pipeline, don't build it.",
@@ -1182,6 +1205,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "store-and-query-webhook-events",
     persona: "P4 backend engineer",
+    metaTitle: "Store webhook events in a database, query in plain English",
+    metaDescription:
+      "Store Stripe, GitHub, or Twilio webhook payloads in Postgres as JSONB, then ask 'how many events per type this week?' in English — nlqdb shows the SQL.",
     searchTitle: "How do I store webhook events in a database I can query in plain English?",
     oneLiner:
       "If you receive webhooks from Stripe, GitHub, or Twilio and want to ask 'how many events per type this week' without standing up a database first, write each verified payload to an nlqdb-provisioned Postgres and ask the report in English — the compiled SQL is shown underneath.",
@@ -1239,6 +1265,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "track-product-usage-without-a-data-warehouse",
     persona: "P1 solo builder",
+    metaTitle: "Track product usage events without a data warehouse",
+    metaDescription:
+      "Track signups, feature clicks, and active users without Snowflake or per-event pricing: write events to nlqdb, then ask the rollup in English, SQL shown.",
     searchTitle: "How do I track product usage events and query them without a data warehouse?",
     oneLiner:
       "If you want to track product usage — signups, feature clicks, retention — and ask 'active users this week' without standing up Snowflake or paying Mixpanel per event, give nlqdb a database: emit each event with the SDK or a `POST /v1/run` insert, then ask the rollup in plain English with the SQL shown.",
@@ -1296,6 +1325,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "track-background-job-run-history",
     persona: "P4 backend engineer",
+    metaTitle: "Log background job runs and query which one fails most",
+    metaDescription:
+      "Log each cron or background job run as a row, then ask 'failure rate per job this week' in plain English — nlqdb runs the GROUP BY in Postgres, SQL shown.",
     searchTitle: "How do I log my background jobs and query which one fails most?",
     oneLiner:
       "If your cron and background jobs fail silently and you need to know which one fails most — log every run as a row and ask in English. nlqdb provisions Postgres from your first goal and runs the GROUP BY in SQL, so 'failure rate per job this week' is a real query, not a grep over scheduler logs.",
@@ -1353,6 +1385,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "find-duplicate-rows-in-my-data",
     persona: "P3 analyst",
+    metaDescription:
+      "Find duplicate rows with GROUP BY ... HAVING COUNT(*) > 1, or just ask 'which emails appear twice?' in plain English — nlqdb runs it and shows the SQL.",
     searchTitle: "How do I find duplicate rows in my data without writing SQL?",
     oneLiner:
       "If you need to find duplicate rows — the same email twice, an import that ran twice, a customer entered three times — ask in plain English instead of hand-writing GROUP BY ... HAVING. nlqdb compiles the dedup query, runs it in Postgres, and shows the SQL, so you see exactly which rows repeat and how many times.",
@@ -1419,6 +1453,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "find-top-n-rows-per-group",
     persona: "P3 analyst",
+    metaTitle: "Get the top N rows per group in SQL — ROW_NUMBER()",
+    metaDescription:
+      "Top N per group in SQL is ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...). Ask 'top 3 products per category' in plain English; nlqdb shows the SQL.",
     searchTitle: "How do I get the top N rows per category without window-function SQL?",
     oneLiner:
       "If you need the top N rows in each group — the 3 best-selling products per category, or the latest order per customer — ask in plain English instead of hand-writing a window function. nlqdb compiles the ranked query, runs it in Postgres, and shows the SQL so you trust the partition and tiebreak.",
@@ -1633,6 +1670,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "running-total-cumulative-sum-in-sql",
     persona: "P3 analyst",
+    metaDescription:
+      "A running total (cumulative sum) in SQL is SUM(...) OVER (ORDER BY day). Ask for it in plain English; nlqdb runs it in Postgres and shows the SQL.",
     searchTitle: "How do I calculate a running total or cumulative sum in SQL?",
     oneLiner:
       "If you need a running total — a cumulative sum that grows row by row, like revenue-to-date by day — ask in plain English instead of hand-writing a window function. nlqdb compiles the `SUM(...) OVER (ORDER BY ...)`, runs it in Postgres, and shows the SQL so you can verify the ordering and frame.",
@@ -1778,6 +1817,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "month-over-month-growth-in-sql",
     persona: "P3 analyst",
+    metaTitle: "Calculate month-over-month growth in SQL with LAG()",
+    metaDescription:
+      "Month-over-month growth in SQL uses LAG(...) OVER (ORDER BY month) plus a divide-by-zero guard. Ask in plain English; nlqdb runs it and shows the SQL.",
     searchTitle: "How do I calculate month-over-month growth or period-over-period change in SQL?",
     oneLiner:
       "If you need month-over-month growth — this period's value versus the previous one, as a percentage — ask in plain English instead of hand-writing a LAG window function. nlqdb compiles the `LAG(...) OVER (ORDER BY ...)` and the growth formula, runs it in Postgres, and shows the SQL so you can verify the order and the divide-by-zero guard.",
@@ -1842,6 +1884,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "calculate-median-or-percentile-in-sql",
     persona: "P3 analyst",
+    metaDescription:
+      "Postgres has no MEDIAN(): use PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY x), or 0.9 for p90. Ask in plain English; nlqdb runs it and shows the SQL.",
     searchTitle: "How do I calculate a median or percentile in SQL?",
     oneLiner:
       "If you need a median or a percentile — the middle value, or the p90 of response times — ask in plain English instead of remembering Postgres has no `MEDIAN` function. nlqdb compiles the ordered-set aggregate `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY value)`, runs it in Postgres, and shows the SQL so you can check the order.",
@@ -1906,6 +1950,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "calculate-percentage-of-total-in-sql",
     persona: "P3 analyst",
+    metaTitle: "Calculate each row's percentage of total in SQL — nlqdb",
+    metaDescription:
+      "Each row's percent of total in SQL is 100.0 * x / SUM(x) OVER (), no self-join. Ask in plain English; nlqdb runs it in Postgres and shows the SQL.",
     searchTitle: "How do I calculate each row's percentage of the total in SQL?",
     oneLiner:
       "If you want each row as a share of the whole — a product's revenue as a percent of all revenue — ask in plain English instead of self-joining to a total. nlqdb compiles the window aggregate `100.0 * revenue / SUM(revenue) OVER ()`, runs it in Postgres, and shows the SQL so you can check the denominator.",
@@ -1971,6 +2018,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "find-rows-with-no-match-in-another-table",
     persona: "P3 analyst",
+    metaTitle: "Find rows with no match in another table (SQL anti-join)",
+    metaDescription:
+      "Use LEFT JOIN ... WHERE b.id IS NULL or NOT EXISTS, not NOT IN, which breaks on NULLs. Ask 'customers who never ordered' in English; nlqdb shows the SQL.",
     searchTitle: "How do I find rows in one table with no match in another (anti-join) in SQL?",
     oneLiner:
       "If you need the rows in one table with no match in another — customers who never placed an order — ask in plain English instead of hand-writing an anti-join. nlqdb compiles the `LEFT JOIN ... WHERE b.id IS NULL` (or `NOT EXISTS`), runs it in Postgres, and shows the SQL so you can dodge the `NOT IN` NULL trap.",
@@ -2114,6 +2164,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "group-numbers-into-ranges-in-sql",
     persona: "P3 analyst",
+    metaDescription:
+      "Bucket numbers into ranges in SQL with CASE WHEN, GROUP BY the bucket, and sort by lower bound. Ask in plain English; nlqdb runs it and shows the SQL.",
     searchTitle: "How do I group numbers into ranges (buckets) in SQL?",
     oneLiner:
       "If you want a count per range — orders under $50, $50–$200, over $200 — instead of one row per exact value, ask in plain English. nlqdb compiles the bucket expression, GROUP BYs the bucket, orders the ranges by their lower bound, and shows the SQL, so 5–10 sorts before 10–20 instead of after.",
@@ -2250,6 +2302,9 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "combine-multiple-rows-into-one-value-in-sql",
     persona: "P3 analyst",
+    metaTitle: "Combine multiple rows into one value in SQL (STRING_AGG)",
+    metaDescription:
+      "Combine rows into one comma-separated value with STRING_AGG (Postgres) or GROUP_CONCAT (MySQL), ordered inside the aggregate. Ask in English; see the SQL.",
     searchTitle: "How do I combine multiple rows into one comma-separated value in SQL?",
     oneLiner:
       "If you want one row per customer with their products rolled into a single comma-separated list — not one row per order line — ask in plain English. nlqdb compiles the string aggregate (`STRING_AGG` in Postgres, `GROUP_CONCAT` in MySQL), orders the items inside the aggregate so the list is stable, and shows the SQL.",
@@ -2313,6 +2368,8 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "calculate-time-between-two-dates-in-sql",
     persona: "P3 analyst",
+    metaDescription:
+      "In Postgres, end - start gives an interval; EXTRACT(EPOCH FROM (end - start)) / 86400 gives days. Ask in plain English; nlqdb runs it and shows the SQL.",
     searchTitle: "How do I calculate the time between two dates in SQL?",
     oneLiner:
       "If you need the time between two dates — days from signup to first order, hours to resolve a ticket — ask in plain English. nlqdb compiles the date arithmetic (`end - start` for an interval, `EXTRACT(EPOCH FROM (end - start))/86400` for whole days), runs it in Postgres, and shows the SQL so the unit is the one you meant.",
