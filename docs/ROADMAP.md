@@ -42,7 +42,6 @@ Number: LOC removed, KPIs A–C unchanged.
 - [ ] Anonymous mode
 - [ ] Agent-memory and expert-knowledge rails
 - [ ] ICP-mining, GTM metrics, PMF survey
-- [ ] Marketing content pages
 - [ ] Other-language SDKs and framework wrappers
 
 ## 3 — Playbook proposal kinds
@@ -66,3 +65,19 @@ because deleting before a measured delta would discard the fallback with no
 evidence the bet works. Deletion goes in `GLOBAL-043`'s list order (largest
 surface first), and the playbook follows `GLOBAL-043` item 8's order, so each
 kind reuses the loop the previous one proved.
+
+## SEO — the organic-search lane
+
+Founder steer 2026-11-07 (`GLOBAL-043` amendment): runs whenever no box
+above is open and unblocked. Goal by 2027-05-07: **1,000 Google clicks /
+28 d** (GSC `sc-domain:nlqdb.com`; 22 on 11-07) and **DR4 ≥ 20** for
+`nlqdb.com` (0). Number per box: its direct input, then GSC clicks /
+impressions / position re-read ≥ 14 d later (`bun scripts/gsc-pull.ts`,
+`bun scripts/ahrefs-dr.ts`).
+
+- [ ] Brand: `nlqdb.com/` ranks top 3 for `nlqdb` / `nlq` (pos 72 today) — `Organization` + `WebSite` JSON-LD with `sameAs` (GitHub, npm, docs), brand in `/` and docs titles
+- [ ] Submit `docs.nlqdb.com/sitemap-index.xml` in GSC (only `nlqdb.com/sitemap.xml` is submitted) — via the API if the service account can, else a `blocked-by-human.md` click
+- [ ] Page-1, 0-click pages (pos 6–10): answer-first lede + `FAQPage`/`HowTo` JSON-LD on the top 10 by impressions — number: their CTR
+- [ ] Attach-first `/solve` pages for DBA searches (`postgres find missing indexes`, `postgres slow query which index`, `reduce D1 rows read`) — each walks the real attach loop, KPI B numbers on the page
+- [ ] Referring domains: every free listing and README backlink an agent can file (MCP registries, awesome-lists, GitHub topics) — number: referring domains, DR4
+- [ ] `/` and docs copy to attach-first ⛔ see blocked-by-human.md (🔒 public-copy switch)

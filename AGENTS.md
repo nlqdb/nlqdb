@@ -112,9 +112,9 @@ supported; else read manually before editing.)
 | `packages/nlqdb-swift/**` | retired (`GLOBAL-043`) — `docs/features/sdk-swift/FEATURE.md` |
 | `packages/mcp/**`, `apps/mcp/**` | `docs/features/mcp-server/FEATURE.md` |
 | `apps/web/**` (onboarding, anonymous mode) | `docs/features/web-app/FEATURE.md` |
-| `apps/web/src/data/competitors.ts`, `apps/web/src/pages/vs/**`, `apps/web/src/pages/llms.txt.ts` | retired (`GLOBAL-043`) — `docs/features/comparison-pages/FEATURE.md` |
-| `apps/web/src/data/solve.ts`, `apps/web/src/pages/solve/**` | retired (`GLOBAL-043`) — `docs/features/solve-pages/FEATURE.md` |
-| `apps/web/src/data/blog.ts`, `apps/web/src/pages/blog/**`, `apps/web/src/lib/inline-md.ts` | retired (`GLOBAL-043`) — `docs/features/blog/FEATURE.md` |
+| `apps/web/src/data/competitors.ts`, `apps/web/src/pages/vs/**`, `apps/web/src/pages/llms.txt.ts` | SEO lane (`GLOBAL-043`, amended 2026-11-07) — `docs/features/comparison-pages/FEATURE.md` |
+| `apps/web/src/data/solve.ts`, `apps/web/src/pages/solve/**` | SEO lane (`GLOBAL-043`, amended 2026-11-07) — `docs/features/solve-pages/FEATURE.md` |
+| `apps/web/src/data/blog.ts`, `apps/web/src/pages/blog/**`, `apps/web/src/lib/inline-md.ts` | SEO lane (`GLOBAL-043`, amended 2026-11-07) — `docs/features/blog/FEATURE.md` |
 | `apps/api/src/db-create/presets/agent-memory-v1.ts`, `apps/api/src/memory/**`, `tools/docs-memory/**`, `nlqdb_remember`/`nlqdb_recall` MCP tools | retired (`GLOBAL-043`) — `docs/features/agent-memory-pivot/FEATURE.md` |
 | expert-knowledge platform ("Become AI" marketplace): `docs/features/expert-knowledge-platform/**`, `apps/api/src/grants.ts` + `/v1/grants` routes | retired (`GLOBAL-043`) — `docs/features/expert-knowledge-platform/FEATURE.md` |
 | `apps/web/src/onboarding/**`, signup flow, first-query path | `docs/features/onboarding/FEATURE.md` |
