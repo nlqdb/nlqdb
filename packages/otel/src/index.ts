@@ -317,7 +317,7 @@ export const eventsSinkQueryLogFailuresTotal = lazyCounter(
 export const mcpAuthFailuresTotal = lazyCounter(
   "@nlqdb/mcp-server",
   "nlqdb.mcp.auth.failures.total",
-  "OAuthProvider error responses on the hosted MCP Worker. Labelled by error_code (workers-oauth-provider 0.6 emits: invalid_request, invalid_client, invalid_client_metadata, invalid_grant, invalid_target, invalid_token, not_implemented, temporarily_unavailable, unsupported_grant_type) and status (400/401/404/405/413/429/501).",
+  "OAuthProvider error responses on the hosted MCP Worker, plus /authorize request-validation failures. Labelled by error_code (the OAuth error code, e.g. invalid_request, invalid_client, invalid_grant, invalid_target, invalid_token, unsupported_response_type) and status (the HTTP code; 302 when /authorize fails back to a validated redirect_uri).",
 );
 
 // GLOBAL-022 — recoverable failures retry to success. One increment
