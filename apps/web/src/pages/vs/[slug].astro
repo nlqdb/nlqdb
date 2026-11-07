@@ -24,7 +24,7 @@ import Base from "../../layouts/Base.astro";
 import { appHref } from "../../lib/app-href";
 import { breadcrumbJsonLd } from "../../lib/breadcrumb";
 import { faqPageJsonLd } from "../../lib/faq-jsonld";
-import { clampDescription, clampTitle } from "../../lib/meta";
+import { serpDescription, serpTitle } from "../../lib/meta";
 
 export function getStaticPaths() {
   return COMPETITORS.map((c) => ({ params: { slug: c.slug } }));
@@ -87,8 +87,8 @@ const moreRows = c.features.slice(4);
 const theirApproach = c.whenChooseThem[0] ?? c.tagline;
 ---
 <Base
-  title={clampTitle(pageTitle, c.metaTitle)}
-  description={clampDescription(description, c.metaDescription)}
+  title={serpTitle(pageTitle, c.metaTitle)}
+  description={serpDescription(description, c.metaDescription)}
   canonical={canonical}
   ogImage={ogImage}
   ogImageAlt={ogImage ? ogImageAlt : undefined}

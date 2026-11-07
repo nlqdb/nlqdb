@@ -35,12 +35,9 @@ export type BlogPost = {
   // The /vs or /solve page this post anchors, if any — rendered as a
   // "read the full guide" link under the CTA.
   anchor?: { label: string; path: string };
-  // Optional hand-written SEO overrides for the `<title>` / `<meta
-  // description>`. `title`/`description` render on-page as the <h1> and
-  // lede; `[slug].astro` word-boundary-clamps them for the ~60/~155-char
-  // SERP snippet by default (lib/meta.ts). Set these where that auto-clamp
-  // lands on an awkward fragment — the visible copy is untouched. Bounds:
-  // metaTitle ≤60, metaDescription ≤155 (guarded by meta-length-integrity.test.ts).
+  // Hand-written SERP `<title>` / `<meta description>` — required when the
+  // on-page source field is over ~60 / ~155 chars; the visible copy is
+  // untouched (lib/meta.ts, guarded by meta-length-integrity.test.ts).
   metaTitle?: string;
   metaDescription?: string;
   body: BlogBlock[];
@@ -50,6 +47,9 @@ export type BlogPost = {
 export const BLOG_POSTS: BlogPost[] = [
   {
     slug: "success-rate-cant-see-a-wrong-answer",
+    metaTitle: "Why a 100% success rate hid a wrong answer — nlqdb",
+    metaDescription:
+      "Our agent answered 12 of 12 questions over MCP. One returned 0 with confidence 1; the true count was 11. Why a success rate can't see wrong answers.",
     title: "Our success rate said 100%. One of the answers was quietly wrong.",
     description:
       "Our agent queried our own docs-memory over public MCP: 12 questions, 12 answered, 10/10 first-ten. One returned 0 with confidence 1 — the true count was 11. Why a success rate can't see it.",
@@ -117,6 +117,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "link-checker-cant-see-your-javascript",
+    metaDescription:
+      "A dead-link sweep of built HTML reported 0 dead links while real clicks redirected. Client-side location.assign() calls are invisible to the checker.",
     title: "Your link checker can't see your JavaScript.",
     description:
       "A dead-link sweep over built HTML read '0 dead' while real clicks 307-redirected. The navigations were client-side location.assign() calls a checker never parses out of dist/.",
@@ -179,6 +181,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "restrictive-rls-agent-memory-scoping",
+    metaTitle: "Postgres RLS: permissive vs restrictive policies",
+    metaDescription:
+      "Postgres RLS policies default to PERMISSIVE and OR together, so a per-agent policy widens access. The one keyword that fixes it, plus four traps.",
     title: "Row-level security has a flavour. The default one is a silent breach.",
     description:
       "Postgres RLS policies default to PERMISSIVE, so they OR together — a per-agent policy beside a tenant policy widens access instead of narrowing it. The one keyword that fixes it, and four traps.",
@@ -237,6 +242,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "guard-advertised-capabilities-against-code",
+    metaDescription:
+      "An agent product advertised a tool it never shipped, so a new user's first call failed. The fix: derive the advertised tool list from the shipped code.",
     title: "Your docs promised a tool your server never shipped.",
     description:
       "An agent product advertised a tool it never built — a new user's first call hit 'tool not found.' The fix isn't a better list; it's deriving the advertised set from the shipped artifact.",
@@ -276,6 +283,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "smoke-test-walks-the-old-ui",
+    metaTitle: "UI smoke tests that pin copy break on every redesign",
+    metaDescription:
+      "Acceptance tests that pin literal UI copy catch regressions until a redesign turns them into a 0/9 mixing real breakage and test drift. Triage is the cost.",
     title: "The redesign shipped. The smoke test kept walking the old UI.",
     description:
       "Acceptance walkers that pin literal UI copy catch regressions — until a redesign turns them into a 0/9 that mixes real breakage with pure test-drift. The triage cost is the trap, not the literals.",
@@ -311,6 +321,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "one-shot-recovery-permanent-outage",
+    metaDescription:
+      "A best-effort repair that runs once turns one silent skip into a permanent outage. Fix the root, keep it idempotent, and re-trigger from the symptom.",
     title: "Your recovery code runs once. Your failure doesn't.",
     description:
       "A best-effort repair that runs once turns one silent skip into a permanent outage. Fix the root, keep it idempotent, and re-trigger from the steady-state symptom — the event never recurs.",
@@ -377,6 +389,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "green-checkmark-has-a-half-life",
+    metaDescription:
+      "When a costly test suite can't run on every push, passing becomes an event, not a state. Score each suite as pass times freshness with a linear decay.",
     title: "A green checkmark has a half-life.",
     description:
       "When an expensive test suite can't run on every push, passing stops being a state and becomes an event. Score each suite pass × freshness with a linear decay so the number rots until it re-runs.",
@@ -426,6 +440,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "ephemeral-staging-persistent-registry",
+    metaTitle: "Ephemeral staging leaks through persistent stores",
+    metaDescription:
+      "An environment is only as ephemeral as the most persistent store that references it. Reset every store that outlives the rebuild at spin-up.",
     title: "We rebuilt staging's database every run. The registry remembered everything.",
     description:
       "An environment is only as ephemeral as the most persistent store that references it. Enumerate every store that outlives the rebuild and reset it at spin-up — teardown can't be the invariant.",
@@ -471,6 +488,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "ownership-transfer-outlives-least-privilege",
+    metaTitle: "Ownership transfer breaks under least-privilege and RLS",
+    metaDescription:
+      "Moving queries to per-tenant roles and RLS broke ownership transfer: it updated one authorization store of four. Move them all, idempotently, in one batch.",
     title: "Ownership transfer was a one-row UPDATE. Then we added least-privilege.",
     description:
       "Hardening queries to per-tenant roles and RLS quietly broke our ownership transfer: it retargeted one authorization store out of four. Transfer must move them all — idempotently, in one batch.",
@@ -523,6 +543,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "most-active-user-is-your-test-suite",
+    metaDescription:
+      "Pre-launch, e2e walkers register users and run real queries, so every dashboard quietly measures your robots. Three places it bit us, and three fixes.",
     title: "Your most active user is your test suite.",
     description:
       "Pre-launch, synthetic traffic IS your traffic: e2e walkers register users and run real queries, so every dashboard quietly measures your robots. Three places it bit us, three fixes.",
@@ -560,6 +582,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "five-fallback-models-one-provider",
+    metaDescription:
+      "A model-diverse fallback list on one gateway fails as a unit. Make the fallback unit a lane (base URL, key, candidates), not a longer list on one pool.",
     title: "Your five fallback models are one point of failure.",
     description:
       "A model-diverse fallback list on one gateway saturates as a unit — five models, one rack. Make the fallback unit a lane (base URL, key, candidates), not a longer list on the same pool.",
@@ -605,6 +629,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "decided-questions-rot-in-your-decision-log",
+    metaTitle: "Decision logs rot: mark resolved questions as resolved",
+    metaDescription:
+      "A decided-but-unmarked open question makes readers re-litigate closed calls. Make resolved a greppable state and count unmarked bullets as debt.",
     title: "An \"open question\" that's already decided is worse than one that's still open.",
     description:
       "Decision logs rot at the seam between open and answered: a decided-but-unmarked bullet makes readers re-litigate closed calls. Make resolved a greppable state and count unmarked bullets as debt.",
@@ -650,6 +677,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "emit-metrics-where-the-distinction-is-certain",
+    metaDescription:
+      "A destructive-op retry rate emitted at the HTTP route can go negative: the route can't tell reads from writes. Emit where the distinction is certain.",
     title: "Your metric is only as honest as the layer you emit it from.",
     description:
       "A destructive-op retry rate emitted at the HTTP route can go negative — the route can't tell reads from writes. Emit metrics at the lowest layer where the distinction is certain.",
@@ -695,6 +724,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "rotate-encryption-key-without-a-version-column",
+    metaTitle: "Rotate an encryption key without a key_version column",
+    metaDescription:
+      "Rotating a key-encryption key seems to need a key_version column. It doesn't: put the version in the ciphertext prefix and rotate with zero migration.",
     title: "You need to rotate an encryption key. You don't need a key-version column.",
     description:
       "Rotating a key-encryption key feels like it needs a key_version column. It doesn't — the ciphertext already describes itself, so put the version in the blob prefix and rotate with zero migration.",
@@ -742,6 +774,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "text-to-sql-planner-told-wrong-dialect",
+    metaTitle: "Text-to-SQL on two engines: pass the right SQL dialect",
+    metaDescription:
+      "A text-to-SQL planner emits whatever dialect you name. Add a second engine and one hardcoded dialect literal sends Postgres SQL to ClickHouse.",
     title:
       "You added a second SQL engine. Your text-to-SQL model is still being told it's the first one.",
     description:
@@ -803,6 +838,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "postgres-validator-rejects-valid-clickhouse-sql",
+    metaTitle: "Postgres SQL validator rejects valid ClickHouse queries",
+    metaDescription:
+      "A Postgres-pinned AST validator silently rejects valid ClickHouse grammar as parse_failed. The fix: split the security allowlist from the dialect parser.",
     title: "You added ClickHouse. Your Postgres SQL validator now rejects valid queries — quietly.",
     description:
       "A Postgres-pinned AST validator false-rejects valid ClickHouse grammar as parse_failed — a silent veto of correct SQL. The fix: split the security allowlist from the dialect parser.",
@@ -857,6 +895,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "blog-without-a-feed-is-a-dead-end",
+    metaTitle: "A blog without an RSS feed is a dead end — nlqdb",
+    metaDescription:
+      "A blog with no RSS feed can't be followed: feed readers and dev.to or Medium import both need a feed URL. Without one, every re-post is manual copy-paste.",
     title: "We published 20 blog posts and never shipped a feed. Nothing could subscribe.",
     description:
       "A blog with no RSS feed is a one-way street: feed readers and dev.to/Medium 'import from RSS' both need a feed URL. Without one, every venue re-post is a manual copy-paste that quietly stops.",
@@ -912,6 +953,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "agent-memory-benchmarks-measure-recall-not-analysis",
+    metaTitle: "Agent-memory benchmarks measure recall, not analysis",
+    metaDescription:
+      "Agent-memory benchmarks score recall of facts, mostly on self-reported numbers. Almost none measure analysis over memory: the gap we found in the papers.",
     title: "We read the agent-memory benchmarks. Almost none measure analysis.",
     description:
       "Agent-memory benchmarks score end-to-end recall of facts on mostly self-reported numbers. Almost nobody measures analysis over memory — the gap we found reading the papers.",
@@ -966,6 +1010,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "one-way-internal-links-leak-yield",
+    metaTitle: "One-way internal links: why SEO pages get no referrals",
+    metaDescription:
+      "Our SEO page count climbed while referrals stayed flat at about one a week. Our link graph was a tree, not a mesh. The fix was one reciprocal link.",
     title: "We shipped 18 SEO pages and got 1 referral. The links only pointed one way.",
     description:
       "The page count climbed; referrals stayed flat at ~1/week. Our internal link graph was a tree, not a mesh. The fix was one reciprocal link, derived from a field we already had.",
@@ -1021,6 +1068,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "serverless-db-cold-start-retry",
+    metaTitle: "Scale-to-zero Postgres cold starts break instant retries",
+    metaDescription:
+      "A scale-to-zero Postgres fails the first query while its compute wakes, and instant retries replay the cold connection. Back off the DB stage, not the LLM.",
     title: "Your database scales to zero. Your retry loop doesn't know that.",
     description:
       "A scale-to-zero Postgres branch fails the first query while its compute wakes. Instant retries replay the cold connection. The fix: back off the DB stage, not the LLM stages.",
@@ -1076,6 +1126,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "llm-timeout-looks-like-hallucination",
+    metaDescription:
+      "Our NL-to-SQL benchmark scored a frontier model as junk on 5 hard questions. A 5s timeout aborted it mid-answer and got mislabeled as a parse failure.",
     title: "The timeout that looked like a hallucination",
     description:
       "Our NL→SQL benchmark scored a frontier model as junk on 5 hard questions. It never hallucinated — a 5s prod timeout aborted it mid-answer and the handler mislabeled the abort as a parse failure.",
@@ -1126,6 +1178,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "model-preset-fail-loud",
+    metaTitle: "Premium model unavailable? Return a 409, not a fallback",
+    metaDescription:
+      "When the premium LLM lane is unavailable, silently serving the default model makes the toggle a placebo. The honest contract: pin, upgrade, or fail loud.",
     title: 'Your "best model" toggle quietly serves the cheap model. Ship a 409 instead.',
     description:
       "When the premium lane isn't available, the tempting branch is to silently serve the default chain. A placebo knob is worse than no knob. The honest contract: pin, upgrade, or fail loud.",
@@ -1185,6 +1240,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "llm-preflight-probe-health",
+    metaDescription:
+      "Six LLM-agent CI runs failed while our pre-flight probe stayed green. Probe the real request shape, read the body not the status, never trust one model.",
     title: "Your LLM health probe passed. Your agent still starved.",
     description:
       "Six straight LLM-agent CI runs failed while our pre-flight probe stayed green. Lessons on gating CI on an LLM provider: probe the real shape, read the body not the status, never trust one model.",
@@ -1242,6 +1299,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "bird-gold-noise-distinct",
+    metaTitle: "BIRD benchmark gold SQL is noisy: the DISTINCT problem",
+    metaDescription:
+      "We bucketed 238 BIRD-dev losses: 46 differ from gold only by a DISTINCT the model rightly added. Audit gold quality before tuning prompts to the noise.",
     title: "Your text-to-SQL model isn't as wrong as your benchmark says. The gold SQL is.",
     description:
       "We bucketed 238 BIRD-dev losses with a structural differ: 46 differ from gold only by a DISTINCT the model rightly added. Audit gold quality before writing prompt directives, or you overfit to noise.",
@@ -1297,6 +1357,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "llm-concatenates-columns-text-to-sql",
+    metaTitle: "Text-to-SQL eval: concatenated columns scored as wrong",
+    metaDescription:
+      "Gold SQL returns first_name and last_name as two columns; the model returns one full name. Positional-tuple EX scoring marks a right answer as a miss.",
     title: "Your LLM fused the two columns you asked for — and the eval marked it wrong",
     description:
       "Gold SQL returns first_name, last_name as two columns; the model returns one concatenated full name. Positional-tuple EX scoring can never match them, so a semantically right answer scores as a miss.",
@@ -1359,6 +1422,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "http-200-error-in-body",
+    metaTitle: "HTTP 200 with an error in the body skews LLM evals",
+    metaDescription:
+      "An LLM gateway sends 200 OK before the upstream model fails, so the error rides in the body. A res.ok-only eval counts an outage as a wrong answer.",
     title:
       "Your text-to-SQL eval is lying: the gateway returns HTTP 200 with the error in the body",
     description:
@@ -1419,6 +1485,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "top-n-rows-per-group",
+    metaDescription:
+      "Top 3 per category looks like ORDER BY with LIMIT 3, but LIMIT caps the whole result. Use ROW_NUMBER() OVER (PARTITION BY ...) and decide how ties break.",
     title: "Top N per group is the query `LIMIT` can't write",
     description:
       '"Top 3 per category" reads like ORDER BY … LIMIT 3, but LIMIT caps the whole result set, not each group. The fix is ROW_NUMBER() OVER (PARTITION BY …) — and the hidden decision is how ties break.',
@@ -1481,6 +1549,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "your-bi-tool-got-acquired-data-layer",
+    metaTitle: "BI tool acquired? Keep your product's data layer separate",
+    metaDescription:
+      "BI tools get acquired: Mode by ThoughtSpot, Looker by Google, Periscope by Sisense. Fine for a dashboard, a liability when your product calls its API.",
     title: "Your BI tool got acquired. Your data layer shouldn't have to care.",
     description:
       "BI notebooks get rolled up — Mode → ThoughtSpot, Looker → Google, Periscope → Sisense. Fine when it's a destination humans log into; a liability when your product's runtime calls its API.",
@@ -1524,6 +1595,8 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "find-duplicate-rows-you-re-google-every-time",
+    metaDescription:
+      "Find duplicate rows in SQL: GROUP BY the suspect columns, HAVING COUNT(*) > 1. Need the whole row, not just the key? That calls for a window function.",
     title: "The duplicate-rows query you re-Google every six weeks",
     description:
       "Find duplicates hasn't changed in thirty years: GROUP BY the suspect columns, HAVING COUNT(*) > 1. Wanting the whole row, not just the key, quietly changes it to a window function.",
@@ -1569,6 +1642,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "text-to-sql-build-vs-buy",
+    metaTitle: "Text-to-SQL: build vs buy beyond the afternoon demo",
+    metaDescription:
+      "Prompt, model and run the SQL is 10% of an ask-your-data feature. The validator, plan cache and eval harness are the rest. Do you want to own that stack?",
     title: "The text-to-SQL demo takes an afternoon. The other 90% is why you should buy it.",
     description:
       "Prompt + model + run the SQL is 10% of an 'ask your data' feature. The fail-closed validator, plan cache, and eval harness are the rest — yours forever. The real question: do you want that stack?",
@@ -1616,6 +1692,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "sitemap-advertising-redirects",
+    metaTitle: "Sitemap URLs that redirect, and canonical tags that do too",
+    metaDescription:
+      "A static host 307-redirects bare paths, so our sitemap listed 27 redirecting URLs and every canonical tag pointed at one. The fix: one path helper.",
     title: "Your sitemap is advertising redirects — and your canonical tag points at one",
     description:
       "A static host that serves route/index.html 307-redirects the bare path. Our sitemap advertised 27 redirecting URLs and every canonical tag pointed at one. The fix is one path-normalize helper.",
@@ -1660,6 +1739,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "offline-llm-eval-rate-limits",
+    metaTitle: "Offline LLM evals measure rate limits, not your model",
+    metaDescription:
+      "A free-model NL-to-SQL bench scored 17/20, then 6/20 ninety seconds later. The providers got tired, not the model. Keep availability out of accuracy.",
     title: "Your offline LLM eval isn't measuring your model — it's measuring your rate limits",
     description:
       "A free-model NL-to-SQL bench scored 17/20, then 6/20 ninety seconds later. The model didn't change — the providers got tired. How to keep availability out of your accuracy number.",
@@ -1699,6 +1781,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "ai-internal-tool-builder-faster",
+    metaTitle: "AI internal-tool builders: do you need the tool at all?",
+    metaDescription:
+      "AI low-code tools scaffold an admin app from a prompt, but it's still a destination a human operates. Often the answer belongs inline in your product.",
     title: "AI made the internal-tool builder faster. It didn't ask whether you needed the tool.",
     description:
       "Low-code AI scaffolds the admin tool in a prompt. But the output is still a destination a human operates — and often the answer belongs inline in your product, or the asker is an agent.",
@@ -1734,6 +1819,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "text-to-sql-accuracy-schemas-your-users-never-build",
+    metaTitle: "Text-to-SQL accuracy: BIRD and Spider vs real schemas",
+    metaDescription:
+      "The same free-model chain scores 0.52 on BIRD and 0.96 on the schema shapes our users build. Why academic NL-to-SQL scores mislead, so we report both.",
     title: "Your text-to-SQL accuracy is measured on schemas your users will never build",
     description:
       "BIRD and Spider score NL-to-SQL over messy academic schemas. The same free-model chain that scores 0.52 on BIRD scores 0.96 on the schema shapes our users actually build — so we report both.",
@@ -1782,6 +1870,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "mcp-server-what-does-the-agent-own",
+    metaTitle: "MCP servers for data tools: what does the agent own?",
+    metaDescription:
+      "Two kinds of MCP server look the same in a feature matrix: a window into a human's app, or infrastructure the agent owns. The tell is what remains after.",
     title:
       "Every data tool shipped an MCP server this year. Your agent still can't build on most of them.",
     description:
@@ -1818,6 +1909,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "agent-memory-vector-store-aggregation-gap",
+    metaTitle: "Why vector-store agent memory can't count or GROUP BY",
+    metaDescription:
+      "A vector store returns the top-k similar memories; it has no GROUP BY, COUNT or JOIN. Recall is similarity; reporting is aggregation. Memory needs both.",
     title: 'Your agent\'s memory is a vector store. Ask it "how many" and watch it fall over.',
     description:
       "A vector store returns the top-k most similar memories — there is no GROUP BY, COUNT, or JOIN. Recall is similarity; reporting is aggregation. Agent memory needs both machines, not one.",
@@ -1861,6 +1955,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "store-form-submissions-without-a-backend",
+    metaTitle: "Store form submissions without a backend, then query them",
+    metaDescription:
+      "Storing a signup is a trivial insert, no server needed. Reporting is what wants a database: signups per day and which referrer converted are aggregations.",
     title:
       'You don\'t need a backend to store form submissions. You need a place to ask "how many."',
     description:
@@ -1901,6 +1998,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "not-in-subquery-null-trap",
+    metaTitle: "SQL NOT IN returns no rows? It's a NULL in the subquery",
+    metaDescription:
+      "One NULL in the subquery makes WHERE id NOT IN (SELECT ...) silently return zero rows. Why, and the NULL-safe fix: NOT EXISTS or LEFT JOIN ... IS NULL.",
     title: "NOT IN returned zero rows. It wasn't your data — it was one NULL.",
     description:
       "Why WHERE id NOT IN (SELECT …) silently returns nothing when the subquery contains a NULL, and the two anti-join shapes (NOT EXISTS, LEFT JOIN … IS NULL) that never lie to you.",
@@ -1945,6 +2045,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "zep-recall-vs-analytical-agent-memory",
+    metaTitle: "Zep agent memory: perfect recall, but no GROUP BY",
+    metaDescription:
+      "Zep's temporal knowledge graph is genuinely good at recall, but has no query planner. When an agent-memory question is a GROUP BY, you need aggregation.",
     title:
       'Zep gives my agent perfect recall. It still can\'t answer "average per group" about its own memory.',
     description:
@@ -1983,6 +2086,9 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: "null-timestamp-ttl-sweep-funnel-metric",
+    metaTitle: "One NULL timestamp broke a TTL sweep and a funnel metric",
+    metaDescription:
+      "A backfill is not a default: one nullable timestamp made an age-based eviction a silent no-op and pinned a funnel metric at zero. One NULL, two failures.",
     title: "The NULL timestamp that broke a TTL sweep and a funnel metric at the same time",
     description:
       "A backfill is not a default: one nullable timestamp column made an age-based eviction a silent no-op and pinned a funnel metric at zero — the same NULL, two different failure modes.",

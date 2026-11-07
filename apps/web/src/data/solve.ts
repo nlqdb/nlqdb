@@ -79,13 +79,9 @@ export type SolveEntry = {
   // topically-forced internal links. Validated in solve.test.ts (resolves,
   // no self-ref, no dupes).
   related?: string[];
-  // Optional hand-written SEO overrides for the `<title>` / `<meta
-  // description>`. `searchTitle`/`oneLiner` double as the on-page <h1> and
-  // lede, so they're written for the reader, not the ~60/~155-char SERP
-  // snippet; `[slug].astro` word-boundary-clamps them for the meta by
-  // default (lib/meta.ts). Set these where that auto-clamp lands on an
-  // awkward fragment — the visible copy is untouched. Bounds: metaTitle
-  // ≤60, metaDescription ≤155 (guarded by meta-length-integrity.test.ts).
+  // Hand-written SERP `<title>` / `<meta description>` — required when the
+  // on-page source field is over ~60 / ~155 chars; the visible copy is
+  // untouched (lib/meta.ts, guarded by meta-length-integrity.test.ts).
   metaTitle?: string;
   metaDescription?: string;
 };
@@ -1519,9 +1515,6 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "pivot-rows-into-columns",
     persona: "P3 analyst",
-    // Hand-written SERP meta (GSC: pos ~12.8, 21 impr, 0 clicks): the
-    // auto-clamp truncates the title at "…without writing a…", cutting the
-    // "crosstab query" differentiator — see lib/meta.ts.
     metaTitle: "Pivot rows into columns in SQL — no crosstab query",
     metaDescription:
       "Pivot rows into columns in SQL without hand-writing a crosstab — nlqdb compiles the conditional aggregation, runs it, shows the SQL. Ask in plain English.",
@@ -2092,10 +2085,6 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
   {
     slug: "count-rows-per-day-including-missing-dates",
     persona: "P3 analyst",
-    // Hand-written SERP meta (GSC: pos ~8.6, 57 impr, 0 clicks — top page-1
-    // zero-click page): the auto-clamp truncates the title at "…including days
-    // with…", cutting the zero-row/missing-date differentiator — see
-    // lib/meta.ts.
     metaTitle: "Count rows per day in SQL, including zero-row days",
     metaDescription:
       "Count rows per day in SQL and still show the days with none — nlqdb builds the date spine, LEFT JOINs your rows, and shows the SQL. Ask in plain English.",
