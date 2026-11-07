@@ -64,7 +64,7 @@
   "devDependencies": {
     "@nlqdb/errors": "workspace:*",
     "@nlqdb/sdk": "workspace:*",
-    "typescript": "^5.6.0",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.0"
   }
 }
