@@ -95,4 +95,10 @@ export default defineConfig({
       ],
     }),
   ],
+  // Starlight's <Aside>/<Steps> import `satteri`, whose napi-rs loader finds
+  // its per-platform `@bruits/satteri-*` binary relative to its own file;
+  // inlined into a prerender chunk under Bun's isolated linker, that lookup
+  // starts from dist/ and fails ("Cannot find native binding"). Kept external
+  // (and a direct dependency so dist/ can resolve it), as Astro does for sharp.
+  vite: { environments: { prerender: { resolve: { external: ["satteri"] } } } },
 });
