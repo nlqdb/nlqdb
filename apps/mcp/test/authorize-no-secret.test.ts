@@ -62,5 +62,8 @@ describe("apps/mcp /authorize with BETTER_AUTH_SECRET unprovisioned (prod 1101 r
     expect(target.protocol).toBe("cursor:");
     expect(target.searchParams.get("error")).toBe("server_error");
     expect(target.searchParams.get("state")).toBe("abc123state");
+    // RFC 9207 — metadata advertises iss support, so clients reject an
+    // error response without it.
+    expect(target.searchParams.get("iss")).toBe("https://mcp.nlqdb.test");
   });
 });

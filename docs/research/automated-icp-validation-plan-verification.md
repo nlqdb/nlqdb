@@ -623,8 +623,8 @@ asserts `state == "passed"` in the JSON, NOT the individual HTTP calls.
    (RFC 8414).
 4. `POST https://mcp.nlqdb.com/mcp` with the JSON-RPC `initialize`
    request and no `Authorization` header → 401 with
-   `WWW-Authenticate: Bearer realm="OAuth", resource_metadata="<url>", error="invalid_token"`;
-   the `<url>` MUST equal step 2's URL (RFC 9728 §5.1 — the challenge
+   `WWW-Authenticate: Bearer realm="OAuth", resource_metadata="<url>", scope="mcp"`
+   (no `error` on a credential-less request, RFC 6750 §3.1); the `<url>` MUST equal step 2's URL (RFC 9728 §5.1 — the challenge
    resource_metadata must be the discovery endpoint a fresh client can
    reach without context).
 5. `POST https://mcp.nlqdb.com/mcp` with `tools/list` and no auth → same
@@ -687,7 +687,7 @@ asserts `state == "passed"` in the JSON, NOT the individual HTTP calls.
   regression; one of the three discovery endpoints stopped serving 200
   with the expected contract. `apps/mcp` regression.
 - `flow-005-walk.sh` returns `failed auth wall` → the `WWW-Authenticate`
-  header dropped or no longer carries `resource_metadata` + `error="invalid_token"`.
+  header dropped or no longer carries `resource_metadata`.
   Every MCP client now fails handshake silently — escalate.
 - `flow-005-walk.sh` returns `failed challenge URL` → the challenge's
   `resource_metadata` URL no longer matches step 2's scoped discovery
