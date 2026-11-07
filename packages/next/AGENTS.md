@@ -1,6 +1,6 @@
 # Packages · Next — Agents Guide
 
-`@nlqdb/next` — Next.js 15 App Router helpers. Re-exports `<NlqData>` from `@nlqdb/react` and adds `<NlqScript />` (next/script) + `/server` factory for `sk_live_*`-keyed Route Handlers.
+`@nlqdb/next` — Next.js 15–16 App Router helpers. Re-exports `<NlqData>` from `@nlqdb/react` and adds `<NlqScript />` (next/script) + `/server` factory for `sk_live_*`-keyed Route Handlers.
 
 > Read root [`AGENTS.md`](../../AGENTS.md) first, then [`docs/features/framework-wrappers/FEATURE.md`](../../docs/features/framework-wrappers/FEATURE.md).
 
