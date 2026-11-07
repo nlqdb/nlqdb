@@ -23,6 +23,8 @@ describe("oauth-bridge signed state blob", () => {
       st: "csrf-token-123",
       cc: "challenge-abc",
       cm: "S256",
+      is: "https://mcp.nlqdb.com",
+      rs: "https://mcp.nlqdb.com/mcp",
     };
     const signed = await signBlob(original, SECRET);
     expect(signed).not.toContain("+");

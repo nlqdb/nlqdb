@@ -183,7 +183,7 @@ Counters (suffix `.total`):
 - `nlqdb.auth.events.total{type, outcome}` — sign-in / refresh / logout.
 - `nlqdb.events.sink.query_log.failures.total{status_class}` — Tinybird `query_log` write failures (non-2xx or fetch threw). Trip signal for the events-worker circuit-breaker (`SK-EVENTS-009`).
 - `nlqdb.retry.total{stage, reason}` — GLOBAL-022 retries (SK-ASK-013, SK-SDK-008). `stage ∈ {route, plan, exec, sdk}`. Attempts, not requests. Sustained climb = release-blocking.
-- `nlqdb.mcp.auth.failures.total{error_code, status}` — `SK-MCP-009`. Hosted-MCP `OAuthProvider` error responses from its `onError` callback. `error_code` from workers-oauth-provider's set; `status` is the HTTP code.
+- `nlqdb.mcp.auth.failures.total{error_code, status}` — `SK-MCP-009`. Hosted-MCP `OAuthProvider` error responses from its `onError` callback, plus `/authorize` validation failures caught in `oauth-bridge.ts`. `error_code` is the OAuth error code; `status` is the HTTP code (302 when failed back to a validated `redirect_uri`).
 - `nlqdb.premium.cap_hit.total` / `nlqdb.premium.overflow_fallback_events.total` — hosted-premium fall-throughs to the free chain (SK-PREMIUM-006 / SK-PREMIUM-011). No per-customer label; aggregate only.
 
 Histograms (latency in ms — explicit `_ms` suffix):
