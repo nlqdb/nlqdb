@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Blog
 
 **One-liner:** `/blog/<slug>` engineering posts — the canonical copies of `docs/research/distribution-queue.md` drafts, published autonomously by the daily loop; community-venue posts point back here.
-**Status:** Retired by GLOBAL-043 — deletion PR pending; no new work
+**Status:** Kept as the SEO lane's surface (GLOBAL-043, amended 2026-11-07) — search-yield work only; no product-copy expansion until the 🔒 public-copy switch
 **Owners (code):** `apps/web/src/data/blog.ts`, `apps/web/src/pages/blog/**`, `apps/web/src/lib/inline-md.ts`, `apps/web/src/pages/llms.txt.ts`, `apps/web/src/pages/sitemap.xml.ts`
 **Cross-refs:** [`.claude/commands/daily.md`](../../../.claude/commands/daily.md) step 3 (the publishing loop) · [`docs/research/distribution-queue.md`](../../research/distribution-queue.md) (draft source) · [`comparison-pages/FEATURE.md`](../comparison-pages/FEATURE.md) + [`solve-pages/FEATURE.md`](../solve-pages/FEATURE.md) (sibling AEO surfaces) · [`web-app/FEATURE.md`](../web-app/FEATURE.md)
 

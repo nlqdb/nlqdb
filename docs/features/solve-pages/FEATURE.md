@@ -14,7 +14,7 @@ when-to-load:
 # Feature: Solve Pages
 
 **One-liner:** `/solve/<slug>` pain-driven AEO pages — one page per recurring natural-language search query; each answers the question with a working `<nlq-data>` embed and names what nlqdb doesn't do.
-**Status:** Retired by GLOBAL-043 — deletion PR pending; no new work
+**Status:** Kept as the SEO lane's surface (GLOBAL-043, amended 2026-11-07) — search-yield work only; no product-copy expansion until the 🔒 public-copy switch
 **Owners (code):** `apps/web/src/data/solve.ts`, `apps/web/src/data/solve.test.ts`, `apps/web/src/pages/solve/**`, `apps/web/src/pages/llms.txt.ts`, `apps/web/src/pages/sitemap.xml.ts`
 **Cross-refs:** [`docs/research/automated-icp-validation-plan.md §3.1`](../../research/automated-icp-validation-plan.md) · [`docs/features/comparison-pages/FEATURE.md`](../comparison-pages/FEATURE.md) (sibling AEO surface) · [`docs/features/icp-mining/FEATURE.md`](../icp-mining/FEATURE.md) (future source of verbatim cluster quotes) · [`docs/features/web-app/FEATURE.md`](../web-app/FEATURE.md)
 

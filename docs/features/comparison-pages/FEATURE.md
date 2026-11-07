@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Comparison Pages
 
 **One-liner:** `/vs/<competitor>` AEO/SEO pages — honest side-by-sides driving acquisition from buyers who already named the alternative.
-**Status:** Retired by GLOBAL-043 — deletion PR pending; no new work
+**Status:** Kept as the SEO lane's surface (GLOBAL-043, amended 2026-11-07) — search-yield work only; no product-copy expansion until the 🔒 public-copy switch
 **Owners (code):** `apps/web/src/data/competitors.ts`, `apps/web/src/pages/vs/**`, `apps/web/src/pages/llms.txt.ts`, `apps/web/src/pages/sitemap.xml.ts`
 **Cross-refs:** [`docs/research/automated-icp-validation-plan.md §3.5`](../../research/automated-icp-validation-plan.md) · [`docs/competitors.md`](../../competitors.md) · [`docs/features/web-app/FEATURE.md`](../web-app/FEATURE.md)
 
