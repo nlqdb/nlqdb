@@ -14,8 +14,8 @@
 #   3. GET /.well-known/oauth-authorization-server (RFC 8414) — 200,
 #      `issuer` + `authorization_endpoint` + `token_endpoint` all present.
 #   4. POST /mcp `initialize` JSON-RPC without auth → 401 with a
-#      `WWW-Authenticate: Bearer realm=*, resource_metadata=*, error="invalid_token"`
-#      challenge. The `resource_metadata` URL must match step 2.
+#      `WWW-Authenticate: Bearer realm=*, resource_metadata=*` challenge (no
+#      `error` — RFC 6750 §3.1). The `resource_metadata` URL must match step 2.
 #   5. POST /mcp `tools/list` JSON-RPC without auth → 401 with the same
 #      challenge shape (proves the wall isn't method-specific).
 #
@@ -217,9 +217,8 @@ INIT_CHALLENGE_URL="$(printf '%s' "$INIT_AUTH" | grep -oE 'resource_metadata=("[
 # scheme names are case-insensitive).
 if [[ "$INIT_STATUS" == "401" ]] \
     && [[ "${INIT_AUTH,,}" == bearer* ]] \
-    && [[ "$INIT_AUTH" == *"resource_metadata="* ]] \
-    && [[ "$INIT_AUTH" == *"error=\"invalid_token\""* || "$INIT_AUTH" == *"error=invalid_token"* ]]; then
-  assert_pass "initialize 401 with Bearer + resource_metadata + error=invalid_token"
+    && [[ "$INIT_AUTH" == *"resource_metadata="* ]]; then
+  assert_pass "initialize 401 with Bearer + resource_metadata challenge"
   WALL_PASS_COUNT=$((WALL_PASS_COUNT + 1))
   if [[ "$INIT_CHALLENGE_URL" == "$EXPECTED_CHALLENGE_URL" ]]; then
     assert_pass "  challenge resource_metadata URL matches scoped discovery (RFC 9728 §5.1)"
@@ -250,8 +249,7 @@ TL_AUTH="${TL_AUTH//$'\n'/}"
 
 if [[ "$TL_STATUS" == "401" ]] \
     && [[ "${TL_AUTH,,}" == bearer* ]] \
-    && [[ "$TL_AUTH" == *"resource_metadata="* ]] \
-    && [[ "$TL_AUTH" == *"error=\"invalid_token\""* || "$TL_AUTH" == *"error=invalid_token"* ]]; then
+    && [[ "$TL_AUTH" == *"resource_metadata="* ]]; then
   assert_pass "tools/list 401 with the same Bearer + resource_metadata challenge"
   WALL_PASS_COUNT=$((WALL_PASS_COUNT + 1))
 else

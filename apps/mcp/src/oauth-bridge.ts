@@ -4,8 +4,13 @@
 // completes the grant (`SK-MCP-011`, `SK-MCP-013`). `/register`,
 // `/token`, and `/.well-known/*` are owned by `OAuthProvider`.
 
-import type { AuthRequest, OAuthHelpers } from "@cloudflare/workers-oauth-provider";
+import type {
+  AuthorizationError,
+  AuthRequest,
+  OAuthHelpers,
+} from "@cloudflare/workers-oauth-provider";
 import { createClient, NlqdbApiError } from "@nlqdb/sdk";
+import { recordOAuthError } from "./auth-failure.ts";
 import { signBlob, verifyBlob } from "./crypto.ts";
 
 const BRIDGE_CALLBACK_PATH = "/oauth/mcp-bridge-callback";
@@ -27,11 +32,12 @@ type BridgeStateBlob = {
   st: string;
   cc?: string;
   cm?: string;
-  // RFC 9207 issuer. OAuthProvider advertises
+  // RFC 9207 issuer: OAuthProvider advertises
   // `authorization_response_iss_parameter_supported`, so MCP clients
-  // reject a callback without `iss` (MCP spec, Authorization Response
-  // Validation) — it must survive the consent round-trip.
+  // reject a callback without `iss`.
   is?: string;
+  // RFC 8707 resource: without it the grant is not audience-bound.
+  rs?: string | string[];
 };
 
 export const bridgeHandler: ExportedHandler<BridgeEnv> = {
@@ -54,7 +60,18 @@ export const bridgeHandler: ExportedHandler<BridgeEnv> = {
 };
 
 async function handleAuthorize(req: Request, env: BridgeEnv): Promise<Response> {
-  const oauthReq = await env.OAUTH_PROVIDER.parseAuthRequest(req);
+  let oauthReq: AuthRequest;
+  try {
+    oauthReq = await env.OAUTH_PROVIDER.parseAuthRequest(req);
+  } catch (err) {
+    if (!isAuthorizationError(err)) throw err;
+    // `redirectUri` is set only once the client + exact redirect_uri are
+    // validated; without it, redirecting would be an open redirect.
+    const status = err.redirectUri ? 302 : 400;
+    recordOAuthError({ code: err.code, description: err.description, status, headers: {} });
+    if (!err.redirectUri) return new Response(err.description, { status });
+    return redirectError(err.redirectUri, err.state ?? "", err.issuer, err.code, err.description);
+  }
   const client = await env.OAUTH_PROVIDER.lookupClient(oauthReq.clientId);
   if (!client) return new Response("Unknown client_id", { status: 400 });
 
@@ -77,6 +94,7 @@ async function handleAuthorize(req: Request, env: BridgeEnv): Promise<Response> 
     ...(oauthReq.codeChallenge ? { cc: oauthReq.codeChallenge } : {}),
     ...(oauthReq.codeChallengeMethod ? { cm: oauthReq.codeChallengeMethod } : {}),
     ...(oauthReq.issuer ? { is: oauthReq.issuer } : {}),
+    ...(oauthReq.resource ? { rs: oauthReq.resource } : {}),
   };
 
   const consentUrl = new URL(
@@ -89,6 +107,12 @@ async function handleAuthorize(req: Request, env: BridgeEnv): Promise<Response> 
   return Response.redirect(consentUrl.toString(), 302);
 }
 
+// Matched by name, not `instanceof`: a value import of the provider pulls
+// `cloudflare:workers` into this module, which the node unit tests load.
+function isAuthorizationError(err: unknown): err is AuthorizationError {
+  return err instanceof Error && err.name === "AuthorizationError";
+}
+
 // Fail an authorize request back to the client's redirect_uri with an
 // OAuth error (RFC 6749 §4.1.2.1). Used only after parseAuthRequest has
 // validated the redirect_uri belongs to the client. Custom schemes
@@ -98,9 +122,11 @@ function redirectError(
   state: string,
   issuer: string | undefined,
   error: string,
+  description?: string,
 ): Response {
   const target = new URL(redirectUri);
   target.searchParams.set("error", error);
+  if (description) target.searchParams.set("error_description", description);
   if (state) target.searchParams.set("state", state);
   if (issuer) target.searchParams.set("iss", issuer);
   return Response.redirect(target.toString(), 302);
@@ -139,6 +165,7 @@ async function handleBridgeCallback(url: URL, env: BridgeEnv): Promise<Response>
     ...(blob.cc ? { codeChallenge: blob.cc } : {}),
     ...(blob.cm ? { codeChallengeMethod: blob.cm } : {}),
     ...(blob.is ? { issuer: blob.is } : {}),
+    ...(blob.rs ? { resource: blob.rs } : {}),
   };
   const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({
     request: authReq,

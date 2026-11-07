@@ -122,7 +122,69 @@ describe("apps/mcp auth boundary (slice 3b)", () => {
     const loc = res.headers.get("location");
     expect(loc).toBeTruthy();
     expect(new URL(loc as string).pathname).toBe("/oauth/mcp-authorize");
-    expect(new URL(loc as string).searchParams.get("flow")).toBeTruthy();
+    const flow = new URL(loc as string).searchParams.get("flow") as string;
+    expect(flow).toBeTruthy();
+    // The signed blob carries the RFC 9207 issuer + RFC 8707 resource so
+    // the bridge callback rebuilds the same AuthRequest parseAuthRequest saw.
+    const payload = JSON.parse(
+      atob((flow.split(".")[0] as string).replace(/-/g, "+").replace(/_/g, "/")),
+    ) as Record<string, unknown>;
+    expect(payload["is"]).toBe("https://mcp.nlqdb.test");
+    expect(payload["rs"]).toBe("https://mcp.nlqdb.com/mcp");
+  });
+
+  it("/authorize without PKCE fails back to the client with error + state + iss", async () => {
+    const reg = await SELF.fetch("https://mcp.nlqdb.test/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "NoPkce",
+        redirect_uris: ["http://localhost:4567/callback"],
+        token_endpoint_auth_method: "none",
+      }),
+    });
+    expect(reg.status).toBe(201);
+    const clientId = ((await reg.json()) as Record<string, string>)["client_id"] as string;
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: "http://localhost:4567/callback",
+      state: "s1",
+    });
+    const res = await SELF.fetch(`https://mcp.nlqdb.test/authorize?${params.toString()}`, {
+      redirect: "manual",
+    });
+    expect(res.status).toBe(302);
+    const target = new URL(res.headers.get("location") as string);
+    expect(target.origin).toBe("http://localhost:4567");
+    expect(target.searchParams.get("error")).toBe("invalid_request");
+    expect(target.searchParams.get("state")).toBe("s1");
+    expect(target.searchParams.get("iss")).toBe("https://mcp.nlqdb.test");
+  });
+
+  it("/authorize with an unknown client renders 400 locally, never redirects", async () => {
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: "nope",
+      redirect_uri: "https://evil.example/cb",
+    });
+    const res = await SELF.fetch(`https://mcp.nlqdb.test/authorize?${params.toString()}`, {
+      redirect: "manual",
+    });
+    expect(res.status).toBe(400);
+    expect(res.headers.get("location")).toBeNull();
+  });
+
+  it("advertises the mcp scope in RFC 9728 metadata and a bare 401 challenge", async () => {
+    const prm = await SELF.fetch("https://mcp.nlqdb.test/.well-known/oauth-protected-resource/mcp");
+    expect(prm.status).toBe(200);
+    expect(((await prm.json()) as Record<string, unknown>)["scopes_supported"]).toEqual(["mcp"]);
+    const res = await SELF.fetch("https://mcp.nlqdb.test/mcp", { method: "POST" });
+    expect(res.status).toBe(401);
+    const challenge = res.headers.get("www-authenticate") ?? "";
+    expect(challenge).toContain('scope="mcp"');
+    // RFC 6750 §3.1 — no error code when the request carried no credentials.
+    expect(challenge).not.toContain("error=");
   });
 
   it("/health stays unauthenticated", async () => {

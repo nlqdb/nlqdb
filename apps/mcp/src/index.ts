@@ -97,6 +97,9 @@ const oauth = new OAuthProvider<Env>({
   tokenEndpoint: "/token",
   clientRegistrationEndpoint: "/register",
   scopesSupported: ["mcp"],
+  // Since 0.9 the RFC 9728 metadata and 401 challenge no longer fall back
+  // to `scopesSupported`; without this, clients request no scope (SK-MCP-012).
+  resourceMetadata: { scopes_supported: ["mcp"] },
   allowImplicitFlow: false,
   allowPlainPKCE: false,
   // Every refresh writes 2 KV records (rotated grant + new `token:*`). The
