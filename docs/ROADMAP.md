@@ -26,7 +26,7 @@ D1 attach on the real rateme12 (dogfood, `RATEME12_D1_TOKEN`,
 attach; KPI B = one applied index with its before/after p95 (D1: and rows
 read).
 
-- [ ] Spike: Tier 1 proposes a `create_index` from the spike's app fingerprints (today 28/32 planned, 0 proposed)
+- [ ] Spike: Tier 1 proposes a `create_index` from the spike's app fingerprints (28/32 planned, 0 proposed: its 11 equality lookups are all unselective; next, its 2 range filters)
 - [ ] Spike: apply ONE index (`CONCURRENTLY`, low-load window), record its hot fingerprint's before/after p95 with the inverse — the founder calls pass/fail
 - [ ] rateme12: attach its live D1 read-only through the API door — KPI A on a real D1
 - [ ] rateme12: apply one D1 proposal, record p95 and rows read before/after — KPI B on a real D1
