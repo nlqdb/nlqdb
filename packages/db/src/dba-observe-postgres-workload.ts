@@ -369,6 +369,7 @@ export function observePostgresWorkload(
             byKey: String(t["partkey"]).split(" ")[0],
             keyHit: scan.columns.some((c) => String(t["partkey"]).includes(c)),
             nCols: scan.columns.length,
+            covered: Number(t["covered"]),
             rows: Math.round(Number(t["row_estimate"])),
             pct: Math.round((100 * scan.planRows) / Math.max(1, Number(t["row_estimate"]))),
           });
