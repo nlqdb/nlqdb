@@ -54,7 +54,7 @@ const window = (query: string, totalMs = 100): FingerprintWindow => ({
 const relations = { rows: [{ relname: "users" }, { relname: "Gone" }] };
 
 // A stub that answers EXPLAIN with `plan` and the table check with `table`.
-function stub(plan: unknown, table: Record<string, number>) {
+function stub(plan: unknown, table: Record<string, number | boolean>) {
   const sqls: string[] = [];
   const query: PostgresQueryFn = async (sql) => {
     if (sql.includes("relkind IN")) return relations;
@@ -189,6 +189,55 @@ describe("observePostgresWorkload", () => {
     expect(proposals).toHaveLength(1);
   });
 
+  it("judges a partition's lookup like a table's, and holds a selective one for the parent's index", async () => {
+    const partition = { ...bigTable, known_columns: 1, is_partition: true };
+    const selective = newTier1Funnel();
+    expect(
+      await observePostgresWorkload(
+        stub(seqScan("(u.a = $1)"), partition).query,
+        "app",
+        [window("SELECT 1 FROM users")],
+        selective,
+      ),
+    ).toEqual([]);
+    expect(selective).toMatchObject({ partitions: 1, unselective: 0 });
+
+    const unselective = newTier1Funnel();
+    await observePostgresWorkload(
+      stub(seqScan("(u.a = $1)", 3_000), partition).query,
+      "app",
+      [window("SELECT 1 FROM users")],
+      unselective,
+    );
+    expect(unselective).toMatchObject({ partitions: 0, unselective: 1, unselectivePct: [30] });
+  });
+
+  it("counts the shape of each filtered scan it doesn't read, never the filter", async () => {
+    const funnel = newTier1Funnel();
+    const plan = {
+      "Node Type": "Append",
+      Plans: [
+        seqScan("((u.a = $1) OR (u.b = $2))"),
+        seqScan("((u.a = $1) AND (u.b >= $2))"),
+        seqScan("((u.a)::text ~~ $1)"),
+        seqScan("(u.a <> $1)"),
+        seqScan("(u.a = $1)"),
+        { ...seqScan("(u.a > $1)"), Schema: "other" },
+      ],
+    };
+    await observePostgresWorkload(
+      stub(plan, { ...bigTable, known_columns: 1 }).query,
+      "app",
+      [window("SELECT 1 FROM users")],
+      funnel,
+    );
+    expect(funnel).toMatchObject({
+      filteredScans: 5,
+      equalityScans: 1,
+      unreadShapes: ["or", "range", "pattern", "other"],
+    });
+  });
+
   it("skips a fingerprint that fails to plan and keeps going", async () => {
     let n = 0;
     const query: PostgresQueryFn = async (sql) => {
@@ -213,7 +262,13 @@ describe("observePostgresWorkload", () => {
       funnel,
     );
     expect(proposals.map((p) => p.columns)).toEqual([["a"]]);
-    expect(funnel).toMatchObject({ planned: 1, unplanned: 1, filteredScans: 1, equalityScans: 1 });
+    expect(funnel).toMatchObject({
+      planned: 1,
+      unplanned: 1,
+      unplannedCodes: ["42P01"],
+      filteredScans: 1,
+      equalityScans: 1,
+    });
   });
 
   it("counts a scan on a partition (no plain-table row) apart from a covered one, on the span", async () => {

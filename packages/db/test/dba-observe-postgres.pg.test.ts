@@ -12,6 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   applyProposal,
   type FingerprintWindow,
+  newTier1Funnel,
   observePostgresCatalog,
   observePostgresWorkload,
   snapshotPostgresStatements,
@@ -101,6 +102,7 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
         `r${i % 4}`,
       ]);
       await conn.query("SELECT body FROM dba_synth.comments WHERE user_id = $1", [1 + (i % 2000)]);
+      await conn.query("SELECT at FROM dba_synth.events WHERE user_id = $1", [1 + (i % 2000)]);
       await conn.query("SELECT id FROM dba_synth.posts WHERE author_id::text = $1", [
         String(1 + (i % 2000)),
       ]);
@@ -113,7 +115,10 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
   it("proposes an index for each hot seq-scanned lookup; applied, verify keeps it on its p95 cut", async () => {
     await conn.query("SELECT pg_stat_statements_reset()", []);
     const before = await runWorkload();
-    const proposals = await observePostgresWorkload(conn.query, SCHEMA, before);
+    const funnel = newTier1Funnel();
+    const proposals = await observePostgresWorkload(conn.query, SCHEMA, before, funnel);
+    // The selective lookup on partitioned events waits for the parent's index.
+    expect(funnel.partitions).toBe(1);
     // Heaviest first, so the order follows the run's timings: compare as a set.
     expect(proposals.map((p) => `${p.table}(${p.columns.join(",")}) t${p.tier}`).sort()).toEqual([
       "posts(author_id) t1",

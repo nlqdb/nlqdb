@@ -206,6 +206,9 @@ type SeqScanFilter = {
 // equalities (`= ANY` included): with any other term (a range, an OR, `<> ALL`)
 // `Plan Rows` would credit the equality columns with selectivity they don't
 // have alone.
+const isEqualityOnly = (filter: string) =>
+  filter.replace(EQUALITY_TERM, "").replace(/\bAND\b|[()\s]/g, "") === "";
+
 function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = [], workers = 0) {
   const filter = node.Filter;
   const planWorkers = node["Workers Planned"] ?? workers;
@@ -214,7 +217,7 @@ function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = [
     node.Schema === schema &&
     node["Relation Name"] &&
     filter &&
-    filter.replace(EQUALITY_TERM, "").replace(/\bAND\b|[()\s]/g, "") === ""
+    isEqualityOnly(filter)
   ) {
     const terms = [...filter.matchAll(EQUALITY_TERM)];
     const columns = [...new Set(terms.map((m) => unquote((m[1] ?? m[2]) as string)))];
@@ -259,14 +262,10 @@ SELECT GREATEST(c.reltuples, 0)::float8 AS row_estimate,
                   JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attnum = k.attnum)
              = (SELECT array_agg(name ORDER BY name) FROM cols)
        ) THEN 1 ELSE 0 END AS covered,
-       c.relkind = 'm' AS is_matview,
-       c.relispartition AS is_partition,
-       CASE WHEN c.relispartition THEN pg_catalog.pg_partition_root(c.oid)::oid::int8 END AS root_oid,
-       CASE WHEN c.relispartition THEN (SELECT count(*) FROM pg_catalog.pg_inherits h WHERE h.inhparent = pg_catalog.pg_partition_root(c.oid))::int END AS siblings,
-       CASE WHEN c.relispartition THEN (SELECT pg_catalog.pg_get_partkeydef(pg_catalog.pg_partition_root(c.oid))) END AS partkey
+       c.relispartition AS is_partition
 FROM pg_catalog.pg_class c
 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = $1 AND c.relname = $2 AND (c.relkind = 'r' OR c.relkind = 'm')`;
+WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind = 'r'`;
 
 // Where each planned fingerprint dropped out, counted per observe and set on
 // the span; the spike's CI log prints it (counts only, never a query).
@@ -275,14 +274,17 @@ export type Tier1Funnel = {
   candidates: number;
   planned: number;
   unplanned: number;
+  // The SQLSTATE each unplanned fingerprint failed with.
+  unplannedCodes: string[];
   // Seq scan nodes on the attached schema that filter rows, and those whose
   // filter is an AND of equalities (the only shape Tier 1 proposes for).
   filteredScans: number;
   equalityScans: number;
-  // Not a plain table of the schema: a partition, a materialized view, or
-  // gone since the plan.
-  partitions: number;
-  matviews: number;
+  // The shape of each filtered scan that isn't an AND of equalities:
+  // `or`, `range`, `pattern` (LIKE / regex) or `other`.
+  unreadShapes: string[];
+  // Not a plain table of the schema (a materialized view, or dropped since
+  // the plan).
   notTable: number;
   covered: number;
   unknownColumns: number;
@@ -290,27 +292,45 @@ export type Tier1Funnel = {
   unselective: number;
   // Each unselective scan's estimated share of its table's rows, in whole %.
   unselectivePct: number[];
+  // A selective, unindexed lookup on one partition: the index belongs on the
+  // partitioned parent (built per partition, then attached), a multi-statement
+  // apply the loop doesn't run yet.
+  partitions: number;
 };
 
 export const newTier1Funnel = (): Tier1Funnel => ({
   candidates: 0,
   planned: 0,
   unplanned: 0,
+  unplannedCodes: [],
   filteredScans: 0,
   equalityScans: 0,
-  partitions: 0,
-  matviews: 0,
+  unreadShapes: [],
   notTable: 0,
   covered: 0,
   unknownColumns: 0,
   unanalyzed: 0,
   unselective: 0,
   unselectivePct: [],
+  partitions: 0,
 });
 
-function countFilteredScans(node: PlanNode, schema: string): number {
-  const here = node["Node Type"] === "Seq Scan" && node.Schema === schema && node.Filter ? 1 : 0;
-  return (node.Plans ?? []).reduce((n, child) => n + countFilteredScans(child, schema), here);
+// The shape a filter Tier 1 doesn't read yet takes — counts the next shape to
+// read, never prints the filter.
+function filterShape(filter: string): string {
+  if (/\bOR\b/.test(filter)) return "or";
+  if (/ (?:<|>|<=|>=) /.test(filter)) return "range";
+  if (/ (?:~~\*?|!~~\*?|~\*?|!~\*?) /.test(filter)) return "pattern";
+  return "other";
+}
+
+function countFilteredScans(node: PlanNode, schema: string, funnel: Tier1Funnel): void {
+  const filter = node["Node Type"] === "Seq Scan" && node.Schema === schema && node.Filter;
+  if (filter) {
+    funnel.filteredScans++;
+    if (!isEqualityOnly(filter)) funnel.unreadShapes.push(filterShape(filter));
+  }
+  for (const child of node.Plans ?? []) countFilteredScans(child, schema, funnel);
 }
 
 // Turn the window's hot fingerprints into Tier 1 proposals, heaviest first;
@@ -339,10 +359,11 @@ export function observePostgresWorkload(
         // postgres.js and Neon both set `severity` on an error the server sent.
         if (!(err as { severity?: unknown }).severity) throw err;
         funnel.unplanned++;
+        funnel.unplannedCodes.push(String((err as { code?: unknown }).code ?? "unknown"));
         continue;
       }
       funnel.planned++;
-      funnel.filteredScans += countFilteredScans(plan, schema);
+      countFilteredScans(plan, schema, funnel);
       for (const scan of seqScanFilters(plan, schema)) {
         funnel.equalityScans++;
         const key = `${scan.table}\0${[...scan.columns].sort()}`;
@@ -356,27 +377,6 @@ export function observePostgresWorkload(
         const t = rows[0];
         if (!t) {
           funnel.notTable++;
-          continue;
-        }
-        if (t["is_partition"] === true) {
-          funnel.partitions++;
-          // ONE-OFF PROBE (removed before merge)
-          (funnel as unknown as { probe: unknown[] }).probe ??= [];
-          (funnel as unknown as { probe: unknown[] }).probe.push({
-            fp: candidates.indexOf(w),
-            root: Number(t["root_oid"]) % 997,
-            siblings: t["siblings"],
-            byKey: String(t["partkey"]).split(" ")[0],
-            keyHit: scan.columns.some((c) => String(t["partkey"]).includes(c)),
-            nCols: scan.columns.length,
-            covered: Number(t["covered"]),
-            rows: Math.round(Number(t["row_estimate"])),
-            pct: Math.round((100 * scan.planRows) / Math.max(1, Number(t["row_estimate"]))),
-          });
-          continue;
-        }
-        if (t["is_matview"] === true) {
-          funnel.matviews++;
           continue;
         }
         if (Number(t["covered"]) === 1) {
@@ -395,9 +395,10 @@ export function observePostgresWorkload(
         if (scan.planRows / rowEstimate > MAX_SELECTIVITY) {
           funnel.unselective++;
           funnel.unselectivePct.push(Math.round((100 * scan.planRows) / rowEstimate));
-          // ONE-OFF PROBE
-          (funnel as unknown as { probeRows: unknown[] }).probeRows ??= [];
-          (funnel as unknown as { probeRows: unknown[] }).probeRows.push([Math.round(rowEstimate), Math.round(scan.planRows)]);
+          continue;
+        }
+        if (t["is_partition"] === true) {
+          funnel.partitions++;
           continue;
         }
         proposals.set(
