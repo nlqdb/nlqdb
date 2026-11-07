@@ -9,7 +9,7 @@
         "@changesets/cli": "^2.31.1",
         "@playwright/test": "~1.64.1",
         "bun-types": "latest",
-        "typescript": "^5.9.3",
+        "typescript": "^6.0.3",
       },
     },
     "apps/api": {
@@ -37,7 +37,7 @@
       "devDependencies": {
         "@cloudflare/vitest-pool-workers": "latest",
         "@cloudflare/workers-types": "latest",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
         "wrangler": "^4.157.0",
       },
@@ -61,7 +61,7 @@
         "typedoc": "^0.28.0",
         "typedoc-plugin-frontmatter": "^1.3.3",
         "typedoc-plugin-markdown": "^4.14.1",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "wrangler": "^4.157.0",
       },
     },
@@ -70,7 +70,7 @@
       "version": "0.0.0",
       "devDependencies": {
         "@cloudflare/workers-types": "latest",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
         "wrangler": "^4.157.0",
       },
@@ -88,7 +88,7 @@
       "devDependencies": {
         "@cloudflare/vitest-pool-workers": "latest",
         "@cloudflare/workers-types": "latest",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
         "wrangler": "^4.157.0",
       },
@@ -108,7 +108,7 @@
       "devDependencies": {
         "@cloudflare/vitest-pool-workers": "latest",
         "@cloudflare/workers-types": "latest",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
         "wrangler": "^4.157.0",
       },
@@ -133,7 +133,7 @@
         "@types/react": "^19",
         "@types/react-dom": "^19",
         "@types/three": "^0.187.0",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "wrangler": "^4.157.0",
       },
     },
@@ -143,7 +143,7 @@
       "devDependencies": {
         "@nlqdb/elements": "workspace:*",
         "astro": "^7.4.5",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
       },
       "peerDependencies": {
@@ -172,7 +172,7 @@
       },
       "devDependencies": {
         "miniflare": "^4.20260730.0",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
       },
     },
@@ -182,7 +182,7 @@
       "devDependencies": {
         "esbuild": "^0.28.2",
         "happy-dom": "^21.0.4",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
       },
     },
@@ -191,7 +191,7 @@
       "version": "0.0.0",
       "devDependencies": {
         "@cloudflare/workers-types": "latest",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
       },
     },
@@ -203,7 +203,7 @@
       },
       "devDependencies": {
         "@nlqdb/sdk": "workspace:*",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
       },
     },
@@ -215,7 +215,7 @@
       },
       "devDependencies": {
         "@cloudflare/workers-types": "latest",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
       },
     },
@@ -227,7 +227,7 @@
         "@opentelemetry/api": "^1.9.0",
       },
       "devDependencies": {
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
       },
     },
@@ -245,7 +245,7 @@
       "devDependencies": {
         "@nlqdb/errors": "workspace:*",
         "@nlqdb/sdk": "workspace:*",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
       },
     },
@@ -263,7 +263,7 @@
         "next": "^16.4.5",
         "react": "^19.3.1",
         "react-dom": "^19.3.1",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
       },
       "peerDependencies": {
@@ -284,7 +284,7 @@
         "@nuxt/kit": "^4.6.4",
         "@nuxt/schema": "^4.6.4",
         "nuxt": "^4.6.4",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
         "vue": "^3.5.45",
       },
@@ -309,7 +309,7 @@
         "@opentelemetry/semantic-conventions": "^1.44.0",
       },
       "devDependencies": {
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
       },
     },
@@ -325,7 +325,7 @@
         "happy-dom": "^21.0.4",
         "react": "^19.3.1",
         "react-dom": "^19.3.1",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
       },
       "peerDependencies": {
@@ -339,7 +339,7 @@
       "version": "0.10.0",
       "devDependencies": {
         "tsup": "^9.0.0",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
       },
     },
@@ -349,7 +349,7 @@
       "devDependencies": {
         "@nlqdb/elements": "workspace:*",
         "solid-js": "^1.9.18",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
       },
       "peerDependencies": {
         "@nlqdb/elements": "workspace:*",
@@ -362,7 +362,7 @@
       "devDependencies": {
         "@nlqdb/elements": "workspace:*",
         "svelte": "^5.57.3",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
       },
       "peerDependencies": {
         "@nlqdb/elements": "workspace:*",
@@ -378,7 +378,7 @@
         "@nlqdb/svelte": "workspace:*",
         "@sveltejs/kit": "^3.1.1",
         "svelte": "^5.57.3",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
       },
       "peerDependencies": {
         "@nlqdb/elements": "workspace:*",
@@ -395,7 +395,7 @@
         "@nlqdb/elements": "workspace:*",
         "@vue/test-utils": "^2.5.1",
         "happy-dom": "^21.0.4",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.12",
         "vue": "^3.5.45",
       },
@@ -409,7 +409,7 @@
       "version": "0.0.0",
       "devDependencies": {
         "@types/node": "^26.6.6",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
       },
     },
     "tools/eval": {
@@ -422,7 +422,7 @@
       },
       "devDependencies": {
         "@types/node": "^26.6.6",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
       },
     },
     "tools/stranger-test": {
@@ -432,7 +432,7 @@
         "@modelcontextprotocol/sdk": "1.29.0",
         "@playwright/test": "~1.64.1",
         "@types/node": "^26.6.6",
-        "typescript": "^5.6.0",
+        "typescript": "^6.0.3",
       },
     },
   },
@@ -605,27 +605,27 @@
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.6.4", "", { "os": "win32", "cpu": "x64" }, "sha512-pYsMy5AThiHFOZAsngg8qN4PurM6nInKBhVX7sbj3eNpRQqo1Hb0MgCwPL7VqVMrmcEEMj9Ks3qbkallR65e8g=="],
 
-    "@bruits/satteri-android-arm64": ["@bruits/satteri-android-arm64@0.11.7", "", { "os": "android", "cpu": "arm64" }, "sha512-ej+1rIKs+yb6/OtcIe1SO22OXjJV0qqUopl5VNZF8Sqc/Pj4m1DXoqBQsPxW5OUYYiDUymIy6hnnn8M78VYk2w=="],
+    "@bruits/satteri-android-arm64": ["@bruits/satteri-android-arm64@0.11.6", "", { "os": "android", "cpu": "arm64" }, "sha512-9Cb6ZRDn29c0kluGA9urp/So/JnJOJJSf4J40xYLAIAj3GuqTNsCyquS4A1/yLuuHE2ngYJNnCylAQnDM3L9ow=="],
 
-    "@bruits/satteri-darwin-arm64": ["@bruits/satteri-darwin-arm64@0.11.7", "", { "os": "darwin", "cpu": "arm64" }, "sha512-yllQOX1kVWrwqL7tamQlp4NP0loIb4KuadjuNrAe4JEOerHpgYISPRDb8DqLipgvP7Ks4e87LydZpdakMR1rhQ=="],
+    "@bruits/satteri-darwin-arm64": ["@bruits/satteri-darwin-arm64@0.11.6", "", { "os": "darwin", "cpu": "arm64" }, "sha512-kcr7QOPGrckuyhMZmUKYcyoXgjQN4vJ/6tCWHE2866mztZPNrTuy5itTwSAbIs1tK0XpTW42tBQ+XPNnkg0XIg=="],
 
-    "@bruits/satteri-darwin-x64": ["@bruits/satteri-darwin-x64@0.11.7", "", { "os": "darwin", "cpu": "x64" }, "sha512-RMQrKzEZRZSiYyLFifiSuk0nBH6uAY1TVMNR/h/aE4rr2OS6l82e4MJTpC6H/tqSMoE+3CwbkUKBQGLHIweYlg=="],
+    "@bruits/satteri-darwin-x64": ["@bruits/satteri-darwin-x64@0.11.6", "", { "os": "darwin", "cpu": "x64" }, "sha512-nwh4Atd/Cxw2SNS6+Gs0Esf/w2i4qyHzwcECaTgoFyxse3m0dpBpu8eqkqqIPfBc1lWhfe4i9LXuk7rG+4pwQw=="],
 
-    "@bruits/satteri-freebsd-x64": ["@bruits/satteri-freebsd-x64@0.11.7", "", { "os": "freebsd", "cpu": "x64" }, "sha512-EFlqw+RDRo3wYdy1ZSR/dNYhfWjuZL86PYwRcpLWWEZskjfpNnhIdxS13Xw2QJE1hSjTGVq4aZaVvlUjoj8p5A=="],
+    "@bruits/satteri-freebsd-x64": ["@bruits/satteri-freebsd-x64@0.11.6", "", { "os": "freebsd", "cpu": "x64" }, "sha512-qMkNZRYN3cLshfYawQYjfDS05A208QCOVh1adtEteYH+03MkuOoVVhYkzDRIKhWdfM3gFFEaUjXDOGfVqGjEJg=="],
 
-    "@bruits/satteri-linux-arm64-gnu": ["@bruits/satteri-linux-arm64-gnu@0.11.7", "", { "os": "linux", "cpu": "arm64" }, "sha512-aeH365GHaqv01wRSiHaGUlpL28U8e9UnV9LxjIF6BOyTj71/M5bop4HKomcis4VxFZjd68fDqNyU22yFkF/h7A=="],
+    "@bruits/satteri-linux-arm64-gnu": ["@bruits/satteri-linux-arm64-gnu@0.11.6", "", { "os": "linux", "cpu": "arm64" }, "sha512-A7cHeCZQkvF3oTgQ6/5LvVriauE1dHo3u3gAME6H1X/+KMeum5Wras3Y7rYUcvPym1CxdmzjZh9WlYD62Ul1xg=="],
 
-    "@bruits/satteri-linux-arm64-musl": ["@bruits/satteri-linux-arm64-musl@0.11.7", "", { "os": "linux", "cpu": "arm64" }, "sha512-72WlBhuwOHm+2Nv4Qf1WzfS75PHOLz81sYkDJnmj0Rm2C4Xax5faSiTDt7vWo1IcK6rDlkuRDNnWIw8uIKWuVQ=="],
+    "@bruits/satteri-linux-arm64-musl": ["@bruits/satteri-linux-arm64-musl@0.11.6", "", { "os": "linux", "cpu": "arm64" }, "sha512-P/YAudp6VmUr63SFaZefwPIefsw92oZ1wQ6vqrtO/GY9qB3OxLqUVjSIcnKAtqMp4kDW8xBEdSwHz4GZU7P2+g=="],
 
-    "@bruits/satteri-linux-x64-gnu": ["@bruits/satteri-linux-x64-gnu@0.11.7", "", { "os": "linux", "cpu": "x64" }, "sha512-gDp4v1jjckeNCetLtrMUfDV4CKGYL6fayDPdoaQq09nkDCSrclxEFK7kAmRuHhoalgsao4bZMFqQr3HQtN2NEQ=="],
+    "@bruits/satteri-linux-x64-gnu": ["@bruits/satteri-linux-x64-gnu@0.11.6", "", { "os": "linux", "cpu": "x64" }, "sha512-nhj90eZFLSA+Icd6n+oYpAi/UXr/mppLGd8jdEOB/larvWAZ/ewFxpT7CLzuNCg7r75+gkdHv9JuRb5eERY1Kg=="],
 
-    "@bruits/satteri-linux-x64-musl": ["@bruits/satteri-linux-x64-musl@0.11.7", "", { "os": "linux", "cpu": "x64" }, "sha512-zqzSpQLA6V3J/TO2Vjuc1VRQPIQQdoSYmzKKFL+3GwGlbXiFQP2ZUDSLw9xlm0tTKXkCM9ANr4jMiDASZ+JGUw=="],
+    "@bruits/satteri-linux-x64-musl": ["@bruits/satteri-linux-x64-musl@0.11.6", "", { "os": "linux", "cpu": "x64" }, "sha512-mkWxwHd5Q2dDs+OZK/P1tZFvSPrh2Bb69utWHcBNM0wyJCRWd61T4jU1tF21lGL1C5dy7P+LvaT0y6PQDJj89Q=="],
 
-    "@bruits/satteri-wasm32-wasi": ["@bruits/satteri-wasm32-wasi@0.11.7", "", { "dependencies": { "@emnapi/core": "1.11.1", "@emnapi/runtime": "1.11.1", "@napi-rs/wasm-runtime": "^1.2.7" }, "cpu": "none" }, "sha512-L46f6rtlaBR4fsTWGCTFcXtbtka2GyM3l9TsmE0FgTxjXGq+sndYg5X3hzlhWDkNvJpRtCHCmgTRJ5+cIi4o3A=="],
+    "@bruits/satteri-wasm32-wasi": ["@bruits/satteri-wasm32-wasi@0.11.6", "", { "dependencies": { "@emnapi/core": "1.11.1", "@emnapi/runtime": "1.11.1", "@napi-rs/wasm-runtime": "^1.2.6" }, "cpu": "none" }, "sha512-GrjNThC6BfA0u8LZwGpOeEFVKoJZsriowLtj/rBYj18fW7/UZouyzn/0Tsxg+tMaxMUgC9HFA078EmfAsdVONg=="],
 
-    "@bruits/satteri-win32-arm64-msvc": ["@bruits/satteri-win32-arm64-msvc@0.11.7", "", { "os": "win32", "cpu": "arm64" }, "sha512-R2+o6EbJK4pqbd086H9BGUVYAyZ5F6FnShfoyRIu0Zu9DTE3H6EU/Z+ua7p9dmYf6JQQbE9DCwwavi4xiaGAhQ=="],
+    "@bruits/satteri-win32-arm64-msvc": ["@bruits/satteri-win32-arm64-msvc@0.11.6", "", { "os": "win32", "cpu": "arm64" }, "sha512-Plesa0QYtJoa3nlObg1Ypj9oD1VOioHMldHUUtG61T/JNU11EcN0pyj0tDsT3DW2pAxKrV0Q8xrfzGtBHuSjfg=="],
 
-    "@bruits/satteri-win32-x64-msvc": ["@bruits/satteri-win32-x64-msvc@0.11.7", "", { "os": "win32", "cpu": "x64" }, "sha512-OIyBFJ35uMu5CH5RWnIR3bKsZwScKZ7vXmhCohZ+qonT1SkxmHCEf4H8YRWThRL2EXdVDjkjhfOsaiA4O24Vvw=="],
+    "@bruits/satteri-win32-x64-msvc": ["@bruits/satteri-win32-x64-msvc@0.11.6", "", { "os": "win32", "cpu": "x64" }, "sha512-fGs5d/7jBIPkYmXkhm9unoEfDuRZ5r66NLxbr+6c8bm0f7ywgPHgW3HJ9L7fKvyqhw49ePtbT4vkWREju8/U6w=="],
 
     "@capsizecss/unpack": ["@capsizecss/unpack@4.0.1", "", { "dependencies": { "fontkitten": "^1.0.3" } }, "sha512-CuNiSqg7+e1cO/GjffyMOm5Tt2jUF9CWHHnvQ/UkqvtkGfHdgwEC0wpmq7fkN3gxwpRnrAN0WzO3vREKmNolMQ=="],
 
@@ -2477,7 +2477,7 @@
 
     "safer-buffer": ["safer-buffer@2.1.2", "", {}, "sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg=="],
 
-    "satteri": ["satteri@0.11.7", "", { "dependencies": { "@types/estree-jsx": "^1.0.5", "@types/hast": "^3.0.5", "@types/mdast": "^4.0.4", "@types/unist": "^3.0.3" }, "optionalDependencies": { "@bruits/satteri-android-arm64": "0.11.7", "@bruits/satteri-darwin-arm64": "0.11.7", "@bruits/satteri-darwin-x64": "0.11.7", "@bruits/satteri-freebsd-x64": "0.11.7", "@bruits/satteri-linux-arm64-gnu": "0.11.7", "@bruits/satteri-linux-arm64-musl": "0.11.7", "@bruits/satteri-linux-x64-gnu": "0.11.7", "@bruits/satteri-linux-x64-musl": "0.11.7", "@bruits/satteri-wasm32-wasi": "0.11.7", "@bruits/satteri-win32-arm64-msvc": "0.11.7", "@bruits/satteri-win32-x64-msvc": "0.11.7" } }, "sha512-xDOSxkc1ew3z3IovIjmsqJaVHRXTGYJkPvx0LL/U6o90km8kSU+pmrZVvnWd5creJeE0UnvMEienlkPuYQdJaA=="],
+    "satteri": ["satteri@0.11.6", "", { "dependencies": { "@types/estree-jsx": "^1.0.5", "@types/hast": "^3.0.5", "@types/mdast": "^4.0.4", "@types/unist": "^3.0.3" }, "optionalDependencies": { "@bruits/satteri-android-arm64": "0.11.6", "@bruits/satteri-darwin-arm64": "0.11.6", "@bruits/satteri-darwin-x64": "0.11.6", "@bruits/satteri-freebsd-x64": "0.11.6", "@bruits/satteri-linux-arm64-gnu": "0.11.6", "@bruits/satteri-linux-arm64-musl": "0.11.6", "@bruits/satteri-linux-x64-gnu": "0.11.6", "@bruits/satteri-linux-x64-musl": "0.11.6", "@bruits/satteri-wasm32-wasi": "0.11.6", "@bruits/satteri-win32-arm64-msvc": "0.11.6", "@bruits/satteri-win32-x64-msvc": "0.11.6" } }, "sha512-ddGCTqSfwL+A+odhdjj8E+ZMu1h0QEnG3VTmu7fPJL2+80GdjxDh1AeCw8mn2aa95eQSosG4e2QBYYfCc5nyiA=="],
 
     "sax": ["sax@1.6.1", "", {}, "sha512-42tBVwLWnaQvW5zc4HbZrTuWccECCZfBi92FDuwtqxasH+JbPB3/FOKb1m222K42R4WxuxzzMsTswfzgtSu64Q=="],
 
@@ -2665,7 +2665,7 @@
 
     "typesafe-path": ["typesafe-path@0.2.2", "", {}, "sha512-OJabfkAg1WLZSqJAJ0Z6Sdt3utnbzr/jh+NAHoyWHJe8CMSy79Gm085094M9nvTPy22KzTVn5Zq5mbapCI/hPA=="],
 
-    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+    "typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
     "typescript-auto-import-cache": ["typescript-auto-import-cache@0.3.6", "", { "dependencies": { "semver": "^7.3.8" } }, "sha512-RpuHXrknHdVdK7wv/8ug3Fr0WNsNi5l5aB8MYYuXhq2UH5lnEB1htJ1smhtD5VeCsGr2p8mUDtd83LCQDFVgjQ=="],
 
@@ -3313,7 +3313,7 @@
 
     "@astrojs/starlight/@astrojs/markdown-satteri/@astrojs/internal-helpers": ["@astrojs/internal-helpers@0.13.1", "", { "dependencies": { "@types/hast": "^3.0.5", "@types/mdast": "^4.0.4", "picomatch": "^4.0.7", "retext-smartypants": "^6.2.0", "shiki": "^4.5.0", "smol-toml": "^1.9.1", "unified": "^11.0.5", "yaml": "^2.9.1" } }, "sha512-LgGLGzoC0wCT3mjDYrxz+hct/tws0enpWsLJW3bswHR3PKgusp/H9xRIT8rTdsyvLM0TcRhhvRL30J2oaZNcqA=="],
 
-    "@astrojs/starlight/@astrojs/markdown-satteri/satteri": ["satteri@0.11.7", "", { "dependencies": { "@types/estree-jsx": "^1.0.5", "@types/hast": "^3.0.5", "@types/mdast": "^4.0.4", "@types/unist": "^3.0.3" }, "optionalDependencies": { "@bruits/satteri-android-arm64": "0.11.7", "@bruits/satteri-darwin-arm64": "0.11.7", "@bruits/satteri-darwin-x64": "0.11.7", "@bruits/satteri-freebsd-x64": "0.11.7", "@bruits/satteri-linux-arm64-gnu": "0.11.7", "@bruits/satteri-linux-arm64-musl": "0.11.7", "@bruits/satteri-linux-x64-gnu": "0.11.7", "@bruits/satteri-linux-x64-musl": "0.11.7", "@bruits/satteri-wasm32-wasi": "0.11.7", "@bruits/satteri-win32-arm64-msvc": "0.11.7", "@bruits/satteri-win32-x64-msvc": "0.11.7" } }, "sha512-xDOSxkc1ew3z3IovIjmsqJaVHRXTGYJkPvx0LL/U6o90km8kSU+pmrZVvnWd5creJeE0UnvMEienlkPuYQdJaA=="],
+    "@astrojs/starlight/@astrojs/markdown-satteri/satteri": ["satteri@0.11.6", "", { "dependencies": { "@types/estree-jsx": "^1.0.5", "@types/hast": "^3.0.5", "@types/mdast": "^4.0.4", "@types/unist": "^3.0.3" }, "optionalDependencies": { "@bruits/satteri-android-arm64": "0.11.6", "@bruits/satteri-darwin-arm64": "0.11.6", "@bruits/satteri-darwin-x64": "0.11.6", "@bruits/satteri-freebsd-x64": "0.11.6", "@bruits/satteri-linux-arm64-gnu": "0.11.6", "@bruits/satteri-linux-arm64-musl": "0.11.6", "@bruits/satteri-linux-x64-gnu": "0.11.6", "@bruits/satteri-linux-x64-musl": "0.11.6", "@bruits/satteri-wasm32-wasi": "0.11.6", "@bruits/satteri-win32-arm64-msvc": "0.11.6", "@bruits/satteri-win32-x64-msvc": "0.11.6" } }, "sha512-ddGCTqSfwL+A+odhdjj8E+ZMu1h0QEnG3VTmu7fPJL2+80GdjxDh1AeCw8mn2aa95eQSosG4e2QBYYfCc5nyiA=="],
 
     "@astrojs/starlight/satteri/@bruits/satteri-darwin-arm64": ["@bruits/satteri-darwin-arm64@0.10.5", "", { "os": "darwin", "cpu": "arm64" }, "sha512-27KTVl4TJkVahMy/ohyA7qd4938G5UNneFUz/PsScYfpIhj0IVAS23mpcJXdPF44sa6nva198lmV/cKIb2YPyA=="],
 
