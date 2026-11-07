@@ -260,7 +260,10 @@ SELECT GREATEST(c.reltuples, 0)::float8 AS row_estimate,
              = (SELECT array_agg(name ORDER BY name) FROM cols)
        ) THEN 1 ELSE 0 END AS covered,
        c.relkind = 'm' AS is_matview,
-       c.relispartition AS is_partition
+       c.relispartition AS is_partition,
+       CASE WHEN c.relispartition THEN pg_catalog.pg_partition_root(c.oid)::oid::int8 END AS root_oid,
+       CASE WHEN c.relispartition THEN (SELECT count(*) FROM pg_catalog.pg_inherits h WHERE h.inhparent = pg_catalog.pg_partition_root(c.oid))::int END AS siblings,
+       CASE WHEN c.relispartition THEN (SELECT pg_catalog.pg_get_partkeydef(pg_catalog.pg_partition_root(c.oid))) END AS partkey
 FROM pg_catalog.pg_class c
 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = $1 AND c.relname = $2 AND (c.relkind = 'r' OR c.relkind = 'm')`;
@@ -357,6 +360,18 @@ export function observePostgresWorkload(
         }
         if (t["is_partition"] === true) {
           funnel.partitions++;
+          // ONE-OFF PROBE (removed before merge)
+          (funnel as unknown as { probe: unknown[] }).probe ??= [];
+          (funnel as unknown as { probe: unknown[] }).probe.push({
+            fp: candidates.indexOf(w),
+            root: Number(t["root_oid"]) % 997,
+            siblings: t["siblings"],
+            byKey: String(t["partkey"]).split(" ")[0],
+            keyHit: scan.columns.some((c) => String(t["partkey"]).includes(c)),
+            nCols: scan.columns.length,
+            rows: Math.round(Number(t["row_estimate"])),
+            pct: Math.round((100 * scan.planRows) / Math.max(1, Number(t["row_estimate"]))),
+          });
           continue;
         }
         if (t["is_matview"] === true) {
@@ -379,6 +394,9 @@ export function observePostgresWorkload(
         if (scan.planRows / rowEstimate > MAX_SELECTIVITY) {
           funnel.unselective++;
           funnel.unselectivePct.push(Math.round((100 * scan.planRows) / rowEstimate));
+          // ONE-OFF PROBE
+          (funnel as unknown as { probeRows: unknown[] }).probeRows ??= [];
+          (funnel as unknown as { probeRows: unknown[] }).probeRows.push([Math.round(rowEstimate), Math.round(scan.planRows)]);
           continue;
         }
         proposals.set(
