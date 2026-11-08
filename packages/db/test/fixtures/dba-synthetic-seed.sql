@@ -60,4 +60,5 @@ INSERT INTO comments SELECT g, 1 + g % 20000, 1 + g % 2000, 'c' FROM generate_se
 INSERT INTO tenants_regions SELECT g, 'r' || (g % 4) FROM generate_series(1, 100) g;
 INSERT INTO memberships SELECT 1 + g % 2000, 1 + g % 100, 'r' || ((1 + g % 100) % 4) FROM generate_series(1, 100) g;
 INSERT INTO deployments SELECT g, 1 + g % 100, 'r' || ((1 + g % 100) % 4) FROM generate_series(1, 1000) g;
+INSERT INTO events SELECT 1 + g % 2000, DATE '2026-01-01' + g % 365 FROM generate_series(1, 20000) g;
 ANALYZE;
