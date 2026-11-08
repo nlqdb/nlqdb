@@ -27,6 +27,8 @@ CREATE INDEX comments_user_id_idx ON comments (user_id);
 -- The app's own partial index under the conventional name: it doesn't cover
 -- the FK, and the proposal's name must not collide with it.
 CREATE INDEX posts_author_id_idx ON posts (author_id) WHERE author_id > 1000;
+-- A hash index serves no range: the `BETWEEN` on published_at is still proposed.
+CREATE INDEX posts_published_at_hash_idx ON posts USING hash (published_at);
 -- Composite FK with only a (region) index, which doesn't lead with tenant_id.
 CREATE TABLE tenants_regions (tenant_id bigint, region text, PRIMARY KEY (tenant_id, region));
 CREATE TABLE deployments (

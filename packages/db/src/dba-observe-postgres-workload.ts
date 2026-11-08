@@ -275,8 +275,8 @@ function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = [
 // varchar), and whether a valid,
 // non-partial btree / hash index's first n key columns are exactly the n
 // columns (in any order) — the same coverage rule as Tier 0's FK check — with
-// the range column ($5, if any) the nth: an index leading with the range
-// column reads every row in the range, whatever the equalities.
+// the range column ($5, if any) the nth of a btree: an index leading with the
+// range column reads every row in the range, and a hash index serves no range.
 const TABLE_CHECK_SQL = `
 WITH cols AS (SELECT json_array_elements_text($3::text::json) AS name)
 SELECT GREATEST(c.reltuples, 0)::float8 AS row_estimate,
@@ -297,7 +297,7 @@ SELECT GREATEST(c.reltuples, 0)::float8 AS row_estimate,
                   FROM unnest((i.indkey::int2[])[0:(SELECT count(*) FROM cols)::int - 1]) AS k(attnum)
                   JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attnum = k.attnum)
              = (SELECT array_agg(name ORDER BY name) FROM cols)
-           AND ($5::text IS NULL OR $5::text = (
+           AND ($5::text IS NULL OR am.amname = 'btree' AND $5::text = (
                  SELECT a.attname::text FROM pg_catalog.pg_attribute a
                   WHERE a.attrelid = c.oid
                     AND a.attnum = (i.indkey::int2[])[(SELECT count(*) FROM cols)::int - 1]))
