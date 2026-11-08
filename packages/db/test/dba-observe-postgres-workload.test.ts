@@ -161,6 +161,25 @@ describe("observePostgresWorkload", () => {
     },
   );
 
+  it("proposes one index for the scans it serves, never the same DDL twice", async () => {
+    const plan = {
+      "Node Type": "Append",
+      Plans: [
+        seqScan("((u.a = $1) AND (u.b > $2))"),
+        seqScan("((u.b = $1) AND (u.a = $2))"),
+        // (a, b) can't serve a range on a: it needs its own (b, a).
+        seqScan("((u.b = $1) AND (u.a < $2))"),
+      ],
+    };
+    const proposals = await observePostgresWorkload(stub(plan, bigTable).query, "app", [
+      window("SELECT 1 FROM users"),
+    ]);
+    expect(proposals.map((p) => p.columns)).toEqual([
+      ["a", "b"],
+      ["b", "a"],
+    ]);
+  });
+
   it("scales a parallel scan's per-process rows back before judging selectivity", async () => {
     // 200 rows per process x (2 workers + 0.4 leader) = 480 of 10 000: 4.8 % ≤ 5 %.
     const gather = (planRows: number) => ({

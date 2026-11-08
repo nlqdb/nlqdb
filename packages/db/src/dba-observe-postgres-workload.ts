@@ -307,6 +307,14 @@ FROM pg_catalog.pg_class c
 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind = 'r'`;
 
+// Whether `p`'s index serves `scan` as the table check reads an existing one:
+// the same columns, in any order, with the range column last.
+const serves = (p: Proposal, scan: SeqScanFilter) =>
+  p.table === scan.table &&
+  p.columns.length === scan.columns.length &&
+  scan.columns.every((c) => p.columns.includes(c)) &&
+  (scan.rangeColumn === null || p.columns.at(-1) === scan.rangeColumn);
+
 // Where each planned fingerprint dropped out, counted per observe and set on
 // the span; the spike's CI log prints it (counts only, never a query).
 export type Tier1Funnel = {
@@ -401,7 +409,7 @@ export function observePostgresWorkload(
   funnel: Tier1Funnel = newTier1Funnel(),
 ): Promise<Proposal[]> {
   return withObserveSpan("observe_workload", schema, async (span) => {
-    const proposals = new Map<string, Proposal>();
+    const proposals: Proposal[] = [];
     const candidates = await tier1Candidates(query, schema, window);
     funnel.candidates = candidates.length;
     for (const w of candidates.slice(0, MAX_FINGERPRINTS)) {
@@ -422,10 +430,10 @@ export function observePostgresWorkload(
       for (const scan of seqScanFilters(plan, schema)) {
         funnel.readScans++;
         if (scan.rangeColumn) funnel.rangeScans++;
-        // The equality columns in any order, the range column last.
-        const equalities = scan.columns.filter((c) => c !== scan.rangeColumn).sort();
-        const key = `${scan.table}\0${equalities}\0${scan.rangeColumn ?? ""}`;
-        if (proposals.has(key)) continue;
+        // A scan an earlier proposal serves (the same columns, its range column
+        // last): an equality on (a, b) and a range on b after an equality on a
+        // would otherwise both propose one index on (a, b).
+        if (proposals.some((p) => serves(p, scan))) continue;
         const { rows } = await query(TABLE_CHECK_SQL, [
           schema,
           scan.table,
@@ -461,8 +469,7 @@ export function observePostgresWorkload(
           funnel.partitions++;
           continue;
         }
-        proposals.set(
-          key,
+        proposals.push(
           createIndexProposal({
             tier: 1,
             schema,
@@ -486,6 +493,6 @@ export function observePostgresWorkload(
     // snake_case like every other attribute; `nlqdb.dba.unplanned` matches D1's.
     for (const [k, v] of Object.entries(funnel))
       span.setAttribute(`nlqdb.dba.${k.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)}`, v);
-    return [...proposals.values()];
+    return proposals;
   });
 }
