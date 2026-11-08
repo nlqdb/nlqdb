@@ -1,7 +1,7 @@
 # Weekly review — 2026-11-08
 
 Current-state audit of `/daily` (≤ 4 KB, overwritten weekly). Window
-11-01 → 11-08: runs 269–279 (#1223–#1234, #1262, open #1263), plus ~20
+11-01 → 11-08: runs 269–279 (#1223–#1234, #1262, #1263), plus ~20
 dependency and security PRs. The founder's focus line is kept. This week's focus number: **Tier 1 `create_index`
 proposals on the spike, 0 → 1.**
 
