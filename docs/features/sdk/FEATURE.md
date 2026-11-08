@@ -143,7 +143,7 @@ executing (byte-identical to the ask preview hop); a read returns
 `requires_confirm: false` un-run. `dryRun` omitted leaves `/v1/run`
 immediate — the `GLOBAL-015` escape hatch is untouched. CLI surface is
 [`SK-CLI-017`](../cli/decisions/SK-CLI-017-run-dry-run.md); ships to MCP +
-`<nlq-data>` + wrappers in the same slice (`GLOBAL-003`).
+`<nlq-data>` + wrappers in the same slice (`GLOBAL-003`). **Not built yet.**
 
 ### SK-SDK-013 — Advertised-method integrity guard: every `client.*` / `NlqClient.*` in web+docs is a shipped member
 

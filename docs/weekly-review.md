@@ -1,92 +1,94 @@
-# Weekly review — 2026-11-01
+# Weekly review — 2026-11-08
 
 Current-state audit of `/daily` (≤ 4 KB, overwritten weekly). Window
-10-25→11-01: runs 261–268 (#1206–#1220), plus #1211 (`SK-LLM-055`) and
-#1214 (rateme12 clone deleted). Founder focus kept. This week's focus
-number: doors 3/4 → 4/4, then the D1 slice.
+11-01 → 11-08: runs 269–279 (#1223–#1234, #1262, #1263), plus ~20
+dependency and security PRs. The founder's focus line is kept. This week's focus number: **Tier 1 `create_index`
+proposals on the spike, 0 → 1.**
 
-## Worst: the README called the MCP door live, but users can't reach it (check 7)
+## Worst: four spike runs and no proposal yet (check 2)
 
-#1220 (run 268) added the MCP tools, and `README.md` "Now" listed them as
-live before either way to reach them shipped. `@nlqdb/mcp` 0.4.0 (stdio)
-has since published (#1221), but `Deploy MCP server` is still held at
-`action_required` on `d8e38ea`
-([41266559502](https://github.com/nlqdb/nlqdb/actions/runs/41266559502)),
-so `mcp.nlqdb.com` lacks them. Its 5/5 ran on a recorded fixture, not a
-live API. This PR rewords the line. The scorecard's
-"Doors that reach the loop: 3/4" now holds for shipped doors (CLI
-v0.1.25, stdio MCP 0.4.0); only hosted MCP waits on queue head #1.
+Since the spike started on 11-05, runs 275, 276, 277 and 279 all took the
+same box, and each moved an input:
 
-## Delta integrity (check 5): the numbers re-ran
+- planned fingerprints 9/20 → 20/20 → 28/32
+- drop-outs with no named reason 12 → 0
 
-All 8 runs committed their walks as CI tests, which fixes last week's
-gap. I re-ran them on a local Postgres 16 with `pg_stat_statements`:
+The box's own number, proposals, is still **0 → 0**. CI run
+[42412974907](https://github.com/nlqdb/nlqdb/actions/runs/42412974907)
+shows why. All 11 equality lookups are unselective: 8 hit 35-row tables
+(100 %) and 3 hit partitions (27–34 %). Only 2 range filters are left to
+check. Tier 1 also skips 751 of 783 fingerprints (`32 explainable naming a
+public relation`), and nobody has checked whether those include app tables.
+
+The spike DB may hold no index-worthy workload. Next: check those two
+sources; if neither yields a candidate, the box becomes a founder call
+(another DB, or call the spike) and the loop moves to D1 and rateme12.
+
+## Delta integrity (check 5): the numbers held up
+
+I re-ran the walks on a local Postgres 16 with `pg_stat_statements`:
 
 | Walk | Claimed | Re-run |
 |---|---|---|
-| `dba-observe-postgres.pg.test.ts` | KPI B 2/2 kept, KPI C 1/1 | 2/2 kept, 1/1 |
-| `attach.pg.test.ts`, KPI A | 48.5 ms | 66.2 ms |
-| `attach.pg.test.ts`, Tier 1 | 2/2 | 2/2 |
-| `attach.pg.test.ts`, verify | 6/6 | 6/6 |
-| CLI `TestAttachDoorWalk` | pass | pass |
-| MCP `dba-door.test.ts` | pass | pass |
-
-KPI A is noisy at the ms scale, but every reading is far under 5 min.
+| KPI B, synthetic (#1234 `IN`) | 3/3 kept | 3/3 kept |
+| KPI C, synthetic | 1/1 | 1/1 |
+| D1 apply, rows read (#1228) | 5000 → 51 | 5000 → 51 |
+| D1 KPI A through the door (#1225) | 117.3 ms | 89.4 ms |
+| Spike funnel (#1263) | 28/32 planned, 0 proposed | same, in the CI log |
 
 ## Trend (check 1)
 
-- **Engine:** synthetic KPIs moved. KPI B went 0 → 1 kept through the job,
-  KPI C 1/1, and doors 0 → 3/4.
-- **UX:** the `/app/dba` ledger shows decisions and verdicts.
-- **Onboarding:** flat.
-- **Performance:** dark.
+- **Engine:** the spike gave the first real-DB reading, KPI A 2.2–3.7 s
+  (target < 5 min). D1 reached Tier 0, Tier 1 and apply on synthetic DBs.
+  KPI B on a real DB is 0.
+- **UX:** doors 3/4 → 4/4 (#1223).
+- **Onboarding:** sign-in fixes (#1257, #1259); critical advisories
+  5 → 0 (#1250). Clipped SERP snippets 124 → 0 (#1262).
+- **Performance:** dark (row #13).
 - No `GLOBAL-025` alert. BIRD/Spider are dark, not red.
-
-## Monoculture (check 2)
-
-8 of 8 runs took 1a slices. That is the plan, not a rut: each moved a
-distinct number. About 2 slices remain (the web door, then D1). After
-that, both 1b tracks wait on founder secrets (queue #2 spike DB and #3 D1
-token, 10 d each). The loop will then run null runs, so those two bullets
-decide next week's yield.
 
 ## Inert output (check 3)
 
-- **Draft #1179 (18 d):** still not adoptable. This is the 3rd week it's
-  flagged; `/review` should close it.
-- **Canary paragraph:** the scorecard header still lists per-merge canary
-  verdicts for `insert()`, a path slated for deletion. It runs about
-  8 lines a day and nobody acts on it. Shrink it to one line on the next
-  daily.
+- **Draft #1179:** parked 25 days and flagged for the 4th week. It tunes
+  KPI 1, which `GLOBAL-043` retired. No mode ever closed it: `/review`
+  skips drafts and `/daily` only adopts them. The `daily.md` fix below
+  closes any draft a decision retired.
+- **Canary MISSes:** all 7 are the same `blocked_items` unique-key error,
+  and nobody acts on them. Last week's request to shrink the canary
+  paragraph to one line is still open.
 
 ## Dark metrics (check 4)
 
-- **Row #18** (phantom `runSql({ dryRun })` in `sdk.mdx:103`): flagged for a
-  3rd week. It costs $0 and is agent-fixable, but no step-2 slot takes it.
-- **Row #13** (perf, carried since 07-27, 97 d): it measures `/v1/ask`,
-  which `GLOBAL-043` deletes. Queueing a Grafana-token bullet would spend
-  founder minutes on a path that is going away, so none was added.
-- **Rows #8/#9/#15/#20:** blockers named.
+- **Row #18** (phantom `runSql({ dryRun })` on `docs.nlqdb.com/sdk`): open
+  for 4 weeks. It cost $0 and was agent-fixable, so this PR removes the
+  claim: 1 → 0.
+- **Rows #13/#8/#9/#15/#20:** blockers named; #13 measures the doomed `/v1/ask`.
 
 ## Prompt drift (check 6)
 
-Every ID and path in `daily.md` and `weekly.md` resolves. No dead rules,
-so `daily.md` is unchanged.
+Every ID, link and path in `daily.md` and `weekly.md` resolves. The one gap
+is the missing rule for retired drafts, so this PR adds one sentence to
+`daily.md` step 0, citing `rules://scheduled-run`'s superseded-PR rule.
+
+## README roadmap (check 7)
+
+The "Now" section said hosted `mcp.nlqdb.com` would get the MCP tools
+"once its held deploy runs". It has now run green (Deploy MCP server
+[42360456970](https://github.com/nlqdb/nlqdb/actions/runs/42360456970)),
+so the line is reworded. The D1 line gains Tier 1, and the spike line now
+says "no index proposed".
 
 ## Free-model roster (check 8)
 
-**Plan chain, best first:** groq-qwen `qwen3.8-27b` → gemini `2.5-flash` →
-cerebras `gpt-oss-120b` → groq `gpt-oss-120b` → workers-ai
-`llama-3.3-70b` (capped by `SK-LLM-055`) → openrouter → mistral.
+**Plan chain, best first (unchanged):** groq-qwen `qwen3.8-27b` → gemini
+`2.5-flash` → cerebras → groq `gpt-oss-120b` → workers-ai → openrouter →
+mistral.
 
-- 2026 roundups still rank Groq gpt-oss/Qwen and Gemini Flash as the
-  free leaders. Gemini's free tier is Flash-only since April, with
-  3.5-flash listed at about 1,500 RPD
-  ([OpenRouter](https://openrouter.ai/blog/tutorials/free-llm-apis-compared/),
-  [agentdeals](https://agentdeals.dev/gemini-api-pricing-changes),
-  [costbench](https://costbench.com/best/best-llm-api-with-free-tier/)).
-- No model is missing that is worth a key, since there is no LLM in any
-  hot path (`GLOBAL-043`).
-- Cerebras's 402 status is carried from last week (no live probe, daily
-  rule 3).
-- No blocked-by-human bullet.
+- Roundups list Gemini 3.5/3.6 Flash on the free tier (~1,500 RPD), and
+  the key already exists
+  ([ianlpaterson](https://ianlpaterson.com/blog/free-llm-api-2026/),
+  [Analytics Vidhya](https://analyticsvidhya.com/blog/2026/01/top-free-llm-apis)).
+- I didn't make the swap. It would need a live probe, which `daily.md`
+  rule 3 bars, and the chain serves only `/v1/ask`, which `GLOBAL-043`
+  deletes.
+- No bullet.

@@ -122,6 +122,6 @@ Some codes carry extra fields (under `error.params`, and mirrored top-level on
 
 - `candidate_dbs` — on `ambiguous_db`: `[{ id, slug }]` to render a picker.
 - `pinned_db` — on `clarify_required`: the DB that was pinned when the goal looked like a create.
-- `requires_confirm` + `diff` — on a write preview (`dryRun` / destructive op): apply only after the human approves the diff (`GLOBAL-023`).
+- `requires_confirm` + `diff` — on a `/v1/ask` write's preview (every write is previewed first): re-send with `confirm: true` only after the human approves the diff (`GLOBAL-023`).
 - `limit` + `count` — on `rate_limited`: the window cap and how many you've used.
 - `link` — on `model_unavailable`: deep-link to add a BYOLLM key or plan.

@@ -188,13 +188,14 @@ One loop — observe → propose → apply → verify → revert — on your Pos
   `rejectProposal()`, the CLI door, `nlq attach` / `nlq proposals` /
   `nlq apply` / `nlq reject`, and the MCP door, `nlqdb_connect_database` /
   `nlqdb_list_proposals` / `nlqdb_apply_proposal` / `nlqdb_reject_proposal`;
-  the web, API, CLI and stdio MCP (`@nlqdb/mcp` 0.4.0) doors are live; hosted
-  `mcp.nlqdb.com` serves the MCP tools once its held deploy runs; verify
+  all four doors are live, hosted `mcp.nlqdb.com` and stdio `@nlqdb/mcp`
+  0.4.0 alike; verify
   runs on its own once an applied proposal's 72 h window has passed; on D1
-  the API door attaches, applies and rejects so far), tested in CI
+  the API door attaches, applies and rejects, and the observe job proposes
+  from the workload, so far), tested in CI
 - ~ Postgres spike — one index proposed, applied and measured (before/after
   p95) on a real-traffic database (the spike DB attaches read-only in CI,
-  first proposal in 2.7 s; no index applied yet)
+  first proposal in 2.2–3.7 s; no index proposed or applied yet)
 - ◯ D1 attach on the real rateme12 — the dogfood
 - ◯ The playbook — unused-index drops, bloat, retypes, partitioning,
   retention, placement

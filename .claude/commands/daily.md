@@ -12,7 +12,9 @@ List the open PRs on `nlqdb/nlqdb`.
 PR it will neither merge nor fix, naming the condition that un-drafts it;
 before picking a lever (step 2) you adopt a draft whose condition is now met
 — merge `main` in, fix, mark ready for review — and that adoption **is** this
-run's lever. Nothing else touches drafts, and no lever edits a draft's files
+run's lever. A draft whose KPI or item a decision has since retired is
+superseded: close it with a one-line comment (`rules://scheduled-run`), in
+either mode. Nothing else touches drafts, and no lever edits a draft's files
 (step-1 scorecard regeneration excepted — every run updates it).
 
 **Sunday (UTC) runs, in either mode:** also spawn ONE background sub-agent
