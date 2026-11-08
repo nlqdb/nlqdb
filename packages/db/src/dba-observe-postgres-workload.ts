@@ -308,12 +308,16 @@ JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind = 'r'`;
 
 // Whether `p`'s index serves `scan` as the table check reads an existing one:
-// the same columns, in any order, with the range column last.
-const serves = (p: Proposal, scan: SeqScanFilter) =>
-  p.table === scan.table &&
-  p.columns.length === scan.columns.length &&
-  scan.columns.every((c) => p.columns.includes(c)) &&
-  (scan.rangeColumn === null || p.columns.at(-1) === scan.rangeColumn);
+// its first n keys are the scan's n columns, in any order, the range column nth.
+const serves = (p: Proposal, scan: SeqScanFilter) => {
+  const lead = p.columns.slice(0, scan.columns.length);
+  return (
+    p.table === scan.table &&
+    lead.length === scan.columns.length &&
+    scan.columns.every((c) => lead.includes(c)) &&
+    (scan.rangeColumn === null || lead.at(-1) === scan.rangeColumn)
+  );
+};
 
 // Where each planned fingerprint dropped out, counted per observe and set on
 // the span; the spike's CI log prints it (counts only, never a query).
@@ -430,9 +434,9 @@ export function observePostgresWorkload(
       for (const scan of seqScanFilters(plan, schema)) {
         funnel.readScans++;
         if (scan.rangeColumn) funnel.rangeScans++;
-        // A scan an earlier proposal serves (the same columns, its range column
-        // last): an equality on (a, b) and a range on b after an equality on a
-        // would otherwise both propose one index on (a, b).
+        // A scan an earlier proposal serves (`serves`): an equality on (a, b)
+        // after an index on (a, b, c), or a range on b after an equality on a,
+        // would otherwise propose an index the earlier one already is.
         if (proposals.some((p) => serves(p, scan))) continue;
         const { rows } = await query(TABLE_CHECK_SQL, [
           schema,

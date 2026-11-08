@@ -180,6 +180,30 @@ describe("observePostgresWorkload", () => {
     ]);
   });
 
+  it("skips a scan an earlier proposal's leading keys serve, as the table check would", async () => {
+    const plan = {
+      "Node Type": "Append",
+      Plans: [
+        seqScan("((u.a = $1) AND (u.b = $2) AND (u.c > $3))"),
+        seqScan("((u.b = $1) AND (u.a = $2))"),
+        seqScan("((u.a = $1) AND (u.b > $2))"),
+        // (a, b, c) can't serve a range on a: it needs its own (b, a).
+        seqScan("((u.b = $1) AND (u.a > $2))"),
+      ],
+    };
+    const { query } = stub(plan, bigTable);
+    const sized: PostgresQueryFn = async (sql, p) => {
+      const res = await query(sql, p);
+      if (!sql.includes("row_estimate")) return res;
+      return { rows: [{ ...bigTable, known_columns: JSON.parse(String(p[2])).length }] };
+    };
+    const proposals = await observePostgresWorkload(sized, "app", [window("SELECT 1 FROM users")]);
+    expect(proposals.map((p) => p.columns)).toEqual([
+      ["a", "b", "c"],
+      ["b", "a"],
+    ]);
+  });
+
   it("scales a parallel scan's per-process rows back before judging selectivity", async () => {
     // 200 rows per process x (2 workers + 0.4 leader) = 480 of 10 000: 4.8 % ≤ 5 %.
     const gather = (planRows: number) => ({
