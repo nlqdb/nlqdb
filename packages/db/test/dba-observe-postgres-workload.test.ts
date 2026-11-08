@@ -118,6 +118,92 @@ describe("observePostgresWorkload", () => {
     expect(params.at(-1)?.[3]).toBe(JSON.stringify(textCast));
   });
 
+  it.each([
+    ["an equality ANDed with a range", "((u.a = $1) AND (u.b > $2))", ["a", "b"], "b", []],
+    ["a `BETWEEN`", "((u.at >= $1) AND (u.at <= $2))", ["at"], "at", []],
+    ["a range on the clock", "(u.at > (now() - '7 days'::interval))", ["at"], "at", []],
+    [
+      "a range on today",
+      "((u.org = $1) AND (u.day >= (CURRENT_DATE - 7)))",
+      ["org", "day"],
+      "day",
+      [],
+    ],
+    [
+      "a varchar range",
+      "((u.a = ANY ($1)) AND ((u.code)::text < 'm'::text))",
+      ["a", "code"],
+      "code",
+      ["code"],
+    ],
+    ["a range on an equality column", "((u.a = $1) AND (u.a > $2))", ["a"], null, []],
+  ])(
+    "reads %s as one index range, the range column last",
+    async (_, filter, columns, range, textCast) => {
+      const { query } = stub(seqScan(filter), { ...bigTable, known_columns: columns.length });
+      const params: unknown[][] = [];
+      const spy: PostgresQueryFn = (sql, p) => {
+        params.push(p);
+        return query(sql, p);
+      };
+      const funnel = newTier1Funnel();
+      const [p] = await observePostgresWorkload(
+        spy,
+        "app",
+        [window("SELECT 1 FROM users")],
+        funnel,
+      );
+      expect(p?.columns).toEqual(columns);
+      expect(p?.ddl).toContain(`(${columns.map((c) => `"${c}"`).join(", ")})`);
+      // The table check's coverage rule wants the range column as the nth key.
+      expect(params.at(-1)?.slice(3)).toEqual([JSON.stringify(textCast), range]);
+      expect(funnel).toMatchObject({ readScans: 1, rangeScans: range ? 1 : 0, unreadShapes: [] });
+    },
+  );
+
+  it("proposes one index for the scans it serves, never the same DDL twice", async () => {
+    const plan = {
+      "Node Type": "Append",
+      Plans: [
+        seqScan("((u.a = $1) AND (u.b > $2))"),
+        seqScan("((u.b = $1) AND (u.a = $2))"),
+        // (a, b) can't serve a range on a: it needs its own (b, a).
+        seqScan("((u.b = $1) AND (u.a < $2))"),
+      ],
+    };
+    const proposals = await observePostgresWorkload(stub(plan, bigTable).query, "app", [
+      window("SELECT 1 FROM users"),
+    ]);
+    expect(proposals.map((p) => p.columns)).toEqual([
+      ["a", "b"],
+      ["b", "a"],
+    ]);
+  });
+
+  it("skips a scan an earlier proposal's leading keys serve, as the table check would", async () => {
+    const plan = {
+      "Node Type": "Append",
+      Plans: [
+        seqScan("((u.a = $1) AND (u.b = $2) AND (u.c > $3))"),
+        seqScan("((u.b = $1) AND (u.a = $2))"),
+        seqScan("((u.a = $1) AND (u.b > $2))"),
+        // (a, b, c) can't serve a range on a: it needs its own (b, a).
+        seqScan("((u.b = $1) AND (u.a > $2))"),
+      ],
+    };
+    const { query } = stub(plan, bigTable);
+    const sized: PostgresQueryFn = async (sql, p) => {
+      const res = await query(sql, p);
+      if (!sql.includes("row_estimate")) return res;
+      return { rows: [{ ...bigTable, known_columns: JSON.parse(String(p[2])).length }] };
+    };
+    const proposals = await observePostgresWorkload(sized, "app", [window("SELECT 1 FROM users")]);
+    expect(proposals.map((p) => p.columns)).toEqual([
+      ["a", "b", "c"],
+      ["b", "a"],
+    ]);
+  });
+
   it("scales a parallel scan's per-process rows back before judging selectivity", async () => {
     // 200 rows per process x (2 workers + 0.4 leader) = 480 of 10 000: 4.8 % ≤ 5 %.
     const gather = (planRows: number) => ({
@@ -141,8 +227,14 @@ describe("observePostgresWorkload", () => {
 
   it.each([
     ["an OR filter", seqScan("((u.a = $1) OR (u.b = $2))"), bigTable],
-    ["a non-equality filter", seqScan("(u.a > $1)"), bigTable],
-    ["an equality ANDed with a range", seqScan("((u.a = $1) AND (u.b > $2))"), bigTable],
+    [
+      "a one-sided range on a parameter (the planner's default third)",
+      seqScan("(u.a > $1)", 3_333),
+      bigTable,
+    ],
+    ["ranges on two columns", seqScan("((u.a > $1) AND (u.b < $2))"), bigTable],
+    ["a range bound read from the row", seqScan("(u.a > u.b)"), bigTable],
+    ["a range ORed with an equality", seqScan("((u.a > $1) OR (u.b = $2))"), bigTable],
     ["a `<> ALL` (a `NOT IN` list)", seqScan("(u.a <> ALL (ARRAY[$1, $2]))"), bigTable],
     ["an `= ANY` over the row's own columns", seqScan("(u.a = ANY (ARRAY[u.b, u.c]))"), bigTable],
     ["an `= ANY` ORed with an equality", seqScan("((u.a = ANY ($1)) OR (u.b = $2))"), bigTable],
@@ -209,7 +301,12 @@ describe("observePostgresWorkload", () => {
       [window("SELECT 1 FROM users")],
       unselective,
     );
-    expect(unselective).toMatchObject({ partitions: 0, unselective: 1, unselectivePct: [30] });
+    expect(unselective).toMatchObject({
+      partitions: 0,
+      unselective: 1,
+      unselectivePct: [30],
+      unselectiveRows: [10_000],
+    });
   });
 
   it("counts the shape of each filtered scan it doesn't read, never the filter", async () => {
@@ -218,7 +315,7 @@ describe("observePostgresWorkload", () => {
       "Node Type": "Append",
       Plans: [
         seqScan("((u.a = $1) OR (u.b = $2))"),
-        seqScan("((u.a = $1) AND (u.b >= $2))"),
+        seqScan("((u.a >= $1) AND (u.b <= $2))"),
         seqScan("((u.a)::text ~~ $1)"),
         seqScan("(u.a <> $1)"),
         seqScan("(u.a = $1)"),
@@ -233,7 +330,7 @@ describe("observePostgresWorkload", () => {
     );
     expect(funnel).toMatchObject({
       filteredScans: 5,
-      equalityScans: 1,
+      readScans: 1,
       unreadShapes: ["or", "range", "pattern", "other"],
     });
   });
@@ -242,7 +339,7 @@ describe("observePostgresWorkload", () => {
     const funnel = newTier1Funnel();
     const plan = {
       "Node Type": "Append",
-      Plans: Array.from({ length: 365 }, () => seqScan("(u.a > $1)")),
+      Plans: Array.from({ length: 365 }, () => seqScan("((u.a = $1) OR (u.b = $2))")),
     };
     await observePostgresWorkload(
       stub(plan, bigTable).query,
@@ -283,7 +380,7 @@ describe("observePostgresWorkload", () => {
       unplanned: 1,
       unplannedCodes: ["42P01"],
       filteredScans: 1,
-      equalityScans: 1,
+      readScans: 1,
     });
   });
 
@@ -305,7 +402,7 @@ describe("observePostgresWorkload", () => {
       expect(span?.attributes).toMatchObject({
         "nlqdb.dba.candidates": 1,
         "nlqdb.dba.unplanned": 0,
-        "nlqdb.dba.equality_scans": 1,
+        "nlqdb.dba.read_scans": 1,
         "nlqdb.dba.not_table": 1,
         "nlqdb.dba.covered": 0,
       });

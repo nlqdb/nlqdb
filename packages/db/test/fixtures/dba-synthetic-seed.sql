@@ -13,7 +13,8 @@ CREATE TABLE users (id bigint PRIMARY KEY, email varchar(255) NOT NULL);
 CREATE TABLE posts (
   id bigint PRIMARY KEY,
   author_id bigint NOT NULL REFERENCES users (id),
-  title text NOT NULL
+  title text NOT NULL,
+  published_at date NOT NULL
 );
 CREATE TABLE comments (
   id bigint PRIMARY KEY,
@@ -26,6 +27,8 @@ CREATE INDEX comments_user_id_idx ON comments (user_id);
 -- The app's own partial index under the conventional name: it doesn't cover
 -- the FK, and the proposal's name must not collide with it.
 CREATE INDEX posts_author_id_idx ON posts (author_id) WHERE author_id > 1000;
+-- A hash index serves no range: the `BETWEEN` on published_at is still proposed.
+CREATE INDEX posts_published_at_hash_idx ON posts USING hash (published_at);
 -- Composite FK with only a (region) index, which doesn't lead with tenant_id.
 CREATE TABLE tenants_regions (tenant_id bigint, region text, PRIMARY KEY (tenant_id, region));
 CREATE TABLE deployments (
@@ -55,7 +58,7 @@ CREATE TABLE events (
 CREATE TABLE events_2026 PARTITION OF events FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
 
 INSERT INTO users SELECT g, 'u' || g || '@example.com' FROM generate_series(1, 2000) g;
-INSERT INTO posts SELECT g, 1 + g % 2000, 'post ' || g FROM generate_series(1, 20000) g;
+INSERT INTO posts SELECT g, 1 + g % 2000, 'post ' || g, DATE '2026-01-01' + g % 365 FROM generate_series(1, 20000) g;
 INSERT INTO comments SELECT g, 1 + g % 20000, 1 + g % 2000, 'c' FROM generate_series(1, 50000) g;
 INSERT INTO tenants_regions SELECT g, 'r' || (g % 4) FROM generate_series(1, 100) g;
 INSERT INTO memberships SELECT 1 + g % 2000, 1 + g % 100, 'r' || ((1 + g % 100) % 4) FROM generate_series(1, 100) g;

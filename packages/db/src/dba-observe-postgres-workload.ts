@@ -11,8 +11,9 @@
 //
 // A fingerprint yields a proposal when its plan (`EXPLAIN (GENERIC_PLAN)` on
 // the normalized text, Postgres 16+ — never executed) seq-scans a table of the
-// attached schema with a selective AND of equality (or `= ANY`) filters, and
-// no valid btree / hash index already leads with those columns. Only
+// attached schema with a selective AND of equality (or `= ANY`) filters, plus
+// at most one range-filtered column, and no valid btree / hash index already
+// leads with those columns (the range column last). Only
 // fingerprints naming a relation of the attached schema are planned: on a
 // managed host the heaviest statements are often the host's own (auth,
 // storage, realtime, its dashboard), and they would spend the per-observe
@@ -194,21 +195,57 @@ type PlanNode = {
   Plans?: PlanNode[];
 };
 
+// One `(alias.column op value)` range term: `<`, `>`, `<=`, `>=` against a
+// parameter, a constant, or the clock (`now() - '7 days'::interval`), which the
+// planner folds to a value when it estimates. `BETWEEN` plans as two of them on
+// one column. A btree on (equality columns…, range column) serves the AND of
+// them as one index range, so `Plan Rows` is the share that index reads — on
+// parameter bounds, the planner's default guess (1/3 one-sided, 0.5 % two-sided).
+const CLOCK = String.raw`(?:now\(\)|CURRENT_DATE|CURRENT_TIMESTAMP|LOCALTIMESTAMP)`;
+const RANGE_TERM = new RegExp(
+  String.raw`\((?:${IDENT}\.(${IDENT})|\(${IDENT}\.(${IDENT})\)::text) (?:<|>|<=|>=) (?:${SCALAR}|${CLOCK}|\(${CLOCK} [-+] ${SCALAR}\))\)`,
+  "g",
+);
+
 type SeqScanFilter = {
   table: string;
+  // The index's key columns: the equality columns, then the range column.
   columns: string[];
+  // The column a range term filters, last in `columns`; null with none.
+  rangeColumn: string | null;
   // The columns the filter compares as `(column)::text`.
   textCast: string[];
   planRows: number;
 };
 
-const isEqualityOnly = (filter: string) =>
-  filter.replace(EQUALITY_TERM, "").replace(/\bAND\b|[()\s]/g, "") === "";
+type ReadFilter = Omit<SeqScanFilter, "table" | "planRows">;
 
-// The plan's seq scans on `schema` whose filter is only an AND of plain
-// equalities (`= ANY` included): with any other term (a range, an OR, `<> ALL`)
-// `Plan Rows` would credit the equality columns with selectivity they don't
-// have alone.
+// The filter as one index range, or null: only an AND of equalities (`= ANY`
+// included) and range terms on one column. With any other term (an OR,
+// `<> ALL`, a pattern, a second range column) `Plan Rows` would credit the
+// index columns with selectivity they don't have alone.
+function readFilter(filter: string): ReadFilter | null {
+  const rest = filter
+    .replace(EQUALITY_TERM, "")
+    .replace(RANGE_TERM, "")
+    .replace(/\bAND\b|[()\s]/g, "");
+  if (rest !== "") return null;
+  const column = (m: RegExpMatchArray) => unquote((m[1] ?? m[2]) as string);
+  const equalities = [...filter.matchAll(EQUALITY_TERM)];
+  const ranges = [...filter.matchAll(RANGE_TERM)];
+  const rangeColumns = [...new Set(ranges.map(column))];
+  if (rangeColumns.length > 1) return null;
+  const eqColumns = [...new Set(equalities.map(column))];
+  const rangeColumn = rangeColumns.find((c) => !eqColumns.includes(c)) ?? null;
+  const columns = rangeColumn ? [...eqColumns, rangeColumn] : eqColumns;
+  if (columns.length === 0) return null;
+  const textCast = [...equalities, ...ranges]
+    .filter((m) => m[2])
+    .map((m) => unquote(m[2] as string));
+  return { columns, rangeColumn, textCast: [...new Set(textCast)] };
+}
+
+// The plan's seq scans on `schema` whose filter Tier 1 reads (`readFilter`).
 function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = [], workers = 0) {
   const filter = node.Filter;
   const planWorkers = node["Workers Planned"] ?? workers;
@@ -216,19 +253,16 @@ function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = [
     node["Node Type"] === "Seq Scan" &&
     node.Schema === schema &&
     node["Relation Name"] &&
-    filter &&
-    isEqualityOnly(filter)
+    filter
   ) {
-    const terms = [...filter.matchAll(EQUALITY_TERM)];
-    const columns = [...new Set(terms.map((m) => unquote((m[1] ?? m[2]) as string)))];
+    const read = readFilter(filter);
     // A parallel scan's `Plan Rows` is per process: scale it back by Postgres'
     // own divisor (costsize.c `get_parallel_divisor`, leader participating).
     const divisor = node["Parallel Aware"] ? planWorkers + Math.max(0, 1 - 0.3 * planWorkers) : 1;
-    if (columns.length > 0) {
+    if (read) {
       out.push({
         table: node["Relation Name"],
-        columns,
-        textCast: terms.filter((m) => m[2]).map((m) => unquote(m[2] as string)),
+        ...read,
         planRows: (node["Plan Rows"] ?? 0) * divisor,
       });
     }
@@ -240,7 +274,9 @@ function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = [
 // The table's size, whether every column exists (a `::text`-compared one as
 // varchar), and whether a valid,
 // non-partial btree / hash index's first n key columns are exactly the n
-// columns (in any order) — the same coverage rule as Tier 0's FK check.
+// columns (in any order) — the same coverage rule as Tier 0's FK check — with
+// the range column ($5, if any) the nth of a btree: an index leading with the
+// range column reads every row in the range, and a hash index serves no range.
 const TABLE_CHECK_SQL = `
 WITH cols AS (SELECT json_array_elements_text($3::text::json) AS name)
 SELECT GREATEST(c.reltuples, 0)::float8 AS row_estimate,
@@ -261,11 +297,27 @@ SELECT GREATEST(c.reltuples, 0)::float8 AS row_estimate,
                   FROM unnest((i.indkey::int2[])[0:(SELECT count(*) FROM cols)::int - 1]) AS k(attnum)
                   JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attnum = k.attnum)
              = (SELECT array_agg(name ORDER BY name) FROM cols)
+           AND ($5::text IS NULL OR am.amname = 'btree' AND $5::text = (
+                 SELECT a.attname::text FROM pg_catalog.pg_attribute a
+                  WHERE a.attrelid = c.oid
+                    AND a.attnum = (i.indkey::int2[])[(SELECT count(*) FROM cols)::int - 1]))
        ) THEN 1 ELSE 0 END AS covered,
        c.relispartition AS is_partition
 FROM pg_catalog.pg_class c
 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind = 'r'`;
+
+// Whether `p`'s index serves `scan` as the table check reads an existing one:
+// its first n keys are the scan's n columns, in any order, the range column nth.
+const serves = (p: Proposal, scan: SeqScanFilter) => {
+  const lead = p.columns.slice(0, scan.columns.length);
+  return (
+    p.table === scan.table &&
+    lead.length === scan.columns.length &&
+    scan.columns.every((c) => lead.includes(c)) &&
+    (scan.rangeColumn === null || lead.at(-1) === scan.rangeColumn)
+  );
+};
 
 // Where each planned fingerprint dropped out, counted per observe and set on
 // the span; the spike's CI log prints it (counts only, never a query).
@@ -277,10 +329,12 @@ export type Tier1Funnel = {
   // The SQLSTATE each unplanned fingerprint failed with.
   unplannedCodes: string[];
   // Seq scan nodes on the attached schema that filter rows, and those whose
-  // filter is an AND of equalities (the only shape Tier 1 proposes for).
+  // filter Tier 1 reads: an AND of equalities, with at most one range column
+  // (`rangeScans` of them have one).
   filteredScans: number;
-  equalityScans: number;
-  // The shape of each filtered scan that isn't an AND of equalities:
+  readScans: number;
+  rangeScans: number;
+  // The shape of each filtered scan Tier 1 doesn't read:
   // `or`, `range`, `pattern` (LIKE / regex) or `other`.
   unreadShapes: string[];
   // Not a plain table of the schema (a materialized view, or dropped since
@@ -290,8 +344,11 @@ export type Tier1Funnel = {
   unknownColumns: number;
   unanalyzed: number;
   unselective: number;
-  // Each unselective scan's estimated share of its table's rows, in whole %.
+  // Each unselective scan's estimated share of its table's rows, in whole %,
+  // and that table's row estimate (a one-sided range on a parameter always
+  // reads as the planner's default third; its table's size says if it matters).
   unselectivePct: number[];
+  unselectiveRows: number[];
   // A selective, unindexed lookup on one partition: the index belongs on the
   // partitioned parent (built per partition, then attached), a multi-statement
   // apply the loop doesn't run yet.
@@ -304,7 +361,8 @@ export const newTier1Funnel = (): Tier1Funnel => ({
   unplanned: 0,
   unplannedCodes: [],
   filteredScans: 0,
-  equalityScans: 0,
+  readScans: 0,
+  rangeScans: 0,
   unreadShapes: [],
   notTable: 0,
   covered: 0,
@@ -312,6 +370,7 @@ export const newTier1Funnel = (): Tier1Funnel => ({
   unanalyzed: 0,
   unselective: 0,
   unselectivePct: [],
+  unselectiveRows: [],
   partitions: 0,
 });
 
@@ -323,7 +382,8 @@ const noteReason = <T>(list: T[], reason: T) => {
 };
 
 // The shape a filter Tier 1 doesn't read yet takes — counts the next shape to
-// read, never prints the filter.
+// read, never prints the filter. `range` here is one Tier 1 can't serve with
+// one index: two range columns, or a bound it can't read as a value.
 function filterShape(filter: string): string {
   if (/\bOR\b/.test(filter)) return "or";
   if (/ (?:<|>|<=|>=) /.test(filter)) return "range";
@@ -335,7 +395,7 @@ function countFilteredScans(node: PlanNode, schema: string, funnel: Tier1Funnel)
   const filter = node["Node Type"] === "Seq Scan" && node.Schema === schema && node.Filter;
   if (filter) {
     funnel.filteredScans++;
-    if (!isEqualityOnly(filter)) noteReason(funnel.unreadShapes, filterShape(filter));
+    if (!readFilter(filter)) noteReason(funnel.unreadShapes, filterShape(filter));
   }
   for (const child of node.Plans ?? []) countFilteredScans(child, schema, funnel);
 }
@@ -353,7 +413,7 @@ export function observePostgresWorkload(
   funnel: Tier1Funnel = newTier1Funnel(),
 ): Promise<Proposal[]> {
   return withObserveSpan("observe_workload", schema, async (span) => {
-    const proposals = new Map<string, Proposal>();
+    const proposals: Proposal[] = [];
     const candidates = await tier1Candidates(query, schema, window);
     funnel.candidates = candidates.length;
     for (const w of candidates.slice(0, MAX_FINGERPRINTS)) {
@@ -372,14 +432,18 @@ export function observePostgresWorkload(
       funnel.planned++;
       countFilteredScans(plan, schema, funnel);
       for (const scan of seqScanFilters(plan, schema)) {
-        funnel.equalityScans++;
-        const key = `${scan.table}\0${[...scan.columns].sort()}`;
-        if (proposals.has(key)) continue;
+        funnel.readScans++;
+        if (scan.rangeColumn) funnel.rangeScans++;
+        // A scan an earlier proposal serves (`serves`): an equality on (a, b)
+        // after an index on (a, b, c), or a range on b after an equality on a,
+        // would otherwise propose an index the earlier one already is.
+        if (proposals.some((p) => serves(p, scan))) continue;
         const { rows } = await query(TABLE_CHECK_SQL, [
           schema,
           scan.table,
           JSON.stringify(scan.columns),
           JSON.stringify(scan.textCast),
+          scan.rangeColumn,
         ]);
         const t = rows[0];
         if (!t) {
@@ -402,20 +466,20 @@ export function observePostgresWorkload(
         if (scan.planRows / rowEstimate > MAX_SELECTIVITY) {
           funnel.unselective++;
           noteReason(funnel.unselectivePct, Math.round((100 * scan.planRows) / rowEstimate));
+          noteReason(funnel.unselectiveRows, Math.round(rowEstimate));
           continue;
         }
         if (t["is_partition"] === true) {
           funnel.partitions++;
           continue;
         }
-        proposals.set(
-          key,
+        proposals.push(
           createIndexProposal({
             tier: 1,
             schema,
             table: scan.table,
             columns: scan.columns,
-            reason: `A query that ran ${w.calls} times (mean ${w.meanMs.toFixed(2)} ms, p95 ≈ ${w.p95EstimateMs.toFixed(2)} ms est.) scans all of ${scan.table} to filter on ${scan.columns.join(", ")}; an index on them serves it directly.`,
+            reason: `A query that ran ${w.calls} times (mean ${w.meanMs.toFixed(2)} ms, p95 ≈ ${w.p95EstimateMs.toFixed(2)} ms est.) scans all of ${scan.table} to filter on ${scan.columns.join(", ")}${scan.rangeColumn ? ` (a range on ${scan.rangeColumn})` : ""}; an index on them serves it directly.`,
             evidence: {
               rowEstimate,
               tableBytes: Number(t["table_bytes"]),
@@ -433,6 +497,6 @@ export function observePostgresWorkload(
     // snake_case like every other attribute; `nlqdb.dba.unplanned` matches D1's.
     for (const [k, v] of Object.entries(funnel))
       span.setAttribute(`nlqdb.dba.${k.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)}`, v);
-    return [...proposals.values()];
+    return proposals;
   });
 }

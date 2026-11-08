@@ -78,16 +78,19 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
     expect(rows).toHaveLength(1);
   });
 
-  // The synthetic app's workload: three hot lookups on unindexed columns (the
-  // third an ORM's `IN` list, planned as `= ANY (ARRAY[…])`), and
-  // three decoys an index on the column wouldn't help — a filter keeping 25 %
-  // of its table, a lookup already served by comments_user_id_idx, and a
-  // bigint compared as text.
+  // The synthetic app's workload: four hot lookups on unindexed columns (the
+  // third an ORM's `IN` list, planned as `= ANY (ARRAY[…])`, the fourth a
+  // 3-day `BETWEEN`), and four decoys an index on the column wouldn't help — a
+  // filter keeping 25 % of its table, a lookup already served by
+  // comments_user_id_idx, a bigint compared as text, and a one-sided range
+  // the generic plan can only guess keeps a third of the table.
   const HOT = [
     "SELECT id FROM dba_synth.posts WHERE title = $1",
     "SELECT id FROM dba_synth.users WHERE email = $1",
     "SELECT id FROM dba_synth.posts WHERE author_id IN ($1, $2, $3)",
+    "SELECT id FROM dba_synth.posts WHERE published_at BETWEEN $1 AND $2",
   ];
+  const day = (n: number) => new Date(Date.UTC(2026, 0, 1 + (n % 362))).toISOString().slice(0, 10);
   async function runWorkload(): Promise<FingerprintWindow[]> {
     const before = await snapshotPostgresStatements(conn.query, SCHEMA);
     for (let i = 0; i < 300; i++) {
@@ -97,6 +100,10 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
         1 + (i % 2000),
         1 + ((i * 7) % 2000),
         1 + ((i * 13) % 2000),
+      ]);
+      await conn.query(HOT[3] as string, [day(i * 11), day(i * 11 + 2)]);
+      await conn.query("SELECT count(*) FROM dba_synth.posts WHERE published_at > $1", [
+        day(i * 11),
       ]);
       await conn.query("SELECT count(*) FROM dba_synth.memberships WHERE region = $1", [
         `r${i % 4}`,
@@ -119,9 +126,14 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
     const proposals = await observePostgresWorkload(conn.query, SCHEMA, before, funnel);
     // The selective lookup on partitioned events waits for the parent's index.
     expect(funnel.partitions).toBe(1);
+    // The `BETWEEN` is read as a range; the one-sided `>` too, then judged
+    // unselective on the generic plan's third.
+    expect(funnel.rangeScans).toBe(2);
+    expect(funnel.unselectivePct).toContain(33);
     // Heaviest first, so the order follows the run's timings: compare as a set.
     expect(proposals.map((p) => `${p.table}(${p.columns.join(",")}) t${p.tier}`).sort()).toEqual([
       "posts(author_id) t1",
+      "posts(published_at) t1",
       "posts(title) t1",
       "users(email) t1",
     ]);
