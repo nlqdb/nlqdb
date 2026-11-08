@@ -331,8 +331,11 @@ export type Tier1Funnel = {
   unknownColumns: number;
   unanalyzed: number;
   unselective: number;
-  // Each unselective scan's estimated share of its table's rows, in whole %.
+  // Each unselective scan's estimated share of its table's rows, in whole %,
+  // and that table's row estimate (a one-sided range on a parameter always
+  // reads as the planner's default third; its table's size says if it matters).
   unselectivePct: number[];
+  unselectiveRows: number[];
   // A selective, unindexed lookup on one partition: the index belongs on the
   // partitioned parent (built per partition, then attached), a multi-statement
   // apply the loop doesn't run yet.
@@ -354,6 +357,7 @@ export const newTier1Funnel = (): Tier1Funnel => ({
   unanalyzed: 0,
   unselective: 0,
   unselectivePct: [],
+  unselectiveRows: [],
   partitions: 0,
 });
 
@@ -449,6 +453,7 @@ export function observePostgresWorkload(
         if (scan.planRows / rowEstimate > MAX_SELECTIVITY) {
           funnel.unselective++;
           noteReason(funnel.unselectivePct, Math.round((100 * scan.planRows) / rowEstimate));
+          noteReason(funnel.unselectiveRows, Math.round(rowEstimate));
           continue;
         }
         if (t["is_partition"] === true) {

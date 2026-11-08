@@ -258,7 +258,12 @@ describe("observePostgresWorkload", () => {
       [window("SELECT 1 FROM users")],
       unselective,
     );
-    expect(unselective).toMatchObject({ partitions: 0, unselective: 1, unselectivePct: [30] });
+    expect(unselective).toMatchObject({
+      partitions: 0,
+      unselective: 1,
+      unselectivePct: [30],
+      unselectiveRows: [10_000],
+    });
   });
 
   it("counts the shape of each filtered scan it doesn't read, never the filter", async () => {
