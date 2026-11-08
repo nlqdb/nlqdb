@@ -315,6 +315,13 @@ export const newTier1Funnel = (): Tier1Funnel => ({
   partitions: 0,
 });
 
+// A plan over hundreds of partitions repeats one reason per partition: the
+// per-scan lists stop at this many so the span stays small; the counts stay exact.
+const MAX_REASONS = 50;
+const noteReason = <T>(list: T[], reason: T) => {
+  if (list.length < MAX_REASONS) list.push(reason);
+};
+
 // The shape a filter Tier 1 doesn't read yet takes — counts the next shape to
 // read, never prints the filter.
 function filterShape(filter: string): string {
@@ -328,7 +335,7 @@ function countFilteredScans(node: PlanNode, schema: string, funnel: Tier1Funnel)
   const filter = node["Node Type"] === "Seq Scan" && node.Schema === schema && node.Filter;
   if (filter) {
     funnel.filteredScans++;
-    if (!isEqualityOnly(filter)) funnel.unreadShapes.push(filterShape(filter));
+    if (!isEqualityOnly(filter)) noteReason(funnel.unreadShapes, filterShape(filter));
   }
   for (const child of node.Plans ?? []) countFilteredScans(child, schema, funnel);
 }
@@ -359,7 +366,7 @@ export function observePostgresWorkload(
         // postgres.js and Neon both set `severity` on an error the server sent.
         if (!(err as { severity?: unknown }).severity) throw err;
         funnel.unplanned++;
-        funnel.unplannedCodes.push(String((err as { code?: unknown }).code ?? "unknown"));
+        noteReason(funnel.unplannedCodes, String((err as { code?: unknown }).code ?? "unknown"));
         continue;
       }
       funnel.planned++;
@@ -394,7 +401,7 @@ export function observePostgresWorkload(
         }
         if (scan.planRows / rowEstimate > MAX_SELECTIVITY) {
           funnel.unselective++;
-          funnel.unselectivePct.push(Math.round((100 * scan.planRows) / rowEstimate));
+          noteReason(funnel.unselectivePct, Math.round((100 * scan.planRows) / rowEstimate));
           continue;
         }
         if (t["is_partition"] === true) {

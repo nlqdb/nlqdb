@@ -238,6 +238,22 @@ describe("observePostgresWorkload", () => {
     });
   });
 
+  it("keeps a plan over hundreds of partitions to a bounded reason list, the count exact", async () => {
+    const funnel = newTier1Funnel();
+    const plan = {
+      "Node Type": "Append",
+      Plans: Array.from({ length: 365 }, () => seqScan("(u.a > $1)")),
+    };
+    await observePostgresWorkload(
+      stub(plan, bigTable).query,
+      "app",
+      [window("SELECT 1 FROM users")],
+      funnel,
+    );
+    expect(funnel.filteredScans).toBe(365);
+    expect(funnel.unreadShapes).toHaveLength(50);
+  });
+
   it("skips a fingerprint that fails to plan and keeps going", async () => {
     let n = 0;
     const query: PostgresQueryFn = async (sql) => {
