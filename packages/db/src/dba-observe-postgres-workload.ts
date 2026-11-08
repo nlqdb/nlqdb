@@ -199,7 +199,8 @@ type PlanNode = {
 // parameter, a constant, or the clock (`now() - '7 days'::interval`), which the
 // planner folds to a value when it estimates. `BETWEEN` plans as two of them on
 // one column. A btree on (equality columns…, range column) serves the AND of
-// them as one index range, so `Plan Rows` is the share that index reads.
+// them as one index range, so `Plan Rows` is the share that index reads — on
+// parameter bounds, the planner's default guess (1/3 one-sided, 0.5 % two-sided).
 const CLOCK = String.raw`(?:now\(\)|CURRENT_DATE|CURRENT_TIMESTAMP|LOCALTIMESTAMP)`;
 const RANGE_TERM = new RegExp(
   String.raw`\((?:${IDENT}\.(${IDENT})|\(${IDENT}\.(${IDENT})\)::text) (?:<|>|<=|>=) (?:${SCALAR}|${CLOCK}|\(${CLOCK} [-+] ${SCALAR}\))\)`,
