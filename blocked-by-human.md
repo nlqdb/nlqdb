@@ -20,6 +20,24 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   context · benefits · risks · alternatives, ≤ 5 words each>
 -->
 
+## Spike: Tier 1 proposes a `create_index` from the spike's app fingerprints
+
+- **Type:** decision · ⏱ ~10 min · since 2026-11-08
+- **Done so far:** runs 275–281 read the whole spike workload (CI
+  `spike-attach`, counts only). Tier 1 reads 13 of the 16 app filters, and
+  every one is unselective: the tables have ≤ 41k rows. The 755 fingerprints
+  it skips hold no app lookup. They are DDL, grants and session commands, plus
+  19 INSERTs (7.2 % of exec time), 67 catalog reads (16.4 %) and 20 host-schema
+  reads (3.6 %). It found no other app schema and no RPC call. This DB has
+  nothing to index, and `GLOBAL-043` item 10 needs one applied index.
+- **Ask:** pick one —
+  (a) point `SPIKE_PG_URL` at a real-traffic Postgres with tables of ≥ 100k
+  rows · a real delta · a new DB to find · (b) or (c);
+  (b) apply the spike's one Tier 0 proposal as its index · no new DB · p95 barely
+  moves · (a);
+  (c) call the spike fail, go to the D1 track · honest evidence · the deletion
+  series stays parked · (a).
+
 ## Claim the `nlqdb` npm name for the `npx nlqdb attach` door
 
 - **Type:** account action · ⏱ ~5 min · since 2026-10-31
