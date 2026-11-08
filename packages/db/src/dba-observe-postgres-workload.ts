@@ -202,13 +202,13 @@ type SeqScanFilter = {
   planRows: number;
 };
 
+const isEqualityOnly = (filter: string) =>
+  filter.replace(EQUALITY_TERM, "").replace(/\bAND\b|[()\s]/g, "") === "";
+
 // The plan's seq scans on `schema` whose filter is only an AND of plain
 // equalities (`= ANY` included): with any other term (a range, an OR, `<> ALL`)
 // `Plan Rows` would credit the equality columns with selectivity they don't
 // have alone.
-const isEqualityOnly = (filter: string) =>
-  filter.replace(EQUALITY_TERM, "").replace(/\bAND\b|[()\s]/g, "") === "";
-
 function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = [], workers = 0) {
   const filter = node.Filter;
   const planWorkers = node["Workers Planned"] ?? workers;

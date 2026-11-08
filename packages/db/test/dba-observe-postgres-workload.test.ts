@@ -271,7 +271,7 @@ describe("observePostgresWorkload", () => {
     });
   });
 
-  it("counts a scan on a partition (no plain-table row) apart from a covered one, on the span", async () => {
+  it("counts a scan on a non-plain table (a matview, or gone) apart from a covered one, on the span", async () => {
     const telemetry = createTestTelemetry();
     const query: PostgresQueryFn = async (sql) => {
       if (sql.includes("relkind IN")) return relations;
