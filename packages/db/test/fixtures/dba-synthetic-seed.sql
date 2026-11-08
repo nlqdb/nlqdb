@@ -13,7 +13,8 @@ CREATE TABLE users (id bigint PRIMARY KEY, email varchar(255) NOT NULL);
 CREATE TABLE posts (
   id bigint PRIMARY KEY,
   author_id bigint NOT NULL REFERENCES users (id),
-  title text NOT NULL
+  title text NOT NULL,
+  published_at date NOT NULL
 );
 CREATE TABLE comments (
   id bigint PRIMARY KEY,
@@ -55,7 +56,7 @@ CREATE TABLE events (
 CREATE TABLE events_2026 PARTITION OF events FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
 
 INSERT INTO users SELECT g, 'u' || g || '@example.com' FROM generate_series(1, 2000) g;
-INSERT INTO posts SELECT g, 1 + g % 2000, 'post ' || g FROM generate_series(1, 20000) g;
+INSERT INTO posts SELECT g, 1 + g % 2000, 'post ' || g, DATE '2026-01-01' + g % 365 FROM generate_series(1, 20000) g;
 INSERT INTO comments SELECT g, 1 + g % 20000, 1 + g % 2000, 'c' FROM generate_series(1, 50000) g;
 INSERT INTO tenants_regions SELECT g, 'r' || (g % 4) FROM generate_series(1, 100) g;
 INSERT INTO memberships SELECT 1 + g % 2000, 1 + g % 100, 'r' || ((1 + g % 100) % 4) FROM generate_series(1, 100) g;
