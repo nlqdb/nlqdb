@@ -111,7 +111,7 @@ mkdir -p "$(dirname "$OUT_PATH")"
 # subshell), so the trap's `rm -rf` sees the same value the per-step
 # code writes into.
 WORK_DIR="$(mktemp -d -t nlqdb-flow-005.XXXXXX)"
-# shellcheck disable=SC2317  # invoked via `trap cleanup EXIT`
+# shellcheck disable=SC2317,SC2329  # invoked via `trap cleanup EXIT`
 cleanup() { rm -rf "$WORK_DIR"; }
 trap cleanup EXIT
 
