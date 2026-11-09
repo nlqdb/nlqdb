@@ -89,8 +89,18 @@ function skipBucket(
   publicFunctions: Set<string>,
 ): string {
   const verb = /^[A-Za-z]+/.exec(query.replace(LEADING_NOISE, ""))?.[0]?.toUpperCase() ?? "?";
-  if (!/^\s*(SELECT|UPDATE|DELETE|WITH)\b/i.test(query))
-    return /^(SELECT|UPDATE|DELETE|WITH)$/.test(verb) ? "comment-prefixed" : `verb:${verb}`;
+  if (!/^(SELECT|UPDATE|DELETE|WITH)$/.test(verb)) return `verb:${verb}`;
+  // Tier 1 skips a statement behind a leading comment or `(` whatever it names,
+  // so its bucket says what it would have read.
+  const prefix = /^\s*(SELECT|UPDATE|DELETE|WITH)\b/i.test(query) ? "" : "prefixed:";
+  return prefix + readBucket(query, relationsBySchema, publicFunctions);
+}
+
+function readBucket(
+  query: string,
+  relationsBySchema: Map<string, Set<string>>,
+  publicFunctions: Set<string>,
+): string {
   if (query.includes(";")) return "multi-statement";
   const schemas = new Set<string>();
   for (const [id] of query.matchAll(IDENTS))
@@ -183,7 +193,7 @@ describe.skipIf(!url)("the attach door on the spike Postgres (read-only)", () =>
         acc.n++;
         acc.ms += w.totalMs;
         buckets.set(b, acc);
-        if (b === "names-other-app-schema")
+        if (b.endsWith("names-other-app-schema"))
           for (const [id] of w.query.matchAll(IDENTS))
             for (const s of relationsBySchema.get(identName(id)) ?? [])
               if (s !== "public" && !HOST_SCHEMAS.has(s)) otherSchemas.add(s);
