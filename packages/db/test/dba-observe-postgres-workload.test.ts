@@ -42,6 +42,14 @@ describe("statementWindow", () => {
     const after: StatementSnapshot = new Map([["1", counters("q", [4])]]);
     expect(statementWindow(before, after)[0]).toMatchObject({ calls: 1, totalMs: 4 });
   });
+
+  it("counts from zero when rows fell, even once the calls outgrew the baseline", () => {
+    const before: StatementSnapshot = new Map([
+      ["1", { ...counters("q", [1, 1]), rows: 1_000_000 }],
+    ]);
+    const after: StatementSnapshot = new Map([["1", counters("q", [1, 1, 1])]]);
+    expect(statementWindow(before, after)[0]).toMatchObject({ calls: 3, rows: 30 });
+  });
 });
 
 // 50 calls returning `rows` in all: by default one row each, 0.01 % of `bigTable`.
@@ -286,6 +294,7 @@ describe("observePostgresWorkload", () => {
     ["an aggregate", { "Node Type": "Aggregate" }],
     ["a limit", { "Node Type": "Limit" }],
     ["a one-time filter", { "Node Type": "Result", "One-Time Filter": "($3 > 0)" }],
+    ["a filtering result", { "Node Type": "Result", Filter: "($3 > 0)" }],
     ["an ON CONFLICT insert", { "Node Type": "ModifyTable", "Conflict Resolution": "NOTHING" }],
   ])(
     "leaves a parameter-bound range under %s unjudged: its rows aren't the statement's",

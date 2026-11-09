@@ -111,7 +111,9 @@ export function statementWindow(
   const windows: FingerprintWindow[] = [];
   for (const [fingerprint, a] of after) {
     const b = before.get(fingerprint);
-    const base = b && b.calls <= a.calls ? b : { calls: 0, totalMs: 0, sumSquaresMs: 0, rows: 0 };
+    // Rows too: a reset the calls outgrew would read 0 rows per call, a range selective on nothing.
+    const reset = !b || b.calls > a.calls || b.rows > a.rows;
+    const base = reset ? { calls: 0, totalMs: 0, sumSquaresMs: 0, rows: 0 } : b;
     const calls = a.calls - base.calls;
     if (calls <= 0) continue;
     const totalMs = a.totalMs - base.totalMs;
@@ -124,7 +126,7 @@ export function statementWindow(
       totalMs,
       meanMs,
       p95EstimateMs: meanMs + 1.65 * Math.sqrt(variance),
-      rows: Math.max(a.rows - base.rows, 0),
+      rows: a.rows - base.rows,
     });
   }
   return windows.sort((x, y) => y.totalMs - x.totalMs);
@@ -305,11 +307,12 @@ function seqScanFilters(
     }
   }
   const children = node.Plans ?? [];
-  // A one-time filter or an `ON CONFLICT` can drop rows the scan kept.
+  // A filter, one-time or not, or an `ON CONFLICT` can drop rows the scan kept.
   const passes =
     reachesResult &&
     children.length === 1 &&
     ROW_PRESERVING.has(node["Node Type"] ?? "") &&
+    !node.Filter &&
     !node["One-Time Filter"] &&
     !node["Conflict Resolution"];
   for (const child of children) seqScanFilters(child, schema, out, planWorkers, passes);
