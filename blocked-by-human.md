@@ -20,21 +20,6 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   context · benefits · risks · alternatives, ≤ 5 words each>
 -->
 
-## Spike: Tier 1 proposes a `create_index` from the spike's app fingerprints
-
-- **Type:** decision · ⏱ ~10 min · since 2026-11-08
-- **Done so far:** runs 275–281 read the whole spike workload (CI
-  `spike-attach`, counts only). All 13 app filters Tier 1 reads are
-  unselective (tables ≤ 41k rows); 4 more have a shape it doesn't read. The
-  770 fingerprints it skips hold no app lookup, and there is no other app
-  schema. `GLOBAL-043` item 10 needs one applied index.
-- **Ask:** pick one; recommend (a) —
-  (a) swap the spike DB · a real p95 delta · finding a ≥ 100k-row DB ·
-  (b) or (c). To do it, replace `SPIKE_PG_URL` at
-  <https://github.com/nlqdb/nlqdb/settings/secrets/actions>;
-  (b) apply Tier 0's one proposal · no new DB · p95 barely moves · (a);
-  (c) call the spike failed · honest evidence · deletions stay parked · (a).
-
 ## Claim the `nlqdb` npm name for the `npx nlqdb attach` door
 
 - **Type:** account action · ⏱ ~5 min · since 2026-10-31
