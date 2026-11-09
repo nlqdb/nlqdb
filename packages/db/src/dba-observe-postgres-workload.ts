@@ -8,6 +8,8 @@
 // snapshots. They keep no percentiles: the window p95 is estimated as
 // mean + 1.65 σ from the diffed counters and labelled an estimate (`GLOBAL-043`
 // item 7). The same window, re-read after an apply, is what verify compares.
+// Its rows per call stand in for a parameter-bound range's selectivity, which
+// the generic plan can only guess.
 //
 // A fingerprint yields a proposal when its plan (`EXPLAIN (GENERIC_PLAN)` on
 // the normalized text, Postgres 16+ — never executed) seq-scans a table of the
@@ -30,6 +32,8 @@ export type StatementCounters = {
   totalMs: number;
   // Σ t² — `pg_stat_statements` keeps population σ, so Σ t² = n (σ² + mean²).
   sumSquaresMs: number;
+  // Rows returned or affected.
+  rows: number;
 };
 
 export type StatementSnapshot = Map<string, StatementCounters>;
@@ -42,6 +46,7 @@ export type FingerprintWindow = {
   totalMs: number;
   meanMs: number;
   p95EstimateMs: number;
+  rows: number;
 };
 
 // Top-level statements of the attached database only: other databases on the
@@ -51,7 +56,8 @@ SELECT s.queryid::text AS fingerprint,
        s.query,
        s.calls::float8 AS calls,
        s.total_exec_time::float8 AS total_ms,
-       s.stddev_exec_time::float8 AS stddev_ms
+       s.stddev_exec_time::float8 AS stddev_ms,
+       s.rows::float8 AS rows
 FROM pg_stat_statements s
 WHERE s.dbid = (SELECT oid FROM pg_catalog.pg_database WHERE datname = current_database())
   AND s.toplevel AND s.queryid IS NOT NULL`;
@@ -75,6 +81,7 @@ export function snapshotPostgresStatements(
         calls,
         totalMs,
         sumSquaresMs: calls * (Number(row["stddev_ms"]) ** 2 + mean ** 2),
+        rows: Number(row["rows"]),
       };
       // One queryid can repeat per role: sum them, the fingerprint is the query.
       snapshot.set(
@@ -85,6 +92,7 @@ export function snapshotPostgresStatements(
               calls: prev.calls + calls,
               totalMs: prev.totalMs + totalMs,
               sumSquaresMs: prev.sumSquaresMs + counters.sumSquaresMs,
+              rows: prev.rows + counters.rows,
             }
           : counters,
       );
@@ -103,7 +111,7 @@ export function statementWindow(
   const windows: FingerprintWindow[] = [];
   for (const [fingerprint, a] of after) {
     const b = before.get(fingerprint);
-    const base = b && b.calls <= a.calls ? b : { calls: 0, totalMs: 0, sumSquaresMs: 0 };
+    const base = b && b.calls <= a.calls ? b : { calls: 0, totalMs: 0, sumSquaresMs: 0, rows: 0 };
     const calls = a.calls - base.calls;
     if (calls <= 0) continue;
     const totalMs = a.totalMs - base.totalMs;
@@ -116,6 +124,7 @@ export function statementWindow(
       totalMs,
       meanMs,
       p95EstimateMs: meanMs + 1.65 * Math.sqrt(variance),
+      rows: Math.max(a.rows - base.rows, 0),
     });
   }
   return windows.sort((x, y) => y.totalMs - x.totalMs);
@@ -125,7 +134,7 @@ export function statementWindow(
 // fingerprints — where an index pays back the most. Sized to plan a whole
 // app's explainable fingerprints (the spike's: 32) in one observe.
 const MAX_FINGERPRINTS = 50;
-// An equality filter keeping more than this share of a table's rows is better
+// A filter keeping more than this share of a table's rows is better
 // served by the scan than by an index.
 const MAX_SELECTIVITY = 0.05;
 
@@ -199,8 +208,10 @@ type PlanNode = {
 // parameter, a constant, or the clock (`now() - '7 days'::interval`), which the
 // planner folds to a value when it estimates. `BETWEEN` plans as two of them on
 // one column. A btree on (equality columns…, range column) serves the AND of
-// them as one index range, so `Plan Rows` is the share that index reads — on
-// parameter bounds, the planner's default guess (1/3 one-sided, 0.5 % two-sided).
+// them as one index range, so `Plan Rows` is the share that index reads — but
+// on a parameter bound it is the planner's fixed guess (1/3 one-sided, 0.5 %
+// two-sided, whatever range the app passes), so such a scan is judged on the
+// fingerprint's measured rows per call instead (`rowsReachResult`).
 const CLOCK = String.raw`(?:now\(\)|CURRENT_DATE|CURRENT_TIMESTAMP|LOCALTIMESTAMP)`;
 const RANGE_TERM = new RegExp(
   String.raw`\((?:${IDENT}\.(${IDENT})|\(${IDENT}\.(${IDENT})\)::text) (?:<|>|<=|>=) (?:${SCALAR}|${CLOCK}|\(${CLOCK} [-+] ${SCALAR}\))\)`,
@@ -215,10 +226,16 @@ type SeqScanFilter = {
   rangeColumn: string | null;
   // The columns the filter compares as `(column)::text`.
   textCast: string[];
+  // A range term bounded by a parameter: `Plan Rows` is a guess.
+  paramRange: boolean;
   planRows: number;
+  // Every row the scan keeps is a row the statement returns or writes: only
+  // row-preserving single-child nodes above it (no join, limit or aggregate),
+  // so `pg_stat_statements.rows` per call is the scan's measured row count.
+  rowsReachResult: boolean;
 };
 
-type ReadFilter = Omit<SeqScanFilter, "table" | "planRows">;
+type ReadFilter = Omit<SeqScanFilter, "table" | "planRows" | "rowsReachResult">;
 
 // The filter as one index range, or null: only an AND of equalities (`= ANY`
 // included) and range terms on one column. With any other term (an OR,
@@ -242,11 +259,28 @@ function readFilter(filter: string): ReadFilter | null {
   const textCast = [...equalities, ...ranges]
     .filter((m) => m[2])
     .map((m) => unquote(m[2] as string));
-  return { columns, rangeColumn, textCast: [...new Set(textCast)] };
+  const paramRange = ranges.some((m) => /\$\d+/.test(m[0]));
+  return { columns, rangeColumn, textCast: [...new Set(textCast)], paramRange };
 }
 
+// Nodes that pass every row of their one child through, reordered at most.
+const ROW_PRESERVING = new Set([
+  "Gather",
+  "Gather Merge",
+  "Sort",
+  "Incremental Sort",
+  "Result",
+  "ModifyTable",
+]);
+
 // The plan's seq scans on `schema` whose filter Tier 1 reads (`readFilter`).
-function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = [], workers = 0) {
+function seqScanFilters(
+  node: PlanNode,
+  schema: string,
+  out: SeqScanFilter[] = [],
+  workers = 0,
+  reachesResult = true,
+) {
   const filter = node.Filter;
   const planWorkers = node["Workers Planned"] ?? workers;
   if (
@@ -264,10 +298,14 @@ function seqScanFilters(node: PlanNode, schema: string, out: SeqScanFilter[] = [
         table: node["Relation Name"],
         ...read,
         planRows: (node["Plan Rows"] ?? 0) * divisor,
+        rowsReachResult: reachesResult && !node.Plans?.length,
       });
     }
   }
-  for (const child of node.Plans ?? []) seqScanFilters(child, schema, out, planWorkers);
+  const children = node.Plans ?? [];
+  const passes =
+    reachesResult && children.length === 1 && ROW_PRESERVING.has(node["Node Type"] ?? "");
+  for (const child of children) seqScanFilters(child, schema, out, planWorkers, passes);
   return out;
 }
 
@@ -343,10 +381,13 @@ export type Tier1Funnel = {
   covered: number;
   unknownColumns: number;
   unanalyzed: number;
+  // A parameter-bound range whose rows the statement doesn't return as is (an
+  // aggregate, a join, a limit): its selectivity is unmeasured, so no proposal.
+  unjudgedRanges: number;
   unselective: number;
-  // Each unselective scan's estimated share of its table's rows, in whole %,
-  // and that table's row estimate (a one-sided range on a parameter always
-  // reads as the planner's default third; its table's size says if it matters).
+  // Each unselective scan's share of its table's rows, in whole % (measured
+  // per call on a parameter-bound range, else the plan's estimate), and that
+  // table's row estimate.
   unselectivePct: number[];
   unselectiveRows: number[];
   // A selective, unindexed lookup on one partition: the index belongs on the
@@ -368,6 +409,7 @@ export const newTier1Funnel = (): Tier1Funnel => ({
   covered: 0,
   unknownColumns: 0,
   unanalyzed: 0,
+  unjudgedRanges: 0,
   unselective: 0,
   unselectivePct: [],
   unselectiveRows: [],
@@ -463,9 +505,14 @@ export function observePostgresWorkload(
           funnel.unanalyzed++;
           continue;
         }
-        if (scan.planRows / rowEstimate > MAX_SELECTIVITY) {
+        if (scan.paramRange && !scan.rowsReachResult) {
+          funnel.unjudgedRanges++;
+          continue;
+        }
+        const scanRows = scan.paramRange ? w.rows / w.calls : scan.planRows;
+        if (scanRows / rowEstimate > MAX_SELECTIVITY) {
           funnel.unselective++;
-          noteReason(funnel.unselectivePct, Math.round((100 * scan.planRows) / rowEstimate));
+          noteReason(funnel.unselectivePct, Math.round((100 * scanRows) / rowEstimate));
           noteReason(funnel.unselectiveRows, Math.round(rowEstimate));
           continue;
         }

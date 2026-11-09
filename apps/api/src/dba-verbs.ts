@@ -218,7 +218,9 @@ async function applyOn(
     const snapshot = await snapshotPostgresStatements(query, proposal.schema).catch(() => null);
     if (!snapshot) return null;
     // Not run since the last stats reset: the window counts from zero.
-    return snapshot.get(fingerprint) ?? { query: "", calls: 0, totalMs: 0, sumSquaresMs: 0 };
+    return (
+      snapshot.get(fingerprint) ?? { query: "", calls: 0, totalMs: 0, sumSquaresMs: 0, rows: 0 }
+    );
   });
 }
 

@@ -42,18 +42,25 @@ type DueRow = { dbId: string; engine: string; blob: string | null; observeFrom: 
 const isoHour = (sec: number) => `${new Date(sec * 1000).toISOString().slice(0, 13)}:00:00Z`;
 
 // The baseline without query text — the window takes it from the fresh read —
-// so a DB with thousands of fingerprints still fits its D1 row.
-type Baseline = Record<string, [calls: number, totalMs: number, sumSquaresMs: number]>;
+// so a DB with thousands of fingerprints still fits its D1 row. A baseline kept
+// before `rows` was counted reads it as 0: the window's rows per call then run
+// high, so a parameter-bound range reads unselective, never proposed on a guess.
+type Baseline = Record<
+  string,
+  [calls: number, totalMs: number, sumSquaresMs: number, rows?: number]
+>;
 
 const toBaseline = (s: StatementSnapshot): Baseline =>
-  Object.fromEntries([...s].map(([fp, c]) => [fp, [c.calls, c.totalMs, c.sumSquaresMs]]));
+  Object.fromEntries([...s].map(([fp, c]) => [fp, [c.calls, c.totalMs, c.sumSquaresMs, c.rows]]));
 
 const fromBaseline = (b: Baseline): StatementSnapshot =>
   new Map(
-    Object.entries(b).map(([fp, [calls, totalMs, sumSquaresMs]]): [string, StatementCounters] => [
-      fp,
-      { query: "", calls, totalMs, sumSquaresMs },
-    ]),
+    Object.entries(b).map(
+      ([fp, [calls, totalMs, sumSquaresMs, rows = 0]]): [string, StatementCounters] => [
+        fp,
+        { query: "", calls, totalMs, sumSquaresMs, rows },
+      ],
+    ),
   );
 
 // Observes each attached Postgres or D1 DB whose window has passed (or that
