@@ -6,7 +6,9 @@
 // nothing is recorded in production, and nothing is written to the spike DB —
 // introspection, Tier 0's catalog reads, one `pg_stat_statements` read and
 // `EXPLAIN` (no ANALYZE) for Tier 1. The secret's role can write, so every
-// statement also runs in a server-side READ ONLY transaction.
+// statement also runs in a server-side READ ONLY transaction. The one write is
+// the second case's: with `SPIKE_APPLY=1` it runs `spike-apply.ts`, which
+// applies the spike's ONE index and measures it after (`GLOBAL-043` item 10).
 //
 // It prints KPI A on a real DB (connection string → proposals in the ledger)
 // and whether Tier 1 can read the workload under the secret's role. CI logs are
@@ -17,14 +19,19 @@ import {
   newTier1Funnel,
   observePostgresWorkload,
   openByoPostgres,
+  type Proposal,
   snapshotPostgresStatements,
   statementWindow,
 } from "@nlqdb/db";
 import { describe, expect, it } from "vitest";
 import { connectByoDb } from "./connect.ts";
+import { spikeApplyStep } from "./spike-apply.ts";
 import { sqliteD1 } from "./test-sqlite-d1.ts";
 
 const url = process.env["SPIKE_ATTACH_URL"];
+const applyOn = process.env["SPIKE_APPLY"] === "1";
+// The first case's Tier 1 proposals, the second case's input.
+let tier1: Proposal[] = [];
 
 // Schemas a managed host (Supabase, Neon, RDS) or an extension owns: the
 // statements naming only these are the host's, never the app's.
@@ -165,7 +172,7 @@ describe.skipIf(!url)("the attach door on the spike Postgres (read-only)", () =>
       const snapshot = await snapshotPostgresStatements(conn.query, "public");
       const window = statementWindow(new Map(), snapshot);
       const funnel = newTier1Funnel();
-      const tier1 = await observePostgresWorkload(conn.query, "public", window, funnel);
+      tier1 = await observePostgresWorkload(conn.query, "public", window, funnel);
       const { rows: version } = await conn.query("SHOW server_version_num", []);
       // biome-ignore lint/suspicious/noConsole: the Tier 1 reading belongs in the CI log
       console.log(
@@ -242,4 +249,33 @@ describe.skipIf(!url)("the attach door on the spike Postgres (read-only)", () =>
       await conn.close();
     }
   }, 120_000);
+
+  // Counts and timings only, as above: the index's name holds its table's.
+  it.skipIf(!applyOn)(
+    "applies the spike's ONE index, then reads its fingerprint before and after",
+    async () => {
+      const conn = openByoPostgres(url as string);
+      try {
+        const step = await spikeApplyStep(conn.query, tier1, Math.floor(Date.now() / 1000));
+        const ms = (n: number | undefined) => (n === undefined ? "?" : `${n.toFixed(3)} ms`);
+        const line =
+          step.step === "deferred" || step.step === "spent"
+            ? `${step.step}: ${step.reason}`
+            : `${step.step}; before (cumulative to the proposal): ${step.note.proposal.evidence.workload?.calls} calls, mean ${ms(step.note.proposal.evidence.workload?.meanMs)}, p95 est. ${ms(step.note.proposal.evidence.workload?.p95EstimateMs)}${
+                step.step === "measured"
+                  ? `; index valid ${step.valid}, applied ${(step.ageSec / 3600).toFixed(1)} h ago; since the apply: ${
+                      step.after
+                        ? `${step.after.calls} calls, mean ${ms(step.after.meanMs)}, p95 est. ${ms(step.after.p95EstimateMs)}, ${(step.after.rows / step.after.calls).toFixed(2)} rows per call`
+                        : "0 calls"
+                    }; verdict ${step.verification?.verdict ?? "pending (window open)"}`
+                  : ""
+              }`;
+        // biome-ignore lint/suspicious/noConsole: the spike's KPI B / C reading belongs in the CI log
+        console.log(`Spike apply: ${line}`);
+      } finally {
+        await conn.close();
+      }
+    },
+    120_000,
+  );
 });

@@ -299,8 +299,10 @@ jobs:
         run: bunx vitest run --project unit --reporter=verbose src/db-connect/attach.pg.test.ts src/db-connect/attach.d1.test.ts
 
   # GLOBAL-043 roadmap item 1b: the attach door on the founder-picked spike
-  # Postgres, read-only, with an in-memory ledger. The secret is empty on fork
-  # PRs, so the test skips there. Logs print counts and timings only.
+  # Postgres, read-only, with an in-memory ledger; then SPIKE_APPLY's step
+  # (`spike-apply.ts`): the spike's ONE index, applied once, then measured
+  # and judged. The secret is empty on fork PRs, so the test skips there.
+  # Logs print counts and timings only.
   spike-attach:
     name: attach door vs the spike Postgres (read-only)
     runs-on: ubuntu-latest
@@ -315,6 +317,7 @@ jobs:
         working-directory: apps/api
         env:
           SPIKE_ATTACH_URL: ${{ secrets.SPIKE_PG_URL }}
+          SPIKE_APPLY: "1"
         run: bunx vitest run --project unit --reporter=verbose src/db-connect/spike.pg.test.ts
 
   test-tools:
