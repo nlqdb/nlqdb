@@ -74,6 +74,10 @@ WHERE s.dbid = (SELECT oid FROM pg_catalog.pg_database WHERE datname = current_d
 const IDENTS = /[A-Za-z_][\w$]*|"(?:[^"]|"")+"/g;
 const identName = (id: string) =>
   id.startsWith('"') ? id.slice(1, -1).replaceAll('""', '"') : id.toLowerCase();
+// The relation after FROM / JOIN / UPDATE (its last dotted part); `call` is set
+// when it is a function, as in `FROM unnest(` or `extract(epoch FROM now())`.
+const FROM_RELATION =
+  /\b(?:FROM|JOIN|UPDATE)\s+(?:(?:"(?:[^"]|"")+"|[A-Za-z_][\w$]*)\s*\.\s*)?("(?:[^"]|"")+"|[A-Za-z_][\w$]*)(\s*\()?/gi;
 const LEADING_NOISE = /^(?:\s+|--[^\n]*\n|\/\*[\s\S]*?\*\/|\()*/;
 
 // Why a fingerprint isn't a public-schema Tier 1 candidate (or that it is), as a bucket name
@@ -98,9 +102,19 @@ function skipBucket(
   const calls = [...query.matchAll(/("(?:[^"]|"")+"|[A-Za-z_][\w$]*)\s*\(/g)].map(([, id]) =>
     identName(id ?? ""),
   );
-  return calls.some((f) => f && publicFunctions.has(f))
-    ? "calls-public-function"
-    : "names-no-relation";
+  if (calls.some((f) => f && publicFunctions.has(f))) return "calls-public-function";
+  // A relation read here that the catalog doesn't hold (gone, temporary) can't take an index.
+  const ctes = new Set(
+    [
+      ...query.matchAll(
+        /("(?:[^"]|"")+"|[A-Za-z_][\w$]*)\s+AS\s+(?:NOT\s+)?(?:MATERIALIZED\s*)?\(/gi,
+      ),
+    ].map(([, id]) => identName(id ?? "")),
+  );
+  const reads = [...query.matchAll(FROM_RELATION)].filter(
+    ([, id, call]) => !call && !ctes.has(identName(id ?? "")),
+  );
+  return reads.length > 0 ? "reads-unknown-relation" : "reads-no-relation";
 }
 
 // The BYO transport, each statement its own `BEGIN READ ONLY` transaction, so a
