@@ -52,7 +52,11 @@ const HOST_SCHEMAS = new Set([
 const USER_RELATIONS_SQL = `
 SELECT n.nspname, c.relname FROM pg_catalog.pg_class c
 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-WHERE c.relkind IN ('r', 'p', 'v', 'm') AND n.nspname NOT LIKE 'pg\\_%'`;
+WHERE c.relkind IN ('r', 'p', 'v', 'm')
+  AND (n.nspname = 'pg_catalog' OR n.nspname NOT LIKE 'pg\\_%')`;
+
+// The system catalogs: a fingerprint naming only these is a catalog read.
+const CATALOG_SCHEMAS = new Set(["pg_catalog", "information_schema"]);
 
 // The app's own functions: a PostgREST RPC fingerprint names one, and the
 // filters it runs are nested statements the toplevel snapshot leaves out.
@@ -68,6 +72,8 @@ WHERE s.dbid = (SELECT oid FROM pg_catalog.pg_database WHERE datname = current_d
   AND NOT s.toplevel`;
 
 const IDENTS = /[A-Za-z_][\w$]*|"(?:[^"]|"")+"/g;
+const identName = (id: string) =>
+  id.startsWith('"') ? id.slice(1, -1).replaceAll('""', '"') : id.toLowerCase();
 const LEADING_NOISE = /^(?:\s+|--[^\n]*\n|\/\*[\s\S]*?\*\/|\()*/;
 
 // Why a fingerprint isn't a public-schema Tier 1 candidate (or that it is), as a bucket name
@@ -83,15 +89,14 @@ function skipBucket(
     return /^(SELECT|UPDATE|DELETE|WITH)$/.test(verb) ? "comment-prefixed" : `verb:${verb}`;
   if (query.includes(";")) return "multi-statement";
   const schemas = new Set<string>();
-  for (const [id] of query.matchAll(IDENTS)) {
-    const name = id.startsWith('"') ? id.slice(1, -1).replaceAll('""', '"') : id.toLowerCase();
-    for (const s of relationsBySchema.get(name) ?? []) schemas.add(s);
-  }
+  for (const [id] of query.matchAll(IDENTS))
+    for (const s of relationsBySchema.get(identName(id)) ?? []) schemas.add(s);
   if (schemas.has("public")) return "public-candidate";
   if ([...schemas].some((s) => !HOST_SCHEMAS.has(s))) return "names-other-app-schema";
-  if (schemas.size > 0) return "names-host-schema-only";
+  if ([...schemas].some((s) => !CATALOG_SCHEMAS.has(s))) return "names-host-schema-only";
+  if (schemas.size > 0) return "names-catalog-only";
   const calls = [...query.matchAll(/("(?:[^"]|"")+"|[A-Za-z_][\w$]*)\s*\(/g)].map(([, id]) =>
-    id?.startsWith('"') ? id.slice(1, -1).replaceAll('""', '"') : id?.toLowerCase(),
+    identName(id ?? ""),
   );
   return calls.some((f) => f && publicFunctions.has(f))
     ? "calls-public-function"
@@ -166,7 +171,7 @@ describe.skipIf(!url)("the attach door on the spike Postgres (read-only)", () =>
         buckets.set(b, acc);
         if (b === "names-other-app-schema")
           for (const [id] of w.query.matchAll(IDENTS))
-            for (const s of relationsBySchema.get(id.toLowerCase()) ?? [])
+            for (const s of relationsBySchema.get(identName(id)) ?? [])
               if (s !== "public" && !HOST_SCHEMAS.has(s)) otherSchemas.add(s);
       }
       const share = (ms: number) => `${((100 * ms) / (totalMs || 1)).toFixed(1)} % of exec time`;
