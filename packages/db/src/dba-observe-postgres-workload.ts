@@ -201,6 +201,8 @@ type PlanNode = {
   "Parallel Aware"?: boolean;
   "Workers Planned"?: number;
   Filter?: string;
+  "One-Time Filter"?: string;
+  "Conflict Resolution"?: string;
   Plans?: PlanNode[];
 };
 
@@ -303,8 +305,13 @@ function seqScanFilters(
     }
   }
   const children = node.Plans ?? [];
+  // A one-time filter or an `ON CONFLICT` can drop rows the scan kept.
   const passes =
-    reachesResult && children.length === 1 && ROW_PRESERVING.has(node["Node Type"] ?? "");
+    reachesResult &&
+    children.length === 1 &&
+    ROW_PRESERVING.has(node["Node Type"] ?? "") &&
+    !node["One-Time Filter"] &&
+    !node["Conflict Resolution"];
   for (const child of children) seqScanFilters(child, schema, out, planWorkers, passes);
   return out;
 }

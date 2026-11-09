@@ -283,13 +283,15 @@ describe("observePostgresWorkload", () => {
   });
 
   it.each([
-    ["an aggregate", "Aggregate"],
-    ["a limit", "Limit"],
+    ["an aggregate", { "Node Type": "Aggregate" }],
+    ["a limit", { "Node Type": "Limit" }],
+    ["a one-time filter", { "Node Type": "Result", "One-Time Filter": "($3 > 0)" }],
+    ["an ON CONFLICT insert", { "Node Type": "ModifyTable", "Conflict Resolution": "NOTHING" }],
   ])(
     "leaves a parameter-bound range under %s unjudged: its rows aren't the statement's",
     async (_, node) => {
       const funnel = newTier1Funnel();
-      const plan = { "Node Type": node, Plans: [seqScan("((u.at >= $1) AND (u.at <= $2))", 50)] };
+      const plan = { ...node, Plans: [seqScan("((u.at >= $1) AND (u.at <= $2))", 50)] };
       expect(
         await observePostgresWorkload(
           stub(plan, { ...bigTable, known_columns: 1 }).query,
