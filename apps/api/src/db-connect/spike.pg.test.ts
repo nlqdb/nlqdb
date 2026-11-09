@@ -171,6 +171,17 @@ describe.skipIf(!url)("the attach door on the spike Postgres (read-only)", () =>
       console.log(
         `Tier 1 (spike, cumulative since the stats reset, server ${version[0]?.["server_version_num"]}): ${snapshot.size} fingerprints readable, ${window.length} with calls, ${funnel.candidates} explainable naming a public relation, ${tier1.length} proposals; funnel ${JSON.stringify(funnel)}`,
       );
+      // Each proposal's evidence, counts only (never a name): whether it is
+      // worth applying, and the measured share a parameter-bound range read.
+      for (const p of tier1) {
+        const w = window.find((x) => x.fingerprint === p.evidence.workload?.fingerprint);
+        const perCall = w ? w.rows / w.calls : Number.NaN;
+        const { rowEstimate } = p.evidence;
+        // biome-ignore lint/suspicious/noConsole: the Tier 1 reading belongs in the CI log
+        console.log(
+          `Tier 1 proposal (spike): ${p.columns.length} key column(s), range ${p.reason.includes("(a range on")}; table ≈ ${rowEstimate} rows / ${p.evidence.tableBytes} B; ${w?.calls} calls, mean ${w?.meanMs.toFixed(3)} ms, p95 est. ${w?.p95EstimateMs.toFixed(3)} ms; ${perCall.toFixed(2)} rows per call (${((100 * perCall) / rowEstimate).toFixed(2)} % of the table)`,
+        );
+      }
 
       // Where the fingerprints Tier 1 skips go, weighted by their exec time —
       // the lead after every public filter read unselective (run 280).

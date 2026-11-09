@@ -80,10 +80,11 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
 
   // The synthetic app's workload: four hot lookups on unindexed columns (the
   // third an ORM's `IN` list, planned as `= ANY (ARRAY[…])`, the fourth a
-  // 3-day `BETWEEN`), and four decoys an index on the column wouldn't help — a
+  // 3-day `BETWEEN`), and five decoys an index on the column wouldn't help — a
   // filter keeping 25 % of its table, a lookup already served by
-  // comments_user_id_idx, a bigint compared as text, and a one-sided range
-  // the generic plan can only guess keeps a third of the table.
+  // comments_user_id_idx, a bigint compared as text, a one-sided range under
+  // a count (its rows unmeasured), and a `BETWEEN` the generic plan guesses
+  // keeps 0.5 % but the app passes ~90 % of the table.
   const HOT = [
     "SELECT id FROM dba_synth.posts WHERE title = $1",
     "SELECT id FROM dba_synth.users WHERE email = $1",
@@ -109,6 +110,10 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
         `r${i % 4}`,
       ]);
       await conn.query("SELECT body FROM dba_synth.comments WHERE user_id = $1", [1 + (i % 2000)]);
+      await conn.query("SELECT body FROM dba_synth.comments WHERE post_id BETWEEN $1 AND $2", [
+        1 + (i % 2000),
+        18000 + (i % 2000),
+      ]);
       await conn.query("SELECT at FROM dba_synth.events WHERE user_id = $1", [1 + (i % 2000)]);
       await conn.query("SELECT id FROM dba_synth.posts WHERE author_id::text = $1", [
         String(1 + (i % 2000)),
@@ -126,10 +131,14 @@ describe.skipIf(!url)("the Postgres observers on the seeded synthetic DB", () =>
     const proposals = await observePostgresWorkload(conn.query, SCHEMA, before, funnel);
     // The selective lookup on partitioned events waits for the parent's index.
     expect(funnel.partitions).toBe(1);
-    // The `BETWEEN` is read as a range; the one-sided `>` too, then judged
-    // unselective on the generic plan's third.
-    expect(funnel.rangeScans).toBe(2);
-    expect(funnel.unselectivePct).toContain(33);
+    // The three ranges are read: the `count(*)` one is left unjudged, and the
+    // wide `BETWEEN` judged on its measured rows per call, not the plan's 0.5 %.
+    expect(funnel.rangeScans).toBe(3);
+    expect(funnel.unjudgedRanges).toBe(1);
+    const wide = funnel.unselectivePct.find((pct) => pct > 80);
+    // biome-ignore lint/suspicious/noConsole: the range's measured share belongs in the CI log
+    console.log(`Tier 1 (synthetic): wide parameter-bound BETWEEN judged at ${wide} % of comments`);
+    expect(wide).toBeDefined();
     // Heaviest first, so the order follows the run's timings: compare as a set.
     expect(proposals.map((p) => `${p.table}(${p.columns.join(",")}) t${p.tier}`).sort()).toEqual([
       "posts(author_id) t1",

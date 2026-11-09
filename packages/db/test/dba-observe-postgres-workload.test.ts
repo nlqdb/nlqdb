@@ -13,7 +13,8 @@ import type { PostgresQueryFn } from "../src/postgres.ts";
 const counters = (query: string, times: number[]) => {
   const calls = times.length;
   const totalMs = times.reduce((s, t) => s + t, 0);
-  return { query, calls, totalMs, sumSquaresMs: times.reduce((s, t) => s + t * t, 0) };
+  const sumSquaresMs = times.reduce((s, t) => s + t * t, 0);
+  return { query, calls, totalMs, sumSquaresMs, rows: calls * 10 };
 };
 
 describe("statementWindow", () => {
@@ -31,6 +32,8 @@ describe("statementWindow", () => {
     // q1's window is [1, 3]: mean 2, σ 1.
     expect(q1).toMatchObject({ fingerprint: "1", calls: 2, meanMs: 2 });
     expect(q1?.p95EstimateMs).toBeCloseTo(3.65);
+    // Its rows are the window's too: 10 per call.
+    expect(q1?.rows).toBe(20);
     expect(rest).toEqual([]);
   });
 
@@ -39,28 +42,42 @@ describe("statementWindow", () => {
     const after: StatementSnapshot = new Map([["1", counters("q", [4])]]);
     expect(statementWindow(before, after)[0]).toMatchObject({ calls: 1, totalMs: 4 });
   });
+
+  it("counts from zero when rows fell, even once the calls outgrew the baseline", () => {
+    const before: StatementSnapshot = new Map([
+      ["1", { ...counters("q", [1, 1]), rows: 1_000_000 }],
+    ]);
+    const after: StatementSnapshot = new Map([["1", counters("q", [1, 1, 1])]]);
+    expect(statementWindow(before, after)[0]).toMatchObject({ calls: 3, rows: 30 });
+  });
 });
 
-const window = (query: string, totalMs = 100): FingerprintWindow => ({
+// 50 calls returning `rows` in all: by default one row each, 0.01 % of `bigTable`.
+const window = (query: string, totalMs = 100, rows = 50): FingerprintWindow => ({
   fingerprint: "42",
   query,
   calls: 50,
   totalMs,
   meanMs: totalMs / 50,
   p95EstimateMs: totalMs / 25,
+  rows,
 });
 
 // The attached schema's relations, as the candidate filter reads them.
 const relations = { rows: [{ relname: "users" }, { relname: "Gone" }] };
 
-// A stub that answers EXPLAIN with `plan` and the table check with `table`.
+// A stub that answers EXPLAIN with `plan` (the nth of an array on the nth
+// EXPLAIN) and the table check with `table`.
 function stub(plan: unknown, table: Record<string, number | boolean>) {
   const sqls: string[] = [];
+  let explained = 0;
   const query: PostgresQueryFn = async (sql) => {
     if (sql.includes("relkind IN")) return relations;
     sqls.push(sql);
-    if (sql.startsWith("EXPLAIN"))
-      return { rows: [{ "QUERY PLAN": JSON.stringify([{ Plan: plan }]) }] };
+    if (sql.startsWith("EXPLAIN")) {
+      const p = Array.isArray(plan) ? plan[explained++] : plan;
+      return { rows: [{ "QUERY PLAN": JSON.stringify([{ Plan: p }]) }] };
+    }
     return { rows: [table] };
   };
   return { query, sqls };
@@ -161,19 +178,21 @@ describe("observePostgresWorkload", () => {
     },
   );
 
+  // One fingerprint per scan: a range's rows are measured per fingerprint.
+  const each = (plans: unknown[]) => plans.map((_, i) => window(`SELECT ${i} FROM users`));
+
   it("proposes one index for the scans it serves, never the same DDL twice", async () => {
-    const plan = {
-      "Node Type": "Append",
-      Plans: [
-        seqScan("((u.a = $1) AND (u.b > $2))"),
-        seqScan("((u.b = $1) AND (u.a = $2))"),
-        // (a, b) can't serve a range on a: it needs its own (b, a).
-        seqScan("((u.b = $1) AND (u.a < $2))"),
-      ],
-    };
-    const proposals = await observePostgresWorkload(stub(plan, bigTable).query, "app", [
-      window("SELECT 1 FROM users"),
-    ]);
+    const plans = [
+      seqScan("((u.a = $1) AND (u.b > $2))"),
+      seqScan("((u.b = $1) AND (u.a = $2))"),
+      // (a, b) can't serve a range on a: it needs its own (b, a).
+      seqScan("((u.b = $1) AND (u.a < $2))"),
+    ];
+    const proposals = await observePostgresWorkload(
+      stub(plans, bigTable).query,
+      "app",
+      each(plans),
+    );
     expect(proposals.map((p) => p.columns)).toEqual([
       ["a", "b"],
       ["b", "a"],
@@ -181,23 +200,20 @@ describe("observePostgresWorkload", () => {
   });
 
   it("skips a scan an earlier proposal's leading keys serve, as the table check would", async () => {
-    const plan = {
-      "Node Type": "Append",
-      Plans: [
-        seqScan("((u.a = $1) AND (u.b = $2) AND (u.c > $3))"),
-        seqScan("((u.b = $1) AND (u.a = $2))"),
-        seqScan("((u.a = $1) AND (u.b > $2))"),
-        // (a, b, c) can't serve a range on a: it needs its own (b, a).
-        seqScan("((u.b = $1) AND (u.a > $2))"),
-      ],
-    };
-    const { query } = stub(plan, bigTable);
+    const plans = [
+      seqScan("((u.a = $1) AND (u.b = $2) AND (u.c > $3))"),
+      seqScan("((u.b = $1) AND (u.a = $2))"),
+      seqScan("((u.a = $1) AND (u.b > $2))"),
+      // (a, b, c) can't serve a range on a: it needs its own (b, a).
+      seqScan("((u.b = $1) AND (u.a > $2))"),
+    ];
+    const { query } = stub(plans, bigTable);
     const sized: PostgresQueryFn = async (sql, p) => {
       const res = await query(sql, p);
       if (!sql.includes("row_estimate")) return res;
       return { rows: [{ ...bigTable, known_columns: JSON.parse(String(p[2])).length }] };
     };
-    const proposals = await observePostgresWorkload(sized, "app", [window("SELECT 1 FROM users")]);
+    const proposals = await observePostgresWorkload(sized, "app", each(plans));
     expect(proposals.map((p) => p.columns)).toEqual([
       ["a", "b", "c"],
       ["b", "a"],
@@ -227,11 +243,6 @@ describe("observePostgresWorkload", () => {
 
   it.each([
     ["an OR filter", seqScan("((u.a = $1) OR (u.b = $2))"), bigTable],
-    [
-      "a one-sided range on a parameter (the planner's default third)",
-      seqScan("(u.a > $1)", 3_333),
-      bigTable,
-    ],
     ["ranges on two columns", seqScan("((u.a > $1) AND (u.b < $2))"), bigTable],
     ["a range bound read from the row", seqScan("(u.a > u.b)"), bigTable],
     ["a range ORed with an equality", seqScan("((u.a > $1) OR (u.b = $2))"), bigTable],
@@ -246,6 +257,80 @@ describe("observePostgresWorkload", () => {
     expect(await observePostgresWorkload(query, "app", [window("SELECT 1 FROM users")])).toEqual(
       [],
     );
+  });
+
+  it("judges a parameter-bound range on its measured rows per call, never the generic plan's guess", async () => {
+    // Both plans guess 0.5 % (50 of 10 000) for the `BETWEEN`, whatever range the app passes.
+    const between = seqScan("((u.at >= $1) AND (u.at <= $2))", 50);
+    const table = { ...bigTable, known_columns: 1 };
+    const narrow = newTier1Funnel();
+    const [p] = await observePostgresWorkload(
+      stub({ "Node Type": "Sort", Plans: [between] }, table).query,
+      "app",
+      [window("SELECT 1 FROM users", 100, 50 * 120)],
+      narrow,
+    );
+    // 120 rows per call: 1.2 % of the table.
+    expect(p?.columns).toEqual(["at"]);
+    const wide = newTier1Funnel();
+    expect(
+      await observePostgresWorkload(
+        stub(between, table).query,
+        "app",
+        [window("SELECT 1 FROM users", 100, 50 * 9_000)],
+        wide,
+      ),
+    ).toEqual([]);
+    expect(wide).toMatchObject({ unselective: 1, unselectivePct: [90] });
+    // A one-sided range guesses a third: measured narrow (the last day), it is proposed.
+    expect(
+      await observePostgresWorkload(stub(seqScan("(u.at > $1)", 3_333), table).query, "app", [
+        window("SELECT 1 FROM users", 100, 50 * 40),
+      ]),
+    ).toHaveLength(1);
+  });
+
+  it.each([
+    ["an aggregate", { "Node Type": "Aggregate" }],
+    ["a limit", { "Node Type": "Limit" }],
+    ["a one-time filter", { "Node Type": "Result", "One-Time Filter": "($3 > 0)" }],
+    ["a filtering result", { "Node Type": "Result", Filter: "($3 > 0)" }],
+    ["an ON CONFLICT insert", { "Node Type": "ModifyTable", "Conflict Resolution": "NOTHING" }],
+  ])(
+    "leaves a parameter-bound range under %s unjudged: its rows aren't the statement's",
+    async (_, node) => {
+      const funnel = newTier1Funnel();
+      const plan = { ...node, Plans: [seqScan("((u.at >= $1) AND (u.at <= $2))", 50)] };
+      expect(
+        await observePostgresWorkload(
+          stub(plan, { ...bigTable, known_columns: 1 }).query,
+          "app",
+          [window("SELECT 1 FROM users")],
+          funnel,
+        ),
+      ).toEqual([]);
+      expect(funnel).toMatchObject({ unjudgedRanges: 1, unselective: 0 });
+    },
+  );
+
+  it("leaves each side of a join unjudged, and keeps the plan's estimate for a clock bound", async () => {
+    const funnel = newTier1Funnel();
+    const plan = {
+      "Node Type": "Hash Join",
+      Plans: [
+        seqScan("(u.at > $1)", 1),
+        { "Node Type": "Hash", Plans: [seqScan("(u.day >= (CURRENT_DATE - 7))", 1)] },
+      ],
+    };
+    const proposals = await observePostgresWorkload(
+      stub(plan, { ...bigTable, known_columns: 1 }).query,
+      "app",
+      [window("SELECT 1 FROM users", 100, 50 * 10_000)],
+      funnel,
+    );
+    // The clock bound is planned from the column's histogram, not the measured rows.
+    expect(proposals.map((p) => p.columns)).toEqual([["day"]]);
+    expect(funnel).toMatchObject({ unjudgedRanges: 1 });
   });
 
   it("never EXPLAINs DDL, multi-statement text or utility commands", async () => {

@@ -31,6 +31,7 @@ const window = (fingerprint: string, p95EstimateMs: number): FingerprintWindow =
   totalMs: 10,
   meanMs: 1,
   p95EstimateMs,
+  rows: 10,
 });
 
 // Records every statement; throws `fail` on the first one when given.

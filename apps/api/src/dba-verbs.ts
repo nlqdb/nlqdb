@@ -218,7 +218,9 @@ async function applyOn(
     const snapshot = await snapshotPostgresStatements(query, proposal.schema).catch(() => null);
     if (!snapshot) return null;
     // Not run since the last stats reset: the window counts from zero.
-    return snapshot.get(fingerprint) ?? { query: "", calls: 0, totalMs: 0, sumSquaresMs: 0 };
+    return (
+      snapshot.get(fingerprint) ?? { query: "", calls: 0, totalMs: 0, sumSquaresMs: 0, rows: 0 }
+    );
   });
 }
 
@@ -292,7 +294,8 @@ async function verifyRow(deps: DecideDeps, row: DueRow): Promise<Verification> {
   }
   if (!deps.kek) throw new Error("sealing unconfigured");
   await validate(row.id, proposal, "postgres");
-  const from = JSON.parse(row.verifyFrom) as StatementCounters;
+  // Counters kept before `rows` was counted read it as 0; verify judges p95 only.
+  const from: StatementCounters = { rows: 0, ...JSON.parse(row.verifyFrom) };
   return onAttached(deps, row, async (query) => {
     const window = statementWindow(
       new Map([[fingerprint, from]]),
