@@ -26,7 +26,7 @@ D1 attach on the real rateme12 (dogfood, `RATEME12_D1_TOKEN`,
 attach; KPI B = one applied index with its before/after p95 (D1: and rows
 read).
 
-- [ ] Spike: Tier 1 proposes a `create_index` from the spike's app fingerprints (28/32 planned, 0 proposed: all 13 filters it reads are unselective, on tables of ≤ 41k rows; the 755 it skips hold no app lookup, run 281) ⛔ see blocked-by-human.md
+- [ ] Spike: Tier 1 proposes a `create_index` from the spike's app fingerprints (33/37 planned, 0 proposed: all 13 filters it reads are unselective, on tables of ≤ 41k rows, 4 have a shape it doesn't read; the 770 it skips hold no app lookup, run 281) ⛔ see blocked-by-human.md
 - [ ] Tier 1: judge a parameter-bound `BETWEEN` from the column's stats, not `GENERIC_PLAN`'s fixed 0.5 % guess, so a wide app range is never proposed
 - [ ] Spike: apply ONE index (`CONCURRENTLY`, low-load window), record its hot fingerprint's before/after p95 with the inverse — the founder calls pass/fail
 - [ ] rateme12: attach its live D1 read-only through the API door — KPI A on a real D1
