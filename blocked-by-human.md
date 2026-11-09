@@ -24,20 +24,16 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
 
 - **Type:** decision · ⏱ ~10 min · since 2026-11-08
 - **Done so far:** runs 275–281 read the whole spike workload (CI
-  `spike-attach`, counts only). Tier 1 reads 13 of the 17 app filters, and
-  every one is unselective: the tables have ≤ 41k rows. The 770 fingerprints
-  it skips hold no app lookup. They are DDL, grants and session commands, plus
-  25 statements reading no relation (9.4 % of exec time), 52 catalog reads
-  (7.2 %), 20 INSERTs (7.2 %) and 14 host-schema reads (3.4 %). It found no
-  other app schema and no RPC call. This DB has
-  nothing to index, and `GLOBAL-043` item 10 needs one applied index.
+  `spike-attach`, counts only). All 13 app filters Tier 1 reads are
+  unselective (tables ≤ 41k rows); 4 more have a shape it doesn't read. The
+  770 fingerprints it skips hold no app lookup, and there is no other app
+  schema. `GLOBAL-043` item 10 needs one applied index.
 - **Ask:** pick one; recommend (a) —
-  (a) point `SPIKE_PG_URL` at a real-traffic Postgres with tables of ≥ 100k
-  rows · a real delta · a new DB to find · (b) or (c);
-  (b) apply the spike's one Tier 0 proposal as its index · no new DB · p95 barely
-  moves · (a);
-  (c) call the spike fail, go to the D1 track · honest evidence · the deletion
-  series stays parked · (a).
+  (a) swap the spike DB · a real p95 delta · finding a ≥ 100k-row DB ·
+  (b) or (c). To do it, replace `SPIKE_PG_URL` at
+  <https://github.com/nlqdb/nlqdb/settings/secrets/actions>;
+  (b) apply Tier 0's one proposal · no new DB · p95 barely moves · (a);
+  (c) call the spike failed · honest evidence · deletions stay parked · (a).
 
 ## Claim the `nlqdb` npm name for the `npx nlqdb attach` door
 
