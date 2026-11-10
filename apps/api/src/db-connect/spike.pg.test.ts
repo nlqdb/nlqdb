@@ -3,8 +3,8 @@
 // when `SPIKE_ATTACH_URL` is set: CI's `spike-attach` job maps the
 // `SPIKE_PG_URL` secret to it, so a shell that merely holds the secret keeps
 // `bun run test` offline. The ledger is an in-memory copy of the api's D1, so
-// nothing is recorded in production, and nothing is written to the spike DB —
-// introspection, Tier 0's catalog reads, one `pg_stat_statements` read and
+// nothing is recorded in production, and the attach writes nothing to the
+// spike DB — introspection, Tier 0's catalog reads, one `pg_stat_statements` read and
 // `EXPLAIN` (no ANALYZE) for Tier 1. The secret's role can write, so every
 // statement also runs in a server-side READ ONLY transaction. The one write is
 // the second case's: with `SPIKE_APPLY=1` it runs `spike-apply.ts`, which
@@ -138,7 +138,7 @@ function readBucket(
 // write anywhere in the attach path fails on the server instead of landing.
 const openReadOnly = (raw: string) => openByoPostgres(raw, { readOnly: true });
 
-describe.skipIf(!url)("the attach door on the spike Postgres (read-only)", () => {
+describe.skipIf(!url)("the attach door on the spike Postgres, then its one index", () => {
   it("records Tier 0 proposals within KPI A's 5 min and reads the workload Tier 1 plans from", async () => {
     const spikeUrl = url as string;
     const deps = {
