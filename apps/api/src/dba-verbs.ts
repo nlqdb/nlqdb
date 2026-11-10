@@ -249,8 +249,8 @@ type DueRow = {
 };
 
 // Judges each applied proposal whose window has passed and records the
-// verdict; a regression has already been reverted by `verifyApplied` when its
-// row turns `reverted`. A row whose DB can't be reached stays due, behind the
+// verdict; a regression has already been reverted by `verifyApplied` (on a D1,
+// `verifyD1Applied`) when its row turns `reverted`. A row whose DB can't be reached stays due, behind the
 // rows not yet tried (`verify_tried_at`), so it never holds the batch.
 export async function verifyDue(
   deps: DecideDeps,
