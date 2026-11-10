@@ -9,7 +9,13 @@ import { afterAll, describe, expect, it } from "vitest";
 import { D1_TARGET, localD1 } from "../../../../packages/db/test/fixtures/local-d1.ts";
 import { listProposals } from "../dba-changes.ts";
 import { OBSERVE_WINDOW_SEC, observeDue } from "../dba-observe.ts";
-import { decideProposal, VERIFY_WINDOW_SEC, verifyDue } from "../dba-verbs.ts";
+import {
+  D1_RETENTION_SEC,
+  decideProposal,
+  isoHour,
+  VERIFY_WINDOW_SEC,
+  verifyDue,
+} from "../dba-verbs.ts";
 import { openSecret } from "../secret-envelope.ts";
 import { type ConnectByoDeps, connectByoDb } from "./connect.ts";
 import { sqliteD1 } from "./test-sqlite-d1.ts";
@@ -309,14 +315,13 @@ describe("the attach door on a local D1", () => {
     expect(await verifyDue(d, now + VERIFY_WINDOW_SEC - 3600)).toEqual([]);
     const verified = await verifyDue(d, now + VERIFY_WINDOW_SEC + 60);
     expect(verified.map((v) => v.verification.verdict)).toEqual(["keep", "revert"]);
-    const hour = (sec: number) => `${new Date(sec * 1000).toISOString().slice(0, 13)}:00:00Z`;
     const decided = await d.d1
       .prepare("SELECT decided_at AS at FROM dba_changes WHERE id = ?")
       .bind(tier1[0]?.id)
       .first<{ at: number }>();
     expect(windows[0]).toEqual({
-      since: hour((decided?.at ?? 0) + 3600),
-      until: hour(now + VERIFY_WINDOW_SEC + 60),
+      since: isoHour((decided?.at ?? 0) + 3600),
+      until: isoHour(now + VERIFY_WINDOW_SEC + 60),
     });
     expect(verified[0]?.verification).toMatchObject({
       beforeRowsRead: titleBefore,
@@ -335,6 +340,17 @@ describe("the attach door on a local D1", () => {
     expect(built?.[0]?.map((r) => r["name"])).toEqual([nameOf(tier1[0] as { ddl: string })]);
     // Judged once: the next tick finds nothing due.
     expect(await verifyDue(d, now + VERIFY_WINDOW_SEC + 3600)).toEqual([]);
+    // A row kept due past D1's retention reads from the oldest hour D1 still keeps.
+    await d.d1
+      .prepare("UPDATE dba_changes SET verified_at = NULL WHERE id = ?")
+      .bind(tier1[0]?.id)
+      .run();
+    const late = now + 40 * 24 * 3600;
+    expect((await verifyDue(d, late)).map((v) => v.verification.verdict)).toEqual(["keep"]);
+    expect(windows.at(-1)).toEqual({
+      since: isoHour(late - D1_RETENTION_SEC),
+      until: isoHour(late),
+    });
     // biome-ignore lint/suspicious/noConsole: the KPI C reading belongs in the CI log
     console.log(
       `KPI C (synthetic, D1, dba_verify job): 1/1 regressions reverted, 0 user action; kept posts(title): rows read ${titleBefore} → ${titleAfter}`,
