@@ -289,7 +289,7 @@ export const listProposalsOutputShape = {
   proposals: z
     .array(z.custom<DbaChange>())
     .describe(
-      "Newest first: `proposed` ones wait for nlqdb_apply_proposal / nlqdb_reject_proposal; decided ones carry `verification` once verify has measured the fingerprint's p95 (`keep`, or `revert` and the index was dropped).",
+      "Newest first: `proposed` ones wait for nlqdb_apply_proposal / nlqdb_reject_proposal; decided ones carry `verification` once verify has measured the query's p95 (on a D1: mean time and rows read per run) — `keep`, or `revert` and the index was dropped.",
     ),
 };
 export type ListProposalsOutput = z.infer<z.ZodObject<typeof listProposalsOutputShape>>;

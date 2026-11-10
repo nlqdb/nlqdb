@@ -15,7 +15,6 @@ No founder secret. Each box is tested in CI against a seeded Postgres with
 own Cloudflare account. Number: KPI A, B or C on the synthetic DB, labelled
 synthetic.
 
-- [ ] D1 verify: the `dba_verify` job re-reads Tier 1 on an applied D1 index and auto-reverts a regression — KPI C on a synthetic D1
 - [ ] D1 through the CLI, MCP and web doors (`nlq attach`, `nlqdb_connect_database`, `/app/connect`) with token + account id + database id — doors reaching the D1 loop
 
 ## 1b — Real-traffic proof

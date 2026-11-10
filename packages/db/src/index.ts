@@ -75,8 +75,17 @@ export {
 } from "./connection-url.ts";
 export type { D1BatchFn, D1QueryInsight, D1Target } from "./d1/rest.ts";
 export { D1RestError, d1RestBatch, readD1QueryInsights } from "./d1/rest.ts";
-export { applyD1Proposal, isD1ProposalDdl } from "./dba-apply-d1.ts";
-export type { Verification } from "./dba-apply-postgres.ts";
+export {
+  applyD1Proposal,
+  isD1ProposalDdl,
+  judgeD1Applied,
+  verifyD1Applied,
+} from "./dba-apply-d1.ts";
+export type {
+  D1Verification,
+  PostgresVerification,
+  Verification,
+} from "./dba-apply-postgres.ts";
 export { applyProposal, judgeApplied, verifyApplied } from "./dba-apply-postgres.ts";
 export { observeD1Catalog } from "./dba-observe-d1.ts";
 export { observeD1Workload } from "./dba-observe-d1-workload.ts";

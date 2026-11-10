@@ -21,10 +21,14 @@ export function describeChange(
   if (c.status === "rejected") return `Rejected, not applied — ${c.reason ?? c.table}`;
   const v = c.verification;
   if (v && v.verdict !== "unmeasured") {
-    const p95 = `p95 est. ${ms(v.beforeP95Ms)} → ${ms(v.afterP95Ms)}`;
+    // A D1 keeps no percentile: its verdict reads mean time and rows read.
+    const delta =
+      "fingerprint" in v
+        ? `p95 est. ${ms(v.beforeP95Ms)} → ${ms(v.afterP95Ms)}`
+        : `mean ${ms(v.beforeMeanMs)} → ${ms(v.afterMeanMs)}, rows read ${Math.round(v.beforeRowsRead)} → ${Math.round(v.afterRowsRead)}`;
     return v.verdict === "revert"
-      ? `Reverted: its query ran slower (${p95}) — ${c.reason ?? c.table}`
-      : `Applied and verified: ${p95} — ${c.reason ?? c.table}`;
+      ? `Reverted: its query ran slower (${delta}) — ${c.reason ?? c.table}`
+      : `Applied and verified: ${delta} — ${c.reason ?? c.table}`;
   }
   const what =
     c.kind === "create_table"

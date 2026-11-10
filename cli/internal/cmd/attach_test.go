@@ -59,6 +59,10 @@ func fakeDBA(t *testing.T) (*httptest.Server, map[int64]string, *[]string) {
 				if status[id] == "applied" {
 					row["verification"] = map[string]any{"verdict": "keep", "fingerprint": "f", "beforeP95Ms": 2.0, "afterP95Ms": 0.1}
 				}
+				if id == 2 && status[id] == "applied" { // a D1's verdict: no percentile
+					row["status"] = "reverted"
+					row["verification"] = map[string]any{"verdict": "revert", "query": "q", "beforeMeanMs": 1.2, "afterMeanMs": 4.0, "beforeRowsRead": 4999.0, "afterRowsRead": 4999.0}
+				}
 				rows = append(rows, row)
 			}
 			_ = json.NewEncoder(w).Encode(map[string]any{"changes": rows})
@@ -166,7 +170,7 @@ func TestAttachDoorWalk(t *testing.T) {
 	if err != nil {
 		t.Fatalf("proposals: %v (stderr=%q)", err, errBuf)
 	}
-	for _, want := range []string{"#1  applied, verify: keep (p95 2 → 0.1 ms)", "#5  rejected"} {
+	for _, want := range []string{"#1  applied, verify: keep (p95 2 → 0.1 ms)", "#2  reverted, verify: revert (mean 1.2 → 4 ms, rows read 4999 → 4999)", "#5  rejected"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("proposals stdout missing %q; got %q", want, out)
 		}

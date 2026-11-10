@@ -87,4 +87,24 @@ describe("describeChange", () => {
       "Reverted: its query ran slower (p95 est. 1.35 ms → 27 ms) — posts(title) is seq-scanned.",
     );
   });
+
+  it("shows a D1 verdict's mean time and rows read (D1 keeps no percentile)", () => {
+    const d1 = {
+      query: "SELECT id FROM posts WHERE title = ?",
+      beforeMeanMs: 1.2,
+      beforeRowsRead: 4999,
+    };
+    expect(
+      describeChange({
+        kind: "create_index",
+        table: "posts",
+        origin: "attach",
+        reason: "posts(title) is scanned.",
+        status: "applied",
+        verification: { verdict: "keep", ...d1, afterMeanMs: 0.3, afterRowsRead: 1 },
+      }),
+    ).toBe(
+      "Applied and verified: mean 1.20 ms → 0.30 ms, rows read 4999 → 1 — posts(title) is scanned.",
+    );
+  });
 });
