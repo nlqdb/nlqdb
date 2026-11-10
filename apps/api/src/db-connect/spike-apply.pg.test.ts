@@ -144,13 +144,14 @@ describe.skipIf(!url)("the spike's apply step on a synthetic Postgres", () => {
       expect(left[0]?.["n"]).toBe(0);
 
       // A revert cut off mid-drop leaves the index under its revert verdict:
-      // the next run finishes the drop instead of judging it afresh.
+      // the next run finishes the drop instead of judging it afresh. The real
+      // before rides along, so a fresh judgement would keep it.
       await conn.query(proposal.ddl, []);
       const { rows: cut } = await conn.query(
         "SELECT format('COMMENT ON INDEX public.%I IS %L', $1::text, $2::text) AS ddl",
         [
           rows[0]?.["relname"],
-          `nlqdb spike apply: ${JSON.stringify({ ...note, verification: reverted.step === "measured" && reverted.verification })}`,
+          `nlqdb spike apply: ${JSON.stringify({ ...note, proposal, verification: reverted.step === "measured" && reverted.verification })}`,
         ],
       );
       await conn.query(String(cut[0]?.["ddl"]), []);
