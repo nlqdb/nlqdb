@@ -166,12 +166,16 @@ type TraceWiden struct {
 	SchemaRewritten bool     `json:"schema_rewritten"`
 }
 
-// ConnectRequest mirrors the SDK's connect shape for POST /v1/db/connect.
-// `ConnectionURL` is a credential — it rides the request body and is never
-// persisted by the CLI (sent and discarded; see cmd/db.go).
+// ConnectRequest mirrors the SDK's connect shape for POST /v1/db/connect:
+// `ConnectionURL` for ClickHouse / Postgres, the three D1 fields for a D1.
+// `ConnectionURL` and `Token` are credentials — they ride the request body
+// and are never persisted by the CLI (sent and discarded; see cmd/db.go).
 type ConnectRequest struct {
 	Engine        string `json:"engine"`
-	ConnectionURL string `json:"connection_url"`
+	ConnectionURL string `json:"connection_url,omitempty"`
+	AccountID     string `json:"account_id,omitempty"`
+	DatabaseID    string `json:"database_id,omitempty"`
+	Token         string `json:"token,omitempty"`
 	Name          string `json:"name,omitempty"`
 }
 
@@ -183,7 +187,7 @@ type ConnectResponse struct {
 	Engine        string  `json:"engine"`
 	SchemaPreview string  `json:"schemaPreview"`
 	PKLive        *string `json:"pkLive,omitempty"`
-	// Postgres: the first proposals, already in the ledger (GLOBAL-043).
+	// Postgres and D1: the first proposals, already in the ledger (GLOBAL-043).
 	Proposals []Proposal `json:"proposals,omitempty"`
 }
 

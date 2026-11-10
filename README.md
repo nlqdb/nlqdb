@@ -191,7 +191,7 @@ One loop — observe → propose → apply → verify → revert — on your Pos
   all four doors are live, hosted `mcp.nlqdb.com` and stdio `@nlqdb/mcp`
   0.4.0 alike; verify
   runs on its own once an applied proposal's 72 h window has passed; on D1
-  the API door attaches, applies and rejects, and the observe job proposes
+  the API and CLI doors attach, apply and reject, and the observe job proposes
   from the workload, so far), tested in CI
 - ~ Postgres spike — one index proposed, applied and measured (before/after
   p95) on a real-traffic database (the spike DB attaches read-only in CI,
