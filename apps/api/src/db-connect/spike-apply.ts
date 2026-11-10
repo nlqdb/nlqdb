@@ -15,6 +15,7 @@
 import {
   applyProposal,
   type FingerprintWindow,
+  judgeApplied,
   type PostgresQueryFn,
   type Proposal,
   type StatementCounters,
@@ -209,11 +210,18 @@ async function measure(
   );
   const after = window.find((w) => w.fingerprint === fingerprint) ?? null;
   const base = { step: "measured" as const, ageSec, valid, after };
-  if (note.verification) return { ...base, note, verification: note.verification };
+  if (note.verification) {
+    // A revert verdict on a standing index: a run was cut off mid-drop, so finish it.
+    if (note.verification.verdict === "revert") await query(note.proposal.inverse, []);
+    return { ...base, note, verification: note.verification };
+  }
   // Judged once, like the `dba_verify` job — and only on a window that ran it.
   if (ageSec < VERIFY_WINDOW_SEC || !after) return { ...base, note };
+  // The verdict lands on the note before verify's revert drops the index, so a
+  // run cancelled mid-`DROP INDEX CONCURRENTLY` never leaves a half-dropped
+  // index for the next run to judge afresh (and maybe keep, invalid).
+  const judged = { ...note, verification: judgeApplied(note.proposal, window) };
+  await writeNote(query, note.proposal, judged);
   const verification = await verifyApplied(query, note.proposal, window);
-  const judged = { ...note, verification };
-  if (verification.verdict !== "revert") await writeNote(query, note.proposal, judged);
   return { ...base, note: judged, verification };
 }

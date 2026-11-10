@@ -1,8 +1,9 @@
 // The spike's apply step (`spike-apply.ts`) on a synthetic Postgres before it
 // ever runs on the spike: it defers when busy or with nothing to apply,
 // applies one index with its counters, re-reads the fingerprint after the
-// apply, keeps a faster index once the window passed, reverts a regression,
-// and never applies a second index. Runs only when `PG_TEST_URL` is set (CI's
+// apply, keeps a faster index once the window passed, reverts a regression
+// (and finishes a revert a cancelled run left half done), and never applies
+// a second index. Runs only when `PG_TEST_URL` is set (CI's
 // `test-dba-postgres` job).
 
 import { createRequire } from "node:module";
@@ -141,6 +142,25 @@ describe.skipIf(!url)("the spike's apply step on a synthetic Postgres", () => {
         [],
       );
       expect(left[0]?.["n"]).toBe(0);
+
+      // A revert cut off mid-drop leaves the index under its revert verdict:
+      // the next run finishes the drop instead of judging it afresh.
+      await conn.query(proposal.ddl, []);
+      const { rows: cut } = await conn.query(
+        "SELECT format('COMMENT ON INDEX public.%I IS %L', $1::text, $2::text) AS ddl",
+        [
+          rows[0]?.["relname"],
+          `nlqdb spike apply: ${JSON.stringify({ ...note, verification: reverted.step === "measured" && reverted.verification })}`,
+        ],
+      );
+      await conn.query(String(cut[0]?.["ddl"]), []);
+      const resumed = await spikeApplyStep(conn.query, [proposal], now + VERIFY_WINDOW_SEC);
+      expect(resumed.step === "measured" && resumed.verification?.verdict).toBe("revert");
+      const { rows: gone } = await conn.query(
+        "SELECT count(*)::int AS n FROM pg_class WHERE relname LIKE 'nlqdb\\_%'",
+        [],
+      );
+      expect(gone[0]?.["n"]).toBe(0);
 
       // One index ever: the reverted build is in the history.
       expect(await spikeApplyStep(conn.query, [proposal], now + VERIFY_WINDOW_SEC)).toMatchObject({
