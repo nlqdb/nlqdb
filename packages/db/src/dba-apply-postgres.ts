@@ -13,16 +13,33 @@ import { withDbaSpan } from "./dba-span.ts";
 import type { PostgresQueryFn } from "./postgres.ts";
 
 // `GLOBAL-043` item 7's regression bound (after > before × 1.1 reverts).
-const REGRESSION_BOUND = 1.1;
+export const REGRESSION_BOUND = 1.1;
 
-export type Verification =
+// Nothing to compare: a catalog-tier proposal names no query, or the window
+// never ran it. Kept, and claims no delta.
+type Unmeasured = { verdict: "unmeasured"; reason: string };
+
+export type PostgresVerification =
   | { verdict: "keep" | "revert"; fingerprint: string; beforeP95Ms: number; afterP95Ms: number }
-  // Nothing to compare: a catalog-tier proposal names no fingerprint, or the
-  // window never ran it. Kept, and claims no delta.
-  | { verdict: "unmeasured"; reason: string };
+  | Unmeasured;
+
+// A D1 query text: its analytics keep no percentile, so mean time and rows
+// read per run (`judgeD1Applied`).
+export type D1Verification =
+  | {
+      verdict: "keep" | "revert";
+      query: string;
+      beforeMeanMs: number;
+      afterMeanMs: number;
+      beforeRowsRead: number;
+      afterRowsRead: number;
+    }
+  | Unmeasured;
+
+export type Verification = PostgresVerification | D1Verification;
 
 // Pure: the verdict for an applied proposal over the window after its apply.
-export function judgeApplied(proposal: Proposal, after: FingerprintWindow[]): Verification {
+export function judgeApplied(proposal: Proposal, after: FingerprintWindow[]): PostgresVerification {
   const target = proposal.evidence.workload;
   if (!target) return { verdict: "unmeasured", reason: "no fingerprint (catalog tier)" };
   const now = after.find((w) => w.fingerprint === target.fingerprint);
@@ -56,7 +73,7 @@ export function verifyApplied(
   query: PostgresQueryFn,
   proposal: Proposal,
   after: FingerprintWindow[],
-): Promise<Verification> {
+): Promise<PostgresVerification> {
   return withDbaSpan("db.verify", `verify_${proposal.kind}`, proposal.schema, async (span) => {
     const v = judgeApplied(proposal, after);
     span.setAttribute("nlqdb.dba.verdict", v.verdict);

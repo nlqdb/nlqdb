@@ -11,11 +11,13 @@
 // other verb is refused.
 //
 // On a D1 the DDL runs over the REST client (`applyD1Proposal`) with the
-// sealed token triple; no counters are kept: D1's verify does not re-read Tier 1 yet.
+// sealed token triple; no counters are kept: Cloudflare keeps the query
+// insights, so verify reads the hours after the apply (`verifyD1Applied`).
 //
-// An apply also keeps its fingerprint's cumulative counters (`verify_from`);
-// `verifyDue` (the `dba_verify` job) diffs them against a fresh read once the
-// window has passed — the p95 re-read and auto-revert, `verifyApplied`.
+// A Postgres apply also keeps its fingerprint's cumulative counters
+// (`verify_from`); `verifyDue` (the `dba_verify` job) diffs them against a
+// fresh read once the window has passed — the p95 re-read and auto-revert,
+// `verifyApplied`.
 
 import {
   applyD1Proposal,
@@ -24,14 +26,17 @@ import {
   d1RestBatch,
   isD1ProposalDdl,
   judgeApplied,
+  judgeD1Applied,
   type PostgresQueryFn,
   type Proposal,
+  readD1QueryInsights,
   type StatementCounters,
   snapshotPostgresStatements,
   statementWindow,
   type Verification,
   validateByoConnection,
   verifyApplied,
+  verifyD1Applied,
 } from "@nlqdb/db";
 import type { ConnectByoDeps } from "./db-connect/connect.ts";
 import { openSecret } from "./secret-envelope.ts";
@@ -224,6 +229,11 @@ async function applyOn(
   });
 }
 
+// D1 keeps query insights 31 days; a window starts a day inside that.
+export const D1_RETENTION_SEC = 30 * 24 * 3600;
+// An ISO hour, the unit D1's analytics filter on.
+export const isoHour = (sec: number) => `${new Date(sec * 1000).toISOString().slice(0, 13)}:00:00Z`;
+
 // `GLOBAL-043` item 7: 72 h on both engines until the spike measures when each
 // engine's counters settle.
 export const VERIFY_WINDOW_SEC = 72 * 3600;
@@ -233,29 +243,33 @@ const VERIFY_BATCH = 5;
 type DueRow = {
   id: number;
   dbId: string;
+  engine: string;
+  decidedAt: number;
   proposal: string;
   verifyFrom: string | null;
   blob: string | null;
 };
 
 // Judges each applied proposal whose window has passed and records the
-// verdict; a regression has already been reverted by `verifyApplied` when its
-// row turns `reverted`. A row whose DB can't be reached stays due, behind the
-// rows not yet tried (`verify_tried_at`), so it never holds the batch.
+// verdict; a regression has already been reverted by `verifyApplied` (on a D1,
+// `verifyD1Applied`) when its row turns `reverted`. A row whose DB can't be
+// reached stays due, behind the rows not yet tried (`verify_tried_at`), so it
+// never holds the batch.
 export async function verifyDue(
   deps: DecideDeps,
   nowSec: number,
 ): Promise<{ id: number; verification: Verification }[]> {
   const { results } = await deps.d1
     .prepare(
-      "SELECT c.id, c.database_id AS dbId, c.proposal, c.verify_from AS verifyFrom, d.connection_blob AS blob FROM dba_changes c JOIN databases d ON d.id = c.database_id WHERE c.status = 'applied' AND c.proposal IS NOT NULL AND c.verified_at IS NULL AND c.decided_at <= ? ORDER BY COALESCE(c.verify_tried_at, 0), c.decided_at LIMIT ?",
+      "SELECT c.id, c.database_id AS dbId, d.engine, c.decided_at AS decidedAt, c.proposal, c.verify_from AS verifyFrom, d.connection_blob AS blob FROM dba_changes c JOIN databases d ON d.id = c.database_id WHERE c.status = 'applied' AND c.proposal IS NOT NULL AND c.verified_at IS NULL AND c.decided_at <= ? ORDER BY COALESCE(c.verify_tried_at, 0), c.decided_at, c.id LIMIT ?",
     )
     .bind(nowSec - VERIFY_WINDOW_SEC, VERIFY_BATCH)
     .all<DueRow>();
   const verified: { id: number; verification: Verification }[] = [];
   for (const row of results) {
     try {
-      const verification = await verifyRow(deps, row);
+      const verification =
+        row.engine === "d1" ? await verifyD1Row(deps, row, nowSec) : await verifyRow(deps, row);
       await deps.d1
         .prepare(
           "UPDATE dba_changes SET verification = ?, verified_at = unixepoch(), status = ? WHERE id = ? AND verified_at IS NULL",
@@ -303,4 +317,20 @@ async function verifyRow(deps: DecideDeps, row: DueRow): Promise<Verification> {
     );
     return verifyApplied(query, proposal, window);
   });
+}
+
+// The insights from the first full hour after the apply to this one: the
+// apply's own hour mixes unindexed runs in. A row kept due past D1's retention
+// (its DB unreachable) reads from the oldest hour D1 still keeps. A Tier 0 row
+// names no query text, so it is judged without a request.
+async function verifyD1Row(deps: DecideDeps, row: DueRow, nowSec: number): Promise<Verification> {
+  const proposal = JSON.parse(row.proposal) as Proposal;
+  if (!proposal.evidence.d1Workload) return judgeD1Applied(proposal, []);
+  if (!deps.kek) throw new Error("sealing unconfigured");
+  await validate(row.id, proposal, "d1");
+  const { target, batch } = await attachedD1(deps, row);
+  const since = Math.max(row.decidedAt + 3600, nowSec - D1_RETENTION_SEC);
+  const window = { since: isoHour(since), until: isoHour(nowSec) };
+  const insights = await (deps.readD1Insights ?? readD1QueryInsights)(target, window);
+  return verifyD1Applied(batch, proposal, insights);
 }

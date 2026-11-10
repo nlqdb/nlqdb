@@ -216,13 +216,19 @@ type DbaChange struct {
 }
 
 // Verification mirrors @nlqdb/db's Verification: verify's verdict on an
-// applied proposal; the p95 pair is absent when the verdict is "unmeasured".
+// applied proposal. A Postgres verdict carries the p95 pair, a D1 one (no
+// percentile) the mean-time and rows-read pairs; none when "unmeasured".
 type Verification struct {
-	Verdict     string   `json:"verdict"`
-	Fingerprint string   `json:"fingerprint,omitempty"`
-	BeforeP95Ms *float64 `json:"beforeP95Ms,omitempty"`
-	AfterP95Ms  *float64 `json:"afterP95Ms,omitempty"`
-	Reason      string   `json:"reason,omitempty"`
+	Verdict        string   `json:"verdict"`
+	Fingerprint    string   `json:"fingerprint,omitempty"`
+	BeforeP95Ms    *float64 `json:"beforeP95Ms,omitempty"`
+	AfterP95Ms     *float64 `json:"afterP95Ms,omitempty"`
+	Query          string   `json:"query,omitempty"`
+	BeforeMeanMs   *float64 `json:"beforeMeanMs,omitempty"`
+	AfterMeanMs    *float64 `json:"afterMeanMs,omitempty"`
+	BeforeRowsRead *float64 `json:"beforeRowsRead,omitempty"`
+	AfterRowsRead  *float64 `json:"afterRowsRead,omitempty"`
+	Reason         string   `json:"reason,omitempty"`
 }
 
 // DecideResult mirrors the SDK's DecideProposalResult (POST

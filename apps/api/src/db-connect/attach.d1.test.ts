@@ -9,7 +9,13 @@ import { afterAll, describe, expect, it } from "vitest";
 import { D1_TARGET, localD1 } from "../../../../packages/db/test/fixtures/local-d1.ts";
 import { listProposals } from "../dba-changes.ts";
 import { OBSERVE_WINDOW_SEC, observeDue } from "../dba-observe.ts";
-import { decideProposal, VERIFY_WINDOW_SEC, verifyDue } from "../dba-verbs.ts";
+import {
+  D1_RETENTION_SEC,
+  decideProposal,
+  isoHour,
+  VERIFY_WINDOW_SEC,
+  verifyDue,
+} from "../dba-verbs.ts";
 import { openSecret } from "../secret-envelope.ts";
 import { type ConnectByoDeps, connectByoDb } from "./connect.ts";
 import { sqliteD1 } from "./test-sqlite-d1.ts";
@@ -242,6 +248,112 @@ describe("the attach door on a local D1", () => {
     // biome-ignore lint/suspicious/noConsole: the observe reading belongs in the CI log
     console.log(
       `Tier 1 observe (synthetic, D1, dba_observe job): ${tier1.length} proposals recorded with no caller on the first tick, ${observeMs.toFixed(1)} ms for the DB`,
+    );
+  });
+
+  // The `dba_verify` job on a D1 (`GLOBAL-043` item 7, `002-rateme12-attach.md`
+  // §3 step 3): two Tier 1 indexes applied through the verb; 72 h on, the job
+  // re-reads the insights from the first full hour after each apply — no
+  // caller. The one whose query got cheaper is kept; an injected regression
+  // (the other query's mean time 3× its proposal's) is reverted: its stored
+  // inverse drops the index and the row turns `reverted`. Prints KPI C.
+  it("the dba_verify job re-reads a D1's Tier 1 and reverts a regression", async () => {
+    const d = await deps(APP);
+    const seq = (n: number) =>
+      `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ${n})`;
+    await rowsRead(
+      d.fetchFn,
+      `${seq(100)} INSERT INTO users (id, email) SELECT i, 'u' || i FROM n`,
+    );
+    await rowsRead(
+      d.fetchFn,
+      `${seq(5000)} INSERT INTO posts (user_id, title) SELECT 1 + i % 100, 'post ' || i FROM n`,
+    );
+    const TITLE = "SELECT id, user_id FROM posts WHERE title = ? LIMIT 1";
+    const EMAIL = "SELECT id FROM users WHERE email = ?";
+    const literal = (q: string, v: string) => q.replace("?", `'${v}'`);
+    const titleBefore = await rowsRead(d.fetchFn, literal(TITLE, "post 4999"));
+    const emailBefore = await rowsRead(d.fetchFn, literal(EMAIL, "u99"));
+    const insight = (query: string, meanMs: number, rowsRead: number): D1QueryInsight => ({
+      query,
+      calls: 400,
+      meanMs,
+      rowsRead,
+      rowsReturned: 1,
+      rowsWritten: 0,
+      totalRowsRead: rowsRead * 400,
+    });
+    d.readD1Insights = async () => [
+      insight(TITLE, 1.2, titleBefore),
+      insight(EMAIL, 0.4, emailBefore),
+    ];
+    const result = await attach(d);
+    if (!result.ok) throw new Error(result.message);
+    const [observed] = await observeDue(d, Math.floor(Date.now() / 1000));
+    const tier1 = (await listProposals(d.d1, result.dbId, "user_synth")).filter((p) =>
+      observed?.proposalIds.includes(p.id),
+    );
+    expect(tier1.map((p) => `${p.table}(${p.columns})`)).toEqual(["posts(title)", "users(email)"]);
+    for (const p of tier1) {
+      await decideProposal(d, {
+        id: p.id,
+        tenantId: "user_synth",
+        decidedBy: "sk_live:synth",
+        verb: "apply",
+      });
+    }
+    const titleAfter = await rowsRead(d.fetchFn, literal(TITLE, "post 4999"));
+    const emailAfter = await rowsRead(d.fetchFn, literal(EMAIL, "u99"));
+
+    const windows: { since: string; until: string }[] = [];
+    d.readD1Insights = async (target, window) => {
+      expect(target).toEqual(D1_TARGET);
+      windows.push(window);
+      return [insight(TITLE, 0.3, titleAfter), insight(EMAIL, 1.2, emailAfter)];
+    };
+    const now = Math.floor(Date.now() / 1000);
+    expect(await verifyDue(d, now + VERIFY_WINDOW_SEC - 3600)).toEqual([]);
+    const verified = await verifyDue(d, now + VERIFY_WINDOW_SEC + 60);
+    expect(verified.map((v) => v.verification.verdict)).toEqual(["keep", "revert"]);
+    const decided = await d.d1
+      .prepare("SELECT decided_at AS at FROM dba_changes WHERE id = ?")
+      .bind(tier1[0]?.id)
+      .first<{ at: number }>();
+    expect(windows[0]).toEqual({
+      since: isoHour((decided?.at ?? 0) + 3600),
+      until: isoHour(now + VERIFY_WINDOW_SEC + 60),
+    });
+    expect(verified[0]?.verification).toMatchObject({
+      beforeRowsRead: titleBefore,
+      afterRowsRead: titleAfter,
+    });
+
+    const { results: rows } = await d.d1
+      .prepare("SELECT status FROM dba_changes WHERE id IN (?, ?) ORDER BY id")
+      .bind(tier1[0]?.id, tier1[1]?.id)
+      .all<{ status: string }>();
+    expect(rows.map((r) => r.status)).toEqual(["applied", "reverted"]);
+    const built = await d.buildD1Batch?.(D1_TARGET)([
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'nlqdb_%'",
+    ]);
+    const nameOf = (p: { ddl: string }) => /EXISTS "([^"]+)"/.exec(p.ddl)?.[1];
+    expect(built?.[0]?.map((r) => r["name"])).toEqual([nameOf(tier1[0] as { ddl: string })]);
+    // Judged once: the next tick finds nothing due.
+    expect(await verifyDue(d, now + VERIFY_WINDOW_SEC + 3600)).toEqual([]);
+    // A row kept due past D1's retention reads from the oldest hour D1 still keeps.
+    await d.d1
+      .prepare("UPDATE dba_changes SET verified_at = NULL WHERE id = ?")
+      .bind(tier1[0]?.id)
+      .run();
+    const late = now + 40 * 24 * 3600;
+    expect((await verifyDue(d, late)).map((v) => v.verification.verdict)).toEqual(["keep"]);
+    expect(windows.at(-1)).toEqual({
+      since: isoHour(late - D1_RETENTION_SEC),
+      until: isoHour(late),
+    });
+    // biome-ignore lint/suspicious/noConsole: the KPI C reading belongs in the CI log
+    console.log(
+      `KPI C (synthetic, D1, dba_verify job): 1/1 regressions reverted, 0 user action; kept posts(title): rows read ${titleBefore} → ${titleAfter}`,
     );
   });
 

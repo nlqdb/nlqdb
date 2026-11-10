@@ -206,7 +206,7 @@ describe.skipIf(!url)("the attach door on the seeded synthetic Postgres", () => 
     const email = byId.get(tier1Ids[1] as number);
     expect(title).toMatchObject({ verdict: "revert" });
     expect(email).toMatchObject({ verdict: "keep" });
-    if (email?.verdict === "keep") expect(email.afterP95Ms).toBeLessThan(email.beforeP95Ms);
+    if (email && "fingerprint" in email) expect(email.afterP95Ms).toBeLessThan(email.beforeP95Ms);
     // biome-ignore lint/suspicious/noConsole: the verify reading belongs in the CI log
     console.log(
       `Verify after the window (synthetic, dba_verify job): ${verdicts.length}/${verdicts.length} applied rows judged with no caller (${verifyMs.toFixed(1)} ms each); KPI B ${JSON.stringify(email)}; KPI C 1/1 ${JSON.stringify(title)}`,

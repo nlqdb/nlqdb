@@ -65,6 +65,9 @@ ones with verify's verdict once their window has passed.`,
 					status += ", verify: " + v.Verdict
 					if v.BeforeP95Ms != nil && v.AfterP95Ms != nil {
 						status += fmt.Sprintf(" (p95 %s → %s ms)", ms(*v.BeforeP95Ms), ms(*v.AfterP95Ms))
+					} else if v.BeforeMeanMs != nil && v.AfterMeanMs != nil && v.BeforeRowsRead != nil && v.AfterRowsRead != nil {
+						status += fmt.Sprintf(" (mean %s → %s ms, rows read %.0f → %.0f)",
+							ms(*v.BeforeMeanMs), ms(*v.AfterMeanMs), *v.BeforeRowsRead, *v.AfterRowsRead)
 					}
 				}
 				fmt.Fprintf(out, "#%d  %s  %s\n", p.ID, status, p.DDL)
