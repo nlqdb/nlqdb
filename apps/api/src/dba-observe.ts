@@ -23,7 +23,7 @@ import {
 } from "@nlqdb/db";
 import { BYO_SECRET_REF_SENTINEL } from "./db-connect/constants.ts";
 import { proposalStatement } from "./dba-changes.ts";
-import { attachedD1, type DecideDeps, isoHour, onAttached } from "./dba-verbs.ts";
+import { attachedD1, D1_RETENTION_SEC, type DecideDeps, isoHour, onAttached } from "./dba-verbs.ts";
 
 // One day: a window spans the app's daily cycle.
 export const OBSERVE_WINDOW_SEC = 24 * 3600;
@@ -33,8 +33,6 @@ export const OBSERVE_WINDOW_SEC = 24 * 3600;
 // an overrun DB fails and is retried.
 // Hourly, that is 120 DBs a day before a window stretches past 24 h.
 const OBSERVE_BATCH = 5;
-// D1 keeps query insights 31 days; a window starts a day inside that.
-const D1_RETENTION_SEC = 30 * 24 * 3600;
 
 type DueRow = { dbId: string; engine: string; blob: string | null; observeFrom: string | null };
 
