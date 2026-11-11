@@ -327,8 +327,8 @@ export type ConnectDatabaseResult = {
   engine: string;
   schemaPreview: string;
   pkLive: string | null;
-  // Postgres: the first proposals, from the catalog (`GLOBAL-043`); `[]` when
-  // the schema needs nothing yet. ClickHouse: always `[]`.
+  // Postgres and D1: the first proposals, from the catalog (`GLOBAL-043`); `[]`
+  // when the schema needs nothing yet. ClickHouse: always `[]`.
   proposals: Proposal[];
 };
 

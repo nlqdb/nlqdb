@@ -175,10 +175,11 @@ After connecting, the host lists these nlqdb tools:
 - `nlqdb_list_databases` — list the memory databases scoped to your account.
 - `nlqdb_describe` — inspect one database's shape (slug, engine, schema).
 - `nlqdb_connect_database` — attach an existing ClickHouse/Postgres so the
-  agent can query it in English (no migration, no schema upload); on Postgres
-  it returns the DBA's first proposals.
+  agent can query it in English (no migration, no schema upload), or a
+  Cloudflare D1 with its `account_id`, `database_id` and API `token`; on
+  Postgres and D1 it returns the DBA's first proposals.
 - `nlqdb_list_proposals`, `nlqdb_apply_proposal`, `nlqdb_reject_proposal` —
-  list the DBA's proposals on an attached Postgres, apply one (an index with
+  list the DBA's proposals on an attached Postgres or D1, apply one (an index with
   its undo statement, auto-reverted if it makes the query slower) or reject
   it with a reason.
 - `nlqdb_remember` — write a typed memory row directly into an
