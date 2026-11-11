@@ -3,12 +3,8 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"io"
-	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 
 	"github.com/nlqdb/nlqdb/cli/internal/byollm"
 	"github.com/nlqdb/nlqdb/cli/internal/credstore"
@@ -53,9 +49,13 @@ raw upstream id (e.g. claude-sonnet-5, gpt-5.6, or an OpenRouter id like
 openai/gpt-5.6).`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			raw, err := readByollmKey(cmd, key)
+			raw, err := readSecret(cmd, key, "provider key")
 			if err != nil {
 				return err
+			}
+			if raw == "" {
+				printErr(cmd, "no key given — pass --key or pipe it on stdin.")
+				return errors.New("empty byollm key")
 			}
 			cred, err := byollm.Parse(args[0], args[1], raw)
 			if err != nil {
@@ -137,34 +137,4 @@ func loadByollm() (byollm.Credential, bool) {
 		return byollm.Credential{}, false
 	}
 	return byollm.FromStored(raw)
-}
-
-// readByollmKey resolves the key: --key wins; else stdin (piped is read
-// verbatim, an interactive TTY prompts without echo). Keeping the key off
-// argv by default is the secure path — process lists and shell history
-// both expose positional args.
-func readByollmKey(cmd *cobra.Command, flagKey string) (string, error) {
-	if flagKey != "" {
-		return flagKey, nil
-	}
-	in, ok := cmd.InOrStdin().(*os.File)
-	if ok && term.IsTerminal(int(in.Fd())) {
-		fmt.Fprint(cmd.ErrOrStderr(), "Paste your provider key: ")
-		b, err := term.ReadPassword(int(in.Fd()))
-		fmt.Fprintln(cmd.ErrOrStderr())
-		if err != nil {
-			return "", fmt.Errorf("read key: %w", err)
-		}
-		return strings.TrimSpace(string(b)), nil
-	}
-	b, err := io.ReadAll(cmd.InOrStdin())
-	if err != nil {
-		return "", fmt.Errorf("read key from stdin: %w", err)
-	}
-	out := strings.TrimSpace(string(b))
-	if out == "" {
-		printErr(cmd, "no key given — pass --key or pipe it on stdin.")
-		return "", errors.New("empty byollm key")
-	}
-	return out, nil
 }

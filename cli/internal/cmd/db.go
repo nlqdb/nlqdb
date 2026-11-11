@@ -114,7 +114,7 @@ never written to config.toml or state.json.`,
 				printErr(cmd, "--engine must be clickhouse or postgres.")
 				return errors.New("invalid engine")
 			}
-			connURL, err := readConnectionURL(cmd, url)
+			connURL, err := readSecret(cmd, url, "connection URL")
 			if err != nil {
 				return err
 			}
@@ -154,27 +154,26 @@ never written to config.toml or state.json.`,
 	return cmd
 }
 
-// readConnectionURL resolves the URL credential: --url wins; else stdin
-// (piped is read verbatim, an interactive TTY prompts without echo). Mirrors
-// readByollmKey — keeping the secret off argv is the secure default, since
-// process lists and shell history both expose positional args and flags.
-func readConnectionURL(cmd *cobra.Command, flagURL string) (string, error) {
-	if flagURL != "" {
-		return flagURL, nil
+// readSecret resolves one credential: the given value wins; else stdin (piped
+// is read verbatim, an interactive TTY prompts without echo), since process
+// lists and shell history both expose args and flags.
+func readSecret(cmd *cobra.Command, given, what string) (string, error) {
+	if given != "" {
+		return given, nil
 	}
 	in, ok := cmd.InOrStdin().(*os.File)
 	if ok && term.IsTerminal(int(in.Fd())) {
-		fmt.Fprint(cmd.ErrOrStderr(), "Paste your connection URL: ")
+		fmt.Fprintf(cmd.ErrOrStderr(), "Paste your %s: ", what)
 		b, err := term.ReadPassword(int(in.Fd()))
 		fmt.Fprintln(cmd.ErrOrStderr())
 		if err != nil {
-			return "", fmt.Errorf("read connection url: %w", err)
+			return "", fmt.Errorf("read %s: %w", what, err)
 		}
 		return strings.TrimSpace(string(b)), nil
 	}
 	b, err := io.ReadAll(cmd.InOrStdin())
 	if err != nil {
-		return "", fmt.Errorf("read connection url from stdin: %w", err)
+		return "", fmt.Errorf("read %s from stdin: %w", what, err)
 	}
 	return strings.TrimSpace(string(b)), nil
 }
@@ -198,9 +197,14 @@ func writeConnect(cmd *cobra.Command, g *globalFlags, resp *api.ConnectResponse)
 	}
 	switch {
 	case len(resp.Proposals) > 0:
-	case resp.Engine == "postgres":
+	case resp.Engine == "postgres" || resp.Engine == "d1":
 		// END_GOAL "Nothing to improve": never an invented proposal, keep watching.
-		fmt.Fprintln(out, "Nothing worth changing yet — watching. Workload proposals follow a day of traffic: `nlq proposals`.")
+		// A D1's first observe reads the day Cloudflare already kept, so it lands within the hour.
+		when := "a day of traffic"
+		if resp.Engine == "d1" {
+			when = "within the hour"
+		}
+		fmt.Fprintf(out, "Nothing worth changing yet — watching. Workload proposals follow %s: `nlq proposals`.\n", when)
 		return nil
 	default:
 		fmt.Fprintf(out, "Next: nlq ask --db %s \"<question>\"\n", resp.DBID)

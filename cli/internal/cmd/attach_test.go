@@ -12,17 +12,25 @@ import (
 	"testing"
 )
 
-// fakeDBA mirrors the API's attach → ledger → verbs on five Tier 0 proposals,
-// with the response shapes of POST /v1/db/connect, GET /v1/databases/:id/changes
-// and POST /v1/proposals/:id/apply|reject (GLOBAL-043).
-func fakeDBA(t *testing.T) (*httptest.Server, map[int64]string, *[]string) {
+// fakeDBA mirrors the API's attach → ledger → verbs on five Tier 0 proposals
+// for a Postgres or a D1, with the response shapes of POST /v1/db/connect,
+// GET /v1/databases/:id/changes and POST /v1/proposals/:id/apply|reject
+// (GLOBAL-043; D1 DDL as `createD1IndexProposal` writes it).
+func fakeDBA(t *testing.T, engine string) (*httptest.Server, map[int64]string, *[]string) {
 	t.Helper()
 	var mu sync.Mutex
 	status := map[int64]string{}
 	var bodies []string
 	tables := []string{"posts", "comments", "likes", "follows", "sessions"}
+	schema, inverse := "public", "DROP INDEX CONCURRENTLY x"
 	ddl := func(i int) string {
+		if engine == "d1" {
+			return fmt.Sprintf("CREATE INDEX IF NOT EXISTS \"nlqdb_%s_user_id_idx\" ON \"%s\" (`user_id`)", tables[i], tables[i])
+		}
 		return fmt.Sprintf("CREATE INDEX CONCURRENTLY nlqdb_%s_user_id_idx ON public.%s (user_id)", tables[i], tables[i])
+	}
+	if engine == "d1" {
+		schema, inverse = "main", `DROP INDEX IF EXISTS "x"`
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
@@ -36,15 +44,15 @@ func fakeDBA(t *testing.T) (*httptest.Server, map[int64]string, *[]string) {
 				id := int64(i + 1)
 				status[id] = "proposed"
 				ps = append(ps, map[string]any{
-					"id": id, "kind": "create_index", "tier": 0, "schema": "public",
+					"id": id, "kind": "create_index", "tier": 0, "schema": schema,
 					"table": tables[i], "columns": []string{"user_id"}, "ddl": ddl(i),
-					"inverse": "DROP INDEX CONCURRENTLY x", "reason": "foreign key without an index",
+					"inverse": inverse, "reason": "foreign key without an index",
 					"evidence": map[string]any{"rowEstimate": 1000, "tableBytes": 8192},
 				})
 			}
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"dbId": "db_attach_1", "name": "app", "engine": "postgres",
+				"dbId": "db_attach_1", "name": "app", "engine": engine,
 				"schemaPreview": "posts(id, user_id)", "pkLive": nil, "proposals": ps,
 			})
 		case r.Method == http.MethodGet && r.URL.Path == "/v1/databases/db_attach_1/changes":
@@ -53,7 +61,7 @@ func fakeDBA(t *testing.T) (*httptest.Server, map[int64]string, *[]string) {
 				id := int64(i + 1)
 				row := map[string]any{
 					"id": id, "origin": "attach", "status": status[id], "kind": "create_index",
-					"table": tables[i], "ddl": ddl(i), "inverse": "DROP INDEX CONCURRENTLY x",
+					"table": tables[i], "ddl": ddl(i), "inverse": inverse,
 					"reason": "foreign key without an index", "createdAt": 1,
 				}
 				if status[id] == "applied" {
@@ -116,7 +124,7 @@ func nlq(t *testing.T, apiURL, stdin string, args ...string) (string, string, er
 func TestAttachDoorWalk(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("NLQDB_API_KEY", "sk_live_test")
-	srv, status, bodies := fakeDBA(t)
+	srv, status, bodies := fakeDBA(t, "postgres")
 
 	const secret = "postgres://app:s3cret@db.example.com:5432/app" //nolint:gosec // test fixture, not a credential
 	out, errBuf, err := nlq(t, srv.URL, secret+"\n", "attach")
@@ -177,6 +185,91 @@ func TestAttachDoorWalk(t *testing.T) {
 	}
 }
 
+// TestAttachD1DoorWalk walks the CLI door on a D1: the token rides stdin (never
+// argv), the account id falls back to wrangler's env, and every proposal is
+// decided from the CLI.
+func TestAttachD1DoorWalk(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("NLQDB_API_KEY", "sk_live_test")
+	t.Setenv("CLOUDFLARE_API_TOKEN", "")
+	t.Setenv("CLOUDFLARE_ACCOUNT_ID", "acct_env")
+	srv, status, bodies := fakeDBA(t, "d1")
+
+	const token = "cf_tok_s3cret" //nolint:gosec // test fixture, not a credential
+	out, errBuf, err := nlq(t, srv.URL, token+"\n", "attach", "--database-id", "d1-uuid", "--name", "rateme")
+	if err != nil {
+		t.Fatalf("attach: %v (stderr=%q)", err, errBuf)
+	}
+	var body map[string]any
+	if err := json.Unmarshal([]byte((*bodies)[0]), &body); err != nil {
+		t.Fatalf("attach body: %v", err)
+	}
+	want := map[string]any{"engine": "d1", "account_id": "acct_env", "database_id": "d1-uuid", "token": token, "name": "rateme"}
+	for k, v := range want {
+		if body[k] != v {
+			t.Errorf("attach body %s = %v, want %v", k, body[k], v)
+		}
+	}
+	if _, ok := body["connection_url"]; ok {
+		t.Errorf("a D1 body carries connection_url: %s", (*bodies)[0])
+	}
+	for _, w := range []string{"db_attach_1 (d1)", "5 proposals", `#1  CREATE INDEX IF NOT EXISTS "nlqdb_posts_user_id_idx"`, "nlq apply 1"} {
+		if !strings.Contains(out, w) {
+			t.Errorf("attach stdout missing %q; got %q", w, out)
+		}
+	}
+	if strings.Contains(out+errBuf, token) {
+		t.Fatal("token leaked to output")
+	}
+
+	for id := 1; id <= 5; id++ {
+		args := []string{"apply", fmt.Sprint(id)}
+		if id > 3 {
+			args = []string{"reject", fmt.Sprint(id), "--reason", "write-heavy table"}
+		}
+		if _, e, err := nlq(t, srv.URL, "", args...); err != nil {
+			t.Fatalf("%v: %v (stderr=%q)", args, err, e)
+		}
+	}
+	decided := 0
+	for _, s := range status {
+		if s != "proposed" {
+			decided++
+		}
+	}
+	if decided != 5 {
+		t.Fatalf("D1 proposals decided from the CLI = %d/5", decided)
+	}
+	t.Logf("D1 proposals decided from the CLI: %d/5", decided)
+
+	out, errBuf, err = nlq(t, srv.URL, "", "proposals")
+	if err != nil || !strings.Contains(out, "#2  reverted, verify: revert (mean 1.2 → 4 ms, rows read 4999 → 4999)") {
+		t.Errorf("proposals: %v %q %q", err, out, errBuf)
+	}
+}
+
+// Bad D1 flag sets fail before any request, naming the one fix.
+func TestAttachD1Refusals(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("NLQDB_API_KEY", "sk_live_test")
+	t.Setenv("CLOUDFLARE_API_TOKEN", "")
+	t.Setenv("CLOUDFLARE_ACCOUNT_ID", "")
+	for _, c := range []struct {
+		stdin, want string
+		args        []string
+	}{
+		{"tok\n", "--account-id needs --database-id", []string{"attach", "--account-id", "a"}},
+		{"tok\n", "no account id", []string{"attach", "--database-id", "d"}},
+		{"", "no API token", []string{"attach", "--database-id", "d", "--account-id", "a"}},
+		{"", "a D1 takes no connection string", []string{"attach", "postgres://u:p@h/db", "--database-id", "d"}},
+	} {
+		_, e, err := nlq(t, "http://127.0.0.1:0", c.stdin, c.args...)
+		if err == nil || !strings.Contains(e, c.want) {
+			t.Errorf("%v: err=%v stderr=%q, want %q", c.args, err, e, c.want)
+		}
+	}
+}
+
 func TestDecideRejectsNonNumericID(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	_, errBuf, err := nlq(t, "http://127.0.0.1:0", "", "apply", "abc")
@@ -185,18 +278,28 @@ func TestDecideRejectsNonNumericID(t *testing.T) {
 	}
 }
 
-// A healthy DB gets no invented proposal: attach says it is watching.
+// A healthy DB gets no invented proposal: attach says it is watching, and when
+// the next proposals can land.
 func TestAttachNothingToImprove(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("NLQDB_API_KEY", "sk_live_test")
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(map[string]any{"dbId": "db_ok", "engine": "postgres", "proposals": []any{}})
-	}))
-	t.Cleanup(srv.Close)
-	out, e, err := nlq(t, srv.URL, "postgres://u:p@h/db\n", "attach")
-	if err != nil || !strings.Contains(out, "Nothing worth changing yet") || strings.Contains(out, "nlq ask") {
-		t.Fatalf("err=%v stdout=%q stderr=%q", err, out, e)
+	t.Setenv("CLOUDFLARE_API_TOKEN", "")
+	for _, c := range []struct {
+		engine, stdin, when string
+		args                []string
+	}{
+		{"postgres", "postgres://u:p@h/db\n", "follow a day of traffic", []string{"attach"}},
+		{"d1", "tok\n", "follow within the hour", []string{"attach", "--database-id", "d", "--account-id", "a"}},
+	} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(map[string]any{"dbId": "db_ok", "engine": c.engine, "proposals": []any{}})
+		}))
+		out, e, err := nlq(t, srv.URL, c.stdin, c.args...)
+		srv.Close()
+		if err != nil || !strings.Contains(out, "Nothing worth changing yet") || !strings.Contains(out, c.when) || strings.Contains(out, "nlq ask") {
+			t.Errorf("%s: err=%v stdout=%q stderr=%q", c.engine, err, out, e)
+		}
 	}
 }
 
