@@ -37,9 +37,10 @@ prompt or pipe it on stdin, so it never lands in your shell history:
   echo "$DATABASE_URL" | nlq attach
 
 A D1 attaches with its database id, its account id and a Cloudflare API
-token with D1 Read (D1 Edit to apply). The account id and token default to
-wrangler's CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN; without the
-token in env, paste it at the prompt or pipe it on stdin:
+token with D1 Read and Account Analytics Read (the workload proposals and
+verify read query insights), plus D1 Edit to apply. The account id and token
+default to wrangler's CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN;
+without the token in env, paste it at the prompt or pipe it on stdin:
 
   nlq attach --database-id <uuid> --account-id <id>
 
