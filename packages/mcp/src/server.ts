@@ -217,7 +217,7 @@ export function createServer(opts: ServerOptions): McpServer {
   registerTool(
     "nlqdb_connect_database",
     {
-      title: "Connect an existing database so the agent can query it in English",
+      title: "Attach an existing database to nlqdb's DBA",
       description:
         "Connect (attach) an existing Postgres, ClickHouse or Cloudflare D1 database: on Postgres and D1 nlqdb's DBA starts watching it, and Postgres / ClickHouse can be queried in natural language with nlqdb_query — no migration, no schema upload. Pass the engine and a connection URL, or for a D1 its account_id, database_id and an API token; the credential is stored sealed server-side and never echoed back. Returns the new dbId, a preview of the discovered schema and, on Postgres and D1, the DBA's first proposals to apply or reject.",
       inputSchema: connectDatabaseInputShape,
