@@ -2,7 +2,8 @@
 // coding agent attaches a Postgres with one tool call, lists the proposals,
 // and applies or rejects each — over the real MCP protocol and the real
 // `@nlqdb/sdk` client, against a recorded fixture of the API's responses
-// (the same shapes as the CLI's `TestAttachDoorWalk`). No network, no LLM.
+// (the same shapes as the CLI's `TestAttachDoorWalk` / `TestAttachD1DoorWalk`;
+// D1 DDL as `createD1IndexProposal` writes it). No network, no LLM.
 // The fixture keeps the API's key boundary: only an `sk_live_` key attaches
 // (`SK-APIKEYS-015`); an `sk_mcp_` key decides, named in `decided_by`.
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -13,10 +14,29 @@ import { describe, expect, it } from "vitest";
 import { createServer } from "../src/index.ts";
 
 const TABLES = ["posts", "comments", "likes", "follows", "sessions"];
-const ddl = (t: string) =>
-  `CREATE INDEX CONCURRENTLY nlqdb_${t}_user_id_idx ON public.${t} (user_id)`;
+type Engine = "postgres" | "d1";
+const ddl = (t: string, engine: Engine = "postgres") =>
+  engine === "d1"
+    ? `CREATE INDEX IF NOT EXISTS "nlqdb_${t}_user_id_idx" ON "${t}" (\`user_id\`)`
+    : `CREATE INDEX CONCURRENTLY nlqdb_${t}_user_id_idx ON public.${t} (user_id)`;
+const inverse = (t: string, engine: Engine) =>
+  engine === "d1"
+    ? `DROP INDEX IF EXISTS "nlqdb_${t}_user_id_idx"`
+    : `DROP INDEX CONCURRENTLY public.nlqdb_${t}_user_id_idx`;
+// Verify's verdict per engine: a D1 keeps no percentile, so mean time and rows read per run.
+const keep = (engine: Engine) =>
+  engine === "d1"
+    ? {
+        verdict: "keep",
+        query: "SELECT * FROM posts WHERE user_id = ?",
+        beforeMeanMs: 1.2,
+        afterMeanMs: 0.1,
+        beforeRowsRead: 4999,
+        afterRowsRead: 1,
+      }
+    : { verdict: "keep", fingerprint: "f", beforeP95Ms: 2, afterP95Ms: 0.1 };
 
-function fakeApi() {
+function fakeApi(engine: Engine = "postgres") {
   const status = new Map<number, string>();
   const decidedBy = new Map<number, string>();
   const requests: { method: string; path: string; body: string }[] = [];
@@ -26,8 +46,12 @@ function fakeApi() {
       headers: { "content-type": "application/json" },
     });
   const fail = (
-    code: "proposal_not_found" | "proposal_decided" | "connect_requires_account",
-    params?: { status: string },
+    code:
+      | "proposal_not_found"
+      | "proposal_decided"
+      | "connect_requires_account"
+      | "invalid_request",
+    params?: { status: string } | { message: string },
   ) => {
     const { httpStatus, recoverability: _r, ...wire } = renderError(code, params ?? {});
     return json({ error: wire }, httpStatus);
@@ -41,19 +65,28 @@ function fakeApi() {
     const key = new Headers(init?.headers).get("authorization")?.replace(/^Bearer /, "") ?? "";
     const kind = key.startsWith("sk_live_") ? "sk_live" : "sk_mcp";
 
-    if (method === "POST" && url.pathname === "/v1/db/connect") {
+    // `/v1/attach` is the `/v1/db/connect` alias the SDK's `attach()` calls.
+    if (method === "POST" && (url.pathname === "/v1/db/connect" || url.pathname === "/v1/attach")) {
       if (kind !== "sk_live") return fail("connect_requires_account");
+      const req = JSON.parse(body || "{}");
+      if ((req.engine ?? "postgres") !== engine)
+        return fail("invalid_request", { message: "wrong engine" });
+      if (engine === "d1" && !(req.account_id && req.database_id && req.token)) {
+        return fail("invalid_request", {
+          message: "account_id, database_id and token are required for a D1.",
+        });
+      }
       const proposals = TABLES.map((t, i) => {
         status.set(i + 1, "proposed");
         return {
           id: i + 1,
           kind: "create_index",
           tier: 0,
-          schema: "public",
+          schema: engine === "d1" ? "main" : "public",
           table: t,
           columns: ["user_id"],
-          ddl: ddl(t),
-          inverse: `DROP INDEX CONCURRENTLY public.nlqdb_${t}_user_id_idx`,
+          ddl: ddl(t, engine),
+          inverse: inverse(t, engine),
           reason: "foreign key without an index",
           evidence: { rowEstimate: 1000, tableBytes: 8192 },
         };
@@ -62,7 +95,7 @@ function fakeApi() {
         {
           dbId: "db_attach_1",
           name: "app",
-          engine: "postgres",
+          engine,
           schemaPreview: "posts(id, user_id)",
           pkLive: "pk_live_must_not_leak",
           proposals,
@@ -77,13 +110,11 @@ function fakeApi() {
         status: status.get(i + 1),
         kind: "create_index",
         table: TABLES[i],
-        ddl: ddl(TABLES[i] as string),
-        inverse: "DROP INDEX CONCURRENTLY x",
+        ddl: ddl(TABLES[i] as string, engine),
+        inverse: inverse(TABLES[i] as string, engine),
         reason: "foreign key without an index",
         createdAt: 1,
-        ...(status.get(i + 1) === "applied"
-          ? { verification: { verdict: "keep", fingerprint: "f", beforeP95Ms: 2, afterP95Ms: 0.1 } }
-          : {}),
+        ...(status.get(i + 1) === "applied" ? { verification: keep(engine) } : {}),
       }));
       // A committed hosted-path row sits in the same ledger; it is not a proposal.
       changes.push({ ...changes[0], id: 99, origin: "ask", status: "applied" } as never);
@@ -223,6 +254,60 @@ describe("the MCP door to the DBA (GLOBAL-043 items 5–6)", () => {
       const unknown = await call("nlqdb_apply_proposal", { id: 42 });
       expect(unknown.isError).toBe(true);
       expect(unknown.text).toContain("nlqdb_list_proposals");
+    } finally {
+      await teardown();
+    }
+  });
+  it("attaches a D1 with its token, account and database ids — every D1 proposal decided from MCP", async () => {
+    const api = fakeApi("d1");
+    const { call, teardown } = await connect(api, "sk_live_owner");
+    try {
+      const token = "cf_token_s3cret";
+      const ids = { account_id: "acc_1", database_id: "6f1c0d1e-d1d1-4d1d-8d1d-000000000001" };
+      // A missing credential is the API's one-sentence refusal, naming the fields.
+      const missing = await call("nlqdb_connect_database", { engine: "d1", ...ids });
+      expect(missing.isError).toBe(true);
+      expect(missing.text).toContain("account_id, database_id and token");
+
+      const attached = await call("nlqdb_connect_database", { engine: "d1", ...ids, token });
+      expect(attached.isError, attached.text).toBeFalsy();
+      const first = attached.structuredContent as {
+        dbId: string;
+        engine: string;
+        proposals: { id: number; ddl: string }[];
+      };
+      expect(first.engine).toBe("d1");
+      expect(first.proposals.map((p) => p.id)).toEqual([1, 2, 3, 4, 5]);
+      expect(first.proposals[0]?.ddl).toMatch(/^CREATE INDEX IF NOT EXISTS "nlqdb_posts/);
+      // The token rides the body of `/v1/attach` once, as the API names it, and never comes back.
+      const sent = api.requests.at(-1);
+      expect(sent?.path).toBe("/v1/attach");
+      expect(JSON.parse(sent?.body ?? "{}")).toEqual({ engine: "d1", ...ids, token });
+      expect(attached.text).not.toContain(token);
+      expect(attached.text).not.toContain("pk_live_must_not_leak");
+
+      for (const p of first.proposals) {
+        const res =
+          p.id <= 3
+            ? await call("nlqdb_apply_proposal", { id: p.id })
+            : await call("nlqdb_reject_proposal", { id: p.id, reason: "write-heavy table" });
+        expect(res.isError, res.text).toBeFalsy();
+      }
+      const decided = [...api.status.values()].filter((s) => s !== "proposed").length;
+      // biome-ignore lint/suspicious/noConsole: the door's reading belongs in the CI log
+      console.log(`D1 proposals decided from MCP: ${decided}/5`);
+      expect(decided).toBe(5);
+
+      const listed = await call("nlqdb_list_proposals", { db: first.dbId });
+      const rows = (
+        listed.structuredContent as {
+          proposals: { id: number; status: string; verification?: Record<string, unknown> }[];
+        }
+      ).proposals;
+      expect(rows.find((r) => r.id === 1)).toMatchObject({
+        status: "applied",
+        verification: { verdict: "keep", beforeRowsRead: 4999, afterRowsRead: 1 },
+      });
     } finally {
       await teardown();
     }

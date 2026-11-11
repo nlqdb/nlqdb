@@ -235,13 +235,33 @@ export type InsertOutput = z.infer<z.ZodObject<typeof insertOutputShape>>;
 
 export const connectDatabaseInputShape = {
   engine: z
-    .enum(["clickhouse", "postgres"])
-    .describe("Which engine the existing database runs — 'clickhouse' or 'postgres'."),
+    .enum(["clickhouse", "postgres", "d1"])
+    .describe(
+      "Which engine the existing database runs — 'postgres', 'clickhouse' or 'd1' (a Cloudflare D1).",
+    ),
   connection_url: z
     .string()
     .min(1)
+    .optional()
     .describe(
-      "The full connection URL for the database, including credentials (e.g. postgres://user:pass@host:5432/db or https://host:8443?user=…). Stored sealed server-side and never echoed back.",
+      "Postgres / ClickHouse: the full connection URL, including credentials (e.g. postgres://user:pass@host:5432/db or https://host:8443?user=…). Stored sealed server-side and never echoed back.",
+    ),
+  account_id: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("D1: the Cloudflare account id that owns the database."),
+  database_id: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("D1: the database's id (`wrangler d1 list` prints it)."),
+  token: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "D1: a Cloudflare API token on that account with D1 Read and Account Analytics Read (the workload proposals and verify read query insights), plus D1 Edit to apply. Stored sealed server-side and never echoed back.",
     ),
   name: z
     .string()
@@ -256,19 +276,21 @@ export type ConnectDatabaseInput = z.infer<z.ZodObject<typeof connectDatabaseInp
 export const connectDatabaseOutputShape = {
   dbId: z.string().describe("Id of the newly connected database; pass it as `db` to nlqdb_query."),
   name: z.string().describe("Resolved display name for the connection."),
-  engine: z.enum(["clickhouse", "postgres"]).describe("The engine that was connected."),
+  engine: z.enum(["clickhouse", "postgres", "d1"]).describe("The engine that was connected."),
   schemaPreview: z
     .string()
     .describe("A preview of the discovered schema (tables/columns) the agent can now query."),
   credential: z
     .literal("stored_sealed")
-    .describe("The connection URL was stored sealed server-side; it is never returned."),
+    .describe(
+      "The connection URL or D1 token was stored sealed server-side; it is never returned.",
+    ),
   // GLOBAL-043 item 6(d): the attach is the agent's door to the DBA — the
   // first proposals come back on the same call.
   proposals: z
     .array(z.custom<Proposal>())
     .describe(
-      "Postgres: the DBA's first proposals (an index with the statement that undoes it, and why), each with an `id` to pass to nlqdb_apply_proposal or nlqdb_reject_proposal. Empty when the schema needs nothing yet; later ones follow a day of traffic — see nlqdb_list_proposals.",
+      "Postgres and D1: the DBA's first proposals (an index with the statement that undoes it, and why), each with an `id` to pass to nlqdb_apply_proposal or nlqdb_reject_proposal. Empty when the schema needs nothing yet; later ones follow from the database's traffic — see nlqdb_list_proposals.",
     ),
 };
 
@@ -801,23 +823,34 @@ export async function handleConnectDatabase(
   try {
     const opts: { signal?: AbortSignal } = {};
     if (ctx.signal) opts.signal = ctx.signal;
-    // The SDK transmits `connectionUrl` only in the JSON body and never
-    // echoes it into a thrown error (`SK-DBCONN-001`).
-    const res = await client.databases.connect(
-      {
-        engine: input.engine,
-        connectionUrl: input.connection_url,
-        ...(input.name !== undefined ? { name: input.name } : {}),
-      },
-      opts,
-    );
+    // The SDK sends `connectionUrl` / `token` only in the JSON body and never
+    // echoes either into a thrown error (`SK-DBCONN-001`). Missing credentials
+    // go through as "": the API is the one validator, and its
+    // `invalid_request` names the missing fields.
+    const name = input.name !== undefined ? { name: input.name } : {};
+    const res =
+      input.engine === "d1"
+        ? await client.attach(
+            {
+              engine: "d1",
+              accountId: input.account_id ?? "",
+              databaseId: input.database_id ?? "",
+              token: input.token ?? "",
+              ...name,
+            },
+            opts,
+          )
+        : await client.databases.connect(
+            { engine: input.engine, connectionUrl: input.connection_url ?? "", ...name },
+            opts,
+          );
     // SECURITY — return only non-secret fields; the connection URL and the
     // freshly-minted pkLive are dropped so neither re-enters the transcript.
     return {
       ok: {
         dbId: res.dbId,
         name: res.name,
-        engine: res.engine === "clickhouse" ? "clickhouse" : "postgres",
+        engine: res.engine === "clickhouse" || res.engine === "d1" ? res.engine : "postgres",
         schemaPreview: res.schemaPreview,
         credential: "stored_sealed",
         proposals: res.proposals ?? [],

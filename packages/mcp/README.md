@@ -63,8 +63,8 @@ appended by hand. All four host artifacts:
 | `nlqdb_insert` | Insert JSON rows exactly as sent; an unseen table or field is created; `key` upserts. No model call. |
 | `nlqdb_list_databases` | List your databases. |
 | `nlqdb_describe` | Describe a database's schema. |
-| `nlqdb_connect_database` | Attach your own Postgres or ClickHouse; on Postgres, returns the DBA's first proposals. |
-| `nlqdb_list_proposals` | List the DBA's proposals on an attached Postgres, with verify's p95 before/after on decided ones. |
+| `nlqdb_connect_database` | Attach your own Postgres, ClickHouse or Cloudflare D1 (`account_id`, `database_id`, API `token`); on Postgres and D1, returns the DBA's first proposals. |
+| `nlqdb_list_proposals` | List the DBA's proposals on an attached Postgres or D1, with verify's before/after on decided ones (D1: mean time and rows read). |
 | `nlqdb_apply_proposal` | Apply one (an index with its undo statement); a regression is reverted automatically. |
 | `nlqdb_reject_proposal` | Decline one, with a reason the DBA learns from. |
 
