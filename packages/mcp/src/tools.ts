@@ -271,15 +271,17 @@ export const connectDatabaseInputShape = {
 
 export type ConnectDatabaseInput = z.infer<z.ZodObject<typeof connectDatabaseInputShape>>;
 
-// SECURITY — the result deliberately omits `connection_url` / pkLive so the
+// SECURITY — the result deliberately omits `connection_url` / `token` / pkLive so the
 // secret a host just passed in is never reflected back into the transcript.
 export const connectDatabaseOutputShape = {
-  dbId: z.string().describe("Id of the newly connected database; pass it as `db` to nlqdb_query."),
+  dbId: z
+    .string()
+    .describe(
+      "Id of the newly connected database; pass it as `db` to nlqdb_list_proposals, and on Postgres / ClickHouse to nlqdb_query (a D1 is DBA-only).",
+    ),
   name: z.string().describe("Resolved display name for the connection."),
   engine: z.enum(["clickhouse", "postgres", "d1"]).describe("The engine that was connected."),
-  schemaPreview: z
-    .string()
-    .describe("A preview of the discovered schema (tables/columns) the agent can now query."),
+  schemaPreview: z.string().describe("A preview of the discovered schema (tables/columns)."),
   credential: z
     .literal("stored_sealed")
     .describe(
