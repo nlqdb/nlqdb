@@ -22,11 +22,15 @@ func fakeDBA(t *testing.T, engine string) (*httptest.Server, map[int64]string, *
 	status := map[int64]string{}
 	var bodies []string
 	tables := []string{"posts", "comments", "likes", "follows", "sessions"}
+	schema, inverse := "public", "DROP INDEX CONCURRENTLY x"
 	ddl := func(i int) string {
 		if engine == "d1" {
-			return fmt.Sprintf(`CREATE INDEX IF NOT EXISTS "nlqdb_%s_user_id_idx" ON "%s" ("user_id")`, tables[i], tables[i])
+			return fmt.Sprintf("CREATE INDEX IF NOT EXISTS \"nlqdb_%s_user_id_idx\" ON \"%s\" (`user_id`)", tables[i], tables[i])
 		}
 		return fmt.Sprintf("CREATE INDEX CONCURRENTLY nlqdb_%s_user_id_idx ON public.%s (user_id)", tables[i], tables[i])
+	}
+	if engine == "d1" {
+		schema, inverse = "main", `DROP INDEX IF EXISTS "x"`
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
@@ -40,9 +44,9 @@ func fakeDBA(t *testing.T, engine string) (*httptest.Server, map[int64]string, *
 				id := int64(i + 1)
 				status[id] = "proposed"
 				ps = append(ps, map[string]any{
-					"id": id, "kind": "create_index", "tier": 0, "schema": "public",
+					"id": id, "kind": "create_index", "tier": 0, "schema": schema,
 					"table": tables[i], "columns": []string{"user_id"}, "ddl": ddl(i),
-					"inverse": "DROP INDEX CONCURRENTLY x", "reason": "foreign key without an index",
+					"inverse": inverse, "reason": "foreign key without an index",
 					"evidence": map[string]any{"rowEstimate": 1000, "tableBytes": 8192},
 				})
 			}
@@ -57,7 +61,7 @@ func fakeDBA(t *testing.T, engine string) (*httptest.Server, map[int64]string, *
 				id := int64(i + 1)
 				row := map[string]any{
 					"id": id, "origin": "attach", "status": status[id], "kind": "create_index",
-					"table": tables[i], "ddl": ddl(i), "inverse": "DROP INDEX CONCURRENTLY x",
+					"table": tables[i], "ddl": ddl(i), "inverse": inverse,
 					"reason": "foreign key without an index", "createdAt": 1,
 				}
 				if status[id] == "applied" {
