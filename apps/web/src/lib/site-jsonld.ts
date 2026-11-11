@@ -16,6 +16,17 @@
 /** Site-relative fragment for the canonical Organization node's `@id`. */
 export const ORGANIZATION_ID_FRAGMENT = "#organization";
 
+/**
+ * Other pages that describe the brand. `nlq` (the CLI's name) is an
+ * `alternateName` because it is the brand query with the most impressions in GSC.
+ */
+export const BRAND_SAME_AS = [
+  "https://github.com/nlqdb",
+  "https://github.com/nlqdb/nlqdb",
+  "https://www.npmjs.com/package/@nlqdb/sdk",
+  "https://docs.nlqdb.com/",
+];
+
 /** The founder's canonical personal site — linked as `founder` so crawlers tie the person entity to the brand. */
 export const FOUNDER_URL = "https://omer.hochly.com/";
 
@@ -25,9 +36,10 @@ export function organizationJsonLd(site: URL) {
     "@type": "Organization",
     "@id": new URL(ORGANIZATION_ID_FRAGMENT, site).toString(),
     name: "nlqdb",
+    alternateName: "nlq",
     url: site.toString(),
     logo: new URL("/og-default.png", site).toString(),
-    sameAs: ["https://github.com/nlqdb/nlqdb"],
+    sameAs: BRAND_SAME_AS,
     founder: { "@type": "Person", name: "Omer Hochman", url: FOUNDER_URL },
   };
 }

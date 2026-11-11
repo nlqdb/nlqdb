@@ -5,7 +5,7 @@ import { organizationJsonLd, webSiteJsonLd } from "./site-jsonld.ts";
 const site = new URL("https://nlqdb.com");
 
 describe("organizationJsonLd", () => {
-  test("emits a schema.org Organization with a stable @id, logo, and GitHub sameAs", () => {
+  test("emits a schema.org Organization with a stable @id, logo, alternateName, and every brand sameAs", () => {
     const ld = organizationJsonLd(site);
     expect(ld["@context"]).toBe("https://schema.org");
     expect(ld["@type"]).toBe("Organization");
@@ -13,7 +13,13 @@ describe("organizationJsonLd", () => {
     expect(ld.name).toBe("nlqdb");
     expect(ld.url).toBe("https://nlqdb.com/");
     expect(ld.logo).toBe("https://nlqdb.com/og-default.png");
-    expect(ld.sameAs).toEqual(["https://github.com/nlqdb/nlqdb"]);
+    expect(ld.alternateName).toBe("nlq");
+    expect(ld.sameAs).toEqual([
+      "https://github.com/nlqdb",
+      "https://github.com/nlqdb/nlqdb",
+      "https://www.npmjs.com/package/@nlqdb/sdk",
+      "https://docs.nlqdb.com/",
+    ]);
     expect(ld.founder).toEqual({
       "@type": "Person",
       name: "Omer Hochman",
