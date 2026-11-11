@@ -274,18 +274,28 @@ func TestDecideRejectsNonNumericID(t *testing.T) {
 	}
 }
 
-// A healthy DB gets no invented proposal: attach says it is watching.
+// A healthy DB gets no invented proposal: attach says it is watching, and when
+// the next proposals can land.
 func TestAttachNothingToImprove(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("NLQDB_API_KEY", "sk_live_test")
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(map[string]any{"dbId": "db_ok", "engine": "postgres", "proposals": []any{}})
-	}))
-	t.Cleanup(srv.Close)
-	out, e, err := nlq(t, srv.URL, "postgres://u:p@h/db\n", "attach")
-	if err != nil || !strings.Contains(out, "Nothing worth changing yet") || strings.Contains(out, "nlq ask") {
-		t.Fatalf("err=%v stdout=%q stderr=%q", err, out, e)
+	t.Setenv("CLOUDFLARE_API_TOKEN", "")
+	for _, c := range []struct {
+		engine, stdin, when string
+		args                []string
+	}{
+		{"postgres", "postgres://u:p@h/db\n", "follow a day of traffic", []string{"attach"}},
+		{"d1", "tok\n", "follow within the hour", []string{"attach", "--database-id", "d", "--account-id", "a"}},
+	} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(map[string]any{"dbId": "db_ok", "engine": c.engine, "proposals": []any{}})
+		}))
+		out, e, err := nlq(t, srv.URL, c.stdin, c.args...)
+		srv.Close()
+		if err != nil || !strings.Contains(out, "Nothing worth changing yet") || !strings.Contains(out, c.when) || strings.Contains(out, "nlq ask") {
+			t.Errorf("%s: err=%v stdout=%q stderr=%q", c.engine, err, out, e)
+		}
 	}
 }
 

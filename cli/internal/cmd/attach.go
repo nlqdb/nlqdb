@@ -90,7 +90,7 @@ func attachRequest(cmd *cobra.Command, args []string, databaseID, accountID stri
 		if len(args) == 1 {
 			given = args[0]
 		}
-		connURL, err := readConnectionURL(cmd, given)
+		connURL, err := readSecret(cmd, given, "connection URL")
 		if err != nil {
 			return api.ConnectRequest{}, err
 		}

@@ -114,7 +114,7 @@ never written to config.toml or state.json.`,
 				printErr(cmd, "--engine must be clickhouse or postgres.")
 				return errors.New("invalid engine")
 			}
-			connURL, err := readConnectionURL(cmd, url)
+			connURL, err := readSecret(cmd, url, "connection URL")
 			if err != nil {
 				return err
 			}
@@ -154,15 +154,9 @@ never written to config.toml or state.json.`,
 	return cmd
 }
 
-// readConnectionURL resolves the URL credential: --url wins; else stdin
-// (piped is read verbatim, an interactive TTY prompts without echo). Mirrors
-// readByollmKey — keeping the secret off argv is the secure default, since
-// process lists and shell history both expose positional args and flags.
-func readConnectionURL(cmd *cobra.Command, flagURL string) (string, error) {
-	return readSecret(cmd, flagURL, "connection URL")
-}
-
-// readSecret resolves one credential: the given value wins; else stdin.
+// readSecret resolves one credential: the given value wins; else stdin (piped
+// is read verbatim, an interactive TTY prompts without echo), since process
+// lists and shell history both expose args and flags.
 func readSecret(cmd *cobra.Command, given, what string) (string, error) {
 	if given != "" {
 		return given, nil
@@ -205,7 +199,12 @@ func writeConnect(cmd *cobra.Command, g *globalFlags, resp *api.ConnectResponse)
 	case len(resp.Proposals) > 0:
 	case resp.Engine == "postgres" || resp.Engine == "d1":
 		// END_GOAL "Nothing to improve": never an invented proposal, keep watching.
-		fmt.Fprintln(out, "Nothing worth changing yet — watching. Workload proposals follow a day of traffic: `nlq proposals`.")
+		// A D1's first observe reads the day Cloudflare already kept, so it lands within the hour.
+		when := "a day of traffic"
+		if resp.Engine == "d1" {
+			when = "within the hour"
+		}
+		fmt.Fprintf(out, "Nothing worth changing yet — watching. Workload proposals follow %s: `nlq proposals`.\n", when)
 		return nil
 	default:
 		fmt.Fprintf(out, "Next: nlq ask --db %s \"<question>\"\n", resp.DBID)
