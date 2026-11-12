@@ -73,7 +73,7 @@ above is open and unblocked. Goal by 2027-05-07: **1,000 Google clicks /
 impressions / position re-read ≥ 14 d later (`bun scripts/gsc-pull.ts`,
 `bun scripts/ahrefs-dr.ts`).
 
-- [ ] Brand: `nlqdb.com/` ranks top 3 for `nlqdb` / `nlq` (pos 72 today) — `Organization` + `WebSite` JSON-LD with `sameAs` (GitHub, npm, docs), brand in `/` and docs titles
+- [ ] Brand: from 2026-11-25, re-read `nlq` / `nlqdb` positions (`nlq` pos 72.9 before run 287 shipped `sameAs` 1 → 4 + `alternateName` `nlq`; titles already carry the brand) — top 3 deletes the box, else the next brand input
 - [ ] Submit `docs.nlqdb.com/sitemap-index.xml` in GSC (only `nlqdb.com/sitemap.xml` is submitted) — via the API if the service account can, else a `blocked-by-human.md` click
 - [ ] Page-1, 0-click pages (pos 6–10): answer-first lede + `FAQPage`/`HowTo` JSON-LD on the top 10 by impressions — number: their CTR
 - [ ] Attach-first `/solve` pages for DBA searches (`postgres find missing indexes`, `postgres slow query which index`, `reduce D1 rows read`) — each walks the real attach loop, KPI B numbers on the page
