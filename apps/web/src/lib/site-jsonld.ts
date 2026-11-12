@@ -16,11 +16,8 @@
 /** Site-relative fragment for the canonical Organization node's `@id`. */
 export const ORGANIZATION_ID_FRAGMENT = "#organization";
 
-/**
- * Other pages that describe the brand. `nlq` (the CLI's name) is an
- * `alternateName` because it is the brand query with the most impressions in GSC.
- */
-export const BRAND_SAME_AS = [
+/** Other pages that describe the brand (Google: `sameAs` on the home-page `Organization`). */
+const BRAND_SAME_AS = [
   "https://github.com/nlqdb",
   "https://github.com/nlqdb/nlqdb",
   "https://www.npmjs.com/package/@nlqdb/sdk",
@@ -36,6 +33,7 @@ export function organizationJsonLd(site: URL) {
     "@type": "Organization",
     "@id": new URL(ORGANIZATION_ID_FRAGMENT, site).toString(),
     name: "nlqdb",
+    // The CLI's name — the brand query with the most GSC impressions.
     alternateName: "nlq",
     url: site.toString(),
     logo: new URL("/og-default.png", site).toString(),
