@@ -43,7 +43,16 @@ const GOOD: Handshake = {
     {
       name: "nlqdb_connect_database",
       annotations: { destructiveHint: false },
-      inputSchema: { properties: { engine: {}, connection_url: {}, name: {} } },
+      inputSchema: {
+        properties: {
+          engine: {},
+          connection_url: {},
+          account_id: {},
+          database_id: {},
+          token: {},
+          name: {},
+        },
+      },
     },
     {
       name: "nlqdb_list_proposals",

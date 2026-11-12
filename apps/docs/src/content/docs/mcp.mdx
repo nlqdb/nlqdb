@@ -13,9 +13,10 @@ Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, Cline — can call
 allow"), `nlqdb_list_databases`, `nlqdb_describe`, `nlqdb_remember`
 (write a typed memory row your agent can later query), `nlqdb_insert`
 (insert JSON rows exactly as sent; an unseen table or field is created),
-`nlqdb_connect_database` (attach an existing ClickHouse/Postgres), and the
+`nlqdb_connect_database` (attach an existing ClickHouse/Postgres, or a
+Cloudflare D1 with its `account_id`, `database_id` and API `token`), and the
 DBA's `nlqdb_list_proposals`, `nlqdb_apply_proposal` and
-`nlqdb_reject_proposal` (index proposals on an attached Postgres) directly.
+`nlqdb_reject_proposal` (index proposals on an attached Postgres or D1) directly.
 
 ## Install paths
 

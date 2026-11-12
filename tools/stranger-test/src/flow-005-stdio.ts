@@ -55,7 +55,7 @@ const EXPECTED_TOOLS: Record<string, ToolSpec> = {
   nlqdb_connect_database: {
     readOnly: false,
     destructive: false,
-    inputKeys: ["engine", "connection_url", "name"],
+    inputKeys: ["engine", "connection_url", "account_id", "database_id", "token", "name"],
   },
   // GLOBAL-043 item 5 — the DBA's list and two verbs.
   nlqdb_list_proposals: { readOnly: true, destructive: false, inputKeys: ["db"] },

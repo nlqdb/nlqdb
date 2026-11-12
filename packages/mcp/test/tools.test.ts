@@ -1454,6 +1454,11 @@ describe("tool descriptions carry the contract (WS04-T1)", () => {
     expect(connectDatabaseInputShape.engine.description).toMatch(/clickhouse/i);
     expect(connectDatabaseInputShape.engine.description).toMatch(/postgres/i);
     expect(connectDatabaseInputShape.connection_url.description).toMatch(/sealed|never echoed/i);
+    // A D1 attaches with its ids and an API token, sealed like a connection URL.
+    expect(connectDatabaseInputShape.engine.description).toMatch(/d1/i);
+    expect(connectDatabaseInputShape.token.description).toMatch(/sealed|never echoed/i);
+    expect(connectDatabaseInputShape.account_id.description).toMatch(/D1/);
+    expect(connectDatabaseInputShape.database_id.description).toMatch(/D1/);
   });
 });
 
