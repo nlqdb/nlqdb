@@ -18,14 +18,14 @@
     "@nlqdb/elements": "workspace:*",
     "@nlqdb/sdk": "workspace:*",
     "@nlqdb/svelte": "workspace:*",
-    "@sveltejs/kit": "^3.1.1",
+    "@sveltejs/kit": "^3.2.0",
     "svelte": "^5.57.3"
   },
   "devDependencies": {
     "@nlqdb/elements": "workspace:*",
     "@nlqdb/sdk": "workspace:*",
     "@nlqdb/svelte": "workspace:*",
-    "@sveltejs/kit": "^3.1.1",
+    "@sveltejs/kit": "^3.2.0",
     "svelte": "^5.57.3",
     "typescript": "^6.0.3"
   }

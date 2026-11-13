@@ -15,11 +15,11 @@
     "deploy": "astro build && wrangler deploy"
   },
   "dependencies": {
-    "@astrojs/react": "^7.1.2",
+    "@astrojs/react": "^7.1.7",
     "@nlqdb/elements": "workspace:*",
     "@nlqdb/sdk": "workspace:*",
-    "astro": "^7.4.5",
-    "posthog-js": "^1.445.1",
+    "astro": "^7.4.10",
+    "posthog-js": "^1.447.9",
     "react": "^19",
     "react-dom": "^19",
     "three": "^0.187.0"
@@ -32,6 +32,6 @@
     "@types/three": "^0.187.0",
     "@types/react-dom": "^19",
     "typescript": "^6.0.3",
-    "wrangler": "^4.157.0"
+    "wrangler": "^4.160.0"
   }
 }
