@@ -118,7 +118,9 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
   const placeholder =
     engine === "clickhouse"
       ? "https://user:pass@host:8443/?database=analytics"
-      : "postgresql://user:pass@host:5432/analytics";
+      : engine === "postgres"
+        ? "postgresql://user:pass@host:5432/analytics"
+        : undefined;
 
   const d1 = { accountId: accountId.trim(), databaseId: databaseId.trim(), token: token.trim() };
   const ready =
@@ -273,7 +275,7 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
           </>
         ) : (
           <>
-            {engine === "d1" ? (
+            {engine === "d1" && (
               <>
                 <div className="connect__field">
                   <label className="connect__label" htmlFor={accountIdId}>
@@ -285,6 +287,7 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
                     type="text"
                     value={accountId}
                     onChange={(e) => setAccountId(e.target.value)}
+                    placeholder="from wrangler whoami"
                     autoComplete="off"
                     spellCheck={false}
                     disabled={loading}
@@ -308,80 +311,55 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
                     className="connect__input"
                   />
                 </div>
-                <div className="connect__field">
-                  <label className="connect__label" htmlFor={urlId}>
-                    API token
-                  </label>
-                  <div className="connect__url-row">
-                    <input
-                      id={urlId}
-                      name="token"
-                      // Secret field — masked by default, never autosaved.
-                      type={showUrl ? "text" : "password"}
-                      value={token}
-                      onChange={(e) => setToken(e.target.value)}
-                      autoComplete="off"
-                      spellCheck={false}
-                      disabled={loading}
-                      className="connect__input"
-                      aria-invalid={error ? true : undefined}
-                      aria-describedby={error ? errorId : undefined}
-                    />
-                    <button
-                      type="button"
-                      className="cta cta--ghost connect__toggle"
-                      onClick={() => setShowUrl((v) => !v)}
-                      aria-pressed={showUrl}
-                      disabled={loading}
-                    >
-                      {showUrl ? "Hide" : "Show"}
-                    </button>
-                  </div>
-                  <p className="connect__hint">
-                    Give it D1 Read and Account Analytics Read (proposals and verify read your query
-                    insights), plus D1 Edit to apply.{" "}
-                    <a
-                      className="connect__hint-link"
-                      href="https://dash.cloudflare.com/profile/api-tokens"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Create a token
-                    </a>
-                  </p>
-                </div>
               </>
-            ) : (
-              <div className="connect__field">
-                <label className="connect__label" htmlFor={urlId}>
-                  Connection URL
-                </label>
-                <div className="connect__url-row">
-                  <input
-                    id={urlId}
-                    name="connection_url"
-                    // Secret field — masked by default, never autosaved.
-                    type={showUrl ? "text" : "password"}
-                    value={connectionUrl}
-                    onChange={(e) => setConnectionUrl(e.target.value)}
-                    placeholder={placeholder}
-                    autoComplete="off"
-                    spellCheck={false}
-                    disabled={loading}
-                    className="connect__input"
-                    aria-invalid={error ? true : undefined}
-                    aria-describedby={error ? errorId : undefined}
-                  />
-                  <button
-                    type="button"
-                    className="cta cta--ghost connect__toggle"
-                    onClick={() => setShowUrl((v) => !v)}
-                    aria-pressed={showUrl}
-                    disabled={loading}
+            )}
+
+            <div className="connect__field">
+              <label className="connect__label" htmlFor={urlId}>
+                {engine === "d1" ? "API token" : "Connection URL"}
+              </label>
+              <div className="connect__url-row">
+                <input
+                  id={urlId}
+                  name={engine === "d1" ? "token" : "connection_url"}
+                  // Secret field — masked by default, never autosaved.
+                  type={showUrl ? "text" : "password"}
+                  value={engine === "d1" ? token : connectionUrl}
+                  onChange={(e) =>
+                    engine === "d1" ? setToken(e.target.value) : setConnectionUrl(e.target.value)
+                  }
+                  placeholder={placeholder}
+                  autoComplete="off"
+                  spellCheck={false}
+                  disabled={loading}
+                  className="connect__input"
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? errorId : undefined}
+                />
+                <button
+                  type="button"
+                  className="cta cta--ghost connect__toggle"
+                  onClick={() => setShowUrl((v) => !v)}
+                  aria-pressed={showUrl}
+                  disabled={loading}
+                >
+                  {showUrl ? "Hide" : "Show"}
+                </button>
+              </div>
+              {engine === "d1" ? (
+                <p className="connect__hint">
+                  Give it D1 Read and Account Analytics Read (proposals and verify read your query
+                  insights), plus D1 Edit to apply.{" "}
+                  <a
+                    className="connect__hint-link"
+                    href="https://dash.cloudflare.com/profile/api-tokens"
+                    target="_blank"
+                    rel="noreferrer"
                   >
-                    {showUrl ? "Hide" : "Show"}
-                  </button>
-                </div>
+                    Create a token
+                  </a>
+                </p>
+              ) : (
                 <p className="connect__hint">
                   Sealed server-side and never written to your browser. Use a read-only credential.{" "}
                   <a
@@ -393,8 +371,8 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
                     Read more
                   </a>
                 </p>
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="connect__field">
               <label className="connect__label" htmlFor={nameId}>
