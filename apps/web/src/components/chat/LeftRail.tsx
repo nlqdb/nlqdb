@@ -139,7 +139,7 @@ export default function LeftRail({
       {/* SK-WEB-019 / GLOBAL-017 — route to the one BYO-connect page
           rather than build a second connect flow. Distinct from "+ New"
           (which mints a hosted DB): this connects an EXISTING Postgres /
-          ClickHouse. The engine chips deep-link `?engine=` so the page
+          ClickHouse / D1. The engine chips deep-link `?engine=` so the page
           preselects the right engine. */}
       <section className="left-rail__connect" aria-label="Connect an existing database">
         <p className="left-rail__connect-label">Have a database already?</p>
@@ -149,6 +149,9 @@ export default function LeftRail({
           </a>
           <a className="left-rail__connect-chip" href="/app/connect/?engine=clickhouse">
             Connect ClickHouse
+          </a>
+          <a className="left-rail__connect-chip" href="/app/connect/?engine=d1">
+            Connect D1
           </a>
         </div>
       </section>

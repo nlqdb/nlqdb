@@ -8,6 +8,9 @@
 // unlike CreateForm's draft autosave. There is no `useEffect` rehydrate and
 // no `onChange` persist here, on purpose.
 //
+// A D1 (`GLOBAL-043` web door) takes a Cloudflare API token + account id +
+// database id instead of a URL; the token gets the same discipline.
+//
 // States (GLOBAL-011 — honest, no spinner-lie): idle → submitting (the CTA
 // reads "Reading your schema…", which is exactly what the backend does:
 // validate → introspect → seal → register) → success (render the schema
@@ -44,12 +47,17 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
   const engineId = useId();
   const urlId = useId();
   const nameId = useId();
+  const accountIdId = useId();
+  const databaseIdId = useId();
   const errorId = useId();
 
   const [engine, setEngine] = useState<ConnectEngine>("clickhouse");
   const [connectionUrl, setConnectionUrl] = useState("");
   const [name, setName] = useState("");
   const [showUrl, setShowUrl] = useState(false);
+  const [accountId, setAccountId] = useState("");
+  const [databaseId, setDatabaseId] = useState("");
+  const [token, setToken] = useState("");
   // Postgres has a one-click Supabase OAuth path (SK-DBCONN-003); it's the
   // recommended default, so the checkbox is on when Postgres is picked. Checked
   // ⇒ the single "Connect Supabase" CTA and no paste fields; unchecked ⇒ the
@@ -94,7 +102,7 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
   }, [apiBase]);
 
   // SK-WEB-019 — honor a `?engine=` deep link (from the LeftRail connect
-  // chips) so Postgres / ClickHouse preselects; default ClickHouse (Door B).
+  // chips) so Postgres / ClickHouse / D1 preselects; default ClickHouse (Door B).
   // Applied in an effect rather than a lazy initializer because the island
   // renders SSR-side (no `window` → the initializer would compute the
   // default and hydration reuses it, ignoring the URL); the effect runs
@@ -106,20 +114,30 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
 
   // Copy tracks the selected engine (deep-link `?engine=` or manual switch)
   // so a Postgres visitor never reads "ClickHouse" in the title/CTA.
-  const engineLabel = engine === "postgres" ? "Postgres" : "ClickHouse";
+  const engineLabel = engine === "postgres" ? "Postgres" : engine === "d1" ? "D1" : "ClickHouse";
   const placeholder =
     engine === "clickhouse"
       ? "https://user:pass@host:8443/?database=analytics"
       : "postgresql://user:pass@host:5432/analytics";
 
+  const d1 = { accountId: accountId.trim(), databaseId: databaseId.trim(), token: token.trim() };
+  const ready =
+    engine === "d1"
+      ? d1.accountId !== "" && d1.databaseId !== "" && d1.token !== ""
+      : connectionUrl.trim() !== "";
+
   async function submit() {
-    const url = connectionUrl.trim();
-    if (!url || loading) return;
+    if (!ready || loading) return;
     setLoading(true);
     setError(null);
     // Keep the previous result visible on a re-submit until the new one
     // lands; clear it only on success below.
-    const outcome = await postConnect(apiBase, { engine, connectionUrl: url, name });
+    const outcome = await postConnect(
+      apiBase,
+      engine === "d1"
+        ? { engine, ...d1, name }
+        : { engine, connectionUrl: connectionUrl.trim(), name },
+    );
     if (outcome.ok) {
       setResult(outcome.result);
     } else {
@@ -188,11 +206,15 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
       )}
 
       <header className="connect__head">
-        <h1 className="connect__title">Question your {engineLabel}.</h1>
+        <h1 className="connect__title">
+          {engine === "d1" ? "Attach your D1." : `Question your ${engineLabel}.`}
+        </h1>
         <p className="connect__lede">
           {supabaseOauthActive
             ? "Connect your Supabase project in one click — you approve on Supabase, with no connection string to paste."
-            : "Paste a read connection string. nlqdb reads your schema, then you ask in English — the URL is sealed and never stored in your browser."}
+            : engine === "d1"
+              ? "Paste a Cloudflare API token and your D1's ids. nlqdb reads the catalog and proposes the indexes your queries need — nothing changes until you apply one, and the token is sealed, never stored in your browser."
+              : "Paste a read connection string. nlqdb reads your schema, then you ask in English — the URL is sealed and never stored in your browser."}
         </p>
       </header>
 
@@ -217,6 +239,7 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
           >
             <option value="clickhouse">ClickHouse</option>
             <option value="postgres">Postgres</option>
+            <option value="d1">Cloudflare D1</option>
           </select>
         </div>
 
@@ -250,48 +273,128 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
           </>
         ) : (
           <>
-            <div className="connect__field">
-              <label className="connect__label" htmlFor={urlId}>
-                Connection URL
-              </label>
-              <div className="connect__url-row">
-                <input
-                  id={urlId}
-                  name="connection_url"
-                  // Secret field — masked by default, never autosaved.
-                  type={showUrl ? "text" : "password"}
-                  value={connectionUrl}
-                  onChange={(e) => setConnectionUrl(e.target.value)}
-                  placeholder={placeholder}
-                  autoComplete="off"
-                  spellCheck={false}
-                  disabled={loading}
-                  className="connect__input"
-                  aria-invalid={error ? true : undefined}
-                  aria-describedby={error ? errorId : undefined}
-                />
-                <button
-                  type="button"
-                  className="cta cta--ghost connect__toggle"
-                  onClick={() => setShowUrl((v) => !v)}
-                  aria-pressed={showUrl}
-                  disabled={loading}
-                >
-                  {showUrl ? "Hide" : "Show"}
-                </button>
+            {engine === "d1" ? (
+              <>
+                <div className="connect__field">
+                  <label className="connect__label" htmlFor={accountIdId}>
+                    Account ID
+                  </label>
+                  <input
+                    id={accountIdId}
+                    name="account_id"
+                    type="text"
+                    value={accountId}
+                    onChange={(e) => setAccountId(e.target.value)}
+                    autoComplete="off"
+                    spellCheck={false}
+                    disabled={loading}
+                    className="connect__input"
+                  />
+                </div>
+                <div className="connect__field">
+                  <label className="connect__label" htmlFor={databaseIdId}>
+                    Database ID
+                  </label>
+                  <input
+                    id={databaseIdId}
+                    name="database_id"
+                    type="text"
+                    value={databaseId}
+                    onChange={(e) => setDatabaseId(e.target.value)}
+                    placeholder="from wrangler d1 list"
+                    autoComplete="off"
+                    spellCheck={false}
+                    disabled={loading}
+                    className="connect__input"
+                  />
+                </div>
+                <div className="connect__field">
+                  <label className="connect__label" htmlFor={urlId}>
+                    API token
+                  </label>
+                  <div className="connect__url-row">
+                    <input
+                      id={urlId}
+                      name="token"
+                      // Secret field — masked by default, never autosaved.
+                      type={showUrl ? "text" : "password"}
+                      value={token}
+                      onChange={(e) => setToken(e.target.value)}
+                      autoComplete="off"
+                      spellCheck={false}
+                      disabled={loading}
+                      className="connect__input"
+                      aria-invalid={error ? true : undefined}
+                      aria-describedby={error ? errorId : undefined}
+                    />
+                    <button
+                      type="button"
+                      className="cta cta--ghost connect__toggle"
+                      onClick={() => setShowUrl((v) => !v)}
+                      aria-pressed={showUrl}
+                      disabled={loading}
+                    >
+                      {showUrl ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                  <p className="connect__hint">
+                    Give it D1 Read and Account Analytics Read (proposals and verify read your query
+                    insights), plus D1 Edit to apply.{" "}
+                    <a
+                      className="connect__hint-link"
+                      href="https://dash.cloudflare.com/profile/api-tokens"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Create a token
+                    </a>
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="connect__field">
+                <label className="connect__label" htmlFor={urlId}>
+                  Connection URL
+                </label>
+                <div className="connect__url-row">
+                  <input
+                    id={urlId}
+                    name="connection_url"
+                    // Secret field — masked by default, never autosaved.
+                    type={showUrl ? "text" : "password"}
+                    value={connectionUrl}
+                    onChange={(e) => setConnectionUrl(e.target.value)}
+                    placeholder={placeholder}
+                    autoComplete="off"
+                    spellCheck={false}
+                    disabled={loading}
+                    className="connect__input"
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={error ? errorId : undefined}
+                  />
+                  <button
+                    type="button"
+                    className="cta cta--ghost connect__toggle"
+                    onClick={() => setShowUrl((v) => !v)}
+                    aria-pressed={showUrl}
+                    disabled={loading}
+                  >
+                    {showUrl ? "Hide" : "Show"}
+                  </button>
+                </div>
+                <p className="connect__hint">
+                  Sealed server-side and never written to your browser. Use a read-only credential.{" "}
+                  <a
+                    className="connect__hint-link"
+                    href="https://docs.nlqdb.com/security/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Read more
+                  </a>
+                </p>
               </div>
-              <p className="connect__hint">
-                Sealed server-side and never written to your browser. Use a read-only credential.{" "}
-                <a
-                  className="connect__hint-link"
-                  href="https://docs.nlqdb.com/security/"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Read more
-                </a>
-              </p>
-            </div>
+            )}
 
             <div className="connect__field">
               <label className="connect__label" htmlFor={nameId}>
@@ -311,11 +414,7 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
               />
             </div>
 
-            <button
-              type="submit"
-              className="cta connect__submit"
-              disabled={loading || connectionUrl.trim().length === 0}
-            >
+            <button type="submit" className="cta connect__submit" disabled={loading || !ready}>
               {loading ? "Reading your schema…" : `Connect your ${engineLabel} →`}
             </button>
           </>
@@ -331,12 +430,13 @@ function ConnectFormInner({ apiBase }: ConnectFormProps) {
   );
 }
 
-// A `?engine=postgres` / `?engine=clickhouse` deep link preselects the
-// engine; anything else falls back to the Door-B default (ClickHouse).
+// A `?engine=postgres` / `?engine=d1` / `?engine=clickhouse` deep link
+// preselects the engine; anything else falls back to the Door-B default
+// (ClickHouse).
 function readEngineFromUrl(): ConnectEngine {
   if (typeof window === "undefined") return "clickhouse";
   const value = new URLSearchParams(window.location.search).get("engine");
-  return value === "postgres" ? "postgres" : "clickhouse";
+  return value === "postgres" || value === "d1" ? value : "clickhouse";
 }
 
 // Single-project OAuth connect landed via the callback redirect (no schema
@@ -418,9 +518,11 @@ function ProjectPicker({
 }
 
 function ConnectResultView({ result }: { result: ConnectSuccess }) {
-  // Only the Postgres paste path observes on connect; the OAuth picker result
-  // carries no `proposals`, so it never claims "nothing worth changing".
-  const attached = result.engine === "postgres" && result.proposals !== undefined;
+  // The Postgres paste path and D1 observe on connect; the OAuth picker result
+  // carries no `proposals`, so it never claims "nothing worth changing". A D1
+  // is the DBA's only (no `/v1/ask`), so it gets no "Question it now".
+  const isD1 = result.engine === "d1";
+  const attached = (result.engine === "postgres" || isD1) && result.proposals !== undefined;
   return (
     <section className="connect-result" aria-label="Connected database">
       <p className="connect-result__id">
@@ -436,26 +538,40 @@ function ConnectResultView({ result }: { result: ConnectSuccess }) {
 
       {result.pkLive && <PkLiveRow pkLive={result.pkLive} />}
 
-      {attached && <FirstProposals dbId={result.dbId} proposals={result.proposals ?? []} />}
+      {attached && (
+        <FirstProposals dbId={result.dbId} proposals={result.proposals ?? []} d1={isD1} />
+      )}
 
-      <a
-        className={`cta connect-result__cta${attached ? " cta--ghost" : ""}`}
-        href={appHref(`/app/?db=${encodeURIComponent(result.dbId)}`)}
-      >
-        Question it now →
-      </a>
+      {!isD1 && (
+        <a
+          className={`cta connect-result__cta${attached ? " cta--ghost" : ""}`}
+          href={appHref(`/app/?db=${encodeURIComponent(result.dbId)}`)}
+        >
+          Question it now →
+        </a>
+      )}
     </section>
   );
 }
 
 // The web door's first proposals (`GLOBAL-043` item 6a): what the DBA would
 // change, and one click to the page where each is applied or rejected.
-function FirstProposals({ dbId, proposals }: { dbId: string; proposals: Proposal[] }) {
+function FirstProposals({
+  dbId,
+  proposals,
+  d1,
+}: {
+  dbId: string;
+  proposals: Proposal[];
+  d1: boolean;
+}) {
   const dbaHref = appHref(`/app/dba/?db=${encodeURIComponent(dbId)}`);
   if (proposals.length === 0) {
     return (
       <p className="connect__hint">
-        Nothing worth changing yet — watching. Workload proposals follow a day of traffic, on{" "}
+        {/* A D1's first observe reads the day Cloudflare already kept. */}
+        Nothing worth changing yet — watching. Workload proposals follow{" "}
+        {d1 ? "within the hour" : "a day of traffic"}, on{" "}
         <a className="connect__hint-link" href={dbaHref}>
           its changes page
         </a>

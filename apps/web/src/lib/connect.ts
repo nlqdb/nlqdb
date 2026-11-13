@@ -13,7 +13,7 @@
 import type { Proposal } from "@nlqdb/sdk";
 import { firstTouchSource } from "./attribution";
 
-export type ConnectEngine = "clickhouse" | "postgres";
+export type ConnectEngine = "clickhouse" | "postgres" | "d1";
 
 export interface ConnectSuccess {
   dbId: string;
@@ -21,8 +21,8 @@ export interface ConnectSuccess {
   engine: string;
   schemaPreview: string;
   pkLive: string | null;
-  // Postgres: the attach's first proposals (`GLOBAL-043`), already in the
-  // ledger; absent on the OAuth picker path.
+  // Postgres and D1: the attach's first proposals (`GLOBAL-043`), already in
+  // the ledger; absent on the OAuth picker path.
   proposals?: Proposal[];
 }
 
@@ -32,20 +32,26 @@ export type ConnectOutcome =
   // the API returns in `{ error: { status, message } }` (GLOBAL-012).
   | { ok: false; status: number; message: string };
 
-export interface ConnectArgs {
-  engine: ConnectEngine;
-  connectionUrl: string;
-  name?: string;
-}
+// A D1 attaches with an API token + account id + database id (no URL); the
+// token is a secret like the URL and is never persisted client-side.
+export type ConnectArgs = { name?: string } & (
+  | { engine: "clickhouse" | "postgres"; connectionUrl: string }
+  | { engine: "d1"; accountId: string; databaseId: string; token: string }
+);
 
 const NETWORK_MESSAGE = "Couldn't reach the API — check your connection and try again.";
 const UNREADABLE_MESSAGE = "Something went wrong connecting your database — try again.";
 
 export async function postConnect(apiBase: string, args: ConnectArgs): Promise<ConnectOutcome> {
-  const body: Record<string, unknown> = {
-    engine: args.engine,
-    connection_url: args.connectionUrl,
-  };
+  const body: Record<string, unknown> =
+    args.engine === "d1"
+      ? {
+          engine: "d1",
+          account_id: args.accountId,
+          database_id: args.databaseId,
+          token: args.token,
+        }
+      : { engine: args.engine, connection_url: args.connectionUrl };
   const trimmedName = args.name?.trim();
   if (trimmedName) body["name"] = trimmedName;
   // SK-GTM-007 — forward the first-touch acquisition source so a
