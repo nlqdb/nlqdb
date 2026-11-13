@@ -20,6 +20,25 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   context · benefits · risks · alternatives, ≤ 5 words each>
 -->
 
+## Call the spike pass or fail
+
+- **Type:** decision · ⏱ ~2 min · since 2026-11-13
+- **Done so far:** the spike Postgres's one applied index (run 283) is past
+  its 72 h verify, judged **keep**: its hot fingerprint went **p95 est.
+  65.214 → 1.698 ms** (mean 7.706 → 0.305 ms; 32,562 calls before, 1,473
+  since) —
+  [`scorecard.md`](docs/scorecard.md) row 16. `GLOBAL-043` item 10 makes
+  pass "a measured delta the founder would pay for"; only the founder can
+  say that. Default until called: nothing is deleted; the loop builds the
+  D1 web door, then rateme12's real D1.
+- **Ask:** recommended — **call it on 11-19:** spike's 2 weeks end 11-19 ·
+  more calls behind the delta · deletion starts a week later · pass now, or
+  fail. Options: (a) **pass now** — 38× p95 est., one index, one DB; (b)
+  **fail** — evidence kept, nothing deleted; (c) **wait to 11-19** (the
+  recommendation; the agent re-reads the delta then). The D1 boxes run first
+  either way. Reply in chat; the agent records it in
+  [`docs/ROADMAP.md`](docs/ROADMAP.md) §2.
+
 ## Claim the `nlqdb` npm name for the `npx nlqdb attach` door
 
 - **Type:** account action · ⏱ ~5 min · since 2026-10-31

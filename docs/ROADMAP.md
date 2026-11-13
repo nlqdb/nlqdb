@@ -25,7 +25,6 @@ D1 attach on the real rateme12 (dogfood, `RATEME12_D1_TOKEN`,
 attach; KPI B = one applied index with its before/after p95 (D1: and rows
 read).
 
-- [ ] Spike: record the applied index's hot-fingerprint before/after p95 at its 72 h verify (from 2026-11-12; applied run 283, before p95 est. 65.2 ms) — the founder calls pass/fail
 - [ ] rateme12: attach its live D1 read-only through the API door — KPI A on a real D1
 - [ ] rateme12: apply one D1 proposal, record p95 and rows read before/after — KPI B on a real D1
 

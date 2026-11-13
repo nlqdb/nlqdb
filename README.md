@@ -195,7 +195,9 @@ One loop — observe → propose → apply → verify → revert — on your Pos
   from the workload, so far), tested in CI
 - ~ Postgres spike — one index proposed, applied and measured (before/after
   p95) on a real-traffic database (the spike DB attaches read-only in CI,
-  first proposal in 2.2–3.7 s; no index proposed or applied yet)
+  first proposal in 2.2–3.7 s; its one applied index kept at the 72 h
+  verify, hot-fingerprint p95 est. 65.2 → 1.7 ms; pass/fail is the
+  founder's call)
 - ◯ D1 attach on the real rateme12 — the dogfood
 - ◯ The playbook — unused-index drops, bloat, retypes, partitioning,
   retention, placement
