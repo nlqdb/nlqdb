@@ -1,5 +1,5 @@
 // The web door to the DBA (`GLOBAL-043` items 5–6a): paste a Postgres
-// connection string at `/app/connect`, get the first proposals, then apply or
+// connection string (or a D1's token + ids) at `/app/connect`, get the first proposals, then apply or
 // reject each from `/app/dba` — the same calls the two islands make
 // (`postConnect`, then `decide` through the cookie-session SDK client), against
 // a recorded fixture of the API's responses (the shapes of the CLI's
@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { renderError } from "@nlqdb/errors";
 import { createClient } from "@nlqdb/sdk";
 import { postConnect } from "../../lib/connect";
-import { decide, withStatus } from "./ledger";
+import { decide, describeChange, withStatus } from "./ledger";
 
 const TABLES = ["posts", "comments", "likes", "follows", "sessions"];
 
@@ -17,6 +17,7 @@ function fakeApi() {
   const decidedBy = new Map<number, string>();
   const reasons = new Map<number, string | null>();
   const credentials: (RequestCredentials | undefined)[] = [];
+  const connectBodies: Record<string, unknown>[] = [];
   const json = (body: unknown, code = 200) =>
     new Response(JSON.stringify(body), {
       status: code,
@@ -32,17 +33,24 @@ function fakeApi() {
     const method = init?.method ?? "GET";
     credentials.push(init?.credentials);
     if (method === "POST" && url.pathname === "/v1/db/connect") {
+      const sent = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      connectBodies.push(sent);
+      const d1 = sent["engine"] === "d1";
       const proposals = TABLES.map((t, i) => {
         status.set(i + 1, "proposed");
         return {
           id: i + 1,
           kind: "create_index",
           tier: 0,
-          schema: "public",
+          schema: d1 ? "main" : "public",
           table: t,
           columns: ["user_id"],
-          ddl: `CREATE INDEX CONCURRENTLY nlqdb_${t}_user_id_idx ON public.${t} (user_id)`,
-          inverse: `DROP INDEX CONCURRENTLY public.nlqdb_${t}_user_id_idx`,
+          ddl: d1
+            ? `CREATE INDEX nlqdb_${t}_user_id_idx ON ${t} (user_id)`
+            : `CREATE INDEX CONCURRENTLY nlqdb_${t}_user_id_idx ON public.${t} (user_id)`,
+          inverse: d1
+            ? `DROP INDEX nlqdb_${t}_user_id_idx`
+            : `DROP INDEX CONCURRENTLY public.nlqdb_${t}_user_id_idx`,
           reason: `Foreign key ${t}(user_id) → users has no index.`,
           evidence: { rowEstimate: 1000, tableBytes: 8192 },
         };
@@ -51,7 +59,7 @@ function fakeApi() {
         {
           dbId: "db_attach_1",
           name: "app",
-          engine: "postgres",
+          engine: d1 ? "d1" : "postgres",
           schemaPreview: "posts(id, user_id)",
           pkLive: null,
           proposals,
@@ -84,7 +92,7 @@ function fakeApi() {
     }
     return json({ error: { code: "not_found", message: "no route" } }, 404);
   };
-  return { fetch, status, decidedBy, reasons, credentials };
+  return { fetch, status, decidedBy, reasons, credentials, connectBodies };
 }
 
 const originalFetch = globalThis.fetch;
@@ -125,6 +133,67 @@ describe("the web door to the DBA (GLOBAL-043 items 5–6a)", () => {
     expect(api.credentials.every((c) => c === "include")).toBe(true);
     expect([...api.decidedBy.values()].every((d) => d === "user:u_1")).toBe(true);
     expect(api.reasons.get(4)).toBe("write-heavy table");
+  });
+
+  it("attaches a D1 with token + account id + database id, decides 5/5 from the web, then shows verify's D1 verdict", async () => {
+    const api = fakeApi();
+    globalThis.fetch = api.fetch as typeof fetch;
+    const client = createClient({
+      baseUrl: "https://api.test",
+      withCredentials: true,
+      fetch: api.fetch,
+    });
+
+    const attached = await postConnect("https://api.test", {
+      engine: "d1",
+      accountId: "acc_1",
+      databaseId: "d1_db_1",
+      token: "cf_t0ken",
+      name: "  rateme  ",
+    });
+    if (!attached.ok) throw new Error(attached.message);
+    // The API door's D1 shape — no connection_url rides along.
+    expect(api.connectBodies[0]).toEqual({
+      engine: "d1",
+      account_id: "acc_1",
+      database_id: "d1_db_1",
+      token: "cf_t0ken",
+      name: "rateme",
+    });
+    expect(attached.result.engine).toBe("d1");
+    const proposals = attached.result.proposals ?? [];
+    expect(proposals.map((p) => p.id)).toEqual([1, 2, 3, 4, 5]);
+
+    for (const p of proposals) {
+      const out = await decide(client, p.id, p.id <= 3 ? "apply" : "reject");
+      expect(out.ok).toBe(true);
+    }
+    const decided = [...api.status.values()].filter((s) => s !== "proposed").length;
+    // biome-ignore lint/suspicious/noConsole: the door's reading belongs in the CI log
+    console.log(`D1 proposals decided from the web: ${decided}/5`);
+    expect(decided).toBe(5);
+    expect(api.credentials.every((c) => c === "include")).toBe(true);
+
+    // `/app/dba` then reads verify's D1 verdict (mean time + rows read, no p95).
+    expect(
+      describeChange({
+        kind: "create_index",
+        table: "posts",
+        origin: "attach",
+        reason: proposals[0]?.reason ?? null,
+        status: "applied",
+        verification: {
+          verdict: "keep",
+          query: "SELECT id FROM posts WHERE user_id = ?",
+          beforeMeanMs: 1.2,
+          afterMeanMs: 0.3,
+          beforeRowsRead: 4999,
+          afterRowsRead: 1,
+        },
+      }),
+    ).toBe(
+      "Applied and verified: mean 1.20 ms → 0.30 ms, rows read 4999 → 1 — Foreign key posts(user_id) → users has no index.",
+    );
   });
 
   it("a replay is a no-op; the opposite verb moves the row to its real status; an unknown id shows the API's sentence", async () => {

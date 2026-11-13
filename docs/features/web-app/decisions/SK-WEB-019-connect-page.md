@@ -15,7 +15,7 @@ The product-side landing for the home's *question your warehouse* way in
   anonymous visitors are redirected to `/auth/sign-in?return_to=/app/connect`).
   It mounts one React island, `ConnectForm.tsx`, wrapped in `<ErrorBoundary>`
   per [`SK-WEB-001`](../FEATURE.md). The form has:
-  - an **engine select** defaulting to **ClickHouse** (Postgres also offered);
+  - an **engine select** defaulting to **ClickHouse** (Postgres and Cloudflare D1 also offered; a D1 takes a masked API token + account id + database id instead of a URL, gets its first proposals and no "Question it now" — it is the DBA's only, `GLOBAL-043`);
   - a **connection-URL field of `type="password"`** whose value is **never
     persisted** client-side (no `localStorage`, no URL param, no form
     autofill name that browsers cache) — it exists only in component state for

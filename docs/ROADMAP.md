@@ -8,15 +8,6 @@ scheduled run takes the first open, unblocked, unclaimed box
 [`END_GOAL.md`](END_GOAL.md) and names its number: KPIs A–C and the love gate
 are defined in `GLOBAL-043` item 9.
 
-## 1a — Build the attach product on synthetic databases
-
-No founder secret. Each box is tested in CI against a seeded Postgres with
-`pg_stat_statements` (HypoPG where installable) or a throwaway D1 in nlqdb's
-own Cloudflare account. Number: KPI A, B or C on the synthetic DB, labelled
-synthetic.
-
-- [ ] D1 through the web door (`/app/connect`) with token + account id + database id — doors reaching the D1 loop
-
 ## 1b — Real-traffic proof
 
 Postgres spike (market proof, `SPIKE_PG_URL`, `GLOBAL-043` item 10) and the
