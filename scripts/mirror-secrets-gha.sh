@@ -187,6 +187,10 @@ SECRETS=(
   # D-02 docs→memory sync (memory-sync workflow) — sk_mcp_ MCP-scoped key;
   # defaults from NLQDB_MCP_API_KEY above.
   NLQDB_API_KEY
+  # rateme12's real D1 (ci.yml `rateme12-attach`, GLOBAL-043 roadmap 1b). CI-only.
+  RATEME12_D1_TOKEN
+  RATEME12_D1_ACCOUNT_ID
+  RATEME12_D1_DATABASE_ID
 )
 
 say "Mirroring .envrc → GitHub Actions secrets in $REPO"
