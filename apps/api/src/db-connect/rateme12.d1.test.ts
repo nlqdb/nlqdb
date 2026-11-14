@@ -30,9 +30,10 @@ import { connectByoDb } from "./connect.ts";
 import { sqliteD1 } from "./test-sqlite-d1.ts";
 
 const env = process.env;
-const token = env["RATEME12_ATTACH_TOKEN"];
-const accountId = env["RATEME12_ATTACH_ACCOUNT_ID"];
-const databaseId = env["RATEME12_ATTACH_DATABASE_ID"];
+// Trimmed: a secret pasted with a trailing newline is still the same id.
+const token = env["RATEME12_ATTACH_TOKEN"]?.trim();
+const accountId = env["RATEME12_ATTACH_ACCOUNT_ID"]?.trim();
+const databaseId = env["RATEME12_ATTACH_DATABASE_ID"]?.trim();
 const target: D1Target | null =
   token && accountId && databaseId ? { token, accountId, databaseId } : null;
 
@@ -125,9 +126,22 @@ const log = (line: string) =>
   // biome-ignore lint/suspicious/noConsole: the rateme12 readings belong in the CI log
   console.log(`rateme12 (real D1): ${line}`);
 
+// A malformed id is a secret to re-set, not a red build on every PR: the case
+// skips with the id named (never its value).
+function targetOrSkip(ctx: { skip: () => never }): D1Target {
+  const t = target as D1Target;
+  try {
+    d1RestBatch(t);
+  } catch (err) {
+    log(`attach blocked: a RATEME12_D1_* secret is malformed (${(err as Error).message})`);
+    ctx.skip();
+  }
+  return t;
+}
+
 describe.skipIf(!target)("the attach door on rateme12's real D1", () => {
-  it("reads the workload Tier 1 plans from (Account Analytics Read)", async () => {
-    const t = target as D1Target;
+  it("reads the workload Tier 1 plans from (Account Analytics Read)", async (ctx) => {
+    const t = targetOrSkip(ctx);
     const nowSec = Math.floor(Date.now() / 1000);
     for (const days of [1, 7]) {
       const window = {
@@ -151,7 +165,7 @@ describe.skipIf(!target)("the attach door on rateme12's real D1", () => {
   }, 60_000);
 
   it("records Tier 0 proposals within KPI A's 5 min, then Tier 1's (D1 Read)", async (ctx) => {
-    const t = target as D1Target;
+    const t = targetOrSkip(ctx);
     const sent = { requests: 0 };
     // The door folds every catalog failure into one 502; name the scope here.
     try {
