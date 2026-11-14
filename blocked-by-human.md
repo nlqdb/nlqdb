@@ -47,8 +47,8 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   since) —
   [`scorecard.md`](docs/scorecard.md) row 16. `GLOBAL-043` item 10 makes
   pass "a measured delta the founder would pay for"; only the founder can
-  say that. Default until called: nothing is deleted; the loop builds the
-  D1 web door, then rateme12's real D1.
+  say that. Default until called: nothing is deleted; rateme12's real D1
+  waits on its token (the entry above).
 - **Ask:** recommended — **call it on 11-19:** spike's 2 weeks end 11-19 ·
   more calls behind the delta · deletion starts a week later · pass now, or
   fail. Options: (a) **pass now** — 38× p95 est., one index, one DB; (b)

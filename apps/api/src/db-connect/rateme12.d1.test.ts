@@ -1,11 +1,12 @@
 // rateme12's attach (`GLOBAL-043` roadmap 1b, `002-rateme12-attach.md` §3
-// step 1): the attach door on the real rateme12 D1, read-only. Runs only when
-// the `RATEME12_ATTACH_*` triple is set: CI's `rateme12-attach` job maps the
-// `RATEME12_D1_*` secrets to it, so a shell that merely holds the secrets keeps
-// `bun run test` offline. The ledger is an in-memory copy of the api's D1, so
-// nothing is recorded in production, and every statement sent to rateme12 must
-// be a read (`SELECT`, `EXPLAIN`, a `PRAGMA` that sets nothing) or it is
-// refused before it leaves — the token may write, the attach must not.
+// step 1): the attach door on the real rateme12 D1, read-only. The live cases
+// run only when the `RATEME12_ATTACH_*` triple is set: CI's `rateme12-attach`
+// job maps the `RATEME12_D1_*` secrets to it, so a shell that merely holds the
+// secrets keeps `bun run test` offline. The ledger is an in-memory copy of the
+// api's D1, so nothing is recorded in production, and every statement sent to
+// rateme12 must be one read (`SELECT`, `EXPLAIN`, a catalog `PRAGMA`) or it is
+// refused before it leaves — the token may write, the attach must not. The
+// guard's own case runs offline on a local D1.
 //
 // Two reads, two token scopes: the workload (GraphQL, Account Analytics Read)
 // as the `dba_observe` job's first tick reads it, and the attach door (REST,
@@ -21,7 +22,8 @@ import {
   observeD1Workload,
   readD1QueryInsights,
 } from "@nlqdb/db";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
+import { D1_TARGET, localD1 } from "../../../../packages/db/test/fixtures/local-d1.ts";
 import { OBSERVE_WINDOW_SEC } from "../dba-observe.ts";
 import { isoHour } from "../dba-verbs.ts";
 import { connectByoDb } from "./connect.ts";
@@ -34,19 +36,90 @@ const databaseId = env["RATEME12_ATTACH_DATABASE_ID"];
 const target: D1Target | null =
   token && accountId && databaseId ? { token, accountId, databaseId } : null;
 
-// A read: `SELECT`, `EXPLAIN …`, or a `PRAGMA` that sets nothing.
-const READ = /^\s*(?:SELECT|EXPLAIN)\b|^\s*PRAGMA\s+[\w.]+(?:\s*\([^)]*\))?\s*;?\s*$/i;
+// A read: one `SELECT`, `EXPLAIN …`, or catalog `PRAGMA` the observer sends
+// (a `PRAGMA x(v)` sets `x` for setter pragmas, so the names are listed), and
+// nothing after a `;` — D1 runs every statement in one `sql` string.
+const READ =
+  /^\s*(?:(?:SELECT|EXPLAIN)\b|PRAGMA\s+(?:table_list|table_info|table_xinfo|index_list|index_info|index_xinfo|foreign_key_list)\b(?:\s*\([^)]*\))?\s*;?\s*$)/i;
+const isRead = (sql: string): boolean => READ.test(sql) && !/;\s*\S/.test(sql);
 
 // The REST client, refusing any batch that holds a statement other than a read.
-function readOnlyBatch(t: D1Target, sent: { requests: number }): D1BatchFn {
-  const batch = d1RestBatch(t);
+function readOnlyBatch(
+  t: D1Target,
+  sent: { requests: number },
+  fetchFn: typeof fetch = fetch,
+): D1BatchFn {
+  const batch = d1RestBatch(t, fetchFn);
   return (statements) => {
-    if (statements.some((s) => !READ.test(s)))
+    if (!statements.every(isRead))
       throw new Error("refused: a non-read statement in the attach path");
     sent.requests++;
     return batch(statements);
   };
 }
+
+// The door's deps with an in-memory ledger; `buildD1Batch` is the guarded client.
+const doorDeps = (buildD1Batch: (t: D1Target) => D1BatchFn) => ({
+  resolve: async () => {
+    throw new Error("a D1 attach resolves no host");
+  },
+  kek: "rateme12-kek-in-memory-ledger-only-never-persisted",
+  d1: sqliteD1(),
+  randomSuffix: () => "rm12a1",
+  buildClickhouseQuery: () => {
+    throw new Error("not a ClickHouse attach");
+  },
+  buildPostgresQuery: () => {
+    throw new Error("not a Postgres attach");
+  },
+  buildD1Batch,
+});
+
+// The guard offline, on a local D1: every statement the door and Tier 1 send
+// passes it — so the live case can't go red on the guard once the token is
+// granted — and writes, setter pragmas and trailing statements are refused.
+describe("the rateme12 read guard", () => {
+  const userD1 = localD1();
+  afterAll(() => userD1.dispose());
+
+  it("passes the door's and Tier 1's statements; refuses writes", async () => {
+    const { fetchFn } = await userD1.open(`
+      CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL);
+      CREATE TABLE posts (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id));
+    `);
+    const sent = { requests: 0 };
+    const guarded = (t: D1Target) => readOnlyBatch(t, sent, fetchFn);
+    const result = await connectByoDb(doorDeps(guarded), {
+      engine: "d1",
+      d1: D1_TARGET,
+      tenantId: "user_rateme12",
+      name: "rateme12",
+    });
+    expect(result.ok && result.proposals.map((p) => p.table)).toEqual(["posts"]);
+    const tier1 = await observeD1Workload(guarded(D1_TARGET), [
+      {
+        query: "SELECT id FROM users WHERE email = ?",
+        calls: 400,
+        meanMs: 1.2,
+        rowsRead: 100,
+        rowsReturned: 1,
+        rowsWritten: 0,
+        totalRowsRead: 40_000,
+      },
+    ]);
+    expect(tier1.map((p) => `${p.table}(${p.columns.join(",")})`)).toEqual(["users(email)"]);
+    expect(sent.requests).toBeGreaterThan(0);
+    for (const sql of [
+      "CREATE INDEX i ON users(email)",
+      "PRAGMA optimize",
+      "PRAGMA user_version(5)",
+      "PRAGMA foreign_keys = ON",
+      "SELECT 1; DROP TABLE users",
+      "EXPLAIN QUERY PLAN SELECT 1; DELETE FROM users",
+    ])
+      expect(isRead(sql), sql).toBe(false);
+  });
+});
 
 const log = (line: string) =>
   // biome-ignore lint/suspicious/noConsole: the rateme12 readings belong in the CI log
@@ -90,21 +163,7 @@ describe.skipIf(!target)("the attach door on rateme12's real D1", () => {
       }
       throw err;
     }
-    const deps = {
-      resolve: async () => {
-        throw new Error("a D1 attach resolves no host");
-      },
-      kek: "rateme12-kek-in-memory-ledger-only-never-persisted",
-      d1: sqliteD1(),
-      randomSuffix: () => "rm12a1",
-      buildClickhouseQuery: () => {
-        throw new Error("not a ClickHouse attach");
-      },
-      buildPostgresQuery: () => {
-        throw new Error("not a Postgres attach");
-      },
-      buildD1Batch: (x: D1Target) => readOnlyBatch(x, sent),
-    };
+    const deps = doorDeps((x) => readOnlyBatch(x, sent));
 
     const attachedAt = performance.now();
     const result = await connectByoDb(deps, {
