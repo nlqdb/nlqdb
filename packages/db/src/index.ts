@@ -88,7 +88,7 @@ export type {
 } from "./dba-apply-postgres.ts";
 export { applyProposal, judgeApplied, verifyApplied } from "./dba-apply-postgres.ts";
 export { observeD1Catalog } from "./dba-observe-d1.ts";
-export { observeD1Workload } from "./dba-observe-d1-workload.ts";
+export { d1WorkloadCandidates, observeD1Workload } from "./dba-observe-d1-workload.ts";
 export { observePostgresCatalog } from "./dba-observe-postgres.ts";
 export type {
   FingerprintWindow,

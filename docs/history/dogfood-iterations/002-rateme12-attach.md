@@ -86,10 +86,10 @@ D1 is the dogfood engine; Postgres is the market.
 
 | Number | Value |
 |---|---|
-| KPI A — attach → first proposal | unmeasured here; synthetic local D1 through the API door, credentials → proposals in the ledger: 117.3 ms (run 271) |
+| KPI A — attach → first proposal | unmeasured here (run 291: blocked on the token's D1 scope, `rateme12-attach` CI job ready); synthetic local D1 through the API door, credentials → proposals in the ledger: 117.3 ms (run 271) |
 | KPI B — applied with measured p95 gain (and rows-read Δ) | 0 here; synthetic local D1 through the apply verb: 3/3 applied, the `posts(user_id)` lookup's rows read 5000 → 51 (run 272) |
 | KPI C — regressions auto-reverted / applied | 0 here; synthetic local D1 through the `dba_verify` job: 1/1 reverted, 0 user action, judged on mean time and rows read per run (run 284) |
-| Verified GraphQL fields + token scopes | `count`, `sum`/`avg` of `queryDurationMs`, `rowsRead`, `rowsWritten`, `rowsReturned`, `dimensions.query`; Account Analytics Read — from wrangler's source, live answer pending first attach. Synthetic Tier 1 (run 273): 3/3 heavy scanned filters proposed from a recorded 10-text workload, 0 false positives; scheduled in the `dba_observe` job (run 274): proposals on the first tick after attach, no 24 h baseline wait |
+| Verified GraphQL fields + token scopes | `count`, `sum`/`avg` of `queryDurationMs`, `rowsRead`, `rowsWritten`, `rowsReturned`, `dimensions.query`; Account Analytics Read. **Live on rateme12 (run 291):** the GraphQL read answers (24 h: 90 texts, 31,194 calls, 1,049,536 rows read; 3 Tier 1 candidates — the heaviest 126 rows read / 6 returned per run, 3 calls; the other two read 1 row per run); the REST query endpoint refuses the secret's token (`7403`) — it lacks D1 Read / Edit (`blocked-by-human.md`). Synthetic Tier 1 (run 273): 3/3 heavy scanned filters proposed from a recorded 10-text workload, 0 false positives; scheduled in the `dba_observe` job (run 274): proposals on the first tick after attach, no 24 h baseline wait |
 
 ## 6. Retro and cleanup
 
