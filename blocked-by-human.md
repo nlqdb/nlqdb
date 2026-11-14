@@ -20,6 +20,24 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   context · benefits · risks · alternatives, ≤ 5 words each>
 -->
 
+## Give the rateme12 token D1 access
+
+- **Type:** account action · ⏱ ~2 min · since 2026-11-14
+- **Done so far:** run 291 wired the attach door to rateme12's real D1
+  (`rateme12.d1.test.ts`, CI job `rateme12-attach`, read-only). The
+  workload reads (Account Analytics Read works: 90 query texts, 31,194 calls
+  in 24 h, 3 index candidates), but the D1 query endpoint refuses the token
+  (`7403 not authorized to access this service`), so the catalog, the plans and
+  the apply can't run. Both open 1b rateme12 boxes wait on this.
+- **Ask:**
+  1. Open <https://dash.cloudflare.com/profile/api-tokens>, find the token
+     stored as the `RATEME12_D1_TOKEN` secret → **Edit**.
+  2. **Permissions → Add:** `Account` · `D1` · `Edit` (Edit covers reads;
+     the apply box needs it). **Account Resources:** the account rateme12
+     lives in.
+  3. **Continue to summary → Update token.** The value stays the same, so
+     no secret changes; the next run attaches.
+
 ## Call the spike pass or fail
 
 - **Type:** decision · ⏱ ~2 min · since 2026-11-13
