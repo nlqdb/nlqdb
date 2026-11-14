@@ -321,6 +321,28 @@ jobs:
           SPIKE_APPLY: "1"
         run: bunx vitest run --project unit --reporter=verbose src/db-connect/spike.pg.test.ts
 
+  # GLOBAL-043 roadmap item 1b: the attach door on rateme12's real D1,
+  # read-only (every statement checked a read before it leaves), with an
+  # in-memory ledger. The secrets are empty on fork PRs, so the test skips
+  # there. Logs print counts and timings only.
+  rateme12-attach:
+    name: attach door vs rateme12's real D1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+
+      - name: Attach
+        working-directory: apps/api
+        env:
+          RATEME12_ATTACH_TOKEN: ${{ secrets.RATEME12_D1_TOKEN }}
+          RATEME12_ATTACH_ACCOUNT_ID: ${{ secrets.RATEME12_D1_ACCOUNT_ID }}
+          RATEME12_ATTACH_DATABASE_ID: ${{ secrets.RATEME12_D1_DATABASE_ID }}
+        run: bunx vitest run --project unit --reporter=verbose src/db-connect/rateme12.d1.test.ts
+
   test-tools:
     name: tools/${{ matrix.tool }} (typecheck + bun test)
     runs-on: ubuntu-latest

@@ -28,7 +28,7 @@ until the first attach** (introspect the GraphQL schema then, record it in
 
 | Tier | D1 source | Verified |
 |---|---|---|
-| 1 workload | GraphQL `POST https://api.cloudflare.com/client/v4/graphql`, dataset `d1QueriesAdaptiveGroups` (also `d1AnalyticsAdaptiveGroups`, `d1StorageAdaptiveGroups`), `accountTag` filter: query text (bound params stripped), rows read / written, query time, `queryEfficiency` = rows returned / rows read — near 0 on a frequent query ⇒ missing index. Sampled ("adaptive"), 31-day retention ([metrics](https://developers.cloudflare.com/d1/observability/metrics-analytics/)) | yes — fields and the Account Analytics Read scope from `wrangler d1 insights`' source (2026-11-03); no percentile field. Live answer unverified until the first attach |
+| 1 workload | GraphQL `POST https://api.cloudflare.com/client/v4/graphql`, dataset `d1QueriesAdaptiveGroups` (also `d1AnalyticsAdaptiveGroups`, `d1StorageAdaptiveGroups`), `accountTag` filter: query text (bound params stripped), rows read / written, query time, `queryEfficiency` = rows returned / rows read — near 0 on a frequent query ⇒ missing index. Sampled ("adaptive"), 31-day retention ([metrics](https://developers.cloudflare.com/d1/observability/metrics-analytics/)) | yes — fields and the Account Analytics Read scope from `wrangler d1 insights`' source (2026-11-03); no percentile field. Live on rateme12 with that scope (run 291, §5) |
 | 0 catalog | REST `POST /accounts/{id}/d1/database/{id}/query` (D1 Read): `PRAGMA table_list`, `table_info`, `index_list`, `index_info`, `index_xinfo`, `foreign_key_list` ([SQL statements](https://developers.cloudflare.com/d1/sql-api/sql-statements/)) | yes |
 | 2 what-if | `EXPLAIN QUERY PLAN` — `SEARCH … USING INDEX` vs `SCAN` ([use indexes](https://developers.cloudflare.com/d1/best-practices/use-indexes/)). **No hypothetical index:** a real what-if is a real `CREATE INDEX`, billed as rows written — so the verify window judges, not a dry run | yes |
 | 3 truth | Tier 1 re-read for the same query text after apply | — |
@@ -86,10 +86,10 @@ D1 is the dogfood engine; Postgres is the market.
 
 | Number | Value |
 |---|---|
-| KPI A — attach → first proposal | unmeasured here; synthetic local D1 through the API door, credentials → proposals in the ledger: 117.3 ms (run 271) |
+| KPI A — attach → first proposal | unmeasured here (run 291: blocked on the token's D1 scope, `rateme12-attach` CI job ready); synthetic local D1 through the API door, credentials → proposals in the ledger: 117.3 ms (run 271) |
 | KPI B — applied with measured p95 gain (and rows-read Δ) | 0 here; synthetic local D1 through the apply verb: 3/3 applied, the `posts(user_id)` lookup's rows read 5000 → 51 (run 272) |
 | KPI C — regressions auto-reverted / applied | 0 here; synthetic local D1 through the `dba_verify` job: 1/1 reverted, 0 user action, judged on mean time and rows read per run (run 284) |
-| Verified GraphQL fields + token scopes | `count`, `sum`/`avg` of `queryDurationMs`, `rowsRead`, `rowsWritten`, `rowsReturned`, `dimensions.query`; Account Analytics Read — from wrangler's source, live answer pending first attach. Synthetic Tier 1 (run 273): 3/3 heavy scanned filters proposed from a recorded 10-text workload, 0 false positives; scheduled in the `dba_observe` job (run 274): proposals on the first tick after attach, no 24 h baseline wait |
+| Verified GraphQL fields + token scopes | `count`, `sum`/`avg` of `queryDurationMs`, `rowsRead`, `rowsWritten`, `rowsReturned`, `dimensions.query`; Account Analytics Read. **Live on rateme12 (run 291):** the GraphQL read answers (24 h: 90 texts, 31,194 calls, 1,049,536 rows read; 3 Tier 1 candidates — the heaviest 126 rows read / 6 returned per run, 3 calls; the other two read 1 row per run); the REST query endpoint refuses the secret's token (`7403`) — it lacks D1 Read / Edit (`blocked-by-human.md`). Synthetic Tier 1 (run 273): 3/3 heavy scanned filters proposed from a recorded 10-text workload, 0 false positives; scheduled in the `dba_observe` job (run 274): proposals on the first tick after attach, no 24 h baseline wait |
 
 ## 6. Retro and cleanup
 

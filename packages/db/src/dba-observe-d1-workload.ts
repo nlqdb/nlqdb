@@ -86,6 +86,22 @@ const unbound = (query: string): string =>
     .map((part, i) => (i % 2 ? part : part.replace(/\?\d*/g, "NULL")))
     .join("");
 
+// The texts Tier 1 would plan, heaviest rows read first: one app table under
+// an equality filter that keeps at most 5 % of the rows it reads. Needs no
+// request, so it reads a workload before the plan's D1 Read is granted.
+export function d1WorkloadCandidates(
+  insights: D1QueryInsight[],
+): { insight: D1QueryInsight; filter: Filter }[] {
+  return [...insights]
+    .sort((a, b) => b.totalRowsRead - a.totalRowsRead)
+    .flatMap((insight) => {
+      const kept = /^\s*SELECT\b/i.test(insight.query) ? insight.rowsReturned : insight.rowsWritten;
+      if (insight.rowsRead <= 0 || kept / insight.rowsRead > MAX_EFFICIENCY) return [];
+      const filter = equalityFilter(insight.query);
+      return filter && !isInternal(filter.table) ? [{ insight, filter }] : [];
+    });
+}
+
 // Turn the window's heavy query texts into Tier 1 proposals, heaviest rows
 // read first; one per (table, column set). A text that doesn't plan (a dropped
 // table or column) is skipped and counted on the span; a request failure that
@@ -98,17 +114,7 @@ export function observeD1Workload(
     "observe_workload",
     "main",
     async (span) => {
-      const candidates = [...insights]
-        .sort((a, b) => b.totalRowsRead - a.totalRowsRead)
-        .flatMap((insight) => {
-          const kept = /^\s*SELECT\b/i.test(insight.query)
-            ? insight.rowsReturned
-            : insight.rowsWritten;
-          if (insight.rowsRead <= 0 || kept / insight.rowsRead > MAX_EFFICIENCY) return [];
-          const filter = equalityFilter(insight.query);
-          return filter && !isInternal(filter.table) ? [{ insight, filter }] : [];
-        })
-        .slice(0, MAX_QUERIES);
+      const candidates = d1WorkloadCandidates(insights).slice(0, MAX_QUERIES);
       if (candidates.length === 0) return [];
 
       // One request for every plan; a failing one (D1 runs a request as one
