@@ -14,11 +14,14 @@
 // table, column or query.
 
 import {
+  D1_TIER1_STAGES,
   type D1BatchFn,
   D1RestError,
   type D1Target,
+  type D1Tier1Funnel,
   d1RestBatch,
   d1WorkloadCandidates,
+  newD1Tier1Funnel,
   observeD1Workload,
   readD1QueryInsights,
 } from "@nlqdb/db";
@@ -122,6 +125,20 @@ describe("the rateme12 read guard", () => {
   });
 });
 
+// Each non-empty stage as `stage texts/share of rows read`, heaviest first;
+// `total` defaults to the funnel's own, which misses texts still `candidates`.
+function funnelLine(
+  funnel: D1Tier1Funnel,
+  total = D1_TIER1_STAGES.reduce((sum, s) => sum + funnel[s].rowsRead, 0),
+): string {
+  return D1_TIER1_STAGES.filter((s) => funnel[s].texts > 0)
+    .sort((a, b) => funnel[b].rowsRead - funnel[a].rowsRead)
+    .map(
+      (s) => `${s} ${funnel[s].texts}/${((100 * funnel[s].rowsRead) / (total || 1)).toFixed(1)} %`,
+    )
+    .join(", ");
+}
+
 const log = (line: string) =>
   // biome-ignore lint/suspicious/noConsole: the rateme12 readings belong in the CI log
   console.log(`rateme12 (real D1): ${line}`);
@@ -153,14 +170,12 @@ describe.skipIf(!target)("the attach door on rateme12's real D1", () => {
       const ms = performance.now() - at;
       const calls = insights.reduce((s, i) => s + i.calls, 0);
       const rowsRead = insights.reduce((s, i) => s + i.totalRowsRead, 0);
-      const candidates = d1WorkloadCandidates(insights);
+      // Before the plan, with no request: the rest is `candidates`.
+      const funnel = newD1Tier1Funnel();
+      const candidates = d1WorkloadCandidates(insights, funnel);
       log(
-        `workload, last ${days * 24} h (sampled): ${insights.length} query texts, ${calls} calls, ${rowsRead} rows read, read in ${ms.toFixed(1)} ms; ${candidates.length} Tier 1 candidates (one table, equality filter, ≤ 5 % of rows read kept)`,
+        `workload, last ${days * 24} h (sampled): ${insights.length} query texts, ${calls} calls, ${rowsRead} rows read, read in ${ms.toFixed(1)} ms; ${candidates.length} Tier 1 candidates; ${funnelLine(funnel, rowsRead)}`,
       );
-      for (const [i, { insight: q, filter }] of candidates.slice(0, 5).entries())
-        log(
-          `candidate #${i + 1}: ${filter.columns.length} key column(s); ${q.calls} calls, mean ${q.meanMs.toFixed(3)} ms, ${q.rowsRead.toFixed(1)} rows read / ${q.rowsReturned.toFixed(1)} returned per run, ${q.totalRowsRead} total`,
-        );
     }
   }, 60_000);
 
@@ -198,12 +213,14 @@ describe.skipIf(!target)("the attach door on rateme12's real D1", () => {
     const nowSec = Math.floor(Date.now() / 1000);
     const window = { since: isoHour(nowSec - OBSERVE_WINDOW_SEC), until: isoHour(nowSec) };
     const at = performance.now();
+    const funnel = newD1Tier1Funnel();
     const tier1 = await observeD1Workload(
       readOnlyBatch(t, sent),
       await readD1QueryInsights(t, window),
+      funnel,
     );
     log(
-      `Tier 1 (last 24 h): ${tier1.length} proposals in ${(performance.now() - at).toFixed(1)} ms`,
+      `Tier 1 (last 24 h): ${tier1.length} proposals in ${(performance.now() - at).toFixed(1)} ms; ${funnelLine(funnel)}`,
     );
     for (const p of tier1) {
       const w = p.evidence.d1Workload;
