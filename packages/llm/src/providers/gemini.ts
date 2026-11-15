@@ -1,6 +1,6 @@
 // Google AI Studio (Gemini) — strict-$0 plan workhorse + hard-plan
-// fallback. docs/architecture.md §7.1 free-tier limits: 500 RPD on Flash, 100 RPD
-// on Pro. Wire format is Google's, not OpenAI's.
+// fallback. Free-tier limits: docs/architecture.md §7.1 (3.8 Flash ~20 RPD,
+// per key in AI Studio). Wire format is Google's, not OpenAI's.
 //
 // `GEMINI_API_KEY` is a FREE-TIER key (GLOBAL-013): never link billing on it
 // or switch the default model here to a paid one. A denial → rotate to a
@@ -15,12 +15,15 @@ import type { ChatMessage } from "./openai-compatible.ts";
 
 const DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
+// gemini-2.5-flash is redirected to gemini-3.5-flash-lite on 2026-12-01
+// (aistudio.google.com/docs/deprecations); 3.8 Flash is the stable free-tier
+// Flash, so the chain keeps a full Flash instead of silently dropping to Lite.
 const DEFAULT_MODELS: Record<LLMOperation, string> = {
-  route: "gemini-2.5-flash",
-  plan: "gemini-2.5-flash",
-  summarize: "gemini-2.5-flash",
-  schema_infer: "gemini-2.5-flash",
-  engine_classify: "gemini-2.5-flash",
+  route: "gemini-3.8-flash",
+  plan: "gemini-3.8-flash",
+  summarize: "gemini-3.8-flash",
+  schema_infer: "gemini-3.8-flash",
+  engine_classify: "gemini-3.8-flash",
 };
 
 export type GeminiProviderOptions = {

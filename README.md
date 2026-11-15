@@ -180,7 +180,7 @@ One loop — observe → propose → apply → verify → revert — on your Pos
 
 - ~ `/app/dba` change ledger — every change with its inverse, newest first;
   Apply / Reject on each proposal
-- ~ Attach product on synthetic databases — observer, `create_index`
+- ✓ Attach product on synthetic databases — observer, `create_index`
   proposal, apply → verify → auto-revert, the four doors (the web door,
   paste a Postgres string or a D1's token + ids at `/app/connect` then Apply / Reject in
   `/app/dba`, the API door,
@@ -191,15 +191,16 @@ One loop — observe → propose → apply → verify → revert — on your Pos
   all four doors are live, hosted `mcp.nlqdb.com` and stdio `@nlqdb/mcp`
   0.4.0 alike; verify
   runs on its own once an applied proposal's 72 h window has passed; on D1
-  all four doors attach, apply and reject, and the observe job proposes
-  from the workload, so far), tested in CI
+  all four doors attach, apply and reject, the observe job proposes from
+  the workload, and verify auto-reverts a regression), tested in CI
 - ~ Postgres spike — one index proposed, applied and measured (before/after
   p95) on a real-traffic database (the spike DB attaches read-only in CI,
   first proposal in 2.2–3.7 s; its one applied index kept at the 72 h
   verify, hot-fingerprint p95 est. 65.2 → 1.7 ms; pass/fail is the
   founder's call)
 - ~ D1 attach on the real rateme12 — the dogfood (attached read-only in
-  CI, 11 catalog proposals in ~0.4 s; no index applied yet)
+  CI, 11 catalog proposals in ~0.4 s; one applied index with rows read
+  before/after is next)
 - ◯ The playbook — unused-index drops, bloat, retypes, partitioning,
   retention, placement
 

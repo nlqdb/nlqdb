@@ -86,8 +86,8 @@ describe("createGeminiProvider", () => {
 
   it("model() returns the configured Gemini model", () => {
     const provider = createGeminiProvider({ apiKey });
-    expect(provider.model("route")).toBe("gemini-2.5-flash");
-    expect(provider.model("plan")).toBe("gemini-2.5-flash");
+    expect(provider.model("route")).toBe("gemini-3.8-flash");
+    expect(provider.model("plan")).toBe("gemini-3.8-flash");
   });
 
   it("SK-LLM-039 — 401/403 becomes ProviderError reason=auth_denied (project denied)", async () => {
