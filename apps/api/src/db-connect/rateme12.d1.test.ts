@@ -125,9 +125,12 @@ describe("the rateme12 read guard", () => {
   });
 });
 
-// Each non-empty stage as `stage texts/share of rows read`, heaviest first.
-function funnelLine(funnel: D1Tier1Funnel): string {
-  const total = D1_TIER1_STAGES.reduce((sum, s) => sum + funnel[s].rowsRead, 0);
+// Each non-empty stage as `stage texts/share of rows read`, heaviest first;
+// `total` defaults to the funnel's own, which misses texts still `candidates`.
+function funnelLine(
+  funnel: D1Tier1Funnel,
+  total = D1_TIER1_STAGES.reduce((sum, s) => sum + funnel[s].rowsRead, 0),
+): string {
   return D1_TIER1_STAGES.filter((s) => funnel[s].texts > 0)
     .sort((a, b) => funnel[b].rowsRead - funnel[a].rowsRead)
     .map(
@@ -171,7 +174,7 @@ describe.skipIf(!target)("the attach door on rateme12's real D1", () => {
       const funnel = newD1Tier1Funnel();
       const candidates = d1WorkloadCandidates(insights, funnel);
       log(
-        `workload, last ${days * 24} h (sampled): ${insights.length} query texts, ${calls} calls, ${rowsRead} rows read, read in ${ms.toFixed(1)} ms; ${candidates.length} Tier 1 candidates; ${funnelLine(funnel)}`,
+        `workload, last ${days * 24} h (sampled): ${insights.length} query texts, ${calls} calls, ${rowsRead} rows read, read in ${ms.toFixed(1)} ms; ${candidates.length} Tier 1 candidates; ${funnelLine(funnel, rowsRead)}`,
       );
     }
   }, 60_000);
