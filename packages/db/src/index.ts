@@ -88,7 +88,13 @@ export type {
 } from "./dba-apply-postgres.ts";
 export { applyProposal, judgeApplied, verifyApplied } from "./dba-apply-postgres.ts";
 export { observeD1Catalog } from "./dba-observe-d1.ts";
-export { d1WorkloadCandidates, observeD1Workload } from "./dba-observe-d1-workload.ts";
+export type { D1Tier1Funnel, D1Tier1Stage } from "./dba-observe-d1-workload.ts";
+export {
+  D1_TIER1_STAGES,
+  d1WorkloadCandidates,
+  newD1Tier1Funnel,
+  observeD1Workload,
+} from "./dba-observe-d1-workload.ts";
 export { observePostgresCatalog } from "./dba-observe-postgres.ts";
 export type {
   FingerprintWindow,

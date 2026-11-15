@@ -9,6 +9,7 @@ import {
   applyD1Proposal,
   type D1QueryInsight,
   D1RestError,
+  newD1Tier1Funnel,
   observeD1Workload,
   readD1QueryInsights,
 } from "../src/index.ts";
@@ -205,6 +206,42 @@ describe("observeD1Workload on a local D1", () => {
     expect(span?.attributes["nlqdb.dba.unplanned"]).toBe(2);
     expect(span?.attributes["nlqdb.dba.proposals"]).toBe(3);
     expect(d1.requests() - requestsBefore).toBe(1 + 6 + 2);
+  });
+
+  it("counts where every text left Tier 1, with its rows read", async () => {
+    const { batch } = await d1.open(APP);
+    const funnel = newD1Tier1Funnel();
+    await observeD1Workload(batch, WORKLOAD, funnel);
+    const texts = Object.fromEntries(
+      Object.entries(funnel).flatMap(([stage, { texts }]) => (texts ? [[stage, texts]] : [])),
+    );
+    expect(texts).toEqual({
+      efficient: 2,
+      multiTable: 1,
+      filter: 1,
+      unplanned: 2,
+      duplicate: 1,
+      proposed: 3,
+    });
+    // The UPDATE repeats the author lookup's index.
+    expect(funnel.duplicate.rowsRead).toBe(250_000);
+    const all = Object.values(funnel).reduce((sum, s) => sum + s.rowsRead, 0);
+    expect(all).toBe(WORKLOAD.reduce((sum, i) => sum + i.totalRowsRead, 0));
+  });
+
+  it("counts an indexed lookup as served, and never plans a clipped text", async () => {
+    const { batch } = await d1.open(APP);
+    const funnel = newD1Tier1Funnel();
+    // The analytics' 4,095-character cut can land after an equality and drop the next term.
+    const clipped = `SELECT id FROM posts WHERE user_id = ?${" ".repeat(4057)}`;
+    const proposals = await observeD1Workload(
+      batch,
+      [insight("SELECT id FROM posts WHERE title = ?", 50, 5000, 1), insight(clipped, 10, 5000, 1)],
+      funnel,
+    );
+    expect(proposals).toEqual([]);
+    expect(funnel.served.texts).toBe(1);
+    expect(funnel.clipped).toEqual({ texts: 1, rowsRead: 50_000 });
   });
 
   it("an applied proposal turns its scan into a search, so it is not proposed again", async () => {

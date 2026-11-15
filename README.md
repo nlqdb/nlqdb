@@ -200,7 +200,7 @@ One loop — observe → propose → apply → verify → revert — on your Pos
   founder's call)
 - ~ D1 attach on the real rateme12 — the dogfood (attached read-only in
   CI, 11 catalog proposals in ~0.4 s; one applied index with rows read
-  before/after is next)
+  before/after is next — its heavy reads are joins, so Tier 1 reads those next)
 - ◯ The playbook — unused-index drops, bloat, retypes, partitioning,
   retention, placement
 
