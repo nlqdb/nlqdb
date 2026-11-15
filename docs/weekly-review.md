@@ -19,7 +19,7 @@ paragraph (7 MISS, unchanged since run 281) is flagged a 3rd week.
 10 of 11 runs pulled the step-2 sequence (anti-rut suspended by design), 1
 the SEO lane (#1272). Last week's focus, spike Tier 1 proposals **0 → 1**,
 landed in run 282 (#1267); applied in 283, judged **keep** at 72 h in 289:
-p95 est. 65.2 → 1.7 ms. 1a closed: D1 doors 0/4 → 4/4 (#1270, #1273,
+p95 est. 65.2 → 1.7 ms. 1a closed: D1 doors 1/4 → 4/4 (#1270, #1273,
 #1276), D1 KPI C 1/1 (#1269).
 
 ## Delta integrity (check 5): held
@@ -38,7 +38,7 @@ p95 est. 65.2 → 1.7 ms. 1a closed: D1 doors 0/4 → 4/4 (#1270, #1273,
 
 - **Engine:** first real-DB KPI B (spike, kept); rateme12 workload read
   live (~32 k calls/24 h); attach in #1281.
-- **UX:** D1 doors 0/4 → 4/4. **Onboarding:** no change.
+- **UX:** D1 doors 1/4 → 4/4. **Onboarding:** no change.
 - **Performance:** dark (row 13, 07-27).
 - **SEO lane:** GSC 28 d clicks 22 → 14, position 18.8 → 19.9 (row 7);
   not a `GLOBAL-025` alert, but the lane ran once. No BIRD/Spider alarm.
