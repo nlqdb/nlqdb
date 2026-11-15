@@ -3,8 +3,9 @@
 // §2): the app's own heavy query texts from `readD1QueryInsights`, turned into
 // `create_index` proposals. Needs D1 Read for the plan and catalog.
 //
-// A query text yields a proposal when it is one table filtered by an AND of
-// plain equalities and not aggregated, it keeps at most 5 % of the rows it reads (D1's
+// A query text yields a proposal when it is whole (not clipped by the
+// analytics), one table filtered by an AND of plain equalities and not
+// aggregated, it keeps at most 5 % of the rows it reads (D1's
 // `queryEfficiency`, writes for an UPDATE / DELETE), `EXPLAIN QUERY PLAN`
 // scans that table, and no full index already leads with those columns.
 // D1 strips bound parameters to `?` and binds none into an `EXPLAIN`, so the
