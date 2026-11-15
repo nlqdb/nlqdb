@@ -32,8 +32,7 @@ p95 est. 65.2 → 1.7 ms. 1a closed: D1 doors 0/4 → 4/4 (#1270, #1273,
 | D1 decided 5/5 from web, MCP (#1276, #1273) | same, `web-door.test.ts`, `dba-door.test.ts` |
 | Spike keep (#1275) | keep at 114.4 h, p95 1.956 ms, CI job 132491111758 |
 
-#1281's 378.3 ms KPI A on rateme12 was walked locally; CI re-prints it on
-merge (no `RATEME12_D1_TOKEN` here).
+#1281's 378.3 ms KPI A on rateme12: CI re-ran it on this PR, 432.6 ms.
 
 ## Trend (check 1)
 
@@ -59,7 +58,7 @@ change.
 ## README roadmap (check 7)
 
 "Attach product on synthetic databases" ~ → ✓ (last 1a box, #1276; D1
-verify added); "D1 attach on the real rateme12" ◯ → ~.
+verify added); "D1 attach on the real rateme12" ◯ → ~ (#1281).
 
 ## Free-model roster (check 8)
 
@@ -71,8 +70,14 @@ Plan chain, best first: groq-qwen `qwen3.8-27b` → gemini → cerebras
   [free-llm.com 11-04](https://free-llm.com/guides/free-llm-apis-november-2026-what-changed)).
   `gemini-3.8-flash` is stable and free of charge
   ([pricing](https://aistudio.google.com/docs/pricing)); `models.get`
-  confirms our key serves it (no generation, no quota). This PR swaps the
-  Gemini leg to it, same chain position.
+  lists it for our key (no generation run). This PR swaps the
+  Gemini leg to it, same chain position. Its free quota is reportedly
+  20 RPD ([forum](https://discuss.ai.google.dev/t/gemini-3-8-flash-free-tier-20-rpd-is-too-limited-for-practical-evaluation/180609)); a 429 falls
+  through (`SK-LLM-030`).
+- Contradiction: `SK-LLM-024` pins Gemini at temperature 0; Google says
+  Gemini 3 below 1.0 may loop
+  ([guide](https://ai.google.dev/gemini-api/docs/gemini-3)). The 12-01
+  redirect hits it too; next llm-router PR settles it.
 - `architecture.md` §7.1 still lists a Gemini 2.5 Pro "hard-plan fallback"
   no code calls (Pro reportedly left the free tier). Flag for the deletion series.
 - No `blocked-by-human.md` bullet.
