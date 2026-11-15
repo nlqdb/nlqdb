@@ -16,8 +16,7 @@ D1 attach on the real rateme12 (dogfood, `RATEME12_D1_TOKEN`,
 attach; KPI B = one applied index with its before/after p95 (D1: and rows
 read).
 
-- [ ] rateme12: attach its live D1 read-only through the API door — KPI A on a real D1 ⛔ see blocked-by-human.md (token lacks D1 access; the CI job `rateme12-attach` runs it once granted)
-- [ ] rateme12: apply one D1 proposal, record p95 and rows read before/after — KPI B on a real D1 ⛔ see blocked-by-human.md (same token)
+- [ ] rateme12: apply one D1 proposal, record p95 and rows read before/after — KPI B on a real D1 (attached run 292: 11 Tier 0 proposals, Tier 1 0 of 3 candidates; a Tier 0 apply verifies `unmeasured` — no query text — so KPI B needs a Tier 1 proposal first: find why its candidates aren't proposed)
 
 ## 2 — Deletion PR series
 

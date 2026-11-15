@@ -2,7 +2,7 @@
 
 Current-state audit of `/daily` (≤ 4 KB, overwritten weekly). Window
 11-08 → 11-15: runs 280–291 (#1265–#1280; 286 merged as 288), plus 3
-bot/release PRs; #1281 (run 292) open. Focus this week: **KPI B on
+bot/release PRs; #1281 (run 292) merged after the window. Focus this week: **KPI B on
 rateme12's real D1, 0 → 1.**
 
 ## Worst: the scorecard's engine rows are a changelog (check 3)

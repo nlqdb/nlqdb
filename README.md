@@ -198,8 +198,9 @@ One loop — observe → propose → apply → verify → revert — on your Pos
   first proposal in 2.2–3.7 s; its one applied index kept at the 72 h
   verify, hot-fingerprint p95 est. 65.2 → 1.7 ms; pass/fail is the
   founder's call)
-- ~ D1 attach on the real rateme12 — the dogfood (its live workload is
-  read in CI; one applied index with rows read before/after is next)
+- ~ D1 attach on the real rateme12 — the dogfood (attached read-only in
+  CI, 11 catalog proposals in ~0.4 s; one applied index with rows read
+  before/after is next)
 - ◯ The playbook — unused-index drops, bloat, retypes, partitioning,
   retention, placement
 

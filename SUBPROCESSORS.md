@@ -59,7 +59,7 @@ data-sensitive routing in the product.
 | LLM sub-processor | Operations | Region | DPA / training posture |
 | :--- | :--- | :--- | :--- |
 | Groq, Inc. | classify, summarize | US | DPA on request from `support@groq.com`. Inputs are **not** used for training by default per Groq's Privacy Notice. |
-| Google LLC (AI Studio / Gemini API) | plan (Gemini 2.5 Flash) | US, EU, multi-region | Google Cloud DPA covers paid tier; **paid-tier inputs are not used to improve products**. **Free-tier inputs ARE used for training** — production routing uses paid keys; free tier is dev-only. |
+| Google LLC (AI Studio / Gemini API) | plan (Gemini 3.8 Flash) | US, EU, multi-region | Google Cloud DPA covers paid tier; **paid-tier inputs are not used to improve products**. **Free-tier inputs ARE used for training** — production routing uses paid keys; free tier is dev-only. |
 | Cloudflare, Inc. (Workers AI) | classify (non-US fallback), embed | Global edge | Covered by the master Cloudflare DPA (linked above); not used for training. |
 | OpenRouter, Inc. | universal :free fallback | US | Per-model policy varies; `X-OR-Allow-Training: false` is set on every request and which downstream models we permit is constrained to providers that honour it. |
 
