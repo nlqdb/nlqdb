@@ -290,6 +290,34 @@ describe("observeD1Workload on a local D1", () => {
     expect(texts).toEqual({ proposed: 3, served: 2, unkeyed: 1 });
   });
 
+  it("keys a join's automatic index from the plan, and never indexes a rowid", async () => {
+    const { batch } = await d1.open(`${APP}
+      CREATE TABLE tags (post_id INTEGER NOT NULL, tag TEXT NOT NULL);
+      INSERT INTO tags (post_id, tag) SELECT id, 'tag' || (id % 50) FROM posts;
+    `);
+    const funnel = newD1Tier1Funnel();
+    const proposals = await observeD1Workload(
+      batch,
+      [
+        // D1 builds a per-run index on tags.post_id: that key, not users' join key (its rowid).
+        insight(
+          "SELECT u.email, count(*) FROM users u JOIN tags t ON t.post_id = u.id GROUP BY u.id",
+          100,
+          5100,
+          100,
+        ),
+        // The scanned outer table joins on its `INTEGER PRIMARY KEY`.
+        insight("SELECT u.email FROM users u LEFT JOIN posts p ON p.id = u.id", 50, 200, 1),
+      ],
+      funnel,
+    );
+    expect(proposals.map((p) => `${p.table}(${p.columns.join(",")})`)).toEqual(["tags(post_id)"]);
+    const texts = Object.fromEntries(
+      Object.entries(funnel).flatMap(([stage, { texts }]) => (texts ? [[stage, texts]] : [])),
+    );
+    expect(texts).toEqual({ proposed: 1, covered: 1 });
+  });
+
   it("counts an indexed lookup as served, and never plans a clipped text", async () => {
     const { batch } = await d1.open(APP);
     const funnel = newD1Tier1Funnel();

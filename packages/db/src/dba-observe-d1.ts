@@ -128,7 +128,7 @@ function groupForeignKeys(rows: Row[]): { refTable: string; columns: string[] }[
 
 // The column that is the table's rowid, if any: a sole `INTEGER PRIMARY KEY`
 // on a rowid table (`table_list.wr` = 0).
-function rowidAlias(table: Row, columns: Row[]): string | undefined {
+export function rowidAlias(table: Row, columns: Row[]): string | undefined {
   if (Number(table["wr"]) !== 0) return undefined;
   const pk = columns.filter((c) => Number(c["pk"]) > 0);
   const only = pk.length === 1 ? pk[0] : undefined;

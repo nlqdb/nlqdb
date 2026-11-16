@@ -8,16 +8,16 @@
 // `queryEfficiency`, writes for an UPDATE / DELETE), `EXPLAIN QUERY PLAN`
 // scans an app table it filters by equality, and no full index already leads
 // with those columns. One table: an AND of plain equalities, not aggregated.
-// A join, subquery or compound: the plan names the scanned alias, the text its
-// key — the alias's equalities on values (with no `OR` in the text), else its
-// join keys. workerd's D1 builds no automatic index, so the plan never names
-// the key itself; a key that doesn't pay is the verify's to revert.
+// A join, subquery or compound: the plan names the scanned alias and, for an
+// automatic index D1 builds per run, its key; else the text names the key —
+// the alias's equalities on values (with no `OR` in the text), else its join
+// keys. A key that doesn't pay is the verify's to revert.
 // D1 strips bound parameters to `?` and binds none into an `EXPLAIN`, so the
 // plan reads them as `NULL` — an equality on `NULL` plans like any other.
 // A scan under a `LIMIT` can stop early, so the evidence is the per-run rows read, not the table's size.
 
 import { type D1BatchFn, type D1QueryInsight, D1RestError, d1Literal } from "./d1/rest.ts";
-import { covers, isInternal } from "./dba-observe-d1.ts";
+import { covers, isInternal, rowidAlias } from "./dba-observe-d1.ts";
 import { createD1IndexProposal, type Proposal } from "./dba-proposal.ts";
 import { withObserveSpan } from "./dba-span.ts";
 import type { Row } from "./types.ts";
@@ -103,10 +103,10 @@ const CLIPPED_LENGTH = 4095;
 // term other than a plain equality (an IN, a range, an OR, a LIKE),
 // `internal` a SQLite / D1 table, `capped` past the per-observe plan cap.
 // After it: `unplanned` failed to prepare, `served` plans without scanning an
-// app table (an index already serves it), `unkeyed` a multi-table plan scans
-// one the text filters by no equality on it, `notTable` isn't a main-schema
-// table, `unknownColumns` names a column the
-// table lacks, `covered` a full index already leads with its columns,
+// app table (a stored index already serves it), `unkeyed` a multi-table plan
+// scans one neither it nor the text names a key for, `notTable` isn't a
+// main-schema table, `unknownColumns` names a column the table lacks,
+// `covered` a full index already leads with its columns (or the rowid),
 // `duplicate` repeats an earlier text's index, `proposed` became a proposal.
 export const D1_TIER1_STAGES = [
   "efficient",
@@ -258,7 +258,7 @@ async function propose(
         ? [{ insight, targets: [{ table: filter.table, columns: filter.columns }] }]
         : [];
     }
-    const scanned = scannedAliases(details);
+    const scanned = planScans(details);
     if (scanned.length === 0) {
       note(funnel, "served", insight);
       return [];
@@ -302,10 +302,11 @@ async function propose(
     const i = tables.indexOf(target.table);
     // SQLite names are case-insensitive: compare and propose in the catalog's
     // spelling, so the DDL matches Tier 0's for the same index.
-    const table = (catalog[i * 3 + 2] ?? []).find(
+    const listed = (catalog[i * 3 + 2] ?? []).find(
       (t) => t["schema"] === "main" && t["type"] === "table",
-    )?.["name"];
-    if (typeof table !== "string" || isInternal(table)) return "notTable";
+    );
+    const table = listed?.["name"];
+    if (!listed || typeof table !== "string" || isInternal(table)) return "notTable";
     const known = new Map(
       (catalog[i * 3] ?? []).map((c) => [String(c["name"]).toLowerCase(), String(c["name"])]),
     );
@@ -313,6 +314,10 @@ async function propose(
     if (!columns.every((c): c is string => c !== undefined)) return "unknownColumns";
     const key = `${table}\0${[...columns].sort()}`;
     if (proposals.has(key)) return "duplicate";
+    // A key holding the rowid is already one lookup (a join on the outer
+    // table's `INTEGER PRIMARY KEY` names it).
+    const rowid = rowidAlias(listed, catalog[i * 3] ?? []);
+    if (rowid !== undefined && columns.includes(rowid)) return "covered";
     if (fullIndexes(i).some((n) => covers(keyColumns.get(n) ?? [], columns))) return "covered";
     const rowsRead = Math.round(insight.rowsRead);
     proposals.set(
@@ -343,21 +348,27 @@ async function propose(
   }
 }
 
-// The aliases a plan scans in full: a bare `SCAN x` — not a co-routine or
-// materialized view's (it reads its own result), and not a virtual table, a
-// constant row or an index scan, which name more after the alias.
-function scannedAliases(details: string[]): string[] {
+// Each alias a plan reads in full: a bare `SCAN x` — not a co-routine or
+// materialized view's (it reads its own result), a virtual table, a constant
+// row or an index scan — or a search through an automatic index D1 builds
+// per run, with that index's equality key.
+type PlanScan = { alias: string; key: string[] | null };
+function planScans(details: string[]): PlanScan[] {
   const own = new Set(
     details.flatMap((d) => /^(?:CO-ROUTINE|MATERIALIZE) (\S+)$/i.exec(d)?.[1] ?? []),
   );
-  return [
-    ...new Set(
-      details.flatMap((d) => {
-        const m = /^SCAN (?:TABLE )?(\S+)$/i.exec(d);
-        return m && !own.has(m[1] as string) ? [m[1] as string] : [];
-      }),
-    ),
-  ];
+  const scans = new Map<string, PlanScan>();
+  for (const d of details) {
+    const scan = /^SCAN (?:TABLE )?(\S+)$/i.exec(d);
+    const auto = /^SEARCH (\S+) USING AUTOMATIC (?:PARTIAL )?(?:COVERING )?INDEX \((.+)\)/i.exec(d);
+    const alias = scan?.[1] ?? auto?.[1];
+    if (!alias || own.has(alias)) continue;
+    const key = auto
+      ? [...(auto[2] as string).matchAll(/(\S+)=\?/g)].map((m) => m[1] as string)
+      : [];
+    scans.set(alias, { alias, key: key.length ? key : (scans.get(alias)?.key ?? null) });
+  }
+  return [...scans.values()];
 }
 
 const REF = new RegExp(
@@ -371,10 +382,10 @@ const VALUE_EQ = [
 ];
 const JOIN_EQ = new RegExp(String.raw`${QUALIFIED}\s*=\s*${QUALIFIED}`, "gi");
 
-// Each scanned alias's table and key from the text: the columns it equates
-// to a value — unless an `OR` could make one of those optional — else the
-// columns it joins on. An alias the text names no equality on yields none.
-function joinTargets(query: string, scanned: string[]): Target[] {
+// Each scanned alias's table from the text, and its key: the automatic
+// index's, else the columns it equates to a value — unless an `OR` could make
+// one of those optional — else the columns it joins on.
+function joinTargets(query: string, scanned: PlanScan[]): Target[] {
   const text = query.replace(/'(?:[^']|'')*'/g, "''");
   const tableOf = new Map<string, string>();
   for (const m of text.matchAll(REF)) {
@@ -395,10 +406,10 @@ function joinTargets(query: string, scanned: string[]): Target[] {
     add(joins, m[1] as string, m[2] as string);
     add(joins, m[3] as string, m[4] as string);
   }
-  return scanned.flatMap((alias) => {
+  return scanned.flatMap(({ alias, key: planKey }) => {
     const key = alias.toLowerCase();
     const table = tableOf.get(key) ?? alias;
-    const columns = values.get(key) ?? joins.get(key);
+    const columns = planKey ?? values.get(key) ?? joins.get(key);
     return columns && !isInternal(table) ? [{ table, columns: [...new Set(columns)] }] : [];
   });
 }
