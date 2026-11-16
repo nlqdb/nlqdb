@@ -2230,7 +2230,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Subtract ROW_NUMBER() from the date so each unbroken run of days becomes one group, then count per group: gaps and islands, with the SQL shown.",
     searchTitle: "How do I count a streak of consecutive days in SQL?",
     oneLiner:
-      "Subtract a per-user ROW_NUMBER() ordered by day from the date: every unbroken run of days collapses to one constant. GROUP BY that constant and count the days, and each user's longest run is their streak. That's the gaps-and-islands pattern — nlqdb compiles it from a plain-English question and shows the SQL.",
+      "Subtract a per-user ROW_NUMBER() ordered by day from each distinct active day: every unbroken run of days collapses to one constant. GROUP BY that constant and count the days, and each user's longest run is their streak. That's the gaps-and-islands pattern — nlqdb compiles it from a plain-English question and shows the SQL.",
     painContext:
       "Streaks, retention runs, uptime windows, longest consecutive-login stretches — every product-metrics team eventually needs to count consecutive days, and it's the SQL question that a plain `GROUP BY user` can't touch. `COUNT(DISTINCT day)` gives total active days, not the length of the longest unbroken run; the answer is the classic 'gaps and islands' pattern, where you subtract a per-user `ROW_NUMBER()` from the date so every consecutive run collapses to a single constant, then group by that constant. It's a two-window-function move that LLMs and hand-writers routinely get wrong — off by the gap, or counting total days instead of the run.",
     demoGoal: "each user's longest streak of consecutive days with at least one order",
