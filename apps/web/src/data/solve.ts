@@ -1597,7 +1597,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "SQL has no COUNTIF: use COUNT(*) FILTER (WHERE ...) or SUM(CASE WHEN ... THEN 1 ELSE 0 END). COUNT(x = 'paid') over-counts. See the SQL.",
     searchTitle: "How do I do a COUNTIF or SUMIF (conditional count or sum) in SQL?",
     oneLiner:
-      "SQL has no COUNTIF: use COUNT(*) FILTER (WHERE status = 'paid') in Postgres, or SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) anywhere; SUMIF puts the amount in place of 1. COUNT(status = 'paid') counts every non-NULL row, so it over-counts. nlqdb compiles it from a plain-English question and shows the SQL.",
+      "SQL has no COUNTIF: use COUNT(*) FILTER (WHERE status = 'paid') in Postgres, or SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) anywhere; SUMIF puts the amount in place of 1. COUNT(status = 'paid') counts every row whose status isn't NULL, so it over-counts. nlqdb compiles it from a plain-English question and shows the SQL.",
     painContext:
       "Analysts and PMs live in this translation — the spreadsheet has `COUNTIF` and `SUMIF`, SQL has no keyword for either, and each workaround has a trap. `COUNT(status = 'paid')` counts every row, not the paid ones, because `COUNT` counts non-null values and the comparison is non-null (true or false) on every row. `SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END)` works but is verbose and easy to fat-finger across five metrics. `COUNT(*) FILTER (WHERE status = 'paid')` is the clean modern form but keeps getting forgotten — so it's re-Googled every reporting cycle, and the `COUNT` trap over-counts silently without ever erroring.",
     demoGoal: "count of paid orders and total revenue from paid orders",
@@ -2227,10 +2227,10 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     // lib/meta.ts.
     metaTitle: "Count consecutive-day streaks in SQL — gaps and islands",
     metaDescription:
-      "Subtract ROW_NUMBER() from the date so each unbroken run of days becomes one group, then count per group: gaps and islands, with the SQL shown.",
+      "Subtract ROW_NUMBER() from each distinct date so every unbroken run of days becomes one group, then count per group: gaps and islands, SQL shown.",
     searchTitle: "How do I count a streak of consecutive days in SQL?",
     oneLiner:
-      "Subtract a per-user ROW_NUMBER() ordered by day from each distinct active day: every unbroken run of days collapses to one constant. GROUP BY that constant and count the days, and each user's longest run is their streak. That's the gaps-and-islands pattern — nlqdb compiles it from a plain-English question and shows the SQL.",
+      "Subtract a per-user ROW_NUMBER() ordered by day from each distinct active day: every unbroken run of days collapses to one constant. GROUP BY the user and that constant and count the days, and each user's longest run is their streak. That's the gaps-and-islands pattern — nlqdb compiles it from a plain-English question and shows the SQL.",
     painContext:
       "Streaks, retention runs, uptime windows, longest consecutive-login stretches — every product-metrics team eventually needs to count consecutive days, and it's the SQL question that a plain `GROUP BY user` can't touch. `COUNT(DISTINCT day)` gives total active days, not the length of the longest unbroken run; the answer is the classic 'gaps and islands' pattern, where you subtract a per-user `ROW_NUMBER()` from the date so every consecutive run collapses to a single constant, then group by that constant. It's a two-window-function move that LLMs and hand-writers routinely get wrong — off by the gap, or counting total days instead of the run.",
     demoGoal: "each user's longest streak of consecutive days with at least one order",
