@@ -1594,10 +1594,10 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     // lib/meta.ts.
     metaTitle: "COUNTIF & SUMIF in SQL — conditional count/sum (Postgres)",
     metaDescription:
-      "SQL has no COUNTIF or SUMIF keyword, and COUNT(x='paid') over-counts silently. Ask in plain English; nlqdb compiles the FILTER form and shows the SQL.",
+      "SQL has no COUNTIF: use COUNT(*) FILTER (WHERE ...) or SUM(CASE WHEN ... THEN 1 ELSE 0 END). COUNT(x = 'paid') over-counts. See the SQL.",
     searchTitle: "How do I do a COUNTIF or SUMIF (conditional count or sum) in SQL?",
     oneLiner:
-      "If you need a COUNTIF or SUMIF — count or total only the rows that meet a condition, like paid orders or signups from one plan — ask in plain English instead of hand-writing the aggregate. nlqdb compiles `COUNT(*) FILTER (WHERE ...)`, runs it in Postgres, and shows the SQL so you can verify the condition.",
+      "SQL has no COUNTIF: use COUNT(*) FILTER (WHERE status = 'paid') in Postgres, or SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) anywhere; SUMIF puts the amount in place of 1. COUNT(status = 'paid') counts every row whose status isn't NULL, so it over-counts. nlqdb compiles it from a plain-English question and shows the SQL.",
     painContext:
       "Analysts and PMs live in this translation — the spreadsheet has `COUNTIF` and `SUMIF`, SQL has no keyword for either, and each workaround has a trap. `COUNT(status = 'paid')` counts every row, not the paid ones, because `COUNT` counts non-null values and the comparison is non-null (true or false) on every row. `SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END)` works but is verbose and easy to fat-finger across five metrics. `COUNT(*) FILTER (WHERE status = 'paid')` is the clean modern form but keeps getting forgotten — so it's re-Googled every reporting cycle, and the `COUNT` trap over-counts silently without ever erroring.",
     demoGoal: "count of paid orders and total revenue from paid orders",
@@ -2016,7 +2016,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Use LEFT JOIN ... WHERE b.id IS NULL or NOT EXISTS, not NOT IN, which breaks on NULLs. Ask 'customers who never ordered' in English; nlqdb shows the SQL.",
     searchTitle: "How do I find rows in one table with no match in another (anti-join) in SQL?",
     oneLiner:
-      "If you need the rows in one table with no match in another — customers who never placed an order — ask in plain English instead of hand-writing an anti-join. nlqdb compiles the `LEFT JOIN ... WHERE b.id IS NULL` (or `NOT EXISTS`), runs it in Postgres, and shows the SQL so you can dodge the `NOT IN` NULL trap.",
+      "Use LEFT JOIN b ON ... WHERE b.id IS NULL, or NOT EXISTS — both keep the rows with no match in the other table. Avoid NOT IN (subquery): one NULL in the subquery returns zero rows. nlqdb compiles the NULL-safe anti-join from a plain-English question — 'customers who never ordered' — and shows the SQL.",
     painContext:
       "Analysts ask 'who's missing' all the time — customers who never ordered, products never sold, users with no login this month, invoices with no payment. It's a set difference, and it's the query people get silently wrong. The tempting `WHERE id NOT IN (SELECT customer_id FROM orders)` returns zero rows the instant that subquery contains a single NULL, because `NOT IN` compares against NULL as unknown and the whole predicate collapses. The two correct shapes are a `LEFT JOIN` with `WHERE b.key IS NULL` (keep the left rows that found no partner) or `NOT EXISTS` (a correlated anti-join that's NULL-safe by construction) — and knowing which one, and why `NOT IN` betrayed you, is the whole difficulty.",
     demoGoal: "customers who have never placed an order",
@@ -2157,7 +2157,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Bucket numbers into ranges in SQL with CASE WHEN, GROUP BY the bucket, and sort by lower bound. Ask in plain English; nlqdb runs it and shows the SQL.",
     searchTitle: "How do I group numbers into ranges (buckets) in SQL?",
     oneLiner:
-      "If you want a count per range — orders under $50, $50–$200, over $200 — instead of one row per exact value, ask in plain English. nlqdb compiles the bucket expression, GROUP BYs the bucket, orders the ranges by their lower bound, and shows the SQL, so 5–10 sorts before 10–20 instead of after.",
+      "Label each row's range with CASE WHEN amount < 50 THEN ... END, GROUP BY that label, and sort by each range's lower bound — sorting the text label puts 10–20 before 5–10. Make the boundaries tile: < 50, then >= 50. nlqdb compiles it from a plain-English question and shows the SQL.",
     painContext:
       "Bucketing a continuous column into ranges — a revenue histogram, orders by price band, users by age group — is the analyst's everyday question that plain `GROUP BY amount` gets wrong: it returns one row per exact value, not per band. You reach for a `CASE WHEN amount < 50 THEN ... END` label (or `width_bucket` for even bins) and group by that. Then two traps bite: the boundaries have to tile without a gap or overlap (`< 50` then `>= 50`, never `<= 50` then `>= 50`), and the bucket labels are text, so `ORDER BY bucket` sorts them alphabetically — '10-20' lands before '5-10' unless you order by the numeric lower bound.",
     demoGoal: "count of orders bucketed by amount: under 50, 50 to 200, and over 200",
@@ -2227,10 +2227,10 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     // lib/meta.ts.
     metaTitle: "Count consecutive-day streaks in SQL — gaps and islands",
     metaDescription:
-      "Find each user's longest run of consecutive active days — not their total. Ask in plain English; nlqdb compiles the gaps-and-islands SQL and shows it.",
+      "Subtract ROW_NUMBER() from each distinct date so every unbroken run of days becomes one group, then count per group: gaps and islands, SQL shown.",
     searchTitle: "How do I count a streak of consecutive days in SQL?",
     oneLiner:
-      "If you want each user's longest run of consecutive active days — not just their total active days — ask in plain English. nlqdb compiles the gaps-and-islands query (the date-minus-row-number trick that turns each unbroken run into one group), counts the days per run, and shows the SQL.",
+      "Subtract a per-user ROW_NUMBER() ordered by day from each distinct active day: every unbroken run of days collapses to one constant. GROUP BY the user and that constant and count the days, and each user's longest run is their streak. That's the gaps-and-islands pattern — nlqdb compiles it from a plain-English question and shows the SQL.",
     painContext:
       "Streaks, retention runs, uptime windows, longest consecutive-login stretches — every product-metrics team eventually needs to count consecutive days, and it's the SQL question that a plain `GROUP BY user` can't touch. `COUNT(DISTINCT day)` gives total active days, not the length of the longest unbroken run; the answer is the classic 'gaps and islands' pattern, where you subtract a per-user `ROW_NUMBER()` from the date so every consecutive run collapses to a single constant, then group by that constant. It's a two-window-function move that LLMs and hand-writers routinely get wrong — off by the gap, or counting total days instead of the run.",
     demoGoal: "each user's longest streak of consecutive days with at least one order",
@@ -2296,7 +2296,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Combine rows into one comma-separated value with STRING_AGG (Postgres) or GROUP_CONCAT (MySQL), ordered inside the aggregate. Ask in English; see the SQL.",
     searchTitle: "How do I combine multiple rows into one comma-separated value in SQL?",
     oneLiner:
-      "If you want one row per customer with their products rolled into a single comma-separated list — not one row per order line — ask in plain English. nlqdb compiles the string aggregate (`STRING_AGG` in Postgres, `GROUP_CONCAT` in MySQL), orders the items inside the aggregate so the list is stable, and shows the SQL.",
+      "Use STRING_AGG(name, ', ' ORDER BY name) with a GROUP BY in Postgres (GROUP_CONCAT in MySQL; SQL Server's STRING_AGG and Oracle's LISTAGG order with WITHIN GROUP): one row per group, its values joined into one string. Order inside the aggregate, or the list shuffles between runs. nlqdb compiles it from a plain-English question and shows the SQL.",
     painContext:
       "Rolling many rows up into one value — every product a customer bought as a single 'apples, bananas, cherries' cell, all tags on a post in one line, every error code per host — is the report shape a plain `GROUP BY` can't give you: grouping collapses the rows but leaves you needing an aggregate that concatenates text, not one that sums numbers. Every engine spells it differently — `STRING_AGG` in Postgres and SQL Server, `GROUP_CONCAT` in MySQL, `LISTAGG` in Oracle — and two traps bite: without an explicit `ORDER BY` inside the aggregate the list order is undefined and shuffles between runs, and the delimiter is yours to choose, so a value that itself contains a comma can make the joined string ambiguous.",
     demoGoal: "each customer's product names combined into one comma-separated list, alphabetized",

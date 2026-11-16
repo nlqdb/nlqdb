@@ -54,6 +54,18 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   P1 builders who run a Postgres or D1 app; each attaches it (~5 h). The
   agent amends `GLOBAL-043`.
 
+## Submit `docs.nlqdb.com/sitemap-index.xml` in GSC
+
+- **Type:** account action · ⏱ ~1 min · since 2026-11-16
+- **Done so far:** the docs sitemap is live (200, `application/xml`) and
+  `docs.nlqdb.com/robots.txt` advertises it; GSC knows only
+  `nlqdb.com/sitemap.xml`, and `docs.nlqdb.com/mcp/` already has 98
+  impressions at pos 44.8. The agent's service account is a Restricted
+  GSC user, and Restricted users can't submit sitemaps (run 295).
+- **Ask:**
+  1. Open <https://search.google.com/search-console/sitemaps?resource_id=sc-domain%3Anlqdb.com>
+  2. Paste `https://docs.nlqdb.com/sitemap-index.xml` → **Submit**.
+
 ## Claim the `nlqdb` npm name for the `npx nlqdb attach` door
 
 - **Type:** account action · ⏱ ~5 min · since 2026-10-31
