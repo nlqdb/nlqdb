@@ -39,6 +39,21 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   either way. Reply in chat; the agent records it in
   [`docs/ROADMAP.md`](docs/ROADMAP.md) §2.
 
+## Re-gate recruiting 10 builders: rateme12 has no missing index
+
+- **Type:** decision · ⏱ ~2 min · since 2026-11-16
+- **Done so far:** `GLOBAL-043` recruits ~10 builders once rateme12 shows
+  KPI B > 0. Run 294 made Tier 1 plan its joins and subqueries: 0 proposals
+  — its heaviest texts (24 h and 7 d) already plan through indexes; the rest
+  is whole-table counts and aggregates. So no index applies there until its
+  workload changes; the spike's index is kept (38× p95 est.).
+- **Ask:** recommended (a) — gate stuck on rateme12 · spike delta already
+  measured · one DB, Postgres only · wait, or new kind. Options: (a) recruit
+  when the spike passes; (b) keep the rateme12 gate and wait; (c) gate on a
+  D1 unused-index drop's write delta (playbook kind 1, first). Then: DM ~10
+  P1 builders who run a Postgres or D1 app; each attaches it (~5 h). The
+  agent amends `GLOBAL-043`.
+
 ## Claim the `nlqdb` npm name for the `npx nlqdb attach` door
 
 - **Type:** account action · ⏱ ~5 min · since 2026-10-31
@@ -106,15 +121,6 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
 - **Ask:** pick one — (a) `sk_mcp_` attaches (amend `SK-APIKEYS-015`);
   (b) keep `sk_live_`-only and amend `END_GOAL.md` row 8 to say so;
   (c) `sk_mcp_` attaches only once per-database scoping ships.
-
-## Recruit 10 builders once rateme12's attach shows a measured delta
-
-- **Type:** account action · ⏱ ~5 h · since 2026-10-14
-- **Done so far:** gated — opens when KPI B > 0 on rateme12's D1 (one applied
-  change with a measured gain, `GLOBAL-043`).
-- **Ask:**
-  1. DM ~10 P1 builders who already run a Postgres or D1 app (no content, no
-     SEO); each attaches it. Agents track week-2 returns on the scorecard.
 
 ## Show HN launch sequence
 
