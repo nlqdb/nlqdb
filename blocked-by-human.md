@@ -122,7 +122,6 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   (b) keep `sk_live_`-only and amend `END_GOAL.md` row 8 to say so;
   (c) `sk_mcp_` attaches only once per-database scoping ships.
 
-
 ## Show HN launch sequence
 
 - **Type:** account action · ⏱ ~30 min · since 2026-06-13
