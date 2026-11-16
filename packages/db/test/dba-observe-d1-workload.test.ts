@@ -169,7 +169,7 @@ const WORKLOAD = [
     80,
     5100,
     50,
-  ),
+  ), // scans posts to join on user_id: the author lookup's index
   insight("SELECT * FROM gone WHERE x = ?", 70, 5000, 1), // dropped since
   insight("SELECT * FROM posts WHERE missing = ?", 60, 5000, 1), // not a column
 ];
@@ -205,7 +205,7 @@ describe("observeD1Workload on a local D1", () => {
       );
     expect(span?.attributes["nlqdb.dba.unplanned"]).toBe(2);
     expect(span?.attributes["nlqdb.dba.proposals"]).toBe(3);
-    expect(d1.requests() - requestsBefore).toBe(1 + 6 + 2);
+    expect(d1.requests() - requestsBefore).toBe(1 + 7 + 2);
   });
 
   it("counts where every text left Tier 1, with its rows read", async () => {
@@ -217,16 +217,77 @@ describe("observeD1Workload on a local D1", () => {
     );
     expect(texts).toEqual({
       efficient: 2,
-      multiTable: 1,
       filter: 1,
       unplanned: 2,
-      duplicate: 1,
+      duplicate: 2,
       proposed: 3,
     });
-    // The UPDATE repeats the author lookup's index.
-    expect(funnel.duplicate.rowsRead).toBe(250_000);
+    // The UPDATE and the join repeat the author lookup's index.
+    expect(funnel.duplicate.rowsRead).toBe(250_000 + 408_000);
     const all = Object.values(funnel).reduce((sum, s) => sum + s.rowsRead, 0);
     expect(all).toBe(WORKLOAD.reduce((sum, i) => sum + i.totalRowsRead, 0));
+  });
+
+  it("plans a join or subquery: keys each scanned app table from the text", async () => {
+    const { batch } = await d1.open(`${APP}
+      CREATE TABLE tags (post_id INTEGER NOT NULL, tag TEXT NOT NULL);
+      INSERT INTO tags (post_id, tag) SELECT id, 'tag' || (id % 50) FROM posts;
+    `);
+    const funnel = newD1Tier1Funnel();
+    const proposals = await observeD1Workload(
+      batch,
+      [
+        // A correlated count scans posts once per user: both tables keyed.
+        insight(
+          "SELECT u.id, (SELECT count(*) FROM posts p WHERE p.user_id = u.id) n FROM users u WHERE u.team = ?",
+          400,
+          50_100,
+          10,
+        ),
+        // The scanned side's own equality on a value is its key, not the join's.
+        insight(
+          'SELECT p.id FROM posts AS p JOIN "tags" t ON t.post_id = p.id WHERE t.tag = ?',
+          300,
+          5100,
+          100,
+        ),
+        // An `OR` can make a value equality optional: the join key stands.
+        insight(
+          "SELECT p.id FROM posts p JOIN tags t ON t.post_id = p.id WHERE t.tag = ? OR p.title = ?",
+          200,
+          10_100,
+          101,
+        ),
+        // Every table searched by an index: served.
+        insight(
+          "SELECT * FROM posts p JOIN users u ON u.id = p.user_id WHERE p.title = ?",
+          100,
+          2000,
+          1,
+        ),
+        // A co-routine's scan reads its own rows, not a table.
+        insight(
+          "SELECT * FROM (SELECT DISTINCT user_id FROM posts WHERE title = ?) AS m CROSS JOIN users WHERE users.id = m.user_id",
+          90,
+          2000,
+          1,
+        ),
+        // A count of a whole table names no key.
+        insight("SELECT (SELECT count(*) FROM users) a, (SELECT count(*) FROM tags) b", 5, 5100, 1),
+      ],
+      funnel,
+    );
+    expect(proposals.map((p) => `${p.table}(${p.columns.join(",")})`)).toEqual([
+      "users(team)",
+      "posts(user_id)",
+      "tags(post_id)",
+      "tags(tag)",
+    ]);
+    expect(proposals[1]?.evidence.d1Workload?.calls).toBe(400);
+    const texts = Object.fromEntries(
+      Object.entries(funnel).flatMap(([stage, { texts }]) => (texts ? [[stage, texts]] : [])),
+    );
+    expect(texts).toEqual({ proposed: 3, served: 2, unkeyed: 1 });
   });
 
   it("counts an indexed lookup as served, and never plans a clipped text", async () => {

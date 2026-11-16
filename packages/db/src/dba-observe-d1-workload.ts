@@ -4,10 +4,14 @@
 // `create_index` proposals. Needs D1 Read for the plan and catalog.
 //
 // A query text yields a proposal when it is whole (not clipped by the
-// analytics), one table filtered by an AND of plain equalities and not
-// aggregated, it keeps at most 5 % of the rows it reads (D1's
+// analytics), it keeps at most 5 % of the rows it reads (D1's
 // `queryEfficiency`, writes for an UPDATE / DELETE), `EXPLAIN QUERY PLAN`
-// scans that table, and no full index already leads with those columns.
+// scans an app table it filters by equality, and no full index already leads
+// with those columns. One table: an AND of plain equalities, not aggregated.
+// A join, subquery or compound: the plan names the scanned alias, the text its
+// key — the alias's equalities on values (with no `OR` in the text), else its
+// join keys. workerd's D1 builds no automatic index, so the plan never names
+// the key itself; a key that doesn't pay is the verify's to revert.
 // D1 strips bound parameters to `?` and binds none into an `EXPLAIN`, so the
 // plan reads them as `NULL` — an equality on `NULL` plans like any other.
 // A scan under a `LIMIT` can stop early, so the evidence is the per-run rows read, not the table's size.
@@ -52,6 +56,8 @@ function unquote(ident: string): string {
 }
 
 type Filter = { table: string; alias: string; columns: string[] };
+// One table's scan the plan shows and the key a proposal would index.
+type Target = { table: string; columns: string[] };
 
 // Why a text isn't one table under an AND of plain equalities (any other term
 // — a range, an OR, an IN — would credit the equality columns with
@@ -92,20 +98,20 @@ const CLIPPED_LENGTH = 4095;
 // total rows read — the D1 twin of `Tier1Funnel`; the rateme12 CI log prints
 // it (counts only, never a query). Before the plan: `efficient` keeps over
 // 5 % of the rows it reads, `clipped` hit the analytics' length cap,
-// `statements` holds a second statement, `multiTable` a join / subquery /
-// compound, `aggregate` an aggregate, `shape` no WHERE Tier 1 reads (an
-// INSERT, an unfiltered read), `filter` a term other than a plain equality
-// (an IN, a range, an OR, a LIKE), `internal` a SQLite / D1 table, `capped`
-// past the per-observe plan cap. After it: `unplanned` failed to prepare,
-// `served` plans without scanning its table (an index already serves it),
-// `notTable` isn't a main-schema table, `unknownColumns` names a column the
+// `statements` holds a second statement, `aggregate` a one-table aggregate,
+// `shape` no WHERE Tier 1 reads (an INSERT, an unfiltered read), `filter` a
+// term other than a plain equality (an IN, a range, an OR, a LIKE),
+// `internal` a SQLite / D1 table, `capped` past the per-observe plan cap.
+// After it: `unplanned` failed to prepare, `served` plans without scanning an
+// app table (an index already serves it), `unkeyed` a multi-table plan scans
+// one the text filters by no equality on it, `notTable` isn't a main-schema
+// table, `unknownColumns` names a column the
 // table lacks, `covered` a full index already leads with its columns,
 // `duplicate` repeats an earlier text's index, `proposed` became a proposal.
 export const D1_TIER1_STAGES = [
   "efficient",
   "clipped",
   "statements",
-  "multiTable",
   "aggregate",
   "shape",
   "filter",
@@ -113,6 +119,7 @@ export const D1_TIER1_STAGES = [
   "capped",
   "unplanned",
   "served",
+  "unkeyed",
   "notTable",
   "unknownColumns",
   "covered",
@@ -137,17 +144,18 @@ const unbound = (query: string): string =>
     .map((part, i) => (i % 2 ? part : part.replace(/\?\d*/g, "NULL")))
     .join("");
 
-// The texts Tier 1 would plan, heaviest rows read first: one app table under
-// an equality filter that keeps at most 5 % of the rows it reads; the rest
-// counted on `funnel`. Needs no request, so it reads a workload before the
-// plan's D1 Read is granted.
+// The texts Tier 1 would plan, heaviest rows read first: keeping at most 5 %
+// of the rows they read, one app table under an equality filter or a
+// multi-table text (`filter` null: its plan picks the table); the rest counted
+// on `funnel`. Needs no request, so it reads a workload before the plan's D1
+// Read is granted.
 export function d1WorkloadCandidates(
   insights: D1QueryInsight[],
   funnel: D1Tier1Funnel = newD1Tier1Funnel(),
-): { insight: D1QueryInsight; filter: Filter }[] {
+): { insight: D1QueryInsight; filter: Filter | null }[] {
   return [...insights]
     .sort((a, b) => b.totalRowsRead - a.totalRowsRead)
-    .flatMap((insight) => {
+    .flatMap((insight): { insight: D1QueryInsight; filter: Filter | null }[] => {
       const kept = /^\s*SELECT\b/i.test(insight.query) ? insight.rowsReturned : insight.rowsWritten;
       if (insight.rowsRead <= 0 || kept / insight.rowsRead > MAX_EFFICIENCY) {
         note(funnel, "efficient", insight);
@@ -158,6 +166,7 @@ export function d1WorkloadCandidates(
         return [];
       }
       const filter = equalityFilter(insight.query);
+      if (filter === "multiTable") return [{ insight, filter: null }];
       if (typeof filter === "string") {
         note(funnel, filter, insight);
         return [];
@@ -232,22 +241,39 @@ async function propose(
       );
     }
   }
-  const scanning = candidates.filter(({ insight, filter }, i) => {
+  // Each planned text's targets: its scanned app tables and their keys.
+  const targeted = candidates.flatMap(({ insight, filter }, i) => {
     const plan = planned[i];
     if (!plan) {
       note(funnel, "unplanned", insight);
-      return false;
+      return [];
     }
-    const scans = plan.some((r) =>
-      new RegExp(`^SCAN (?:TABLE )?${regexLiteral(filter.alias)}$`, "i").test(String(r["detail"])),
-    );
-    if (!scans) note(funnel, "served", insight);
-    return scans;
+    const details = plan.map((r) => String(r["detail"]));
+    if (filter) {
+      const scans = details.some((d) =>
+        new RegExp(`^SCAN (?:TABLE )?${regexLiteral(filter.alias)}$`, "i").test(d),
+      );
+      if (!scans) note(funnel, "served", insight);
+      return scans
+        ? [{ insight, targets: [{ table: filter.table, columns: filter.columns }] }]
+        : [];
+    }
+    const scanned = scannedAliases(details);
+    if (scanned.length === 0) {
+      note(funnel, "served", insight);
+      return [];
+    }
+    const targets = joinTargets(insight.query, scanned);
+    if (targets.length === 0) {
+      note(funnel, "unkeyed", insight);
+      return [];
+    }
+    return [{ insight, targets }];
   });
-  if (scanning.length === 0) return;
+  if (targeted.length === 0) return;
 
   // The catalog of each scanned table: its columns, full indexes and own spelling.
-  const tables = [...new Set(scanning.map((c) => c.filter.table))];
+  const tables = [...new Set(targeted.flatMap((c) => c.targets.map((t) => t.table)))];
   const catalog = await batch(
     tables.flatMap((t) => [
       `PRAGMA table_info(${d1Literal(t)})`,
@@ -255,15 +281,11 @@ async function propose(
       `PRAGMA table_list(${d1Literal(t)})`,
     ]),
   );
-  const indexNames = [
-    ...new Set(
-      tables.flatMap((_, i) =>
-        (catalog[i * 3 + 1] ?? [])
-          .filter((ix) => Number(ix["partial"]) === 0)
-          .map((ix) => String(ix["name"])),
-      ),
-    ),
-  ];
+  const fullIndexes = (i: number) =>
+    (catalog[i * 3 + 1] ?? [])
+      .filter((ix) => Number(ix["partial"]) === 0)
+      .map((ix) => String(ix["name"]));
+  const indexNames = [...new Set(tables.flatMap((_, i) => fullIndexes(i)))];
   const indexInfo = await batch(indexNames.map((n) => `PRAGMA index_info(${d1Literal(n)})`));
   const keyColumns = new Map(
     indexNames.map((n, i) => [
@@ -274,38 +296,24 @@ async function propose(
     ]),
   );
 
-  for (const { insight, filter } of scanning) {
-    const i = tables.indexOf(filter.table);
+  // A target's stage, and the proposal it adds; a text with several targets
+  // is counted once, at the furthest stage any of them reached.
+  const judge = (insight: D1QueryInsight, target: Target): D1Tier1Stage => {
+    const i = tables.indexOf(target.table);
     // SQLite names are case-insensitive: compare and propose in the catalog's
     // spelling, so the DDL matches Tier 0's for the same index.
     const table = (catalog[i * 3 + 2] ?? []).find(
       (t) => t["schema"] === "main" && t["type"] === "table",
     )?.["name"];
-    if (typeof table !== "string" || isInternal(table)) {
-      note(funnel, "notTable", insight);
-      continue;
-    }
+    if (typeof table !== "string" || isInternal(table)) return "notTable";
     const known = new Map(
       (catalog[i * 3] ?? []).map((c) => [String(c["name"]).toLowerCase(), String(c["name"])]),
     );
-    const columns = [...new Set(filter.columns.map((c) => known.get(c.toLowerCase())))];
-    if (!columns.every((c): c is string => c !== undefined)) {
-      note(funnel, "unknownColumns", insight);
-      continue;
-    }
+    const columns = [...new Set(target.columns.map((c) => known.get(c.toLowerCase())))];
+    if (!columns.every((c): c is string => c !== undefined)) return "unknownColumns";
     const key = `${table}\0${[...columns].sort()}`;
-    if (proposals.has(key)) {
-      note(funnel, "duplicate", insight);
-      continue;
-    }
-    const indexes = (catalog[i * 3 + 1] ?? [])
-      .filter((ix) => Number(ix["partial"]) === 0)
-      .map((ix) => String(ix["name"]));
-    if (indexes.some((n) => covers(keyColumns.get(n) ?? [], columns))) {
-      note(funnel, "covered", insight);
-      continue;
-    }
-    note(funnel, "proposed", insight);
+    if (proposals.has(key)) return "duplicate";
+    if (fullIndexes(i).some((n) => covers(keyColumns.get(n) ?? [], columns))) return "covered";
     const rowsRead = Math.round(insight.rowsRead);
     proposals.set(
       key,
@@ -313,7 +321,7 @@ async function propose(
         tier: 1,
         table,
         columns,
-        reason: `A query that ran ${insight.calls} times (mean ${insight.meanMs.toFixed(2)} ms) reads ${rowsRead} rows of ${table} each run to filter on ${columns.join(", ")}; an index on them serves it directly.`,
+        reason: `A query that ran ${insight.calls} times (mean ${insight.meanMs.toFixed(2)} ms) reads ${rowsRead} rows each run, scanning ${table} to filter on ${columns.join(", ")}; an index on them serves it directly.`,
         evidence: {
           rowEstimate: rowsRead,
           tableBytes: 0,
@@ -327,7 +335,72 @@ async function propose(
         },
       }),
     );
+    return "proposed";
+  };
+  for (const { insight, targets } of targeted) {
+    const stages = targets.map((t) => D1_TIER1_STAGES.indexOf(judge(insight, t)));
+    note(funnel, D1_TIER1_STAGES[Math.max(...stages)] as D1Tier1Stage, insight);
   }
+}
+
+// The aliases a plan scans in full: a bare `SCAN x` — not a co-routine or
+// materialized view's (it reads its own result), and not a virtual table, a
+// constant row or an index scan, which name more after the alias.
+function scannedAliases(details: string[]): string[] {
+  const own = new Set(
+    details.flatMap((d) => /^(?:CO-ROUTINE|MATERIALIZE) (\S+)$/i.exec(d)?.[1] ?? []),
+  );
+  return [
+    ...new Set(
+      details.flatMap((d) => {
+        const m = /^SCAN (?:TABLE )?(\S+)$/i.exec(d);
+        return m && !own.has(m[1] as string) ? [m[1] as string] : [];
+      }),
+    ),
+  ];
+}
+
+const REF = new RegExp(
+  String.raw`\b(?:FROM|JOIN)\s+(${IDENT})(?:\s+(?:AS\s+)?(?!(?:WHERE|ON|USING|JOIN|INNER|OUTER|LEFT|RIGHT|FULL|CROSS|NATURAL|INDEXED|NOT|GROUP|ORDER|LIMIT|UNION|INTERSECT|EXCEPT|WINDOW|HAVING|SET|RETURNING)\b)(${IDENT}))?`,
+  "gi",
+);
+const QUALIFIED = String.raw`(${IDENT})\.(${IDENT})`;
+const VALUE_EQ = [
+  new RegExp(String.raw`${QUALIFIED}\s*=\s*${VALUE}(?![\w.])`, "gi"),
+  new RegExp(String.raw`(?<![\w.$"\`\]])${VALUE}\s*=\s*${QUALIFIED}`, "gi"),
+];
+const JOIN_EQ = new RegExp(String.raw`${QUALIFIED}\s*=\s*${QUALIFIED}`, "gi");
+
+// Each scanned alias's table and key from the text: the columns it equates
+// to a value — unless an `OR` could make one of those optional — else the
+// columns it joins on. An alias the text names no equality on yields none.
+function joinTargets(query: string, scanned: string[]): Target[] {
+  const text = query.replace(/'(?:[^']|'')*'/g, "''");
+  const tableOf = new Map<string, string>();
+  for (const m of text.matchAll(REF)) {
+    const table = unquote(m[1] as string);
+    tableOf.set((m[2] ? unquote(m[2]) : table).toLowerCase(), table);
+  }
+  const values = new Map<string, string[]>();
+  const joins = new Map<string, string[]>();
+  const add = (into: Map<string, string[]>, alias: string, column: string) => {
+    const key = unquote(alias).toLowerCase();
+    into.set(key, [...(into.get(key) ?? []), unquote(column)]);
+  };
+  if (!/\bOR\b/i.test(text))
+    for (const re of VALUE_EQ)
+      for (const m of text.matchAll(re)) add(values, m[1] as string, m[2] as string);
+  for (const m of text.matchAll(JOIN_EQ)) {
+    if (unquote(m[1] as string).toLowerCase() === unquote(m[3] as string).toLowerCase()) continue;
+    add(joins, m[1] as string, m[2] as string);
+    add(joins, m[3] as string, m[4] as string);
+  }
+  return scanned.flatMap((alias) => {
+    const key = alias.toLowerCase();
+    const table = tableOf.get(key) ?? alias;
+    const columns = values.get(key) ?? joins.get(key);
+    return columns && !isInternal(table) ? [{ table, columns: [...new Set(columns)] }] : [];
+  });
 }
 
 // D1 answers a statement it can't prepare with a 400; anything else

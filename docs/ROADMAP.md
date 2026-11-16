@@ -16,7 +16,7 @@ D1 attach on the real rateme12 (dogfood, `RATEME12_D1_TOKEN`,
 attach; KPI B = one applied index with its before/after p95 (D1: and rows
 read).
 
-- [ ] rateme12: apply one D1 proposal, record p95 and rows read before/after — KPI B on a real D1. Run 293's funnel: 0 % of its 24 h rows read is in an unindexed single-table lookup (its one candidate is already served by an index); 65.4 % is joins / subqueries, 21.1 % one text the analytics clip at 4,095 chars. Next: Tier 1 plans the multi-table texts and proposes where a plan scans an app table — a Tier 0 apply verifies `unmeasured` (no query text)
+- [ ] rateme12: apply one D1 proposal, record p95 and rows read before/after — KPI B on a real D1 ⛔ see blocked-by-human.md (re-gate recruiting). Run 294: Tier 1 plans joins / subqueries too and judges 62.4 % of the 24 h rows read by plan (was 0.1 %) — 0 proposals: 45.7 % already index-served, 16.6 % one whole-table count; the rest is one-table aggregates (17.3 %) and one clipped text (16.9 %). No missing index until the workload changes (the CI job's funnel shows when it does); a Tier 0 apply verifies `unmeasured` (no query text)
 
 ## 2 — Deletion PR series
 
