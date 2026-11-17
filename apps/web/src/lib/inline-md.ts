@@ -1,7 +1,7 @@
-// Dependency-free inline-markdown renderer for `/blog` post bodies
-// (`data/blog.ts`). Post paragraphs carry a deliberate *subset* of inline
-// markdown — `code spans`, **strong**, *em*, [links](…) — rendered to HTML
-// at build time in the `/blog` templates' frontmatter. The source text is
+// Dependency-free inline-markdown renderer for `/blog` post bodies and
+// `/solve` prose (`data/blog.ts`, `data/solve.ts`). Both carry a deliberate
+// *subset* of inline markdown — `code spans`, **strong**, *em*, [links](…) —
+// rendered to HTML at build time in their templates. The source text is
 // HTML-escaped first, so post content can never inject markup; only the
 // four patterns below produce tags. Full markdown (or an Astro content
 // collection) is deliberately avoided: `bun test src` imports the

@@ -62,7 +62,7 @@ The [`automated-icp-validation-plan.md §3.1`](../../research/automated-icp-vali
 
 ## How to add a new solve page
 
-1. Add an entry to `apps/web/src/data/solve.ts` — fill all required fields (TypeScript will flag missing ones; the data tests pin the AEO invariants). The demo is exactly one of `demoGoal` (an `<nlq-data>` query) or `attachCommand` (a DBA search, answered on the reader's own database).
+1. Add an entry to `apps/web/src/data/solve.ts` — fill all required fields (TypeScript will flag missing ones; the data tests pin the AEO invariants). The demo is exactly one of `demoGoal` (an `<nlq-data>` query) or `attachCommand` (a DBA search, answered on the reader's own database). Prose fields and source labels render inline markdown (`code`, `*em*`, `**strong**`, links) through `lib/inline-md.ts`, the blog's renderer.
 2. Run `bun run --filter @nlqdb/web check && bun run --filter @nlqdb/web test` — astro-check + data-integrity tests both pass.
 3. The sitemap and llms.txt pick up the new slug automatically.
 4. If the entry is drawn from a specific ICP-mining cluster, cross-link in the source label so the evidence trail is one click from the page.

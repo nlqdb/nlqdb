@@ -24,6 +24,7 @@ import Base from "../../layouts/Base.astro";
 import { appHref } from "../../lib/app-href";
 import { breadcrumbJsonLd } from "../../lib/breadcrumb";
 import { faqPageJsonLd } from "../../lib/faq-jsonld";
+import { renderInline } from "../../lib/inline-md";
 import { serpDescription, serpTitle } from "../../lib/meta";
 
 export function getStaticPaths() {
@@ -80,17 +81,17 @@ const attachSteps = [
   {
     "@type": "HowToStep",
     name: "Attach the database",
-    text: "Pipe the connection string to nlq attach (or paste it at nlqdb.com/app/connect). nlqdb reads the catalog and lists its first proposals, each with the statement that undoes it.",
+    text: "Run nlq attach with a Postgres connection string or a Cloudflare D1's database id (or use nlqdb.com/app/connect). nlqdb reads the catalog and lists its first proposals, each with the statement that undoes it.",
   },
   {
     "@type": "HowToStep",
     name: "Apply a proposal",
-    text: "Run nlq apply with the proposal's id. Each index is built with CREATE INDEX CONCURRENTLY, so the app's writes never block.",
+    text: "Run nlq apply with the proposal's id. On Postgres the index is built with CREATE INDEX CONCURRENTLY, so the app's writes never block; on D1 it is built in one transaction, followed by PRAGMA optimize.",
   },
   {
     "@type": "HowToStep",
     name: "Let verify judge it",
-    text: "After 72 hours nlqdb re-reads the query's counters; an index that made its p95 estimate more than 10 % worse is dropped automatically.",
+    text: "After 72 hours nlqdb re-reads the query's counters; an index that made it more than 10 % worse (p95 estimate on Postgres, rows read or mean time on D1) is dropped automatically.",
   },
 ];
 const howToJsonLd = {
@@ -153,8 +154,8 @@ const breadcrumbLd = breadcrumbJsonLd(
       <header class="slv__head">
         <p class="slv__eyebrow">Solve · {PERSONAS[s.persona].label}</p>
         <h1 class="slv__title">{s.searchTitle}</h1>
-        <p class="slv__lede">{s.oneLiner}</p>
-        <p class="slv__context">{s.painContext}</p>
+        <p class="slv__lede" set:html={renderInline(s.oneLiner)} />
+        <p class="slv__context" set:html={renderInline(s.painContext)} />
       </header>
 
       {/* Beat 2 — Demo. The snippet that solves it, side-by-side. */}
@@ -175,7 +176,7 @@ const breadcrumbLd = breadcrumbJsonLd(
           <article class="slv__demo-card" aria-label="What nlqdb does for this">
             <p class="slv__demo-label">What nlqdb does for this</p>
             <ul class="slv__demo-bullets">
-              {s.howNlqdbAnswers.map((b) => <li>{b}</li>)}
+              {s.howNlqdbAnswers.map((b) => <li set:html={renderInline(b)} />)}
             </ul>
           </article>
 
@@ -184,7 +185,7 @@ const breadcrumbLd = breadcrumbJsonLd(
               <article class="slv__demo-card" aria-label="Attach command">
                 <p class="slv__demo-label">Run in your terminal</p>
                 <pre class="slv__demo-snippet"><code>{attachCommand}</code></pre>
-                <p class="slv__demo-foot">{s.demoWhy}</p>
+                <p class="slv__demo-foot" set:html={renderInline(s.demoWhy)} />
                 <a class="cta slv__attach-btn" href={appHref("/app/connect/")}>
                   Or attach in the browser &rarr;
                 </a>
@@ -193,7 +194,7 @@ const breadcrumbLd = breadcrumbJsonLd(
               <article class="slv__demo-card" aria-label="Embed snippet">
                 <p class="slv__demo-label">Drop into any HTML page</p>
                 <pre class="slv__demo-snippet"><code>&lt;<span class="slv__demo-tag">nlq-data</span> goal=&quot;{s.demoGoal}&quot;&gt;&lt;/<span class="slv__demo-tag">nlq-data</span>&gt;</code></pre>
-                <p class="slv__demo-foot">{s.demoWhy}</p>
+                <p class="slv__demo-foot" set:html={renderInline(s.demoWhy)} />
                 <button
                   type="button"
                   class="cta slv__try-btn"
@@ -215,7 +216,7 @@ const breadcrumbLd = breadcrumbJsonLd(
           What nlqdb doesn't try to do here
         </h2>
         <ul class="slv__strike-list">
-          {s.whatItDoesnt.map((b) => <li><span class="slv__strike">{b}</span></li>)}
+          {s.whatItDoesnt.map((b) => <li><span class="slv__strike" set:html={renderInline(b)} /></li>)}
         </ul>
       </section>
 
@@ -225,8 +226,8 @@ const breadcrumbLd = breadcrumbJsonLd(
           {
             s.faqs.map((f) => (
               <div class="slv__faq">
-                <dt>{f.q}</dt>
-                <dd>{f.a}</dd>
+                <dt set:html={renderInline(f.q)} />
+                <dd set:html={renderInline(f.a)} />
               </div>
             ))
           }
@@ -244,9 +245,12 @@ const breadcrumbLd = breadcrumbJsonLd(
           {
             s.sources.map((src) => (
               <li>
-                <a href={src.url} rel="nofollow noopener noreferrer" target="_blank">
-                  {src.label}
-                </a>
+                <a
+                  href={src.url}
+                  rel="nofollow noopener noreferrer"
+                  target="_blank"
+                  set:html={renderInline(src.label)}
+                />
               </li>
             ))
           }
@@ -273,7 +277,7 @@ const breadcrumbLd = breadcrumbJsonLd(
           attachCommand ? (
             <>
               <h2 class="slv__cta-title">Attach your database</h2>
-              <p>Sign in, paste the connection string, and see the first proposals. Nothing runs on your database until you apply one.</p>
+              <p>Sign in, hand nlqdb a Postgres connection string or a D1's id and token, and see the first proposals. Nothing runs on your database until you apply one.</p>
               <a class="cta slv__cta-btn" href={appHref("/app/connect/")}>Attach a database &rarr;</a>
             </>
           ) : (
@@ -399,6 +403,13 @@ const breadcrumbLd = breadcrumbJsonLd(
     line-height: 1.5;
     max-width: 60ch;
     text-wrap: balance;
+  }
+  /* Inline `code` from renderInline (lede, bullets, FAQ); the demo's own <pre><code> keeps its styles. */
+  .slv :global(:not(pre) > code) {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    color: var(--ink);
+    overflow-wrap: anywhere;
   }
   .slv__context {
     margin: 0;
