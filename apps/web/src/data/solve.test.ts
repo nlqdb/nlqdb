@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { renderInline } from "../lib/inline-md.ts";
 import { relatedSolveEntries, SOLVE_ENTRIES, solveBySlug } from "./solve.ts";
 
 // `/solve/<slug>` data is loaded by 4 surfaces (page template, /solve
@@ -136,6 +137,27 @@ describe("SOLVE_ENTRIES data integrity", () => {
       for (const text of prose) {
         const hit = text.match(leak);
         expect(hit ? `${s.slug}: ${hit[0]} — "${text.slice(0, 60)}…"` : "").toBe("");
+      }
+    }
+  });
+
+  test("rendered prose respects lib/inline-md.ts's limits (balanced markers; no link inside a source link)", () => {
+    for (const s of SOLVE_ENTRIES) {
+      const rendered = [
+        s.oneLiner,
+        s.painContext,
+        s.demoWhy,
+        ...s.howNlqdbAnswers,
+        ...s.whatItDoesnt,
+        ...s.faqs.flatMap((f) => [f.q, f.a]),
+        ...s.sources.map((src) => src.label),
+      ];
+      for (const text of rendered) {
+        const outsideCode = renderInline(text).replace(/<code>[^<]*<\/code>/g, "");
+        expect(outsideCode.includes("*") ? `${s.slug}: "${text.slice(0, 60)}…"` : "").toBe("");
+      }
+      for (const src of s.sources) {
+        expect(renderInline(src.label).includes("<a ") ? `${s.slug}: ${src.label}` : "").toBe("");
       }
     }
   });

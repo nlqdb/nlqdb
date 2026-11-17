@@ -14,15 +14,21 @@ const escapeHtml = (s: string): string =>
 // Strong / em / link passes for text OUTSIDE code spans. Order matters:
 // `**strong**` must run before `*em*` so the double marker isn't eaten.
 function renderText(escaped: string): string {
-  return escaped
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
-    .replace(/\[([^\]]+)\]\(([^()\s]+)\)/g, (_m, text: string, href: string) => {
-      const external = /^https?:\/\//.test(href) && !href.startsWith("https://nlqdb.com");
-      return external
-        ? `<a href="${href}" rel="noopener noreferrer">${text}</a>`
-        : `<a href="${href}">${text}</a>`;
-    });
+  return (
+    escaped
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+      // Only site-relative, fragment or http(s) targets become links, so a `javascript:` href can't be authored by accident.
+      .replace(
+        /\[([^\]]+)\]\(((?:\/|#|https?:\/\/)[^()\s]*)\)/g,
+        (_m, text: string, href: string) => {
+          const external = /^https?:\/\//.test(href) && !href.startsWith("https://nlqdb.com");
+          return external
+            ? `<a href="${href}" rel="noopener noreferrer">${text}</a>`
+            : `<a href="${href}">${text}</a>`;
+        },
+      )
+  );
 }
 
 export function renderInline(src: string): string {

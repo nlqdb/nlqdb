@@ -292,7 +292,7 @@ const breadcrumbLd = breadcrumbJsonLd(
           relatedPost && (
             <p class="slv__cta-meta">
               Further reading:{" "}
-              <a href={`/blog/${relatedPost.slug}/`}>{relatedPost.title}</a>
+              <a href={`/blog/${relatedPost.slug}/`} set:html={renderInline(relatedPost.title)} />
             </p>
           )
         }

@@ -37,4 +37,8 @@ describe("renderInline", () => {
       '<a href="https://www.getzep.com" rel="noopener noreferrer">Zep</a>',
     );
   });
+
+  test("a link with any other scheme stays literal text", () => {
+    expect(renderInline("[x](javascript:alert)")).toBe("[x](javascript:alert)");
+  });
 });

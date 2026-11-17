@@ -1611,7 +1611,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "SQL has no COUNTIF: use COUNT(*) FILTER (WHERE ...) or SUM(CASE WHEN ... THEN 1 ELSE 0 END). COUNT(x = 'paid') over-counts. See the SQL.",
     searchTitle: "How do I do a COUNTIF or SUMIF (conditional count or sum) in SQL?",
     oneLiner:
-      "SQL has no COUNTIF: use COUNT(*) FILTER (WHERE status = 'paid') in Postgres, or SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) anywhere; SUMIF puts the amount in place of 1. COUNT(status = 'paid') counts every row whose status isn't NULL, so it over-counts. nlqdb compiles it from a plain-English question and shows the SQL.",
+      "SQL has no COUNTIF: use `COUNT(*) FILTER (WHERE status = 'paid')` in Postgres, or `SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END)` anywhere; SUMIF puts the amount in place of 1. `COUNT(status = 'paid')` counts every row whose status isn't NULL, so it over-counts. nlqdb compiles it from a plain-English question and shows the SQL.",
     painContext:
       "Analysts and PMs live in this translation — the spreadsheet has `COUNTIF` and `SUMIF`, SQL has no keyword for either, and each workaround has a trap. `COUNT(status = 'paid')` counts every row, not the paid ones, because `COUNT` counts non-null values and the comparison is non-null (true or false) on every row. `SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END)` works but is verbose and easy to fat-finger across five metrics. `COUNT(*) FILTER (WHERE status = 'paid')` is the clean modern form but keeps getting forgotten — so it's re-Googled every reporting cycle, and the `COUNT` trap over-counts silently without ever erroring.",
     demoGoal: "count of paid orders and total revenue from paid orders",
@@ -1638,7 +1638,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         a: "Because `COUNT(x)` counts non-null values, not true results — `status = 'paid'` is non-null (either true or false) on every row, so it counts them all. The fixes are `COUNT(*) FILTER (WHERE status = 'paid')` or `SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END)`. nlqdb compiles the FILTER form and shows the SQL, so this over-counting trap can't slip through silently.",
       },
       {
-        q: "What's the difference between COUNT(*) FILTER (WHERE ...) and SUM(CASE WHEN ...)?",
+        q: "What's the difference between `COUNT(*) FILTER (WHERE ...)` and `SUM(CASE WHEN ...)`?",
         a: "They compute the same conditional count. `COUNT(*) FILTER (WHERE cond)` is the SQL-standard, readable form (Postgres, SQLite 3.30+); `SUM(CASE WHEN cond THEN 1 ELSE 0 END)` is the portable fallback for engines without FILTER, like MySQL. nlqdb runs on Postgres and compiles the FILTER form, then shows the SQL — paste it, or swap in the CASE version for another engine.",
       },
       {
@@ -2109,7 +2109,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Per-day counts are the first chart anyone builds — signups per day, orders per day, errors per day — and the obvious `GROUP BY created_at::date` gets it quietly wrong: days with no rows aren't in the table, so they aren't in the result, and the chart connects straight across the gap as if the quiet day never happened. The fix is a row-generating calendar spine — `generate_series(start, end, interval '1 day')` — with your table LEFT JOINed onto it. Then the second trap: after the outer join, `COUNT(*)` counts the spine row itself, so the 'zero' day reads 1 unless you count a column from your table instead.",
     demoGoal: "signups per day for the last 14 days, including days with zero",
     demoWhy:
-      "The gap-fill query you'd otherwise hand-write — the spine, the outer join, and the COUNT(*) trap — is one English goal here, with the SQL shown so you can check all three.",
+      "The gap-fill query you'd otherwise hand-write — the spine, the outer join, and the `COUNT(*)` trap — is one English goal here, with the SQL shown so you can check all three.",
     howNlqdbAnswers: [
       "Ask 'signups per day for the last 14 days, including days with zero'; nlqdb compiles a `generate_series` date spine and runs it in Postgres.",
       "Your rows LEFT JOIN onto the spine, so a day with no matches comes back as 0 instead of vanishing from the result.",
