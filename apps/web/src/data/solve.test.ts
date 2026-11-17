@@ -141,7 +141,7 @@ describe("SOLVE_ENTRIES data integrity", () => {
     }
   });
 
-  test("rendered prose respects lib/inline-md.ts's limits (balanced markers; no link inside a source link)", () => {
+  test("rendered prose respects lib/inline-md.ts's limits (balanced markers; no link inside a source link or index one-liner)", () => {
     for (const s of SOLVE_ENTRIES) {
       const rendered = [
         s.oneLiner,
@@ -156,8 +156,9 @@ describe("SOLVE_ENTRIES data integrity", () => {
         const outsideCode = renderInline(text).replace(/<code>[^<]*<\/code>/g, "");
         expect(outsideCode.includes("*") ? `${s.slug}: "${text.slice(0, 60)}…"` : "").toBe("");
       }
-      for (const src of s.sources) {
-        expect(renderInline(src.label).includes("<a ") ? `${s.slug}: ${src.label}` : "").toBe("");
+      // Source labels and the `/solve` index's one-liner render inside an <a>, so they may not hold one.
+      for (const text of [s.oneLiner, ...s.sources.map((src) => src.label)]) {
+        expect(renderInline(text).includes("<a ") ? `${s.slug}: ${text}` : "").toBe("");
       }
     }
   });

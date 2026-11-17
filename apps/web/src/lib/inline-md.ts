@@ -18,11 +18,12 @@ function renderText(escaped: string): string {
     escaped
       .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
       .replace(/\*([^*]+)\*/g, "<em>$1</em>")
-      // Only site-relative, fragment or http(s) targets become links, so a `javascript:` href can't be authored by accident.
+      // Only site-relative (not `//host` or `/\host`, which browsers read as off-site), fragment or http(s) targets become links.
       .replace(
-        /\[([^\]]+)\]\(((?:\/|#|https?:\/\/)[^()\s]*)\)/g,
+        /\[([^\]]+)\]\(((?:\/(?![/\\])|#|https?:\/\/)[^()\s]*)\)/g,
         (_m, text: string, href: string) => {
-          const external = /^https?:\/\//.test(href) && !href.startsWith("https://nlqdb.com");
+          const external =
+            /^https?:\/\//.test(href) && !/^https:\/\/nlqdb\.com(?:[/?#]|$)/.test(href);
           return external
             ? `<a href="${href}" rel="noopener noreferrer">${text}</a>`
             : `<a href="${href}">${text}</a>`;
