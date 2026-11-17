@@ -22,7 +22,7 @@ when-to-load:
 - `apps/web/src/data/blog.test.ts` — data-integrity guards (slugs, dates, renderer limit, copy rules)
 - `apps/web/src/pages/blog/[slug].astro` — single dynamic template (`getStaticPaths()`)
 - `apps/web/src/pages/blog/index.astro` — blog hub (`/blog`), ItemList JSON-LD
-- `apps/web/src/lib/inline-md.ts` — dependency-free inline renderer for post bodies
+- `apps/web/src/lib/inline-md.ts` — dependency-free inline renderer for post bodies (also `/solve` prose, `solve-pages`)
 - `apps/web/src/pages/llms.txt.ts` + `sitemap.xml.ts` — auto-include new slugs
 
 ## Decisions

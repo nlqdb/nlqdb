@@ -1,7 +1,7 @@
-// Dependency-free inline-markdown renderer for `/blog` post bodies
-// (`data/blog.ts`). Post paragraphs carry a deliberate *subset* of inline
-// markdown — `code spans`, **strong**, *em*, [links](…) — rendered to HTML
-// at build time in the `/blog` templates' frontmatter. The source text is
+// Dependency-free inline-markdown renderer for `/blog` post bodies and
+// `/solve` prose (`data/blog.ts`, `data/solve.ts`). Both carry a deliberate
+// *subset* of inline markdown — `code spans`, **strong**, *em*, [links](…) —
+// rendered to HTML at build time in their templates. The source text is
 // HTML-escaped first, so post content can never inject markup; only the
 // four patterns below produce tags. Full markdown (or an Astro content
 // collection) is deliberately avoided: `bun test src` imports the
@@ -14,15 +14,22 @@ const escapeHtml = (s: string): string =>
 // Strong / em / link passes for text OUTSIDE code spans. Order matters:
 // `**strong**` must run before `*em*` so the double marker isn't eaten.
 function renderText(escaped: string): string {
-  return escaped
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
-    .replace(/\[([^\]]+)\]\(([^()\s]+)\)/g, (_m, text: string, href: string) => {
-      const external = /^https?:\/\//.test(href) && !href.startsWith("https://nlqdb.com");
-      return external
-        ? `<a href="${href}" rel="noopener noreferrer">${text}</a>`
-        : `<a href="${href}">${text}</a>`;
-    });
+  return (
+    escaped
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+      // Only site-relative (not `//host` or `/\host`, which browsers read as off-site), fragment or http(s) targets become links.
+      .replace(
+        /\[([^\]]+)\]\(((?:\/(?![/\\])|#|https?:\/\/)[^()\s]*)\)/g,
+        (_m, text: string, href: string) => {
+          const external =
+            /^https?:\/\//.test(href) && !/^https:\/\/nlqdb\.com(?:[/?#]|$)/.test(href);
+          return external
+            ? `<a href="${href}" rel="noopener noreferrer">${text}</a>`
+            : `<a href="${href}">${text}</a>`;
+        },
+      )
+  );
 }
 
 export function renderInline(src: string): string {

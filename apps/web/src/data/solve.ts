@@ -1611,7 +1611,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "SQL has no COUNTIF: use COUNT(*) FILTER (WHERE ...) or SUM(CASE WHEN ... THEN 1 ELSE 0 END). COUNT(x = 'paid') over-counts. See the SQL.",
     searchTitle: "How do I do a COUNTIF or SUMIF (conditional count or sum) in SQL?",
     oneLiner:
-      "SQL has no COUNTIF: use COUNT(*) FILTER (WHERE status = 'paid') in Postgres, or SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) anywhere; SUMIF puts the amount in place of 1. COUNT(status = 'paid') counts every row whose status isn't NULL, so it over-counts. nlqdb compiles it from a plain-English question and shows the SQL.",
+      "SQL has no COUNTIF: use `COUNT(*) FILTER (WHERE status = 'paid')` in Postgres, or `SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END)` anywhere; SUMIF puts the amount in place of 1. `COUNT(status = 'paid')` counts every row whose status isn't NULL, so it over-counts. nlqdb compiles it from a plain-English question and shows the SQL.",
     painContext:
       "Analysts and PMs live in this translation — the spreadsheet has `COUNTIF` and `SUMIF`, SQL has no keyword for either, and each workaround has a trap. `COUNT(status = 'paid')` counts every row, not the paid ones, because `COUNT` counts non-null values and the comparison is non-null (true or false) on every row. `SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END)` works but is verbose and easy to fat-finger across five metrics. `COUNT(*) FILTER (WHERE status = 'paid')` is the clean modern form but keeps getting forgotten — so it's re-Googled every reporting cycle, and the `COUNT` trap over-counts silently without ever erroring.",
     demoGoal: "count of paid orders and total revenue from paid orders",
@@ -1638,7 +1638,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         a: "Because `COUNT(x)` counts non-null values, not true results — `status = 'paid'` is non-null (either true or false) on every row, so it counts them all. The fixes are `COUNT(*) FILTER (WHERE status = 'paid')` or `SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END)`. nlqdb compiles the FILTER form and shows the SQL, so this over-counting trap can't slip through silently.",
       },
       {
-        q: "What's the difference between COUNT(*) FILTER (WHERE ...) and SUM(CASE WHEN ...)?",
+        q: "What's the difference between `COUNT(*) FILTER (WHERE ...)` and `SUM(CASE WHEN ...)`?",
         a: "They compute the same conditional count. `COUNT(*) FILTER (WHERE cond)` is the SQL-standard, readable form (Postgres, SQLite 3.30+); `SUM(CASE WHEN cond THEN 1 ELSE 0 END)` is the portable fallback for engines without FILTER, like MySQL. nlqdb runs on Postgres and compiles the FILTER form, then shows the SQL — paste it, or swap in the CASE version for another engine.",
       },
       {
@@ -2109,7 +2109,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "Per-day counts are the first chart anyone builds — signups per day, orders per day, errors per day — and the obvious `GROUP BY created_at::date` gets it quietly wrong: days with no rows aren't in the table, so they aren't in the result, and the chart connects straight across the gap as if the quiet day never happened. The fix is a row-generating calendar spine — `generate_series(start, end, interval '1 day')` — with your table LEFT JOINed onto it. Then the second trap: after the outer join, `COUNT(*)` counts the spine row itself, so the 'zero' day reads 1 unless you count a column from your table instead.",
     demoGoal: "signups per day for the last 14 days, including days with zero",
     demoWhy:
-      "The gap-fill query you'd otherwise hand-write — the spine, the outer join, and the COUNT(*) trap — is one English goal here, with the SQL shown so you can check all three.",
+      "The gap-fill query you'd otherwise hand-write — the spine, the outer join, and the `COUNT(*)` trap — is one English goal here, with the SQL shown so you can check all three.",
     howNlqdbAnswers: [
       "Ask 'signups per day for the last 14 days, including days with zero'; nlqdb compiles a `generate_series` date spine and runs it in Postgres.",
       "Your rows LEFT JOIN onto the spine, so a day with no matches comes back as 0 instead of vanishing from the result.",
@@ -2749,6 +2749,66 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         url: "https://dba.stackexchange.com/questions/tagged/index-tuning+postgresql",
         label:
           "DBA Stack Exchange: postgresql + index-tuning — the standing Q&A on which index a query needs.",
+      },
+    ],
+  },
+  {
+    slug: "reduce-cloudflare-d1-rows-read",
+    persona: "P4 backend engineer",
+    metaDescription:
+      "Sort wrangler d1 insights by reads, EXPLAIN QUERY PLAN the top query, index the scanned filter — or attach nlqdb to propose, apply and verify each index.",
+    searchTitle: "How do I reduce rows read in Cloudflare D1?",
+    oneLiner:
+      "Run `wrangler d1 insights <db> --sort-by=reads`, then `EXPLAIN QUERY PLAN` the top query: a `SCAN` of a table it filters is the rows you pay for. `CREATE INDEX` on the filter's columns, then `PRAGMA optimize`. Or run `nlq attach --database-id`: nlqdb finds those scans, proposes each index and measures rows read after.",
+    painContext:
+      "D1 bills every row a query reads, not the rows it returns, so one unindexed lookup on a 5,000-row table costs 5,000 reads a call. Query insights rank the heavy texts, but none says which index would fix them, and none tells you days later whether the index you added cut the reads or only added writes.",
+    attachCommand:
+      "curl -fsSL https://nlqdb.com/install | sh\nexport NLQDB_API_KEY=sk_live_... # from nlqdb.com/app/keys\nexport CLOUDFLARE_API_TOKEN=... # D1 Read + Account Analytics Read; D1 Edit to apply\nnlq attach --database-id <uuid> --account-id <id>",
+    demoWhy:
+      "Attach reads the catalog, so unindexed foreign keys come back as proposals in seconds; the heavy scans in your query insights follow within the hour.",
+    howNlqdbAnswers: [
+      "`nlq attach --database-id` reads the catalog and proposes an index for every foreign key no index leads with — seconds after attach.",
+      "It runs `EXPLAIN QUERY PLAN` on each heavy text in 24 h of query insights that returns at most 5 % of its rows read.",
+      "A `SCAN` filtered by equality becomes one `CREATE INDEX` proposal with its `DROP INDEX` inverse; `nlq apply <id>` builds it and runs `PRAGMA optimize`.",
+      "72 hours later it compares rows read per run and mean time; either over 10 % worse runs the inverse, with no action from you.",
+    ],
+    whatItDoesnt: [
+      "No p95 — D1's analytics keep no percentiles, so nlqdb judges an index on rows read per run and mean time, never a latency percentile.",
+      "No fix for an aggregate or a `COUNT(*)` over a whole table — an index can't make those read fewer rows, so nlqdb proposes nothing for them.",
+      "No anonymous attach — the Cloudflare token is a credential, so attach needs a signed-in account; it is sealed server-side and never printed back.",
+    ],
+    faqs: [
+      {
+        q: "How do I reduce rows read in Cloudflare D1?",
+        a: "Find the heavy queries with `wrangler d1 insights <db> --sort-by=reads` or each result's `meta.rows_read`. `EXPLAIN QUERY PLAN` the worst: `SCAN` reads the whole table, `SEARCH ... USING INDEX` reads only matching rows. Index the columns the scanned query filters on, run `PRAGMA optimize`, and re-read its rows read per call.",
+      },
+      {
+        q: "Does adding an index in D1 cost rows written?",
+        a: "Yes. Every insert, and every update that touches an indexed column, also writes the index, so an index trades rows written for rows read. It pays on a table read far more than written — which is why nlqdb's verify also compares rows read per run after the apply and reverts an index that made things worse.",
+      },
+      {
+        q: "Does nlqdb run my queries or change my D1 database to find indexes?",
+        a: "No. It reads the catalog and D1's query insights, and plans texts with `EXPLAIN QUERY PLAN` without executing them. Nothing changes until you apply a proposal, and every proposal carries the `DROP INDEX` that undoes it.",
+      },
+      {
+        q: "What does an applied D1 index look like?",
+        a: "On a test D1, a lookup by `user_id` with no index read 5,000 rows a call; after nlqdb applied its proposed index it read 51. On a second, a lookup by `title` went from 4,999 rows read per run to 1, and the verify job kept the index with no caller.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://developers.cloudflare.com/d1/best-practices/use-indexes/",
+        label:
+          "Cloudflare docs: D1 bills rows read, not rows returned — use indexes, `EXPLAIN QUERY PLAN`, then `PRAGMA optimize`.",
+      },
+      {
+        url: "https://developers.cloudflare.com/d1/observability/metrics-analytics/",
+        label:
+          "Cloudflare docs: D1 query insights — `wrangler d1 insights --sort-by=reads` and `queryEfficiency`.",
+      },
+      {
+        url: "https://community.cloudflare.com/search?q=d1%20rows%20read",
+        label: 'Cloudflare Community — recurring "D1 rows read too high" threads.',
       },
     ],
   },

@@ -37,4 +37,21 @@ describe("renderInline", () => {
       '<a href="https://www.getzep.com" rel="noopener noreferrer">Zep</a>',
     );
   });
+
+  test("a link with any other scheme stays literal text", () => {
+    expect(renderInline("[x](javascript:alert)")).toBe("[x](javascript:alert)");
+    expect(renderInline("[x](JAVASCRIPT:alert)")).toBe("[x](JAVASCRIPT:alert)");
+    expect(renderInline("[x](//evil.example)")).toBe("[x](//evil.example)");
+    expect(renderInline("[x](/\\evil.example)")).toBe("[x](/\\evil.example)");
+    expect(renderInline('[x](/a"onmouseover=y)')).toBe('<a href="/a&quot;onmouseover=y">x</a>');
+  });
+
+  test("only nlqdb.com itself counts as internal", () => {
+    expect(renderInline("[x](https://nlqdb.com/solve/)")).toBe(
+      '<a href="https://nlqdb.com/solve/">x</a>',
+    );
+    expect(renderInline("[x](https://nlqdb.com.evil.example/)")).toBe(
+      '<a href="https://nlqdb.com.evil.example/" rel="noopener noreferrer">x</a>',
+    );
+  });
 });
