@@ -31,7 +31,24 @@ export type SolveFaq = {
   a: string;
 };
 
-export type SolveEntry = {
+// A page's demo beat is one of two shapes, never both: the `<nlq-data>` embed
+// that answers a query (`demoGoal`), or the attach command that hands nlqdb a
+// database you already run (`attachCommand`) — the DBA searches' answer.
+type SolveDemo =
+  | {
+      // Plain-English goal piped into `<nlq-data goal="...">` on the page.
+      // Picked so the rendered snippet directly answers the search query.
+      demoGoal: string;
+      attachCommand?: never;
+    }
+  | {
+      // The shell command that attaches the reader's database; the page's
+      // CTA is the signed-in `/app/connect`, not anonymous `/app/new`.
+      attachCommand: string;
+      demoGoal?: never;
+    };
+
+export type SolveEntry = SolveDemo & {
   // URL-safe lower-kebab; appears in the canonical URL.
   slug: string;
   // The persona this page primarily serves — rendered as
@@ -48,9 +65,6 @@ export type SolveEntry = {
   // 1-2 sentences of pain context that name the trade-off honestly.
   // Avoid superlatives; cite the persona's situation.
   painContext: string;
-  // Plain-English goal piped into `<nlq-data goal="...">` on the page.
-  // Picked so the rendered snippet directly answers the search query.
-  demoGoal: string;
   // One-sentence "why this demo speaks to the question" — appears as
   // the lede above the snippet card.
   demoWhy: string;
@@ -2676,6 +2690,66 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "best-way-to-store-agent-memory",
       "build-vs-buy-agent-memory",
       "expire-old-agent-memory",
+    ],
+  },
+  {
+    slug: "postgres-find-missing-indexes",
+    persona: "P4 backend engineer",
+    metaDescription:
+      "Rank pg_stat_statements by total time, EXPLAIN each for a selective Seq Scan, list unindexed foreign keys — or attach nlqdb to find, build and verify them.",
+    searchTitle: "How do I find missing indexes in Postgres?",
+    oneLiner:
+      "Rank `pg_stat_statements` by total time and `EXPLAIN` the top queries: a `Seq Scan` whose `Filter` keeps few rows of a big table is a missing index. So is a foreign key no index leads with. Or run `nlq attach`: nlqdb makes both checks, proposes each `CREATE INDEX CONCURRENTLY`, and measures it after.",
+    painContext:
+      "Postgres never says an index is missing. `pg_stat_user_tables` counts sequential scans but not which query ran them, `pg_stat_statements` ranks queries but keeps no plans, and every 'missing index' script you find is a heuristic you rerun by hand. Then comes the part nobody automates: build the index without blocking writes, and check days later that the slow query actually got faster.",
+    attachCommand:
+      'curl -fsSL https://nlqdb.com/install | sh\nexport NLQDB_API_KEY=sk_live_... # from nlqdb.com/app/keys\necho "$DATABASE_URL" | nlq attach',
+    demoWhy:
+      "Attach reads the catalog, so unindexed foreign keys come back as proposals in seconds; the workload's missing indexes follow after one day of traffic.",
+    howNlqdbAnswers: [
+      "`nlq attach` reads the catalog and proposes an index for every foreign key no index leads with — seconds after attach, no extension needed.",
+      "With `pg_stat_statements` on Postgres 16+, it diffs a 24-hour window and plans each hot query with `EXPLAIN (GENERIC_PLAN)`, never executing it.",
+      "A selective sequential-scanned filter becomes one `CREATE INDEX CONCURRENTLY` proposal with its `DROP INDEX` inverse; `nlq apply <id>` builds it without blocking writes.",
+      "72 hours later it re-reads that query's counters; a p95 estimate over 10 % worse runs the inverse, with no action from you.",
+    ],
+    whatItDoesnt: [
+      "No exact p95 — `pg_stat_statements` keeps no percentiles, so nlqdb estimates p95 as mean + 1.65 σ over the window and labels it an estimate everywhere.",
+      "No index for a partitioned parent, a `LIKE` or full-text filter, or an expression — the proposals cover btree equality filters plus at most one range column today.",
+      "No anonymous attach — your connection string is a credential, so attach needs a signed-in account; it is sealed server-side and never printed back.",
+    ],
+    faqs: [
+      {
+        q: "How do I find missing indexes in Postgres?",
+        a: "Start from `pg_stat_statements`, ordered by `total_exec_time`. `EXPLAIN` each top query: a `Seq Scan` on a large table whose `Filter` removes most rows is the classic missing index. Then check every foreign key for an index whose leading columns match it — joins and cascading deletes on an unindexed key scan the whole referencing table.",
+      },
+      {
+        q: "Is a high seq_scan count in pg_stat_user_tables a missing index?",
+        a: "Not by itself. Small tables are cheaper to scan than to index, and an unselective filter scans either way. A missing index is a scan of many rows that a filter then throws away — which is why nlqdb judges each query by its rows per call, not the table's scan count.",
+      },
+      {
+        q: "Does nlqdb run my queries or change my database to find indexes?",
+        a: "No. It reads the catalog and `pg_stat_statements`, and plans queries with `EXPLAIN (GENERIC_PLAN)` without executing them. Nothing changes until you apply a proposal, and every proposal carries the `DROP INDEX` that undoes it.",
+      },
+      {
+        q: "What does an applied index look like on a real database?",
+        a: "On the first real app Postgres nlqdb attached, its one workload proposal indexed a range lookup that scanned its whole table to return 0.01 % of it per call. Before: mean 7.7 ms, p95 estimate 65.2 ms. After 72 hours: mean 0.3 ms, p95 estimate 1.7 ms — so verify kept it.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.postgresql.org/docs/current/pgstatstatements.html",
+        label:
+          "Postgres docs: `pg_stat_statements` — the per-query counters a missing-index hunt starts from.",
+      },
+      {
+        url: "https://www.reddit.com/r/PostgreSQL/search/?q=missing+index",
+        label: 'r/PostgreSQL — recurring "how do I find missing indexes" threads.',
+      },
+      {
+        url: "https://dba.stackexchange.com/questions/tagged/index-tuning+postgresql",
+        label:
+          "DBA Stack Exchange: postgresql + index-tuning — the standing Q&A on which index a query needs.",
+      },
     ],
   },
 ];

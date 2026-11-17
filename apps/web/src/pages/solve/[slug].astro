@@ -57,6 +57,11 @@ const ogImage =
     : undefined;
 const ogImageAlt = `${s.searchTitle} — answered with a GROUP BY in nlqdb.`;
 
+// An attach page answers a DBA search with nlqdb run on the reader's own
+// database: its demo is a terminal command and its CTA the signed-in
+// `/app/connect`, where an embed page's are `<nlq-data>` and anonymous `/app/new`.
+const attachCommand = s.attachCommand;
+
 const faqJsonLd = faqPageJsonLd(s.faqs);
 
 // Contextual `/solve ↔ /solve` links within the same topic cluster. Rendered
@@ -67,33 +72,53 @@ const faqJsonLd = faqPageJsonLd(s.faqs);
 const related = relatedSolveEntries(s);
 
 // HowTo JSON-LD — per §3.1 of automated-icp-validation-plan.md. The
-// three steps map to the canonical anonymous-mode arc: read, embed,
-// adopt. Cited-source heuristics on Perplexity / ChatGPT lift
-// structured HowTo step text into "how to" answer boxes.
+// embed steps map to the canonical anonymous-mode arc: read, embed,
+// adopt; the attach steps to the DBA loop: attach, apply, verify.
+// Cited-source heuristics on Perplexity / ChatGPT lift structured HowTo
+// step text into "how to" answer boxes.
+const attachSteps = [
+  {
+    "@type": "HowToStep",
+    name: "Attach the database",
+    text: "Pipe the connection string to nlq attach (or paste it at nlqdb.com/app/connect). nlqdb reads the catalog and lists its first proposals, each with the statement that undoes it.",
+  },
+  {
+    "@type": "HowToStep",
+    name: "Apply a proposal",
+    text: "Run nlq apply with the proposal's id. Each index is built with CREATE INDEX CONCURRENTLY, so the app's writes never block.",
+  },
+  {
+    "@type": "HowToStep",
+    name: "Let verify judge it",
+    text: "After 72 hours nlqdb re-reads the query's counters; an index that made its p95 estimate more than 10 % worse is dropped automatically.",
+  },
+];
 const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
   name: s.searchTitle,
   description: s.oneLiner,
   totalTime: "PT2M",
-  tool: [{ "@type": "HowToTool", name: "<nlq-data> element" }],
-  step: [
-    {
-      "@type": "HowToStep",
-      name: "Drop the element in your HTML",
-      text: `Add <nlq-data goal="${s.demoGoal}"></nlq-data> to any page. No build step, no script tag besides the loader.`,
-    },
-    {
-      "@type": "HowToStep",
-      name: "First answer mints the database",
-      text: "The first request provisions a real Postgres database in the user's anonymous-mode tenant. The schema is inferred from the goal; subsequent goals reuse the same DB.",
-    },
-    {
-      "@type": "HowToStep",
-      name: "Adopt to keep it past 72 hours",
-      text: "Anonymous databases auto-sweep after 72 hours unless adopted. Sign in and click 'Adopt this database' to re-key it to your account with no data loss.",
-    },
-  ],
+  tool: [{ "@type": "HowToTool", name: attachCommand ? "nlq CLI" : "<nlq-data> element" }],
+  step: attachCommand
+    ? attachSteps
+    : [
+        {
+          "@type": "HowToStep",
+          name: "Drop the element in your HTML",
+          text: `Add <nlq-data goal="${s.demoGoal}"></nlq-data> to any page. No build step, no script tag besides the loader.`,
+        },
+        {
+          "@type": "HowToStep",
+          name: "First answer mints the database",
+          text: "The first request provisions a real Postgres database in the user's anonymous-mode tenant. The schema is inferred from the goal; subsequent goals reuse the same DB.",
+        },
+        {
+          "@type": "HowToStep",
+          name: "Adopt to keep it past 72 hours",
+          text: "Anonymous databases auto-sweep after 72 hours unless adopted. Sign in and click 'Adopt this database' to re-key it to your account with no data loss.",
+        },
+      ],
 };
 
 const breadcrumbLd = breadcrumbJsonLd(
@@ -134,11 +159,17 @@ const breadcrumbLd = breadcrumbJsonLd(
 
       {/* Beat 2 — Demo. The snippet that solves it, side-by-side. */}
       <section class="slv__demo" aria-labelledby="slv-demo-eyebrow">
-        <p class="slv__demo-eyebrow" id="slv-demo-eyebrow">The snippet that solves it.</p>
-        <p class="slv__demo-goal">
-          <span class="slv__demo-arrow">&gt;</span>
-          <code>{s.demoGoal}</code>
+        <p class="slv__demo-eyebrow" id="slv-demo-eyebrow">
+          {attachCommand ? "The command that solves it." : "The snippet that solves it."}
         </p>
+        {
+          !attachCommand && (
+            <p class="slv__demo-goal">
+              <span class="slv__demo-arrow">&gt;</span>
+              <code>{s.demoGoal}</code>
+            </p>
+          )
+        }
 
         <div class="slv__demo-pair">
           <article class="slv__demo-card" aria-label="What nlqdb does for this">
@@ -148,19 +179,32 @@ const breadcrumbLd = breadcrumbJsonLd(
             </ul>
           </article>
 
-          <article class="slv__demo-card" aria-label="Embed snippet">
-            <p class="slv__demo-label">Drop into any HTML page</p>
-            <pre class="slv__demo-snippet"><code>&lt;<span class="slv__demo-tag">nlq-data</span> goal=&quot;{s.demoGoal}&quot;&gt;&lt;/<span class="slv__demo-tag">nlq-data</span>&gt;</code></pre>
-            <p class="slv__demo-foot">{s.demoWhy}</p>
-            <button
-              type="button"
-              class="cta slv__try-btn"
-              data-try-goal={s.demoGoal}
-              data-solve-slug={s.slug}
-            >
-              Try this query &rarr;
-            </button>
-          </article>
+          {
+            attachCommand ? (
+              <article class="slv__demo-card" aria-label="Attach command">
+                <p class="slv__demo-label">Run in your terminal</p>
+                <pre class="slv__demo-snippet"><code>{attachCommand}</code></pre>
+                <p class="slv__demo-foot">{s.demoWhy}</p>
+                <a class="cta slv__attach-btn" href={appHref("/app/connect/")}>
+                  Or attach in the browser &rarr;
+                </a>
+              </article>
+            ) : (
+              <article class="slv__demo-card" aria-label="Embed snippet">
+                <p class="slv__demo-label">Drop into any HTML page</p>
+                <pre class="slv__demo-snippet"><code>&lt;<span class="slv__demo-tag">nlq-data</span> goal=&quot;{s.demoGoal}&quot;&gt;&lt;/<span class="slv__demo-tag">nlq-data</span>&gt;</code></pre>
+                <p class="slv__demo-foot">{s.demoWhy}</p>
+                <button
+                  type="button"
+                  class="cta slv__try-btn"
+                  data-try-goal={s.demoGoal}
+                  data-solve-slug={s.slug}
+                >
+                  Try this query &rarr;
+                </button>
+              </article>
+            )
+          }
         </div>
       </section>
 
@@ -225,9 +269,21 @@ const breadcrumbLd = breadcrumbJsonLd(
       }
 
       <section class="slv__cta">
-        <h2 class="slv__cta-title">Try nlqdb in 30 seconds</h2>
-        <p>No sign-in. The anonymous database lasts 72 hours; adopt it with one click if you keep it.</p>
-        <a class="cta slv__cta-btn" href={appHref("/app/new/")}>Start with a goal &rarr;</a>
+        {
+          attachCommand ? (
+            <>
+              <h2 class="slv__cta-title">Attach your database</h2>
+              <p>Sign in, paste the connection string, and see the first proposals. Nothing runs on your database until you apply one.</p>
+              <a class="cta slv__cta-btn" href={appHref("/app/connect/")}>Attach a database &rarr;</a>
+            </>
+          ) : (
+            <>
+              <h2 class="slv__cta-title">Try nlqdb in 30 seconds</h2>
+              <p>No sign-in. The anonymous database lasts 72 hours; adopt it with one click if you keep it.</p>
+              <a class="cta slv__cta-btn" href={appHref("/app/new/")}>Start with a goal &rarr;</a>
+            </>
+          )
+        }
         {
           relatedPost && (
             <p class="slv__cta-meta">
@@ -452,7 +508,8 @@ const breadcrumbLd = breadcrumbJsonLd(
     color: var(--muted);
     line-height: 1.55;
   }
-  .slv__try-btn {
+  .slv__try-btn,
+  .slv__attach-btn {
     align-self: flex-start;
     margin-top: auto;
   }

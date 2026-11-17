@@ -13,7 +13,7 @@ when-to-load:
 
 # Feature: Solve Pages
 
-**One-liner:** `/solve/<slug>` pain-driven AEO pages — one page per recurring natural-language search query; each answers the question with a working `<nlq-data>` embed and names what nlqdb doesn't do.
+**One-liner:** `/solve/<slug>` pain-driven AEO pages — one page per recurring natural-language search query; each answers the question with a working `<nlq-data>` embed, or for a DBA search with the `nlq attach` command, and names what nlqdb doesn't do.
 **Status:** Kept as the SEO lane's surface (GLOBAL-043, amended 2026-11-07) — search-yield work only; no product-copy expansion until the 🔒 public-copy switch
 **Owners (code):** `apps/web/src/data/solve.ts`, `apps/web/src/data/solve.test.ts`, `apps/web/src/pages/solve/**`, `apps/web/src/pages/llms.txt.ts`, `apps/web/src/pages/sitemap.xml.ts`
 **Cross-refs:** [`docs/research/automated-icp-validation-plan.md §3.1`](../../research/automated-icp-validation-plan.md) · [`docs/features/comparison-pages/FEATURE.md`](../comparison-pages/FEATURE.md) (sibling AEO surface) · [`docs/features/icp-mining/FEATURE.md`](../icp-mining/FEATURE.md) (future source of verbatim cluster quotes) · [`docs/features/web-app/FEATURE.md`](../web-app/FEATURE.md)
@@ -43,7 +43,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-SOLVE-N
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
   - *In this feature:* the "Try this query →" button calls `emit("solve.try_query_clicked", {slug, goal})` via `lib/logsnag.ts`. The late-bound `window.__nlqdb_logsnag` hook is **wired since 2026-07-29**: `Base.astro` inlines it (gated on build-time `PUBLIC_LOGSNAG_TOKEN`/`PUBLIC_LOGSNAG_PROJECT`, baked by both deploy workflows; channel = the event's dot-prefix), pinned by `lib/logsnag-hook.test.ts`; token verified live against `api.logsnag.com`. Dev/preview builds omit the vars, so emits stay no-ops there by design.
 - **GLOBAL-025** — North-star compass.
-  - *In this feature:* the KPI advanced is **onboarding** — every page CTA points at `/app/new` (anonymous mode); the solve page is the search-intent on-ramp the homepage can't be. KPI degraded: none.
+  - *In this feature:* the KPI advanced is **onboarding** — an embed page's CTA points at `/app/new` (anonymous mode), an attach page's (`attachCommand`, the DBA searches) at the signed-in `/app/connect`; the solve page is the search-intent on-ramp the homepage can't be. KPI degraded: none.
 - **GLOBAL-028** — Acquisition progress tracker.
   - *In this feature:* the implementation of [`automated-icp-validation-plan.md §3.1`](../../research/automated-icp-validation-plan.md). Progress is recorded in that file.
 - **GLOBAL-034** — Analytics stack (Cloudflare Web Analytics for public pageviews; PostHog client SDK is scoped to the `/app` product surfaces — solve pages stay SDK-free).
@@ -62,7 +62,7 @@ The [`automated-icp-validation-plan.md §3.1`](../../research/automated-icp-vali
 
 ## How to add a new solve page
 
-1. Add an entry to `apps/web/src/data/solve.ts` — fill all required fields (TypeScript will flag missing ones; the data tests pin the AEO invariants).
+1. Add an entry to `apps/web/src/data/solve.ts` — fill all required fields (TypeScript will flag missing ones; the data tests pin the AEO invariants). The demo is exactly one of `demoGoal` (an `<nlq-data>` query) or `attachCommand` (a DBA search, answered on the reader's own database).
 2. Run `bun run --filter @nlqdb/web check && bun run --filter @nlqdb/web test` — astro-check + data-integrity tests both pass.
 3. The sitemap and llms.txt pick up the new slug automatically.
 4. If the entry is drawn from a specific ICP-mining cluster, cross-link in the source label so the evidence trail is one click from the page.
