@@ -38,9 +38,9 @@ describe("SOLVE_ENTRIES data integrity", () => {
     }
   });
 
-  test("demoGoal is non-empty (drives <nlq-data> + draft-storage seed)", () => {
+  test("every demo is non-empty: a goal (drives <nlq-data> + draft seed) or an attach command", () => {
     for (const s of SOLVE_ENTRIES) {
-      expect(s.demoGoal.length).toBeGreaterThan(0);
+      expect((s.demoGoal ?? s.attachCommand).length).toBeGreaterThan(0);
     }
   });
 
@@ -126,7 +126,7 @@ describe("SOLVE_ENTRIES data integrity", () => {
         s.searchTitle,
         s.oneLiner,
         s.painContext,
-        s.demoGoal,
+        s.demoGoal ?? s.attachCommand,
         s.demoWhy,
         ...s.howNlqdbAnswers,
         ...s.whatItDoesnt,
