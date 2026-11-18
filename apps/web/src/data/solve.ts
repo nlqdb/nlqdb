@@ -2751,6 +2751,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
           "DBA Stack Exchange: postgresql + index-tuning — the standing Q&A on which index a query needs.",
       },
     ],
+    related: ["postgres-slow-query-which-index", "reduce-cloudflare-d1-rows-read"],
   },
   {
     slug: "reduce-cloudflare-d1-rows-read",
@@ -2811,6 +2812,69 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
         label: 'Cloudflare Community — recurring "D1 rows read too high" threads.',
       },
     ],
+    related: ["postgres-find-missing-indexes", "postgres-slow-query-which-index"],
+  },
+  {
+    slug: "postgres-slow-query-which-index",
+    persona: "P4 backend engineer",
+    metaDescription:
+      "EXPLAIN (ANALYZE, BUFFERS) the slow query, index a Seq Scan's filter — equality columns first, range last — or attach nlqdb to propose and verify it.",
+    searchTitle: "Which index does my slow Postgres query need?",
+    oneLiner:
+      "Run `EXPLAIN (ANALYZE, BUFFERS)` on it. A `Seq Scan` whose `Rows Removed by Filter` dwarfs the rows it keeps needs a btree on the filter's columns: the `=` columns first, one range column last. Build it with `CREATE INDEX CONCURRENTLY`. Or run `nlq attach`: nlqdb plans your hot queries, proposes that index and measures each after.",
+    painContext:
+      "`EXPLAIN` shows the `Seq Scan` but not the index that would end it. A composite index in the wrong column order is one the planner skips, an index on every column slows every write, and an unselective filter is faster scanned anyway. Then the index still has to be built without locking the table, and checked days later against the query it was for.",
+    attachCommand:
+      'curl -fsSL https://nlqdb.com/install | sh\nexport NLQDB_API_KEY=sk_live_... # from nlqdb.com/app/keys\necho "$DATABASE_URL" | nlq attach',
+    demoWhy:
+      "Attach plans your hot queries the way you would by hand, with `EXPLAIN` and without running them, and turns each selective scan into one index proposal after a day of traffic.",
+    howNlqdbAnswers: [
+      "With `pg_stat_statements` on Postgres 16+, it diffs a 24-hour window and plans each hot query with `EXPLAIN (GENERIC_PLAN)`, never executing it.",
+      "A sequential scan whose filter keeps at most 5 % of the table's rows becomes a candidate; an unselective filter is left to its scan.",
+      "It orders the key for you: `=` and `= ANY` columns first, one range column last; a filter an index already leads with is skipped.",
+      "`nlq apply <id>` runs `CREATE INDEX CONCURRENTLY`; 72 hours later a p95 estimate over 10 % worse runs its `DROP INDEX` inverse.",
+    ],
+    whatItDoesnt: [
+      "No `EXPLAIN ANALYZE` — nlqdb never runs your query, so it judges selectivity from the generic plan and, for a range bound by a parameter, the rows each call returned.",
+      "No index for an `OR`, a `LIKE` or full-text filter, an expression, two range columns or a partitioned parent — btree equality filters plus one range column only.",
+      "No covering (`INCLUDE`), partial or sort-order index — a proposal keys on the filter's columns, never on `ORDER BY` or the selected ones.",
+    ],
+    faqs: [
+      {
+        q: "Which index does my slow Postgres query need?",
+        a: "Run `EXPLAIN (ANALYZE, BUFFERS)`. A `Seq Scan` whose `Rows Removed by Filter` is most of the table wants a btree on the filter's columns. Put the columns compared with `=` first and at most one range column (`<`, `>`, `BETWEEN`) last: equality on the leading keys plus a range on the next one is a single contiguous slice of the index.",
+      },
+      {
+        q: "Does column order matter in a Postgres composite index?",
+        a: "Yes. A btree on `(account_id, created_at)` serves `WHERE account_id = $1 AND created_at > $2` as one index range, but a query that filters only `created_at` can't use its leading key and reads far more of it. Lead with the columns your queries filter by equality; end with the one they filter by range.",
+      },
+      {
+        q: "Why is Postgres not using my index?",
+        a: "Most often the filter isn't selective: when a query returns a large share of the table, a sequential scan is cheaper and the planner is right to choose it. Otherwise look for a function or cast on the column (`lower(email)` needs an expression index), a leading index column the query never filters, or stale statistics — run `ANALYZE`.",
+      },
+      {
+        q: "What does an applied index look like on a real database?",
+        a: "On the first real app Postgres nlqdb attached, a range lookup scanned a ~10,200-row table to return 0.01 % of it per call. nlqdb proposed an index on the range column; after 72 hours the query's mean fell from 7.7 ms to 0.3 ms and its p95 estimate from 65.2 ms to 1.7 ms, so verify kept it.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.postgresql.org/docs/current/indexes-multicolumn.html",
+        label:
+          "Postgres docs: multicolumn indexes — equality on the leading columns plus one inequality on the next bound the part of the index scanned.",
+      },
+      {
+        url: "https://www.postgresql.org/docs/current/using-explain.html",
+        label:
+          "Postgres docs: Using `EXPLAIN` — reading `Seq Scan`, `Rows Removed by Filter` and `BUFFERS`.",
+      },
+      {
+        url: "https://dba.stackexchange.com/questions/tagged/postgresql+index",
+        label:
+          "DBA Stack Exchange: postgresql + index — the standing Q&A on why a query ignores or needs an index.",
+      },
+    ],
+    related: ["postgres-find-missing-indexes", "reduce-cloudflare-d1-rows-read"],
   },
 ];
 
