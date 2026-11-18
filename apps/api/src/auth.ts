@@ -349,10 +349,16 @@ export const auth = betterAuth({
             to: email,
             ...magicLinkEmail(continueUrl),
           });
-          // Best effort: a KV blip must not fail a sign-in that was sent.
-          await rememberMagicLinkRecipient(env.KV, url, email, MAGIC_LINK_TTL_SECONDS).catch(
-            () => undefined,
-          );
+          // Best effort and off the response path: a KV blip must not fail or slow a sent sign-in.
+          const remember = rememberMagicLinkRecipient(
+            env.KV,
+            url,
+            email,
+            MAGIC_LINK_TTL_SECONDS,
+          ).catch(() => undefined);
+          const waitUntil = authWaitUntil.getStore();
+          if (waitUntil) waitUntil(remember);
+          else await remember;
         } catch (err) {
           // Resend outage / network / config error. Roll back the
           // counter so a single transient failure doesn't burn one of

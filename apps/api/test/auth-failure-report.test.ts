@@ -42,6 +42,9 @@ describe("magic-link recipient", () => {
     const send = new URL("https://app.nlqdb.com/api/auth/sign-in/magic-link");
     expect(await authRequestEmail(kv, send, '{"email":"X@Y.io"}')).toBe("x@y.io");
     expect(await authRequestEmail(kv, send, "not json")).toBeNull();
+    // Unauthenticated input bound for LogSnag: only address-shaped strings pass.
+    expect(await authRequestEmail(kv, send, '{"email":"no at sign"}')).toBeNull();
+    expect(await authRequestEmail(kv, send, `{"email":"${"a".repeat(250)}@b.co"}`)).toBeNull();
     const cb = new URL("https://app.nlqdb.com/api/auth/callback/github?code=c");
     expect(await authRequestEmail(kv, cb, null)).toBeNull();
   });
@@ -118,5 +121,25 @@ describe("reportAuthServerError", () => {
       utcDay: "2026-11-18",
     });
     expect(emit).not.toHaveBeenCalled();
+  });
+
+  it("only emits the event when the handler threw (app.onError logs and alerts)", async () => {
+    const { kv, raw } = fakeKv();
+    const emitted: ProductEvent[] = [];
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await reportAuthServerError({
+      env: { MOCK_IDP: "1", KV: kv },
+      events: { emit: async (e) => void emitted.push(e) },
+      req: new Request("https://app.nlqdb.com/api/auth/sign-in/magic-link", { method: "POST" }),
+      body: '{"email":"t@h.rown"}',
+      status: 500,
+      utcDay: "2026-11-18",
+      thrown: true,
+    });
+    expect(emitted).toEqual([
+      expect.objectContaining({ name: "user.auth_failed", email: "t@h.rown" }),
+    ]);
+    expect(log).not.toHaveBeenCalled();
+    expect(raw.put.mock.calls.some((c) => String(c[0]).startsWith("mock-email:"))).toBe(false);
   });
 });

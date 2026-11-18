@@ -21,8 +21,8 @@ function die(msg: string): never {
   process.exit(1);
 }
 
-const account = process.env["CLOUDFLARE_ACCOUNT_ID"] ?? die("CLOUDFLARE_ACCOUNT_ID is not set");
-const token = process.env["CLOUDFLARE_API_TOKEN"] ?? die("CLOUDFLARE_API_TOKEN is not set");
+const account = process.env["CLOUDFLARE_ACCOUNT_ID"] || die("CLOUDFLARE_ACCOUNT_ID is not set");
+const token = process.env["CLOUDFLARE_API_TOKEN"] || die("CLOUDFLARE_API_TOKEN is not set");
 const auth = [`Authorization: Bearer ${token}`, "Content-Type: application/json"];
 const daysArg = process.argv.indexOf("--days");
 const days = daysArg > 0 ? Number(process.argv[daysArg + 1]) : 7;
@@ -56,8 +56,12 @@ const gql = (await call("POST", `${API}/graphql`, JSON.stringify({ query }))) as
 };
 if (gql.errors?.length || !gql.data) die(`GraphQL: ${JSON.stringify(gql.errors).slice(0, 300)}`);
 
+const groups = gql.data.viewer.accounts[0]?.d1AnalyticsAdaptiveGroups ?? [];
+// nlqdb's own DBs read every day, so an empty answer is a wrong account or scope, not 0 %.
+if (groups.length === 0)
+  die(`no D1 analytics since ${since} — check the account id and token scope`);
 const byDay = new Map<string, Map<string, number>>();
-for (const g of gql.data.viewer.accounts[0]?.d1AnalyticsAdaptiveGroups ?? []) {
+for (const g of groups) {
   const name = names.get(g.dimensions.databaseId) ?? g.dimensions.databaseId;
   const day = byDay.get(g.dimensions.date) ?? new Map<string, number>();
   day.set(name, (day.get(name) ?? 0) + g.sum.rowsRead);

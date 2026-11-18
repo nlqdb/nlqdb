@@ -5121,7 +5121,7 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
 
   // Read before Better Auth consumes the stream, only where it names the email.
   const body = wantsAuthBody(url, c.req.method) ? await c.req.raw.clone().text() : null;
-  const report = (status: number) =>
+  const report = (status: number, thrown = false) =>
     c.executionCtx.waitUntil(
       reportAuthServerError({
         env: c.env,
@@ -5130,6 +5130,7 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
         body,
         status,
         utcDay: new Date().toISOString().slice(0, 10),
+        thrown,
       }).catch(() => undefined),
     );
 
@@ -5151,7 +5152,7 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
       return response;
     } catch (err) {
       authEventsTotal().add(1, { type: eventType, outcome: "failure" });
-      report(500);
+      report(500, true);
       span.recordException(err as Error);
       throw err;
     } finally {

@@ -54,7 +54,10 @@ export async function authRequestEmail(
   if (url.pathname === MAGIC_LINK_SEND_PATH && body) {
     try {
       const email = (JSON.parse(body) as { email?: unknown }).email;
-      return typeof email === "string" ? email.trim().toLowerCase() : null;
+      if (typeof email !== "string") return null;
+      const clean = email.trim().toLowerCase();
+      // Unauthenticated input bound for LogSnag: only an address-shaped, RFC-length string.
+      return clean.length <= 254 && /^[^\s@]+@[^\s@]+$/.test(clean) ? clean : null;
     } catch {
       return null;
     }
@@ -105,12 +108,15 @@ export type AuthServerErrorDeps = {
   body: string | null;
   status: number;
   utcDay: string;
+  /** The handler threw, so `app.onError` already logs and alerts; only the event is left. */
+  thrown?: boolean;
 };
 
 /**
  * A 5xx out of Better Auth: one log line, the R&D alert `app.onError` would
  * have sent had it thrown, and a `user.auth_failed` event when the email is
  * recoverable (deduped per email per UTC day, so it can't drain LogSnag).
+ * The email is computed even when `thrown`, the one thing `app.onError` lacks.
  */
 export async function reportAuthServerError(deps: AuthServerErrorDeps): Promise<void> {
   const { env, req, status } = deps;
@@ -121,6 +127,10 @@ export async function reportAuthServerError(deps: AuthServerErrorDeps): Promise<
   ]);
   const emailHash = email ? (await hashEmail(email)).slice(0, 16) : "";
   const ctx = requestContext(req);
+  const event = email
+    ? deps.events.emit({ name: "user.auth_failed", email, emailHash, path: url.pathname, status })
+    : Promise.resolve();
+  if (deps.thrown) return event;
   console.error(
     JSON.stringify({
       msg: "auth_server_error",
@@ -150,8 +160,6 @@ export async function reportAuthServerError(deps: AuthServerErrorDeps): Promise<
         ["user-agent", redactPii(req.headers.get("user-agent") ?? "").slice(0, 200)],
       ],
     }),
-    email
-      ? deps.events.emit({ name: "user.auth_failed", email, emailHash, path: url.pathname, status })
-      : Promise.resolve(),
+    event,
   ]);
 }
