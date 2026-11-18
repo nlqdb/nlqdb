@@ -16,6 +16,7 @@
 // vi.mock-doesnt-propagate-to-self-fetch).
 
 import type { Context, MiddlewareHandler } from "hono";
+import { credentialFingerprint, requestContext } from "./auth/failure-report.ts";
 import { fail } from "./error-envelope.ts";
 
 export type SessionUser = { id: string; name?: string | null; email?: string | null };
@@ -38,15 +39,26 @@ export type RequireSessionVariables = {
 // unhandled-error alert. Never logs secrets: error name/message + path/method.
 export function logAuthWarn(msg: string, err: unknown, c: Context): void {
   const e = err as Error;
-  console.warn(
-    JSON.stringify({
-      msg,
-      name: e?.name,
-      message: e?.message,
-      path: c.req.path,
-      method: c.req.method,
-    }),
-  );
+  // Who and where, without D1 (usually the store that failed): a credential
+  // fingerprint, never the credential; cf-ray finds the request in Cloudflare.
+  const line = (credential: string) =>
+    console.warn(
+      JSON.stringify({
+        msg,
+        name: e?.name,
+        message: e?.message,
+        path: c.req.path,
+        method: c.req.method,
+        credential,
+        ...requestContext(c.req.raw),
+      }),
+    );
+  const pending = credentialFingerprint(c.req.raw).then(line, () => line("unknown"));
+  try {
+    c.executionCtx.waitUntil(pending);
+  } catch {
+    // No execution context (unit tests) — the promise still settles.
+  }
 }
 
 export function makeRequireSession(opts: RequireSessionOpts): MiddlewareHandler<{

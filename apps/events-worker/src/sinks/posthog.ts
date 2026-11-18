@@ -77,6 +77,9 @@ function distinctId(event: ProductEvent): string {
     case "feature.eval.weekly":
     case "feature.eval.regression":
       return `eval:${event.dataset}`;
+    case "user.auth_failed":
+      // No userId when sign-in fails; the email hash is the stable identity.
+      return `email:${event.emailHash}`;
     default: {
       const _exhaustive: never = event;
       return `unknown:${JSON.stringify(_exhaustive)}`;

@@ -67,6 +67,16 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
         user_id: event.userId,
         tags: { email: event.email },
       };
+    case "user.auth_failed":
+      return {
+        project,
+        channel: "users",
+        event: "Sign-in failed",
+        description: `${event.status} on ${event.path} for ${event.email}`,
+        icon: "🚧",
+        notify: true,
+        tags: { email: event.email, path: event.path, status: String(event.status) },
+      };
     case "billing.subscription_created":
       return {
         project,

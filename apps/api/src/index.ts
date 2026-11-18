@@ -74,6 +74,7 @@ import { withStageRetry } from "./ask/retry.ts";
 import { ROUTE_CONFIDENCE_FLOOR, routeAsk } from "./ask/route-ask.ts";
 import { tryGrantedRead } from "./ask/route-granted-ask.ts";
 import type { OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
+import { reportAuthServerError, wantsAuthBody } from "./auth/failure-report.ts";
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
 import { auth, authWaitUntil, REVOCATION_KEY_PREFIX } from "./auth.ts";
@@ -5118,6 +5119,20 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
   // Picks up whichever provider is registered now (test or production).
   const tracer = trace.getTracer("@nlqdb/api");
 
+  // Read before Better Auth consumes the stream, only where it names the email.
+  const body = wantsAuthBody(url, c.req.method) ? await c.req.raw.clone().text() : null;
+  const report = (status: number) =>
+    c.executionCtx.waitUntil(
+      reportAuthServerError({
+        env: c.env,
+        events: buildEventEmitter(c.env.EVENTS_QUEUE),
+        req: c.req.raw,
+        body,
+        status,
+        utcDay: new Date().toISOString().slice(0, 10),
+      }).catch(() => undefined),
+    );
+
   return tracer.startActiveSpan(spanName, async (span) => {
     if (provider) span.setAttribute("nlqdb.auth.provider", provider);
     try {
@@ -5131,9 +5146,12 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
       const outcome = response.status < 400 ? "success" : "failure";
       span.setAttribute("http.response.status_code", response.status);
       authEventsTotal().add(1, { type: eventType, outcome });
+      // Better Auth answers its own failures, so `app.onError` never sees them.
+      if (response.status >= 500) report(response.status);
       return response;
     } catch (err) {
       authEventsTotal().add(1, { type: eventType, outcome: "failure" });
+      report(500);
       span.recordException(err as Error);
       throw err;
     } finally {

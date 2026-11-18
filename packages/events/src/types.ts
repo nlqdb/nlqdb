@@ -251,6 +251,10 @@ export type FeatureEvalRegressionEvent = {
 export type ProductEvent =
   | { name: "user.first_query"; userId: string; dbId: string }
   | { name: "user.registered"; userId: string; email: string }
+  // A 5xx out of Better Auth whose email is recoverable without D1 (the
+  // sign-in body or a verify token remembered in KV). One per email per UTC
+  // day via the envelope id, so an outage can't drain LogSnag's quota.
+  | { name: "user.auth_failed"; email: string; emailHash: string; path: string; status: number }
   | {
       name: "billing.subscription_created";
       userId: string;

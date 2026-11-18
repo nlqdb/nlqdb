@@ -23,6 +23,7 @@ import { D1Dialect } from "kysely-d1";
 import { recordAnonAdoption } from "./anon-adopt.ts";
 import { makeAclRetarget } from "./anon-adopt-regrant.ts";
 import { buildClearCookie, readStashCookie, verifyAnonStash } from "./anon-stash.ts";
+import { rememberMagicLinkRecipient } from "./auth/failure-report.ts";
 import { hashEmail, makeMagicLinkThrottle } from "./auth/magic-link-throttle.ts";
 import { sinkEmail } from "./auth/mock-email-sink.ts";
 import { captureVerifyUrl } from "./auth/mock-idp.ts";
@@ -348,6 +349,10 @@ export const auth = betterAuth({
             to: email,
             ...magicLinkEmail(continueUrl),
           });
+          // Best effort: a KV blip must not fail a sign-in that was sent.
+          await rememberMagicLinkRecipient(env.KV, url, email, MAGIC_LINK_TTL_SECONDS).catch(
+            () => undefined,
+          );
         } catch (err) {
           // Resend outage / network / config error. Roll back the
           // counter so a single transient failure doesn't burn one of
