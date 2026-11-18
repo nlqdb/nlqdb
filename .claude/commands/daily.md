@@ -139,7 +139,8 @@ table + the header lines, no changelog):
 - **SEO lane:** rows #6–#7 — `bun scripts/gsc-pull.ts` (when
   `GSC_SERVICE_ACCOUNT_JSON` is set) and `bun scripts/ahrefs-dr.ts` (DR4),
   against the lane goal. Other distribution stays paused.
-- **Ops:** p50/p95 ask latency, error rate, $ spend (expect ~0).
+- **Ops:** p50/p95 ask latency, error rate, $ spend (expect ~0), and the
+  shared account's D1 rows-read headroom (`bun scripts/d1-quota.ts`).
 - **E2E (manual suites, not in CI):** `e2e-sdk`, `e2e-mcp`, `e2e-examples`,
   `e2e-opencheck`. Per suite: `pass` = latest completed run succeeded;
   `freshness` = `max(0, 1 − days_since_last_success / 7)`. Row score = mean
