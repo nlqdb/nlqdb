@@ -168,4 +168,25 @@ describe("reportAuthServerError", () => {
     await send(0, "2026-11-19"); // a new UTC day starts a new count
     expect(emit).toHaveBeenCalledTimes(AUTH_FAILED_DAILY_CAP + 1);
   });
+
+  it("counts distinct emails, so one person retrying can't use up the cap", async () => {
+    const { kv } = fakeKv();
+    const emit = vi.fn(async () => undefined);
+    const send = (email: string) =>
+      reportAuthServerError({
+        env: { MOCK_IDP: "1", KV: kv },
+        events: { emit },
+        req: new Request("https://app.nlqdb.com/api/auth/sign-in/magic-link", { method: "POST" }),
+        body: JSON.stringify({ email }),
+        status: 500,
+        utcDay: "2026-11-18",
+        thrown: true,
+      });
+    for (let i = 0; i < AUTH_FAILED_DAILY_CAP + 5; i++) await send("retry@ex.am");
+    await send("other@ex.am");
+    expect(emit.mock.calls.map((c) => (c as unknown[])[0])).toEqual([
+      expect.objectContaining({ email: "retry@ex.am" }),
+      expect.objectContaining({ email: "other@ex.am" }),
+    ]);
+  });
 });

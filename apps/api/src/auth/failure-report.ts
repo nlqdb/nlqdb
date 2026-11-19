@@ -119,8 +119,8 @@ export type AuthServerErrorDeps = {
 /**
  * A 5xx out of Better Auth: one log line, the R&D alert `app.onError` would
  * have sent had it thrown, and a `user.auth_failed` event when the email is
- * recoverable — deduped per email per UTC day and capped at
- * `AUTH_FAILED_DAILY_CAP` a day, so invented emails can't drain LogSnag.
+ * recoverable — once per email per UTC day, at most
+ * `AUTH_FAILED_DAILY_CAP` emails a day, so invented emails can't drain LogSnag.
  * The email is computed even when `thrown`, the one thing `app.onError` lacks.
  */
 export async function reportAuthServerError(deps: AuthServerErrorDeps): Promise<void> {
@@ -133,7 +133,7 @@ export async function reportAuthServerError(deps: AuthServerErrorDeps): Promise<
   const emailHash = email ? (await hashEmail(email)).slice(0, 16) : "";
   const ctx = requestContext(req);
   const event =
-    email && (await underDailyCap(env.KV, deps.utcDay))
+    email && (await firstReportToday(env.KV, deps.utcDay, emailHash))
       ? deps.events.emit({ name: "user.auth_failed", email, emailHash, path: url.pathname, status })
       : Promise.resolve();
   if (deps.thrown) return event;
@@ -170,13 +170,26 @@ export async function reportAuthServerError(deps: AuthServerErrorDeps): Promise<
   ]);
 }
 
-/** Counts today's `user.auth_failed` events; KV's eventual consistency can let a few past the cap, never thousands. */
-async function underDailyCap(kv: KVNamespace, utcDay: string): Promise<boolean> {
+/**
+ * Records `emailHash` in today's reported set: true for a new email under the
+ * cap. Distinct emails, not failures, so one person retrying through an outage
+ * can't use up the cap and leave everyone else unnamed. KV's eventual
+ * consistency can let a few past the cap, never thousands.
+ */
+async function firstReportToday(
+  kv: KVNamespace,
+  utcDay: string,
+  emailHash: string,
+): Promise<boolean> {
   try {
     const key = `${DAILY_EVENT_PREFIX}${utcDay}`;
-    const count = Number((await kv.get(key)) ?? 0);
-    if (count >= AUTH_FAILED_DAILY_CAP) return false;
-    await kv.put(key, String(count + 1), { expirationTtl: 2 * 86_400 });
+    const raw = await kv.get(key);
+    const seen: unknown = raw ? JSON.parse(raw) : [];
+    const hashes = Array.isArray(seen)
+      ? seen.filter((h): h is string => typeof h === "string")
+      : [];
+    if (hashes.includes(emailHash) || hashes.length >= AUTH_FAILED_DAILY_CAP) return false;
+    await kv.put(key, JSON.stringify([...hashes, emailHash]), { expirationTtl: 2 * 86_400 });
     return true;
   } catch {
     // KV down too: the outage is what this event reports, so emit rather than go silent.
