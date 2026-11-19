@@ -151,6 +151,10 @@ function defaultId(event: ProductEvent): string {
       // ranks by surface, so collapsing to one event-per-visitor-per-day
       // would erase the comparison.
       return `${event.name}.${event.principalId}.${event.surface}.${utcDay()}`;
+    case "user.auth_failed":
+      // Per-(email, day): one ping per person per outage day, so a failing
+      // auth store can't drain the LogSnag quota (SK-EVENTS-006).
+      return `${event.name}.${event.emailHash}.${utcDay()}`;
     case "pricing.page_viewed":
       // SK-EVENTS-012: per-(principal, day). The founder's question is
       // "how many UNIQUE users", so one page-view per visitor per day is

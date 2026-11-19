@@ -77,6 +77,9 @@ function distinctId(event: ProductEvent): string {
     case "feature.eval.weekly":
     case "feature.eval.regression":
       return `eval:${event.dataset}`;
+    case "user.auth_failed":
+      // No userId when sign-in fails; the email hash is the stable identity.
+      return `email:${event.emailHash}`;
     default: {
       const _exhaustive: never = event;
       return `unknown:${JSON.stringify(_exhaustive)}`;
@@ -127,6 +130,8 @@ export async function publishToPostHog(
   envelopes: EventEnvelope[],
   fetchImpl: typeof fetch = fetch,
 ): Promise<void> {
+  // `user.auth_failed` carries an unverified email: an ops ping for LogSnag, not analytics.
+  envelopes = envelopes.filter((e) => e.event.name !== "user.auth_failed");
   if (envelopes.length === 0) return;
 
   const tracer = trace.getTracer("@nlqdb/events-worker");

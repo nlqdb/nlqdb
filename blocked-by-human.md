@@ -20,6 +20,22 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   context · benefits · risks · alternatives, ≤ 5 words each>
 -->
 
+## Stop `swiss-prices-comparison` draining the shared D1 read cap
+
+- **Type:** account action · ⏱ ~5 min · since 2026-11-18
+- **Done so far:** on 11-18 that D1 database (not nlqdb's) read **132.9 M
+  rows** (589 k on 11-17), 26× the account's 5 M/day free cap. Every D1
+  query on the account then failed with code 7500: **signed-in
+  `app.nlqdb.com` requests 500/503 (`auth_unavailable`) until 00:00 UTC**,
+  and #1288's Deploy API, Deploy — Canary and CI's rateme12 attach job went
+  red (re-run at 14:44 UTC, still refused). `bun scripts/cf-quota.ts`
+  reads the headroom each run (nlqdb itself: 0.4–2.0 M/day). Any day it
+  reads ≥ 5 M again takes nlqdb down.
+- **Ask:** recommended (a) — shared cap, one hog · nlqdb isolated for good
+  · none, both stay free · fix its query instead. Options: (a) move
+  `swiss-prices-comparison` to its own free Cloudflare account; (b) have
+  that repo's agent cut the query reading 133 M rows/day. Reply in chat.
+
 ## Call the spike pass or fail
 
 - **Type:** decision · ⏱ ~2 min · since 2026-11-13

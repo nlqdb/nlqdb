@@ -32,6 +32,22 @@ describe("buildPayload", () => {
     });
   });
 
+  it("maps user.auth_failed into a notifying users-channel event", () => {
+    const out = buildPayload("nlqdb", {
+      name: "user.auth_failed",
+      email: "x@y.com",
+      emailHash: "abc",
+      path: "/api/auth/magic-link/verify",
+      status: 500,
+    });
+    expect(out).toMatchObject({
+      channel: "users",
+      event: "Sign-in failed",
+      notify: true,
+      tags: { email: "x@y.com", path: "/api/auth/magic-link/verify", status: "500" },
+    });
+  });
+
   it("maps billing.subscription_created into the LogSnag shape", () => {
     const out = buildPayload("nlqdb", {
       name: "billing.subscription_created",
