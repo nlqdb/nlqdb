@@ -58,7 +58,7 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   KPI B > 0. Run 294 made Tier 1 plan its joins and subqueries: 0 proposals
   — its heaviest texts (24 h and 7 d) already plan through indexes; the rest
   is whole-table counts and aggregates. So no index applies there until its
-  workload changes; the spike's index is kept (38× p95 est.).
+  workload changes; the spike's index is kept (33× p95 est. at 227.9 h).
 - **Ask:** recommended (a) — gate stuck on rateme12 · spike delta already
   measured · one DB, Postgres only · wait, or new kind. Options: (a) recruit
   when the spike passes; (b) keep the rateme12 gate and wait; (c) gate on a
