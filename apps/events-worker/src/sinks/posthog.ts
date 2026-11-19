@@ -130,6 +130,8 @@ export async function publishToPostHog(
   envelopes: EventEnvelope[],
   fetchImpl: typeof fetch = fetch,
 ): Promise<void> {
+  // `user.auth_failed` carries an unverified email: an ops ping for LogSnag, not analytics.
+  envelopes = envelopes.filter((e) => e.event.name !== "user.auth_failed");
   if (envelopes.length === 0) return;
 
   const tracer = trace.getTracer("@nlqdb/events-worker");

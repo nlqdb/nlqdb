@@ -7,7 +7,7 @@
 // CI's rateme12 attach job). Limit: developers.cloudflare.com/d1/platform/limits/
 //
 // Auth: CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN (the token rum-pull uses).
-// Usage: bun scripts/d1-quota.ts [--days 7]   # exits 1 when a day is over the cap
+// Usage: bun scripts/d1-quota.ts [--days 7]   # exits 1 when the latest day is over the cap
 
 import { curlRequest } from "./lib/curl.ts";
 
@@ -69,16 +69,17 @@ for (const g of groups) {
 }
 
 const m = (n: number) => `${(n / 1e6).toFixed(2)} M`;
-let over = false;
 console.info(`# D1 rows read per UTC day — account cap ${m(DAILY_ROWS_READ_CAP)}`);
 for (const date of [...byDay.keys()].sort()) {
   const dbs = [...(byDay.get(date) ?? [])].sort((a, b) => b[1] - a[1]);
   const total = dbs.reduce((s, [, n]) => s + n, 0);
   const ours = dbs.filter(([n]) => NLQDB_DBS.has(n)).reduce((s, [, n]) => s + n, 0);
   const top = dbs[0];
-  if (total > DAILY_ROWS_READ_CAP) over = true;
   console.info(
     `${date}  ${m(total).padStart(9)}  ${((100 * total) / DAILY_ROWS_READ_CAP).toFixed(0).padStart(4)} %  nlqdb ${m(ours)}  top ${top?.[0]} ${m(top?.[1] ?? 0)}${total > DAILY_ROWS_READ_CAP ? "  OVER CAP" : ""}`,
   );
 }
-if (over) process.exit(1);
+// Only the latest day blocks deploys; an older breach is history, not a red gate.
+const latest = [...byDay.keys()].sort().at(-1);
+const latestTotal = [...(byDay.get(latest ?? "") ?? [])].reduce((s, [, n]) => s + n, 0);
+if (latestTotal > DAILY_ROWS_READ_CAP) process.exit(1);

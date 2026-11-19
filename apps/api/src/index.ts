@@ -5121,18 +5121,24 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
 
   // Read before Better Auth consumes the stream, only where it names the email.
   const body = wantsAuthBody(url, c.req.method) ? await c.req.raw.clone().text() : null;
-  const report = (status: number, thrown = false) =>
-    c.executionCtx.waitUntil(
-      reportAuthServerError({
-        env: c.env,
-        events: buildEventEmitter(c.env.EVENTS_QUEUE),
-        req: c.req.raw,
-        body,
-        status,
-        utcDay: new Date().toISOString().slice(0, 10),
-        thrown,
-      }).catch(() => undefined),
-    );
+  // Guarded: a reporting failure must never replace the auth error it reports.
+  const report = (status: number, thrown = false) => {
+    try {
+      c.executionCtx.waitUntil(
+        reportAuthServerError({
+          env: c.env,
+          events: buildEventEmitter(c.env.EVENTS_QUEUE),
+          req: c.req.raw,
+          body,
+          status,
+          utcDay: new Date().toISOString().slice(0, 10),
+          thrown,
+        }).catch(() => undefined),
+      );
+    } catch {
+      // No ExecutionContext (tests) — nothing to report into.
+    }
+  };
 
   return tracer.startActiveSpan(spanName, async (span) => {
     if (provider) span.setAttribute("nlqdb.auth.provider", provider);

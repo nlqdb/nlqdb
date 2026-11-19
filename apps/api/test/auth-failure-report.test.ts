@@ -5,6 +5,7 @@
 import type { EventEmitter, ProductEvent } from "@nlqdb/events";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  AUTH_FAILED_DAILY_CAP,
   authRequestEmail,
   credentialFingerprint,
   rememberMagicLinkRecipient,
@@ -72,6 +73,12 @@ describe("credentialFingerprint", () => {
   it("says none without a credential, anon for an anon bearer", async () => {
     expect(await credentialFingerprint(req({}))).toBe("none");
     expect(await credentialFingerprint(req({ authorization: "Bearer anon_xyz" }))).toBe("anon");
+  });
+
+  it("hashes a bearer that is not an API key instead of printing its tail", async () => {
+    const fp = await credentialFingerprint(req({ authorization: "Bearer opaque-session-WXYZ" }));
+    expect(fp).toMatch(/^bearer:[0-9a-f]{16}$/);
+    expect(fp).not.toContain("WXYZ");
   });
 });
 
@@ -141,5 +148,24 @@ describe("reportAuthServerError", () => {
     ]);
     expect(log).not.toHaveBeenCalled();
     expect(raw.put.mock.calls.some((c) => String(c[0]).startsWith("mock-email:"))).toBe(false);
+  });
+
+  it("caps user.auth_failed per UTC day, so invented emails can't page LogSnag", async () => {
+    const { kv } = fakeKv();
+    const emit = vi.fn(async () => undefined);
+    const send = (i: number, utcDay: string) =>
+      reportAuthServerError({
+        env: { MOCK_IDP: "1", KV: kv },
+        events: { emit },
+        req: new Request("https://app.nlqdb.com/api/auth/sign-in/magic-link", { method: "POST" }),
+        body: `{"email":"u${i}@spam.io"}`,
+        status: 500,
+        utcDay,
+        thrown: true,
+      });
+    for (let i = 0; i < AUTH_FAILED_DAILY_CAP + 5; i++) await send(i, "2026-11-18");
+    expect(emit).toHaveBeenCalledTimes(AUTH_FAILED_DAILY_CAP);
+    await send(0, "2026-11-19"); // a new UTC day starts a new count
+    expect(emit).toHaveBeenCalledTimes(AUTH_FAILED_DAILY_CAP + 1);
   });
 });

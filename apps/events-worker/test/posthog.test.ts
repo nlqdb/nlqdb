@@ -127,6 +127,23 @@ describe("publishToPostHog", () => {
     expect(body.batch[0]).toMatchObject({ event: "user.first_query", distinct_id: "u_1" });
   });
 
+  it("never sends user.auth_failed (an unverified email) to PostHog", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    const failed = envelope("user.auth_failed.h", {
+      name: "user.auth_failed",
+      email: "x@y.io",
+      emailHash: "h",
+      path: "/api/auth/sign-in/magic-link",
+      status: 500,
+    });
+    await publishToPostHog(
+      { apiKey: "phc_test", host: "https://eu.i.posthog.com" },
+      [failed],
+      fetchMock as unknown as typeof fetch,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("is a no-op with no fetch when the batch is empty", async () => {
     const fetchMock = vi.fn();
     await publishToPostHog(

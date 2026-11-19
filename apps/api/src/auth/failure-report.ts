@@ -1,7 +1,7 @@
 // Who an auth failure hit, read without D1 — the store that is usually what
 // failed (2026-11-18: the account's D1 read cap refused every query and a
 // first-time sign-in 500'd with nothing naming its owner). Logs carry only
-// fingerprints (`SK-WEB-001`); the email reaches LogSnag through the
+// fingerprints (`SK-OBS-008`); the email reaches LogSnag through the
 // `user.auth_failed` event (`SK-EVENTS-006`), as `user.registered` already does.
 
 import type { EventEmitter } from "@nlqdb/events";
@@ -10,6 +10,9 @@ import { type AlertEnv, alertRnd, stableSignature } from "../internal-alert.ts";
 import { hashEmail } from "./magic-link-throttle.ts";
 
 const RECIPIENT_PREFIX = "ml-who:";
+const DAILY_EVENT_PREFIX = "auth-failed:";
+/** The email is unauthenticated input: a per-email dedup alone lets one caller page LogSnag per address it invents. */
+export const AUTH_FAILED_DAILY_CAP = 20;
 
 async function sha256Hex(input: string, hexChars = 64): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
@@ -72,16 +75,17 @@ export function wantsAuthBody(url: URL, method: string): boolean {
 }
 
 /**
- * A non-reversible handle on the caller's credential: a session-token hash
- * (match by hashing `session.token`) or an API key's type + last 4 (the
- * `api_keys.last_4` column). Never the credential itself.
+ * A non-reversible handle on the caller's credential: an API key's type +
+ * last 4 (the `api_keys.last_4` column), else a token hash (match a session
+ * by hashing `session.token`). Never the credential itself.
  */
 export async function credentialFingerprint(req: Request): Promise<string> {
   const auth = req.headers.get("authorization") ?? "";
   const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
   if (bearer) {
-    const type = /^(sk_live|sk_mcp|pk_live|anon)_/.exec(bearer)?.[1] ?? "bearer";
-    return type === "anon" ? "anon" : `key:${type}…${bearer.slice(-4)}`;
+    const type = /^(sk_live|sk_mcp|pk_live|anon)_/.exec(bearer)?.[1];
+    if (type === "anon") return "anon";
+    return type ? `key:${type}…${bearer.slice(-4)}` : `bearer:${await sha256Hex(bearer, 16)}`;
   }
   const cookie = req.headers.get("cookie") ?? "";
   // Prefix varies by env (`__Secure-__Secure.` in prod, `better-auth.` in dev).
@@ -115,7 +119,8 @@ export type AuthServerErrorDeps = {
 /**
  * A 5xx out of Better Auth: one log line, the R&D alert `app.onError` would
  * have sent had it thrown, and a `user.auth_failed` event when the email is
- * recoverable (deduped per email per UTC day, so it can't drain LogSnag).
+ * recoverable — deduped per email per UTC day and capped at
+ * `AUTH_FAILED_DAILY_CAP` a day, so invented emails can't drain LogSnag.
  * The email is computed even when `thrown`, the one thing `app.onError` lacks.
  */
 export async function reportAuthServerError(deps: AuthServerErrorDeps): Promise<void> {
@@ -127,9 +132,10 @@ export async function reportAuthServerError(deps: AuthServerErrorDeps): Promise<
   ]);
   const emailHash = email ? (await hashEmail(email)).slice(0, 16) : "";
   const ctx = requestContext(req);
-  const event = email
-    ? deps.events.emit({ name: "user.auth_failed", email, emailHash, path: url.pathname, status })
-    : Promise.resolve();
+  const event =
+    email && (await underDailyCap(env.KV, deps.utcDay))
+      ? deps.events.emit({ name: "user.auth_failed", email, emailHash, path: url.pathname, status })
+      : Promise.resolve();
   if (deps.thrown) return event;
   console.error(
     JSON.stringify({
@@ -162,4 +168,18 @@ export async function reportAuthServerError(deps: AuthServerErrorDeps): Promise<
     }),
     event,
   ]);
+}
+
+/** Counts today's `user.auth_failed` events; KV's eventual consistency can let a few past the cap, never thousands. */
+async function underDailyCap(kv: KVNamespace, utcDay: string): Promise<boolean> {
+  try {
+    const key = `${DAILY_EVENT_PREFIX}${utcDay}`;
+    const count = Number((await kv.get(key)) ?? 0);
+    if (count >= AUTH_FAILED_DAILY_CAP) return false;
+    await kv.put(key, String(count + 1), { expirationTtl: 2 * 86_400 });
+    return true;
+  } catch {
+    // KV down too: the outage is what this event reports, so emit rather than go silent.
+    return true;
+  }
 }
