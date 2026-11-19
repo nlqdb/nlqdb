@@ -28,7 +28,7 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   query on the account then failed with code 7500: **signed-in
   `app.nlqdb.com` requests 500/503 (`auth_unavailable`) until 00:00 UTC**,
   and #1288's Deploy API, Deploy — Canary and CI's rateme12 attach job went
-  red (re-run at 14:44 UTC, still refused). `bun scripts/d1-quota.ts`
+  red (re-run at 14:44 UTC, still refused). `bun scripts/cf-quota.ts`
   reads the headroom each run (nlqdb itself: 0.4–2.0 M/day). Any day it
   reads ≥ 5 M again takes nlqdb down.
 - **Ask:** recommended (a) — shared cap, one hog · nlqdb isolated for good

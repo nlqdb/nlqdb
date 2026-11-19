@@ -1,23 +1,31 @@
 #!/usr/bin/env bun
-// D1 rows-read headroom on the shared Cloudflare account — the scorecard's
-// Ops read. The free tier caps rows read per *account* per UTC day; past it
-// every D1 query on the account fails with code 7500 until midnight UTC, so a
-// database outside nlqdb can block nlqdb's deploys (2026-11-18: one other
-// project's DB read 132.9 M rows and failed Deploy API, Deploy — Canary and
-// CI's rateme12 attach job). Limit: developers.cloudflare.com/d1/platform/limits/
+// Free-tier headroom on the shared Cloudflare account — the scorecard's Ops
+// read. D1 rows read and Workers KV operations are capped per *account* per
+// UTC day; past a cap every call fails until midnight UTC, so a project
+// outside nlqdb can take nlqdb down (2026-11-18: another project's D1 read
+// 132.9 M rows and failed Deploy API, Deploy — Canary and CI's rateme12
+// attach job). KV writes back Better Auth's session storage, so its cap is a
+// sign-in outage too. Limits: developers.cloudflare.com/d1/platform/limits/,
+// developers.cloudflare.com/kv/platform/limits/
 //
 // Auth: CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN (the token rum-pull uses).
-// Usage: bun scripts/d1-quota.ts [--days 7]   # exits 1 when the latest day is over the cap
+// Usage: bun scripts/cf-quota.ts [--days 7]   # exits 1 when the latest day is over a cap
 
 import { curlRequest } from "./lib/curl.ts";
 
 const API = "https://api.cloudflare.com/client/v4";
 const DAILY_ROWS_READ_CAP = 5_000_000;
+const KV_DAILY_CAPS: Record<string, number> = {
+  read: 100_000,
+  write: 1_000,
+  delete: 1_000,
+  list: 1_000,
+};
 /** D1 databases nlqdb owns or attaches; every other one shares the cap. */
 const NLQDB_DBS = new Set(["nlqdb-app", "nlqdb-canary", "rateme12", "rateme12-botfeedback"]);
 
 function die(msg: string): never {
-  console.error(`d1-quota: ${msg}`);
+  console.error(`cf-quota: ${msg}`);
   process.exit(1);
 }
 
@@ -82,4 +90,57 @@ for (const date of [...byDay.keys()].sort()) {
 // Only the latest day blocks deploys; an older breach is history, not a red gate.
 const latest = [...byDay.keys()].sort().at(-1);
 const latestTotal = [...(byDay.get(latest ?? "") ?? [])].reduce((s, [, n]) => s + n, 0);
-if (latestTotal > DAILY_ROWS_READ_CAP) process.exit(1);
+let over = latestTotal > DAILY_ROWS_READ_CAP;
+
+const kvNs = (await call(
+  "GET",
+  `${API}/accounts/${account}/storage/kv/namespaces?per_page=100`,
+)) as {
+  result: { id: string; title: string }[];
+};
+const kvNames = new Map(kvNs.result.map((n) => [n.id, n.title]));
+const kvQuery = `query{viewer{accounts(filter:{accountTag:"${account}"}){kvOperationsAdaptiveGroups(limit:1000,filter:{date_geq:"${since}"}){sum{requests}dimensions{date namespaceId actionType}}}}}`;
+const kvGql = (await call("POST", `${API}/graphql`, JSON.stringify({ query: kvQuery }))) as {
+  errors?: unknown[];
+  data?: {
+    viewer: {
+      accounts: {
+        kvOperationsAdaptiveGroups: {
+          sum: { requests: number };
+          dimensions: { date: string; namespaceId: string; actionType: string };
+        }[];
+      }[];
+    };
+  };
+};
+if (kvGql.errors?.length || !kvGql.data)
+  die(`GraphQL (KV): ${JSON.stringify(kvGql.errors).slice(0, 300)}`);
+// date → action → namespace → ops
+const kvByDay = new Map<string, Map<string, Map<string, number>>>();
+for (const g of kvGql.data.viewer.accounts[0]?.kvOperationsAdaptiveGroups ?? []) {
+  const { date, actionType, namespaceId } = g.dimensions;
+  const day = kvByDay.get(date) ?? new Map<string, Map<string, number>>();
+  const ns = day.get(actionType) ?? new Map<string, number>();
+  const name = kvNames.get(namespaceId) ?? namespaceId;
+  ns.set(name, (ns.get(name) ?? 0) + g.sum.requests);
+  day.set(actionType, ns);
+  kvByDay.set(date, day);
+}
+const pct = (n: number, cap: number) => `${((100 * n) / cap).toFixed(0)} %`;
+console.info(
+  `\n# Workers KV ops per UTC day — caps ${Object.entries(KV_DAILY_CAPS)
+    .map(([a, c]) => `${a} ${c.toLocaleString("en")}`)
+    .join(", ")}`,
+);
+const kvLatest = [...kvByDay.keys()].sort().at(-1);
+for (const date of [...kvByDay.keys()].sort()) {
+  const cells = Object.entries(KV_DAILY_CAPS).map(([action, cap]) => {
+    const ns = [...(kvByDay.get(date)?.get(action) ?? [])].sort((a, b) => b[1] - a[1]);
+    const total = ns.reduce((s, [, n]) => s + n, 0);
+    if (date === kvLatest && total > cap) over = true;
+    const top = action === "write" && ns[0] ? ` (top ${ns[0][0]} ${ns[0][1]})` : "";
+    return `${action} ${total} = ${pct(total, cap)}${top}${total > cap ? " OVER CAP" : ""}`;
+  });
+  console.info(`${date}  ${cells.join("  ")}`);
+}
+if (over) process.exit(1);
