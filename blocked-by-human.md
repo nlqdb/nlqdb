@@ -39,21 +39,17 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
 ## Call the spike pass or fail
 
 - **Type:** decision · ⏱ ~2 min · since 2026-11-13
-- **Done so far:** the spike Postgres's one applied index (run 283) is past
-  its 72 h verify, judged **keep**: its hot fingerprint went **p95 est.
-  65.214 → 1.698 ms** (mean 7.706 → 0.305 ms; 32,562 calls before, 1,473
-  since) —
-  [`scorecard.md`](docs/scorecard.md) row 16. `GLOBAL-043` item 10 makes
-  pass "a measured delta the founder would pay for"; only the founder can
-  say that. Default until called: nothing is deleted; rateme12's real D1
-  attached (run 292) and its apply box runs meanwhile.
-- **Ask:** recommended — **call it on 11-19:** spike's 2 weeks end 11-19 ·
-  more calls behind the delta · deletion starts a week later · pass now, or
-  fail. Options: (a) **pass now** — 38× p95 est., one index, one DB; (b)
-  **fail** — evidence kept, nothing deleted; (c) **wait to 11-19** (the
-  recommendation; the agent re-reads the delta then). The D1 boxes run first
-  either way. Reply in chat; the agent records it in
-  [`docs/ROADMAP.md`](docs/ROADMAP.md) §2.
+- **Done so far:** the spike Postgres's one applied index (run 283),
+  re-read on its due date (11-19, run 301, 227.9 h after the apply): its hot
+  fingerprint went **p95 est. 65.214 → 1.976 ms** (33×; mean 7.706 →
+  0.345 ms; 32,562 calls before, **4,627 since**), judged **keep** by the
+  loop's verify — [`scorecard.md`](docs/scorecard.md) row 16. `GLOBAL-043`
+  item 10 makes pass "a measured delta the founder would pay for"; only the
+  founder can say that. Default until called: nothing is deleted.
+- **Ask:** recommended (a) — two weeks, delta held · deletion series starts ·
+  one index, one DB · fail keeps everything. Options: (a) **pass** — 33×
+  p95 est. over 4,627 calls; (b) **fail** — evidence kept, nothing deleted.
+  Reply in chat; the agent records it in [`docs/ROADMAP.md`](docs/ROADMAP.md) §2.
 
 ## Re-gate recruiting 10 builders: rateme12 has no missing index
 
@@ -62,7 +58,7 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   KPI B > 0. Run 294 made Tier 1 plan its joins and subqueries: 0 proposals
   — its heaviest texts (24 h and 7 d) already plan through indexes; the rest
   is whole-table counts and aggregates. So no index applies there until its
-  workload changes; the spike's index is kept (38× p95 est.).
+  workload changes; the spike's index is kept (33× p95 est. at 227.9 h).
 - **Ask:** recommended (a) — gate stuck on rateme12 · spike delta already
   measured · one DB, Postgres only · wait, or new kind. Options: (a) recruit
   when the spike passes; (b) keep the rateme12 gate and wait; (c) gate on a
