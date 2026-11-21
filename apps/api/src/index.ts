@@ -850,14 +850,16 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       }
 
       const ip = c.req.header("cf-connecting-ip") ?? "unknown";
-      const anonLimiter = makeAnonRateLimiter(c.env.KV);
+      const anonLimiter = makeAnonRateLimiter(c.env.KV, c.env.ANON_ASK_RATE_LIMIT);
       const verdict = await anonLimiter.checkQuery(ip);
       // RFC 9110 X-RateLimit-* parity with the authed path
       // (SK-RL-004 / GLOBAL-002). Emitted on success too so the
       // surface can render headroom before the user hits the wall.
       const now = Math.floor(Date.now() / 1000);
       c.header("X-RateLimit-Limit", String(verdict.limit));
-      c.header("X-RateLimit-Remaining", String(Math.max(0, verdict.limit - verdict.count)));
+      if (verdict.count !== undefined) {
+        c.header("X-RateLimit-Remaining", String(Math.max(0, verdict.limit - verdict.count)));
+      }
       c.header("X-RateLimit-Reset", String(verdict.resetAt));
       if (!verdict.ok) {
         span.setAttribute("nlqdb.ask.outcome", "rate_limited_ip");
@@ -929,7 +931,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // into a Hono Response and emits the X-RateLimit-* headers.
     const ip = c.req.header("cf-connecting-ip") ?? "unknown";
     const gateDeps = {
-      limiter: makeAnonRateLimiter(c.env.KV),
+      limiter: makeAnonRateLimiter(c.env.KV, c.env.ANON_ASK_RATE_LIMIT),
       verifyTurnstile,
     };
     const peekAnonCreateGate = async (): Promise<Response | null> => {
@@ -1956,11 +1958,13 @@ app.post("/v1/run", requirePrincipal, async (c) => {
           });
         }
         const ip = c.req.header("cf-connecting-ip") ?? "unknown";
-        const anonLimiter = makeAnonRateLimiter(c.env.KV);
+        const anonLimiter = makeAnonRateLimiter(c.env.KV, c.env.ANON_ASK_RATE_LIMIT);
         const verdict = await anonLimiter.checkQuery(ip);
         const now = Math.floor(Date.now() / 1000);
         c.header("X-RateLimit-Limit", String(verdict.limit));
-        c.header("X-RateLimit-Remaining", String(Math.max(0, verdict.limit - verdict.count)));
+        if (verdict.count !== undefined) {
+          c.header("X-RateLimit-Remaining", String(Math.max(0, verdict.limit - verdict.count)));
+        }
         c.header("X-RateLimit-Reset", String(verdict.resetAt));
         if (!verdict.ok) {
           span.setAttribute("nlqdb.run.outcome", "rate_limited_ip");

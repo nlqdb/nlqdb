@@ -117,3 +117,26 @@ describe("anon rate-limiter — peekDevice / recordDevice (SK-ANON-012)", () => 
     expect(opts.expirationTtl).toBe(90 * 24 * 60 * 60);
   });
 });
+
+describe("anon rate-limiter — checkQuery on the edge binding (SK-RL-008)", () => {
+  it("counts on the binding per IP and never writes KV", async () => {
+    const { kv, put } = fakeKv();
+    const seen: string[] = [];
+    let allow = true;
+    const binding = {
+      limit: async ({ key }: { key: string }) => {
+        seen.push(key);
+        return { success: allow };
+      },
+    } as unknown as RateLimit;
+    const limiter = makeAnonRateLimiter(kv, binding);
+    const ok = await limiter.checkQuery("1.2.3.4");
+    expect(ok.ok).toBe(true);
+    expect(ok.count).toBeUndefined();
+    allow = false;
+    const blocked = await limiter.checkQuery("1.2.3.4");
+    expect(blocked.ok).toBe(false);
+    expect(seen).toEqual(["1.2.3.4", "1.2.3.4"]);
+    expect(put).not.toHaveBeenCalled();
+  });
+});

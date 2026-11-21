@@ -56,6 +56,11 @@ name = "MAGIC_LINK_RATE_LIMIT"
 namespace_id = "1002"
 simple = { limit = 5, period = 60 }
 
+[[ratelimits]]
+name = "ANON_ASK_RATE_LIMIT"
+namespace_id = "1003"
+simple = { limit = 30, period = 60 }
+
 [[kv_namespaces]]
 binding = "KV"
 id = "d11103c1663c446cbb601b0c09500854"

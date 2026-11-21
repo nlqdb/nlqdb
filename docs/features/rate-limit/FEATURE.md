@@ -28,7 +28,7 @@ when-to-load:
 - `apps/api/src/ask/orchestrate.ts` (rate-limit-first ordering in the `/v1/ask` pipeline)
 - D1 table `rate_limit_buckets` (schema in `apps/api/migrations/`)
 - Workers KV namespace bound as `KV` (also used by Better Auth `secondaryStorage`)
-- `apps/api/src/auth-rate-limit.ts` + the `AUTH_RATE_LIMIT` / `MAGIC_LINK_RATE_LIMIT` bindings (`SK-RL-008`)
+- `apps/api/src/auth-rate-limit.ts` + the `AUTH_RATE_LIMIT` / `MAGIC_LINK_RATE_LIMIT` / `ANON_ASK_RATE_LIMIT` bindings (`SK-RL-008`)
 
 ## Decisions
 
@@ -96,7 +96,7 @@ when-to-load:
 
 ### SK-RL-007 — Anon limiter splits one identity (IP) into three buckets: query, hour-create, burst-create
 
-- **Status:** create-bucket shape amended by `SK-ANON-012` (per-device 1-create cap → `auth_required`; burst gate retired). The query bucket described here is unchanged. Implementation in `anon-rate-limit.ts` still matches this block today; WS8 rewrites the create path.
+- **Status:** query bucket moved to the edge binding by `SK-RL-008`; create-bucket shape amended by `SK-ANON-012` (per-device 1-create cap → `auth_required`; burst gate retired). The query bucket described here is unchanged. Implementation in `anon-rate-limit.ts` still matches this block today; WS8 rewrites the create path.
 - **Decision:** `apps/api/src/anon-rate-limit.ts` keys three independent KV buckets off `cf-connecting-ip`: a 30/min query window, a 5/hour create cap, and a 5-minute burst window that flips to "needs Turnstile" at 3 creates. All three live in KV (per `SK-RL-001`'s per-IP/KV split) under distinct prefixes (`anon:query:`, `anon:create:hr:`, `anon:create:burst:`). Each verdict carries `{ limit, count, resetAt }` so the route emits `X-RateLimit-*` headers consistent with the authed path (`SK-RL-004` / `GLOBAL-002`). Layered ABOVE these per-IP buckets sits the **global anon cap** (`SK-ANON-010` / `apps/api/src/anon-global-cap.ts`) — three additional KV buckets (`anon:global:hr:` / `anon:global:day:` / `anon:global:mo:`) summed across all anon traffic, evaluated FIRST in the route. Trip-priority on the route: global → per-IP query → per-IP create → Turnstile burst.
 - **Core value:** Free, Bullet-proof, Honest latency
 - **Why:** A single counter can't satisfy both the slow-burn cap (5/hour) and the burst gate (3-in-5min) — they have different windows and different consequences (429 vs. 428). Composing them as separate buckets keyed off the same IP keeps each one cheap (one KV `get`/`put` per bucket per request) and lets the Turnstile gate live independently of the hard cap. Same-prefix buckets would race on TTL and force one window length on both. KV's TTL semantics auto-evict; no sweep job (matches `SK-RL-001`).
@@ -106,12 +106,12 @@ when-to-load:
   - D1-backed anon limiter — IP cardinality is unbounded under abuse; D1 row count would explode exactly when we need the limiter to be cheap (per `SK-RL-001`'s rejected-alternatives).
   - Reuse the demo limiter (`apps/api/src/demo.ts`) — its `hit()` is a single-bucket counter; can't compose for the burst-vs-cap split without forking it.
 
-### SK-RL-008 — `/api/auth/*` is limited per IP at the edge by Cloudflare's rate-limiting binding, never by Better Auth's KV storage
+### SK-RL-008 — Per-IP limits on unauthenticated paths count at the edge (Cloudflare's rate-limiting binding), never with a KV write per request
 
-- **Decision:** `authRateLimit` (`apps/api/src/auth-rate-limit.ts`) runs ahead of every `/api/auth/*` route, keyed on `cf-connecting-ip`: 100/min through the `AUTH_RATE_LIMIT` binding, 5/min on `POST /sign-in/magic-link` through `MAGIC_LINK_RATE_LIMIT` (bindings in `wrangler.toml` / `wrangler.canary.toml`). Over the limit → the `rate_limited` envelope + `Retry-After: 60`. Better Auth's own `rateLimit` is disabled.
+- **Decision:** The anon `/v1/ask` + `/v1/run` per-IP query limit (30/min, `SK-RL-007`) counts on the `ANON_ASK_RATE_LIMIT` binding, its KV counter kept only as the no-binding fallback (tests, local dev); with the binding the route omits `X-RateLimit-Remaining` (the binding reports allow/deny, no count). `authRateLimit` (`apps/api/src/auth-rate-limit.ts`) runs ahead of every `/api/auth/*` route, keyed on `cf-connecting-ip`: 100/min through the `AUTH_RATE_LIMIT` binding, 5/min on `POST /sign-in/magic-link` through `MAGIC_LINK_RATE_LIMIT` (bindings in `wrangler.toml` / `wrangler.canary.toml`). Over the limit → the `rate_limited` envelope + `Retry-After: 60`. Better Auth's own `rateLimit` is disabled.
 - **Core value:** Free, Bullet-proof
 - **Why:** Better Auth's limiter on `secondary-storage` did a KV `put` per request, including the `get-session` every app page load makes. On 2026-11-21 one scanner IP turned ~1,000 requests into the account's whole 1,000/day free KV write cap within the hour; Better Auth's KV session storage then failed and sign-in went down for every user until 00:00 UTC — while the limiter never returned a 429. The binding counts at the edge with no storage write.
-- **Consequence in code:** No `/api/auth/*` path writes KV or D1 to count a request. The binding's counts are per Cloudflare location and eventually consistent — a bot-speed brake, not an exact quota; the per-email magic-link throttle (`auth.ts`) stays the exact cap. It does not reduce Workers request count: the account's 100k/day cap is protected only by WAF rules at the zone.
+- **Consequence in code:** No `/api/auth/*` path and no anon query writes KV or D1 to count a request. The binding's counts are per Cloudflare location and eventually consistent — a bot-speed brake, not an exact quota; the per-email magic-link throttle (`auth.ts`) stays the exact cap. It does not reduce Workers request count: the account's 100k/day cap is protected only by WAF rules at the zone.
 - **Alternatives rejected:**
   - Better Auth `storage: "memory"` — per-isolate, so a scanner spread over isolates is never limited.
   - `storage: "database"` (D1) — moves the burn to D1 writes and adds a D1 round-trip to every page load.
