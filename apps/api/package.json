@@ -17,7 +17,7 @@
     "secrets:remote": "../../scripts/mirror-secrets-workers.sh remote api"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.2.0",
+    "@neondatabase/serverless": "^1.2.1",
     "@nlqdb/db": "workspace:*",
     "@nlqdb/docs-memory": "workspace:*",
     "@nlqdb/email": "workspace:*",
@@ -26,11 +26,11 @@
     "@nlqdb/llm": "workspace:*",
     "@nlqdb/otel": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
-    "better-auth": "1.7.20",
-    "hono": "^4.13.17",
-    "kysely": "^0.29.8",
+    "better-auth": "1.7.25",
+    "hono": "^4.13.19",
+    "kysely": "^0.29.9",
     "kysely-d1": "^0.4.0",
-    "libpg-query": "^18.2.2",
+    "libpg-query": "^18.2.4",
     "node-sql-parser": "^5.4.0",
     "stripe": "^23.1.0",
     "zod": "^3.25.76"
@@ -40,6 +40,6 @@
     "@cloudflare/workers-types": "latest",
     "typescript": "^6.0.3",
     "vitest": "^4.1.12",
-    "wrangler": "^4.160.0"
+    "wrangler": "^4.164.0"
   }
 }
