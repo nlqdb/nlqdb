@@ -945,7 +945,8 @@ async function createArchScene(
 
   container.dataset.view = "overview";
   frame();
-  cb.onReady();
+  // A first-frame render throw already reported failure — don't flip it back.
+  if (!disposed) cb.onReady();
 
   return {
     focusOverview() {
