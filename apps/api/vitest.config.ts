@@ -49,6 +49,7 @@ export default defineConfig(async () => {
               "test/api-keys.test.ts",
               "test/turnstile.test.ts",
               "test/anon-rate-limit.test.ts",
+              "test/auth-rate-limit.test.ts",
               "test/anon-create-gate.test.ts",
               "test/anon-global-cap.test.ts",
               "test/first-query.test.ts",
