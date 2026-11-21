@@ -10,8 +10,8 @@ are defined in `GLOBAL-043` item 9.
 
 ## 0 — Fix first
 
-- [ ] LogSnag is the pager only, and pages once per outage. On 2026-11-21 the free quota hit 2,023 / 2,500 logs (≥ 80 %, emailed to the founder); at the cap, real pages (payment failed, sign-in outage) drop silently. Founder OK'd (2026-11-21), amending in the same PR `GLOBAL-024` ("all events stay in the same LogSnag sink"), `SK-EVENTS-006` / `-010` / `-011` / `-012` / `-014`, `SK-TRUST-004` and `SK-QUAL-002` (`#north-star`) and the runbook's "sole sink" rows:
-  - send LogSnag only `notify: true` events; every `notify: false` event (demand-signal, pricing, `db.created`, the `#north-star` KPIs) stays in PostHog, which already receives them
+- [ ] LogSnag is the pager only, and pages once per outage. On 2026-11-21 the free quota hit 2,023 / 2,500 logs (≥ 80 %, emailed to the founder); at the cap, real pages (payment failed, sign-in outage) drop silently. Founder OK'd (2026-11-21), amending in the same PR `GLOBAL-024` ("all events stay in the same LogSnag sink"), `SK-EVENTS-006` / `-010` / `-011` / `-012` / `-013` / `-014`, `SK-TRUST-004` and `SK-QUAL-002` (`#north-star`) and the runbook's "sole sink" rows:
+  - send LogSnag only `notify: true` events; every `notify: false` event (demand-signal, pricing, `db.created`, the `#north-star` KPIs) stays in PostHog, which already receives them and, as their only sink, takes over their ack/retry from LogSnag
   - push only the day's first `user.auth_failed` and keep the rest as silent LogSnag rows — the one `notify: false` exception, since that event never goes to PostHog and its rows are the apology list. One review walk's 30 magic-link 500s on the `pr-1297` preview pushed 20 alerts (`AUTH_FAILED_DAILY_CAP`, `SK-EVENTS-006`)
   - preview versions emit no events: they share prod's `EVENTS_QUEUE`
   - Number: LogSnag logs / month, ~2,000 → only the real pages; alert pushes per outage, 20 → 1
