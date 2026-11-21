@@ -8,6 +8,10 @@ scheduled run takes the first open, unblocked, unclaimed box
 [`END_GOAL.md`](END_GOAL.md) and names its number: KPIs A–C and the love gate
 are defined in `GLOBAL-043` item 9.
 
+## 0 — Fix first
+
+- [ ] "Sign-in failed" alerts page the founder once per outage, not once per email: on 2026-11-21 one review walk's 30 magic-link 500s on the `pr-1297` preview pushed 20 alerts (the `AUTH_FAILED_DAILY_CAP`, `SK-EVENTS-006`). Push (`notify: true`) only the day's first `user.auth_failed`, keep the rest as silent LogSnag rows (still the apology list), and stop preview versions emitting it — they share prod's `EVENTS_QUEUE`. Number: alert pushes per outage, 20 → 1
+
 ## 1b — Real-traffic proof
 
 Postgres spike (market proof, `SPIKE_PG_URL`, `GLOBAL-043` item 10) and the
