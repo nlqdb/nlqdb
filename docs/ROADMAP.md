@@ -14,7 +14,7 @@ are defined in `GLOBAL-043` item 9.
   - send LogSnag only `notify: true` events; every `notify: false` event (demand-signal, pricing, `db.created`, the `#north-star` KPIs) stays in PostHog, which already receives them and, as their only sink, takes over their ack/retry from LogSnag
   - push only the day's first `user.auth_failed` and keep the rest as silent LogSnag rows — the one `notify: false` exception, since that event never goes to PostHog and its rows are the apology list. One review walk's 30 magic-link 500s on the `pr-1297` preview pushed 20 alerts (`AUTH_FAILED_DAILY_CAP`, `SK-EVENTS-006`)
   - preview versions emit no events: they share prod's `EVENTS_QUEUE`
-  - Number: LogSnag logs / month, ~2,000 → only the real pages; alert pushes per outage, 20 → 1
+  - Number: LogSnag logs / month, ~2,000 → the pages plus `user.auth_failed` rows; alert pushes per outage, 20 → 1
 
 ## 1b — Real-traffic proof
 
