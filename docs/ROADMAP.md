@@ -10,7 +10,11 @@ are defined in `GLOBAL-043` item 9.
 
 ## 0 — Fix first
 
-- [ ] "Sign-in failed" alerts page the founder once per outage, not once per email: on 2026-11-21 one review walk's 30 magic-link 500s on the `pr-1297` preview pushed 20 alerts (the `AUTH_FAILED_DAILY_CAP`, `SK-EVENTS-006`). Push (`notify: true`) only the day's first `user.auth_failed`, keep the rest as silent LogSnag rows (still the apology list), and stop preview versions emitting it — they share prod's `EVENTS_QUEUE`. Number: alert pushes per outage, 20 → 1
+- [ ] LogSnag is the pager only, and pages once per outage. On 2026-11-21 the free quota hit 2,023 / 2,500 logs (≥ 80 %, emailed to the founder); at the cap, real pages (payment failed, sign-in outage) drop silently. Founder OK'd (2026-11-21), amending `SK-EVENTS-010` / `-012` / `-014` in the same PR:
+  - send LogSnag only `notify: true` events; every `notify: false` channel (demand-signal, pricing, activation, north-star) stays in PostHog, which already receives them
+  - push only the day's first `user.auth_failed` and keep the rest as silent LogSnag rows — the one `notify: false` exception, since that event never goes to PostHog and its rows are the apology list. One review walk's 30 magic-link 500s on the `pr-1297` preview pushed 20 alerts (`AUTH_FAILED_DAILY_CAP`, `SK-EVENTS-006`)
+  - preview versions emit no events: they share prod's `EVENTS_QUEUE`
+  - Number: LogSnag logs / month, ~2,000 → only the real pages; alert pushes per outage, 20 → 1
 
 ## 1b — Real-traffic proof
 
