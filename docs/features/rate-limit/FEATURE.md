@@ -28,6 +28,7 @@ when-to-load:
 - `apps/api/src/ask/orchestrate.ts` (rate-limit-first ordering in the `/v1/ask` pipeline)
 - D1 table `rate_limit_buckets` (schema in `apps/api/migrations/`)
 - Workers KV namespace bound as `KV` (also used by Better Auth `secondaryStorage`)
+- `apps/api/src/auth-rate-limit.ts` + the `AUTH_RATE_LIMIT` / `MAGIC_LINK_RATE_LIMIT` bindings (`SK-RL-008`)
 
 ## Decisions
 
@@ -104,6 +105,17 @@ when-to-load:
   - Single `(ip, window)` row covering all three behaviors — forces one window length for query / hour-cap / burst, and bakes 429-vs-428 logic into a counter shape that can't express it.
   - D1-backed anon limiter — IP cardinality is unbounded under abuse; D1 row count would explode exactly when we need the limiter to be cheap (per `SK-RL-001`'s rejected-alternatives).
   - Reuse the demo limiter (`apps/api/src/demo.ts`) — its `hit()` is a single-bucket counter; can't compose for the burst-vs-cap split without forking it.
+
+### SK-RL-008 — `/api/auth/*` is limited per IP at the edge by Cloudflare's rate-limiting binding, never by Better Auth's KV storage
+
+- **Decision:** `authRateLimit` (`apps/api/src/auth-rate-limit.ts`) runs ahead of every `/api/auth/*` route, keyed on `cf-connecting-ip`: 100/min through the `AUTH_RATE_LIMIT` binding, 5/min on `POST /sign-in/magic-link` through `MAGIC_LINK_RATE_LIMIT` (bindings in `wrangler.toml` / `wrangler.canary.toml`). Over the limit → the `rate_limited` envelope + `Retry-After: 60`. Better Auth's own `rateLimit` is disabled.
+- **Core value:** Free, Bullet-proof
+- **Why:** Better Auth's limiter on `secondary-storage` did a KV `put` per request, including the `get-session` every app page load makes. On 2026-11-21 one scanner IP turned ~1,000 requests into the account's whole 1,000/day free KV write cap within the hour; Better Auth's KV session storage then failed and sign-in went down for every user until 00:00 UTC — while the limiter never returned a 429. The binding counts at the edge with no storage write.
+- **Consequence in code:** No `/api/auth/*` path writes KV or D1 to count a request. The binding's counts are per Cloudflare location and eventually consistent — a bot-speed brake, not an exact quota; the per-email magic-link throttle (`auth.ts`) stays the exact cap. It does not reduce Workers request count: the account's 100k/day cap is protected only by WAF rules at the zone.
+- **Alternatives rejected:**
+  - Better Auth `storage: "memory"` — per-isolate, so a scanner spread over isolates is never limited.
+  - `storage: "database"` (D1) — moves the burn to D1 writes and adds a D1 round-trip to every page load.
+  - Exempting `get-session` only — the other auth paths keep the 1:1 KV write.
 
 ## GLOBALs governing this feature
 

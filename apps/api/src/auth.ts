@@ -135,18 +135,10 @@ export const auth = betterAuth({
     type: "sqlite",
   },
   secondaryStorage,
-  // Per-IP rate limit (Better Auth default 100/min). The
-  // /sign-in/magic-link override pairs with the per-email throttle
-  // above to defeat both single-IP abuse and IP-spread enumeration.
-  rateLimit: {
-    enabled: true,
-    window: 60,
-    max: 100,
-    storage: "secondary-storage",
-    customRules: {
-      "/sign-in/magic-link": { window: 60, max: 5 },
-    },
-  },
+  // Off: its counters lived in KV (one write per `/api/auth/*` request),
+  // which a scanner turned into a sign-in outage. The per-IP limit runs at
+  // the edge instead (`authRateLimit`, SK-RL-008).
+  rateLimit: { enabled: false },
   session: {
     cookieCache: {
       enabled: true,

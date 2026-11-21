@@ -17,6 +17,11 @@ declare global {
       DB: D1Database;
       KV: KVNamespace;
 
+      // Edge rate limiters for `/api/auth/*` (SK-RL-008). Optional so unit
+      // tests and `wrangler dev` without the binding pass through.
+      AUTH_RATE_LIMIT?: RateLimit;
+      MAGIC_LINK_RATE_LIMIT?: RateLimit;
+
       // Product-event queue (drained by apps/events-worker). Optional
       // at type level so unit tests / `wrangler dev` without --remote
       // can run without the binding; the orchestrator falls back to

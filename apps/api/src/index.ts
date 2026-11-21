@@ -78,6 +78,7 @@ import { reportAuthServerError, wantsAuthBody } from "./auth/failure-report.ts";
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
 import { auth, authWaitUntil, REVOCATION_KEY_PREFIX } from "./auth.ts";
+import { authRateLimit } from "./auth-rate-limit.ts";
 import {
   evaluateCap,
   INCLUDED_ALLOWANCE,
@@ -318,6 +319,7 @@ const pkLiveCors = cors({
 });
 
 app.use("/api/auth/*", credentialedCors);
+app.use("/api/auth/*", authRateLimit);
 // The Tawk identity probe is a cookie-authed same-origin GET in prod/preview,
 // but local dev serves web (4321) and api (8787) cross-origin — same as the
 // session probe it mirrors, so it needs the same credentialed CORS handler.

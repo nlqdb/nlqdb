@@ -55,6 +55,19 @@ MEMORY_PRESET = "1"
 # creates `nlqdb-assets` idempotently. The webhook handler at
 # `/v1/stripe/webhook` writes raw event payloads here for audit/replay.
 
+# Per-IP limiter for `/api/auth/*` (SK-RL-008). Counted at the edge, so a
+# scanner costs no KV write — Better Auth's own limiter kept its counters in
+# KV, one `put` per request, and burned the 1,000/day free write cap.
+[[ratelimits]]
+name = "AUTH_RATE_LIMIT"
+namespace_id = "1001"
+simple = { limit = 100, period = 60 }
+
+[[ratelimits]]
+name = "MAGIC_LINK_RATE_LIMIT"
+namespace_id = "1002"
+simple = { limit = 5, period = 60 }
+
 [[kv_namespaces]]
 binding = "KV"
 id = "5b086b03ead54f508271f31fc421bbaa"
