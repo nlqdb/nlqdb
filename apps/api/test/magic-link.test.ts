@@ -80,16 +80,13 @@ describe("magic-link lifecycle", () => {
     expect(sessionBody?.user?.email).toBe(email);
   });
 
-  it("per-IP customRules: 6th /sign-in/magic-link in 60s from one IP is rate-limited", async () => {
-    // Better Auth's `customRules` key is the path it dispatches under
-    // internally. If the key doesn't match (e.g. it's actually
-    // `/magic-link` rather than `/sign-in/magic-link`), the global
-    // 100/min default applies and there's no per-IP gate distinct from
-    // the rest of `/api/auth/*`. This test pins the actual behavior:
-    // 5 successful sends from one `cf-connecting-ip` (the only client-IP
-    // header a Worker receives), then the 6th gets
-    // a 4xx (Better Auth returns 429 for rate-limit; we assert >=400
-    // so a non-429 4xx from a future BA bump still flags here).
+  it("per-IP edge limit: 6th /sign-in/magic-link in 60s from one IP is rate-limited", async () => {
+    // `authRateLimit` (SK-RL-008) routes `POST /sign-in/magic-link` to the
+    // `MAGIC_LINK_RATE_LIMIT` binding (5/min, from wrangler.toml), keyed on
+    // `cf-connecting-ip` — the only client-IP header a Worker receives. If
+    // the path match drifts, the 100/min `AUTH_RATE_LIMIT` applies and the
+    // 6th send passes. We assert a 4xx, not exactly 429, so a future change
+    // to the envelope's status still flags here.
     //
     // Distinct emails per send so the per-email throttle (3/10min)
     // doesn't fire first — we want to isolate the per-IP path.

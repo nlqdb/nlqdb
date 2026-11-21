@@ -13,8 +13,8 @@ when-to-load:
 # Feature: Rate Limit
 
 **One-liner:** Per-key, per-IP rate-limit middleware with X-RateLimit-* headers.
-**Status:** implemented — per-bucket D1 limiter (`/v1/ask`; bucket policy in `apps/api/src/principal.ts::rateLimitBucketKey` per `SK-MCP-009` — sk_* principals key by `rl:${api_keys.id}`, everyone else by `principal.id`), per-IP anon-tier KV limiter (`apps/api/src/anon-rate-limit.ts`), global anon KV cap (`apps/api/src/anon-global-cap.ts`), and `X-RateLimit-*` parity headers. The legacy `/v1/demo/ask` per-IP limiter (formerly `apps/api/src/demo.ts`'s `makeRateLimiter`) was retired with the demo route under SK-WEB-008. Per-account anon-create cap (20/day) lands with adoption.
-**Owners (code):** `apps/api/src/ask/rate-limit.ts`, `apps/api/src/principal.ts` (rateLimitBucketKey), `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`
+**Status:** implemented — per-bucket D1 limiter (`/v1/ask`; bucket policy in `apps/api/src/principal.ts::rateLimitBucketKey` per `SK-MCP-009` — sk_* principals key by `rl:${api_keys.id}`, everyone else by `principal.id`), per-IP anon-tier limiter (`apps/api/src/anon-rate-limit.ts` — query bucket on the edge binding, create buckets in KV), per-IP `/api/auth/*` edge limiter (`apps/api/src/auth-rate-limit.ts`, `SK-RL-008`), global anon KV cap (`apps/api/src/anon-global-cap.ts`), and `X-RateLimit-*` parity headers. The legacy `/v1/demo/ask` per-IP limiter (formerly `apps/api/src/demo.ts`'s `makeRateLimiter`) was retired with the demo route under SK-WEB-008. Per-account anon-create cap (20/day) lands with adoption.
+**Owners (code):** `apps/api/src/ask/rate-limit.ts`, `apps/api/src/auth-rate-limit.ts`, `apps/api/src/principal.ts` (rateLimitBucketKey), `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`
 **Cross-refs:** docs/architecture.md §6 (free-tier rate-limit guarantees) · docs/architecture.md §3.5 (`pk_live_*` origin-pinned) · docs/architecture.md §3.6.8 (rate limits on create) · docs/phase-plan.md (per-IP + per-account "Day 1") · docs/phase-plan.md / §11.5 (free-tier abuse) · docs/performance.md §2.1 stage 3 / §2.2 stage 3 (KV-read budget — 5 ms p50 / 15 ms p99) · §3.1 (`nlqdb.ratelimit.check` span) · §4 Slice 6
 
 ## Touchpoints — read this feature before editing
@@ -28,11 +28,13 @@ when-to-load:
 - `apps/api/src/ask/orchestrate.ts` (rate-limit-first ordering in the `/v1/ask` pipeline)
 - D1 table `rate_limit_buckets` (schema in `apps/api/migrations/`)
 - Workers KV namespace bound as `KV` (also used by Better Auth `secondaryStorage`)
+- `apps/api/src/auth-rate-limit.ts` + the `AUTH_RATE_LIMIT` / `MAGIC_LINK_RATE_LIMIT` / `ANON_ASK_RATE_LIMIT` bindings (`SK-RL-008`)
 
 ## Decisions
 
 ### SK-RL-001 — Two limiter implementations: D1 for per-user (authed `/v1/ask`), KV for per-IP + global anon
 
+- **Status:** per-IP half amended by `SK-RL-008` — per-IP limits on unauthenticated paths count on Cloudflare's rate-limiting binding, not KV; the D1 per-user limiter and the KV global anon cap are unchanged.
 - **Decision:** Per-user (authenticated) rate-limiting on `/v1/ask` runs against D1 with an atomic UPSERT-RETURNING counter (`apps/api/src/ask/rate-limit.ts`). Per-IP (anonymous) rate-limiting on `/v1/ask` runs against Workers KV with TTL-bucketed counters (`apps/api/src/anon-rate-limit.ts`). Global anonymous spend control runs against KV too (`apps/api/src/anon-global-cap.ts` — three rolling buckets summed across ALL anon traffic). Default ceilings: 60/min per user on the authed path, 30/min per anon IP, 100/hr / 1000/day / 10k/month globally across anon. The legacy `/v1/demo/ask` per-IP KV limiter (`apps/api/src/demo.ts`'s `makeRateLimiter`) was retired with the route under `SK-WEB-008`.
 - **Core value:** Free, Bullet-proof, Honest latency
 - **Why:** Workers KV writes are 1k/day on the free plan — one rate-limit `put` per `/v1/ask` exhausts that at ~1k requests/day total, which is below our launch-day target. D1 writes are 100k/day on Free (100× headroom) and SQLite UPSERT lets us increment + read the post-increment count in one atomic round-trip, avoiding the read-then-write race the KV version has. The demo endpoint trades that race for a thicker abuse-resistance budget — KV's TTL semantics map cleanly to "10/min per IP, no auth, cheap to abandon" without standing up a D1 row per anonymous IP.
@@ -95,7 +97,7 @@ when-to-load:
 
 ### SK-RL-007 — Anon limiter splits one identity (IP) into three buckets: query, hour-create, burst-create
 
-- **Status:** create-bucket shape amended by `SK-ANON-012` (per-device 1-create cap → `auth_required`; burst gate retired). The query bucket described here is unchanged. Implementation in `anon-rate-limit.ts` still matches this block today; WS8 rewrites the create path.
+- **Status:** query bucket moved to the edge binding by `SK-RL-008`; create-bucket shape amended by `SK-ANON-012` (per-device 1-create cap → `auth_required`; burst gate retired). The 30/min query window itself is unchanged; WS8 rewrites the create path.
 - **Decision:** `apps/api/src/anon-rate-limit.ts` keys three independent KV buckets off `cf-connecting-ip`: a 30/min query window, a 5/hour create cap, and a 5-minute burst window that flips to "needs Turnstile" at 3 creates. All three live in KV (per `SK-RL-001`'s per-IP/KV split) under distinct prefixes (`anon:query:`, `anon:create:hr:`, `anon:create:burst:`). Each verdict carries `{ limit, count, resetAt }` so the route emits `X-RateLimit-*` headers consistent with the authed path (`SK-RL-004` / `GLOBAL-002`). Layered ABOVE these per-IP buckets sits the **global anon cap** (`SK-ANON-010` / `apps/api/src/anon-global-cap.ts`) — three additional KV buckets (`anon:global:hr:` / `anon:global:day:` / `anon:global:mo:`) summed across all anon traffic, evaluated FIRST in the route. Trip-priority on the route: global → per-IP query → per-IP create → Turnstile burst.
 - **Core value:** Free, Bullet-proof, Honest latency
 - **Why:** A single counter can't satisfy both the slow-burn cap (5/hour) and the burst gate (3-in-5min) — they have different windows and different consequences (429 vs. 428). Composing them as separate buckets keyed off the same IP keeps each one cheap (one KV `get`/`put` per bucket per request) and lets the Turnstile gate live independently of the hard cap. Same-prefix buckets would race on TTL and force one window length on both. KV's TTL semantics auto-evict; no sweep job (matches `SK-RL-001`).
@@ -104,6 +106,17 @@ when-to-load:
   - Single `(ip, window)` row covering all three behaviors — forces one window length for query / hour-cap / burst, and bakes 429-vs-428 logic into a counter shape that can't express it.
   - D1-backed anon limiter — IP cardinality is unbounded under abuse; D1 row count would explode exactly when we need the limiter to be cheap (per `SK-RL-001`'s rejected-alternatives).
   - Reuse the demo limiter (`apps/api/src/demo.ts`) — its `hit()` is a single-bucket counter; can't compose for the burst-vs-cap split without forking it.
+
+### SK-RL-008 — Per-IP limits on unauthenticated paths count at the edge (Cloudflare's rate-limiting binding), never with a KV write per request
+
+- **Decision:** The anon `/v1/ask` + `/v1/run` per-IP query limit (30/min, `SK-RL-007`) counts on the `ANON_ASK_RATE_LIMIT` binding, its KV counter kept only as the no-binding fallback (tests, local dev); with the binding the route omits `X-RateLimit-Remaining` and the 429 body's `count` (the binding reports allow/deny, no count — `SK-RL-004`'s triplet loses `Remaining` there, and `rate_limited` falls back to its count-less message). `authRateLimit` (`apps/api/src/auth-rate-limit.ts`) runs ahead of every `/api/auth/*` route, keyed on `cf-connecting-ip`: 100/min through the `AUTH_RATE_LIMIT` binding, 5/min on `POST /sign-in/magic-link` through `MAGIC_LINK_RATE_LIMIT` (bindings in `wrangler.toml` / `wrangler.canary.toml`). Over the limit → the `rate_limited` envelope + `Retry-After: 60`. Better Auth's own `rateLimit` is disabled.
+- **Core value:** Free, Bullet-proof
+- **Why:** Better Auth's limiter on `secondary-storage` did a KV `put` per request, including the `get-session` every app page load makes. On 2026-11-21 one scanner IP turned ~1,000 requests into the account's whole 1,000/day free KV write cap within the hour; Better Auth's KV session storage then failed and sign-in went down for every user until 00:00 UTC — while the limiter never returned a 429. The binding counts at the edge with no storage write.
+- **Consequence in code:** No `/api/auth/*` path writes KV or D1 to count a request, and the per-IP anon query bucket writes none; a served anon query still writes the global anon cap's three KV counters (`SK-RL-001`, `SK-ANON-010`). The binding's counts are per Cloudflare location and eventually consistent — a bot-speed brake, not an exact quota; the per-email magic-link throttle (`auth.ts`) stays the exact cap. It does not reduce Workers request count: the account's 100k/day cap is protected only by WAF rules at the zone.
+- **Alternatives rejected:**
+  - Better Auth `storage: "memory"` — per-isolate, so a scanner spread over isolates is never limited.
+  - `storage: "database"` (D1) — moves the burn to D1 writes and adds a D1 round-trip to every page load.
+  - Exempting `get-session` only — the other auth paths keep the 1:1 KV write.
 
 ## GLOBALs governing this feature
 

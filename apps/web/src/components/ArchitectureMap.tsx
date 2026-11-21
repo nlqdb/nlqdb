@@ -932,12 +932,21 @@ async function createArchScene(
     // scale and occlude like everything else.
     for (const b of billboards) b.quaternion.copy(camera.quaternion);
 
-    renderer.render(scene, camera);
+    // A GPU / driver path three can't handle throws here on every frame,
+    // outside React's ErrorBoundary — stop the loop and show the text fallback.
+    try {
+      renderer.render(scene, camera);
+    } catch {
+      cancelAnimationFrame(raf);
+      disposed = true;
+      cb.onFail();
+    }
   }
 
   container.dataset.view = "overview";
   frame();
-  cb.onReady();
+  // A first-frame render throw already reported failure — don't flip it back.
+  if (!disposed) cb.onReady();
 
   return {
     focusOverview() {

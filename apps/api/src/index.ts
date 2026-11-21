@@ -78,6 +78,7 @@ import { reportAuthServerError, wantsAuthBody } from "./auth/failure-report.ts";
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
 import { auth, authWaitUntil, REVOCATION_KEY_PREFIX } from "./auth.ts";
+import { authRateLimit } from "./auth-rate-limit.ts";
 import {
   evaluateCap,
   INCLUDED_ALLOWANCE,
@@ -318,6 +319,7 @@ const pkLiveCors = cors({
 });
 
 app.use("/api/auth/*", credentialedCors);
+app.use("/api/auth/*", authRateLimit);
 // The Tawk identity probe is a cookie-authed same-origin GET in prod/preview,
 // but local dev serves web (4321) and api (8787) cross-origin — same as the
 // session probe it mirrors, so it needs the same credentialed CORS handler.
@@ -848,14 +850,16 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       }
 
       const ip = c.req.header("cf-connecting-ip") ?? "unknown";
-      const anonLimiter = makeAnonRateLimiter(c.env.KV);
+      const anonLimiter = makeAnonRateLimiter(c.env.KV, c.env.ANON_ASK_RATE_LIMIT);
       const verdict = await anonLimiter.checkQuery(ip);
       // RFC 9110 X-RateLimit-* parity with the authed path
       // (SK-RL-004 / GLOBAL-002). Emitted on success too so the
       // surface can render headroom before the user hits the wall.
       const now = Math.floor(Date.now() / 1000);
       c.header("X-RateLimit-Limit", String(verdict.limit));
-      c.header("X-RateLimit-Remaining", String(Math.max(0, verdict.limit - verdict.count)));
+      if (verdict.count !== undefined) {
+        c.header("X-RateLimit-Remaining", String(Math.max(0, verdict.limit - verdict.count)));
+      }
       c.header("X-RateLimit-Reset", String(verdict.resetAt));
       if (!verdict.ok) {
         span.setAttribute("nlqdb.ask.outcome", "rate_limited_ip");
@@ -927,7 +931,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // into a Hono Response and emits the X-RateLimit-* headers.
     const ip = c.req.header("cf-connecting-ip") ?? "unknown";
     const gateDeps = {
-      limiter: makeAnonRateLimiter(c.env.KV),
+      limiter: makeAnonRateLimiter(c.env.KV, c.env.ANON_ASK_RATE_LIMIT),
       verifyTurnstile,
     };
     const peekAnonCreateGate = async (): Promise<Response | null> => {
@@ -1954,11 +1958,13 @@ app.post("/v1/run", requirePrincipal, async (c) => {
           });
         }
         const ip = c.req.header("cf-connecting-ip") ?? "unknown";
-        const anonLimiter = makeAnonRateLimiter(c.env.KV);
+        const anonLimiter = makeAnonRateLimiter(c.env.KV, c.env.ANON_ASK_RATE_LIMIT);
         const verdict = await anonLimiter.checkQuery(ip);
         const now = Math.floor(Date.now() / 1000);
         c.header("X-RateLimit-Limit", String(verdict.limit));
-        c.header("X-RateLimit-Remaining", String(Math.max(0, verdict.limit - verdict.count)));
+        if (verdict.count !== undefined) {
+          c.header("X-RateLimit-Remaining", String(Math.max(0, verdict.limit - verdict.count)));
+        }
         c.header("X-RateLimit-Reset", String(verdict.resetAt));
         if (!verdict.ok) {
           span.setAttribute("nlqdb.run.outcome", "rate_limited_ip");

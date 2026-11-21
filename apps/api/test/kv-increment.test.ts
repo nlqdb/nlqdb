@@ -1,5 +1,6 @@
-// Better Auth's rate-limit counter over KV (`kvIncrement`). Pins the prod
-// 500 on `/api/auth/get-session`: an absolute `expiration` of exactly
+// The `secondaryStorage.increment` counter over KV (`kvIncrement`), whose
+// caller, Better Auth's rate limit, is off since SK-RL-008. Pins the prod
+// 500 on `/api/auth/get-session` it once caused: an absolute `expiration` of exactly
 // floor(now)+60 reached KV under its 60 s floor and threw. The counter must
 // write a relative `expirationTtl` ≥ 60 and keep the fixed window in metadata.
 

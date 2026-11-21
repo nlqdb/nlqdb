@@ -69,9 +69,9 @@ const sendEmail = makeEmailSender({
   from: env.RESEND_FROM ?? DEFAULT_FROM,
 });
 
-// Per-email send throttle. Better Auth's built-in rate limit is per-IP
-// only — one IP can still spray many target inboxes. The throttle
-// closes that loophole: 3 sends / 10 min per email address (hashed
+// Per-email send throttle. The edge limiter (`authRateLimit`, SK-RL-008)
+// is per-IP only — one IP can still spray many target inboxes. The
+// throttle closes that loophole: 3 sends / 10 min per email address (hashed
 // in the KV key for privacy).
 const magicLinkThrottle = makeMagicLinkThrottle(env.KV, { max: 3, windowSeconds: 600 });
 
@@ -84,7 +84,9 @@ const magicLinkThrottle = makeMagicLinkThrottle(env.KV, { max: 3, windowSeconds:
 // delivers.
 export const authWaitUntil = new AsyncLocalStorage<(p: Promise<unknown>) => void>();
 
-// Fixed-window counter for Better Auth's rate limit. The window's end rides
+// Fixed-window counter behind `secondaryStorage.increment`, which Better
+// Auth's `SecondaryStorage` type requires; its own rate limit, the caller,
+// is off (SK-RL-008), so no request path runs it today. The window's end rides
 // in metadata so later increments keep it instead of sliding it (KV `put`
 // resets expiry). The put uses a relative `expirationTtl`, never an absolute
 // `expiration`: KV measures the TTL from its own receipt time, so a second
@@ -135,18 +137,10 @@ export const auth = betterAuth({
     type: "sqlite",
   },
   secondaryStorage,
-  // Per-IP rate limit (Better Auth default 100/min). The
-  // /sign-in/magic-link override pairs with the per-email throttle
-  // above to defeat both single-IP abuse and IP-spread enumeration.
-  rateLimit: {
-    enabled: true,
-    window: 60,
-    max: 100,
-    storage: "secondary-storage",
-    customRules: {
-      "/sign-in/magic-link": { window: 60, max: 5 },
-    },
-  },
+  // Off: its counters lived in KV (one write per `/api/auth/*` request),
+  // which a scanner turned into a sign-in outage. The per-IP limit runs at
+  // the edge instead (`authRateLimit`, SK-RL-008).
+  rateLimit: { enabled: false },
   session: {
     cookieCache: {
       enabled: true,

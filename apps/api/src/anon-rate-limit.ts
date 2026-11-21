@@ -35,12 +35,13 @@ const CREATE_DEVICE_KEY_PREFIX = "anon:create:device:";
 
 const KV_MIN_TTL_SECONDS = 60;
 
-// All verdicts carry `limit` + `count` + `resetAt` so the route can
-// emit RFC 9110 X-RateLimit-* headers (SK-RL-004 + GLOBAL-002 parity
-// with `/v1/ask`'s authed path).
+// All verdicts carry `limit` + `resetAt` so the route can emit RFC 9110
+// X-RateLimit-* headers (SK-RL-004 + GLOBAL-002 parity with `/v1/ask`'s
+// authed path). A query verdict from the edge binding has no `count` — the
+// binding reports only allow/deny — so the route omits `Remaining` then.
 export type AnonQueryVerdict =
-  | { ok: true; limit: number; count: number; resetAt: number }
-  | { ok: false; retryAfter: number; limit: number; count: number; resetAt: number };
+  | { ok: true; limit: number; count?: number; resetAt: number }
+  | { ok: false; retryAfter: number; limit: number; count?: number; resetAt: number };
 
 export type AnonDeviceVerdict =
   | { ok: true; limit: number; count: number; resetAt: number }
@@ -67,9 +68,20 @@ function nowSeconds(): number {
   return Math.floor(Date.now() / 1000);
 }
 
-export function makeAnonRateLimiter(kv: KVNamespace): AnonRateLimiter {
+// `queryLimit` is the `ANON_ASK_RATE_LIMIT` binding (SK-RL-008): counted at
+// the edge with no KV write, so a scanner can't spend the 1,000/day free KV
+// write cap one anon request at a time. The KV counter is the fallback for
+// tests and local dev without the binding.
+export function makeAnonRateLimiter(kv: KVNamespace, queryLimit?: RateLimit): AnonRateLimiter {
   return {
     async checkQuery(ip) {
+      if (queryLimit) {
+        const resetAt = nowSeconds() + QUERY_WINDOW_SECONDS;
+        const { success } = await queryLimit.limit({ key: ip });
+        return success
+          ? { ok: true, limit: QUERY_MAX_PER_WINDOW, resetAt }
+          : { ok: false, retryAfter: QUERY_WINDOW_SECONDS, limit: QUERY_MAX_PER_WINDOW, resetAt };
+      }
       const key = `${QUERY_KEY_PREFIX}${ip}`;
       const current = Number((await kv.get(key)) ?? "0");
       const resetAt = nowSeconds() + QUERY_WINDOW_SECONDS;
