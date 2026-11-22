@@ -24,7 +24,8 @@ for (let i = 0; i < 30; i++) {
     thrown: true,
   });
 }
-const aggregates: ProductEvent[] = [
+// Four aggregates (PostHog only) and one page (`user.registered`).
+const others: ProductEvent[] = [
   { name: "feature.requested.heavier_tier", principalId: "a", surface: "chat" },
   { name: "home.surface_wishlist", principalId: "wl:a", surface: "vscode" },
   { name: "pricing.page_viewed", principalId: "a", email: null },
@@ -40,7 +41,7 @@ const aggregates: ProductEvent[] = [
   },
   { name: "user.registered", userId: "u_1", email: "new@example.com" },
 ];
-for (const e of aggregates) await events.emit(e);
+for (const e of others) await events.emit(e);
 
 let rows = 0,
   pushes = 0,
