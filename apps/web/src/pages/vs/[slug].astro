@@ -303,7 +303,7 @@ const theirApproach = c.whenChooseThem[0] ?? c.tagline;
     // reaches referrer or access logs.
     import { appHref } from "../../lib/app-href";
     import { attachHandoff } from "../../lib/handoff";
-    import { emit } from "../../lib/logsnag";
+    import { emit } from "../../lib/events";
     import { saveDraft } from "../../lib/prompt-storage";
     document.querySelectorAll<HTMLButtonElement>(".vs__try-btn").forEach((btn) => {
       btn.addEventListener("click", () => {

@@ -6,7 +6,7 @@
 // landing→answer span, including hydration and the user's think/type
 // time. The server can't see when the user landed, so unlike the
 // first-10-queries KPI (SK-ONBOARD-006, server-side D1 counters) TTFV
-// can't ride a D1 counter; it rides the same client LogSnag funnel as
+// can't ride a D1 counter; it rides the same browser-event funnel as
 // the other `home.*`/`onboarding.*` demand signals (SK-ONBOARD-008).
 //
 // `makeTtfvOnce()` returns a fire-once recorder: the first call yields

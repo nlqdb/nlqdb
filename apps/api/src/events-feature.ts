@@ -1,6 +1,7 @@
 // `home.surface_wishlist` demand-signal endpoint (SK-EVENTS-011).
 //
 //   POST /v1/events/wishlist — public, IP-hash-bucketed for dedup
+//   POST /v1/events/web      — public, browser clicks (SK-EVENTS-015)
 //   POST /v1/events/eval     — internal, bearer-token (SK-QUAL-002)
 //
 // Per `SK-EVENTS-003`, `events.emit()` is fire-and-forget — the route
@@ -14,6 +15,7 @@ import type {
   PricingPlan,
   WishlistSurface,
 } from "@nlqdb/events";
+import { parseWebEvent } from "@nlqdb/events";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
 import { sha256Hex } from "./principal.ts";
 
@@ -154,10 +156,9 @@ export async function recordPricingEvent(
   // A signed-in visitor is attributed to their stable `userId` (+ email,
   // so the founder can exclude their own account); a logged-out visitor
   // falls back to a per-day IP-hash bucket. The `pv:` prefix keeps it out
-  // of the `anon:` / `wl:` facets in the LogSnag user_id column, and
-  // neither a raw IP nor a minted anon-bearer ever reaches the sink.
-  const day = new Date().toISOString().slice(0, 10);
-  const principalId = identity ? identity.userId : `pv:${await sha256Hex(`${ip}:${day}`, 16)}`;
+  // of the `anon:` / `wl:` facets, and neither a raw IP nor a minted
+  // anon-bearer ever reaches the sink.
+  const principalId = identity ? identity.userId : await visitorId(ip);
   const email = identity?.email ?? null;
 
   const pendingEmit =
@@ -166,6 +167,41 @@ export async function recordPricingEvent(
       : deps.events.emit({ name: "pricing.plan_selected", principalId, plan: input.plan, email });
 
   return { status: 202, pendingEmit };
+}
+
+// Per-day IP-hash bucket for a logged-out visitor: the one anon identity the
+// pricing and browser events share, so PostHog joins them per visitor-day.
+async function visitorId(ip: string): Promise<string> {
+  const day = new Date().toISOString().slice(0, 10);
+  return `pv:${await sha256Hex(`${ip}:${day}`, 16)}`;
+}
+
+// ---- POST /v1/events/web — browser product events (SK-EVENTS-015) ----
+
+export type WebEventResult =
+  | { status: 202; pendingEmit: Promise<unknown> }
+  | { status: 400; reason: "invalid_body" }
+  | { status: 429 };
+
+export type WebEventDeps = {
+  // `EVENTS_RATE_LIMIT` (SK-RL-008): counted at the edge, no KV write per
+  // click. Absent in unit tests and local dev.
+  limiter?: RateLimit;
+  events: EventEmitter;
+};
+
+export async function recordWebEvent(
+  deps: WebEventDeps,
+  body: unknown,
+  clientIp: string | null,
+): Promise<WebEventResult> {
+  const ip = clientIp ?? "unknown";
+  const event = parseWebEvent(body, await visitorId(ip));
+  if (!event) return { status: 400, reason: "invalid_body" };
+  if (deps.limiter && clientIp && !(await deps.limiter.limit({ key: clientIp })).success) {
+    return { status: 429 };
+  }
+  return { status: 202, pendingEmit: deps.events.emit(event) };
 }
 
 // ---- POST /v1/events/eval — quality-eval run ingestion (SK-QUAL-002) ----

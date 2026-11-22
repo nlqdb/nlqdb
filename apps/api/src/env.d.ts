@@ -23,6 +23,8 @@ declare global {
       MAGIC_LINK_RATE_LIMIT?: RateLimit;
       // Per-IP anon `/v1/ask` + `/v1/run` query limit (SK-RL-008).
       ANON_ASK_RATE_LIMIT?: RateLimit;
+      // Per-IP browser-event limit on `/v1/events/web` (SK-EVENTS-015).
+      EVENTS_RATE_LIMIT?: RateLimit;
 
       // Product-event queue (drained by apps/events-worker). Optional
       // at type level so unit tests / `wrangler dev` without --remote

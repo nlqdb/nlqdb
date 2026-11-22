@@ -6,7 +6,8 @@
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./test": "./src/test.ts"
+    "./test": "./src/test.ts",
+    "./web": "./src/web-events.ts"
   },
   "scripts": {
     "test": "vitest run",

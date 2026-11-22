@@ -23,7 +23,7 @@
 // failure lands on the OTel span (`nlqdb.events.sink.posthog`) and never
 // flips a LogSnag page's or the query log's ack/retry.
 
-import type { EventEnvelope, ProductEvent } from "@nlqdb/events";
+import { type EventEnvelope, isWebEvent, type ProductEvent } from "@nlqdb/events";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 
 export type PostHogConfig = {
@@ -49,6 +49,7 @@ type PostHogBatchItem = {
 // it, per SK-EVENTS-014); eval runs are
 // a system actor keyed by dataset.
 function distinctId(event: ProductEvent): string {
+  if (isWebEvent(event)) return event.principalId;
   switch (event.name) {
     case "user.first_query":
     case "user.registered":

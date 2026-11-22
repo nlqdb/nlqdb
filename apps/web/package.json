@@ -17,6 +17,7 @@
   "dependencies": {
     "@astrojs/react": "^7.1.9",
     "@nlqdb/elements": "workspace:*",
+    "@nlqdb/events": "workspace:*",
     "@nlqdb/sdk": "workspace:*",
     "astro": "^7.4.12",
     "posthog-js": "^1.450.1",

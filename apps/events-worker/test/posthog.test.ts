@@ -65,6 +65,15 @@ describe("toBatchItem", () => {
     expect(item.properties).toMatchObject({ surface: "hero" });
   });
 
+  it("keys a browser event on its per-day visitor id — SK-EVENTS-015", async () => {
+    const item = await toBatchItem(
+      envelope("evt.web1", { name: "blog.cta_clicked", principalId: "pv:0123", slug: "why" }),
+    );
+    expect(item.event).toBe("blog.cta_clicked");
+    expect(item.distinct_id).toBe("pv:0123");
+    expect(item.properties).toMatchObject({ slug: "why", nlqdb_event: "blog.cta_clicked" });
+  });
+
   it("uses dbId as distinct_id for the anonymised ask.completed event", async () => {
     const item = await toBatchItem(
       envelope("evt.abc", {

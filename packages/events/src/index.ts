@@ -17,6 +17,7 @@
 
 import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import type { EventEnvelope, ProductEvent } from "./types.ts";
+import { isWebEvent } from "./web-events.ts";
 
 export type {
   AskCompletedEvent,
@@ -35,6 +36,14 @@ export type {
   ProductEvent,
   WishlistSurface,
 } from "./types.ts";
+export {
+  isWebEvent,
+  parseWebEvent,
+  WEB_EVENTS,
+  type WebEvent,
+  type WebEventName,
+  type WebEventProps,
+} from "./web-events.ts";
 
 export interface EventEmitter {
   emit(event: ProductEvent, options?: EmitOptions): Promise<void>;
@@ -93,6 +102,8 @@ export function makeNoopEmitter(): EventEmitter {
 // produces a duplicate enqueue). Falls back to a per-call random id
 // when the event has no stable scope.
 function defaultId(event: ProductEvent): string {
+  // Browser clicks are distinct by nature; PostHog has no quota to dedupe for.
+  if (isWebEvent(event)) return `evt.${crypto.randomUUID()}`;
   switch (event.name) {
     case "user.first_query":
       return `${event.name}.${event.userId}`;

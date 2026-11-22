@@ -31,8 +31,8 @@ import { CREATE_STARTERS, type CreateStarter } from "../data/create-starters";
 import { type CreateError, type CreateResult, postAskCreate } from "../lib/api";
 import { messageFor } from "../lib/create-errors";
 import { makeDropoffFunnel } from "../lib/dropoff";
+import { emit } from "../lib/events";
 import { attachHandoff } from "../lib/handoff";
-import { emit } from "../lib/logsnag";
 import {
   appendHistory,
   clearDraft,

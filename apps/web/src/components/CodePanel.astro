@@ -10,7 +10,7 @@ const tabs = snippets.map(({ id, label, sub }) => ({ id, label, sub }));
 
 // SK-EVENTS-011: wishlist clicks fan out to `POST /v1/events/wishlist`
 // so the click becomes a typed `home.surface_wishlist` event in the
-// LogSnag demand-signal channel. The base lives in PUBLIC_API_BASE
+// events pipeline (PostHog). The base lives in PUBLIC_API_BASE
 // just like every other apps/web → apps/api call.
 const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 

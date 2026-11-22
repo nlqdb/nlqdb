@@ -8,7 +8,7 @@
 // success, SK-ONBOARD-006, server D1 counters) vs. "succeed and leave
 // anyway" (retention). Like TTFV (lib/ttfv.ts) it is browser-measured
 // by necessity — the server never sees a landing or an abandoned form —
-// so it rides the same client LogSnag funnel (lib/logsnag.ts) as the
+// so it rides the same browser-event funnel (lib/events.ts) as the
 // other `home.*`/`onboarding.*` demand signals (SK-ONBOARD-008).
 //
 // Two fire-guards carry the whole design: `landing` fires once per mount
@@ -23,7 +23,7 @@ export const LANDING_EVENT = "onboarding.landing_viewed";
 export const ATTEMPT_EVENT = "onboarding.query_attempted";
 
 export interface DropoffEvent {
-  event: string;
+  event: typeof LANDING_EVENT | typeof ATTEMPT_EVENT;
   props: { surface: string; ordinal?: number };
 }
 

@@ -73,6 +73,12 @@ name = "ANON_ASK_RATE_LIMIT"
 namespace_id = "1003"
 simple = { limit = 30, period = 60 }
 
+# Browser product events, `/v1/events/web` (SK-EVENTS-015).
+[[ratelimits]]
+name = "EVENTS_RATE_LIMIT"
+namespace_id = "1004"
+simple = { limit = 60, period = 60 }
+
 [[kv_namespaces]]
 binding = "KV"
 id = "5b086b03ead54f508271f31fc421bbaa"

@@ -67,29 +67,20 @@ async function doWalk(
   // runOutcome(steps) — this variable only gates the skips.
   let failedStep: number | null = null;
 
-  // The CTA emits the event synchronously then calls `location.assign`, so an
-  // in-window spy gets wiped by the navigation. Records used to be parked in
-  // sessionStorage "because it survives same-origin navigations" — but
-  // `/app/new/` 301s to the app origin (SK-AUTH-016), and web storage is
-  // per-origin, so the sender's records became unreachable the moment the hop
-  // went cross-origin. Record on the Node side instead: `exposeFunction`
-  // binding survives every navigation, cross-origin included.
+  // The CTA's `emit()` POSTs `/v1/events/web` (SK-EVENTS-015) then calls
+  // `location.assign`. Record it on the Node side — the route survives every
+  // navigation, cross-origin included — and answer it here, so walker clicks
+  // never reach PostHog (the funnel is bot-filtered at the source).
   const emitted: string[] = [];
-  await page.exposeFunction("__nlqdbWalkerEmit", (event: string) => {
-    emitted.push(event);
-  });
-  await page.addInitScript(() => {
-    const w = window as unknown as {
-      __nlqdb_logsnag?: (e: string, p?: Record<string, unknown>) => void;
-      __nlqdbWalkerEmit?: (e: string) => void;
-    };
-    w.__nlqdb_logsnag = (event) => {
-      try {
-        void w.__nlqdbWalkerEmit?.(event);
-      } catch {
-        /* ignore — analytics should never break the user flow */
-      }
-    };
+  await page.route("**/v1/events/web", async (route) => {
+    const req = route.request();
+    if (req.method() !== "POST") return route.continue();
+    try {
+      emitted.push(String((req.postDataJSON() as { event?: unknown }).event));
+    } catch {
+      /* unparsable body — leave `emitted` as is; the step reports it */
+    }
+    return route.fulfill({ status: 202, body: '{"accepted":true}' });
   });
 
   try {

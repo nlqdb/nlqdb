@@ -11,7 +11,7 @@
 //      the active surface is the anonymous DB.
 
 import { useState } from "react";
-import { emit } from "../../lib/logsnag";
+import { emit } from "../../lib/events";
 import { type CopySnippetState, copySnippetLabel } from "./copy-snippet-label";
 
 interface CopySnippetProps {

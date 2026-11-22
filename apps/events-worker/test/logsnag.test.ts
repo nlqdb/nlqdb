@@ -219,6 +219,9 @@ describe("buildPayload", () => {
         laneExecutionAccuracy: { free: 0.5 },
         freeVsFrontierDelta: null,
       },
+      // SK-EVENTS-015: browser clicks are PostHog only.
+      { name: "solve.try_query_clicked", principalId: "pv:a", slug: "s", goal: "g" },
+      { name: "onboarding.landing_viewed", principalId: "pv:a", surface: "hero" },
     ];
     for (const event of aggregates) {
       expect(isLogSnagRouted(event)).toBe(false);

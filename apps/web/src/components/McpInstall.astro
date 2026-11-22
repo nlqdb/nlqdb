@@ -191,10 +191,10 @@ const rowClass = compact ? "mcpinstall__row mcpinstall__row--compact" : "mcpinst
   function emitSignal(host: string) {
     void (async () => {
       try {
-        const { emit } = await import("../lib/logsnag");
+        const { emit } = await import("../lib/events");
         emit("home.snippet_copied", { surface: `mcp_install_${host}` });
       } catch {
-        /* logsnag stub absent — no-op */
+        /* analytics never interrupts the copy — GLOBAL-012 */
       }
     })();
   }

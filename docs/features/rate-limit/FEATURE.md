@@ -13,7 +13,7 @@ when-to-load:
 # Feature: Rate Limit
 
 **One-liner:** Per-key, per-IP rate-limit middleware with X-RateLimit-* headers.
-**Status:** implemented — per-bucket D1 limiter (`/v1/ask`; bucket policy in `apps/api/src/principal.ts::rateLimitBucketKey` per `SK-MCP-009` — sk_* principals key by `rl:${api_keys.id}`, everyone else by `principal.id`), per-IP anon-tier limiter (`apps/api/src/anon-rate-limit.ts` — query bucket on the edge binding, create buckets in KV), per-IP `/api/auth/*` edge limiter (`apps/api/src/auth-rate-limit.ts`, `SK-RL-008`), global anon KV cap (`apps/api/src/anon-global-cap.ts`), and `X-RateLimit-*` parity headers. The legacy `/v1/demo/ask` per-IP limiter (formerly `apps/api/src/demo.ts`'s `makeRateLimiter`) was retired with the demo route under SK-WEB-008. Per-account anon-create cap (20/day) lands with adoption.
+**Status:** implemented — per-bucket D1 limiter (`/v1/ask`; bucket policy in `apps/api/src/principal.ts::rateLimitBucketKey` per `SK-MCP-009` — sk_* principals key by `rl:${api_keys.id}`, everyone else by `principal.id`), per-IP anon-tier limiter (`apps/api/src/anon-rate-limit.ts` — query bucket on the edge binding, create buckets in KV), per-IP `/api/auth/*` edge limiter (`apps/api/src/auth-rate-limit.ts`, `SK-RL-008`), per-IP `/v1/events/web` edge limiter (`SK-EVENTS-015`), global anon KV cap (`apps/api/src/anon-global-cap.ts`), and `X-RateLimit-*` parity headers. The legacy `/v1/demo/ask` per-IP limiter (formerly `apps/api/src/demo.ts`'s `makeRateLimiter`) was retired with the demo route under SK-WEB-008. Per-account anon-create cap (20/day) lands with adoption.
 **Owners (code):** `apps/api/src/ask/rate-limit.ts`, `apps/api/src/auth-rate-limit.ts`, `apps/api/src/principal.ts` (rateLimitBucketKey), `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`
 **Cross-refs:** docs/architecture.md §6 (free-tier rate-limit guarantees) · docs/architecture.md §3.5 (`pk_live_*` origin-pinned) · docs/architecture.md §3.6.8 (rate limits on create) · docs/phase-plan.md (per-IP + per-account "Day 1") · docs/phase-plan.md / §11.5 (free-tier abuse) · docs/performance.md §2.1 stage 3 / §2.2 stage 3 (KV-read budget — 5 ms p50 / 15 ms p99) · §3.1 (`nlqdb.ratelimit.check` span) · §4 Slice 6
 
@@ -28,7 +28,7 @@ when-to-load:
 - `apps/api/src/ask/orchestrate.ts` (rate-limit-first ordering in the `/v1/ask` pipeline)
 - D1 table `rate_limit_buckets` (schema in `apps/api/migrations/`)
 - Workers KV namespace bound as `KV` (also used by Better Auth `secondaryStorage`)
-- `apps/api/src/auth-rate-limit.ts` + the `AUTH_RATE_LIMIT` / `MAGIC_LINK_RATE_LIMIT` / `ANON_ASK_RATE_LIMIT` bindings (`SK-RL-008`)
+- `apps/api/src/auth-rate-limit.ts` + the `AUTH_RATE_LIMIT` / `MAGIC_LINK_RATE_LIMIT` / `ANON_ASK_RATE_LIMIT` / `EVENTS_RATE_LIMIT` (`/v1/events/web`, `SK-EVENTS-015`) bindings (`SK-RL-008`)
 
 ## Decisions
 
