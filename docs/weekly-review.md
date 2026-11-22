@@ -1,83 +1,79 @@
-# Weekly review — 2026-11-15
+# Weekly review — 2026-11-22
 
 Current-state audit of `/daily` (≤ 4 KB, overwritten weekly). Window
-11-08 → 11-15: runs 280–291 (#1265–#1280; 286 merged as 288), plus 3
-bot/release PRs; #1281 (run 292) merged after the window. Focus this week: **KPI B on
-rateme12's real D1, 0 → 1.**
+11-15 → 11-22: runs 293–304 (#1283–#1292, #1297) plus #1298 and 2 bot
+PRs. Focus set: **LogSnag logs this month, 2,023 / 2,500 → pages only.**
 
-## Worst: the scorecard's engine rows are a changelog (check 3)
+## Worst: sign-in went down twice (check 1)
 
-Row EA carries eight dated KPI A readings for the spike (runs 275–283) and
-row EB a paragraph of run history; the header says "current state only — no
-changelog". Nothing reads the old values: CI prints KPI A per run. Rows 22
-and EA still cite the MCP door as "run 286" (merged as run 288, #1273).
-Next daily run that touches them keeps one value + range per DB. The canary
-paragraph (7 MISS, unchanged since run 281) is flagged a 3rd week.
+`bun scripts/cf-quota.ts` (re-run today): D1 11-18 **133.5 M = 2,671 %**
+(`swiss-prices-comparison`, not nlqdb); KV writes 11-21 **1,236 = 124 %**
+(a scanner, one Better Auth KV write per request). Each took signed-in
+`app.nlqdb.com` down until 00:00 UTC. #1297 moved per-IP limits to the
+edge binding; the D1 hog is mailbox #1 (4 d). rateme12 alone read 2.82 M
+(56 %) on 11-20. LogSnag hit 81 % of its cap the same day: the focus.
 
-## Monoculture (check 2): one lever, and it moved its number
+## Monoculture (check 2): the sequence ran dry
 
-10 of 11 runs pulled the step-2 sequence (anti-rut suspended by design), 1
-the SEO lane (#1272). Last week's focus, spike Tier 1 proposals **0 → 1**,
-landed in run 282 (#1267); applied in 283, judged **keep** at 72 h in 289:
-p95 est. 65.2 → 1.7 ms. 1a closed: D1 doors 1/4 → 4/4 (#1270, #1273,
-#1276), D1 KPI C 1/1 (#1269).
+2 runs engine (293–294), 4 SEO (295–298), 1 instrument (299–300), 4
+nulls (301–304). Last focus, KPI B on rateme12's D1, stayed **0**: Tier 1
+finds no missing index, and the box is ⛔ on the founder (#2 spike call,
+3 d overdue; #3 recruit re-gate). The null rule worked: no busywork.
 
 ## Delta integrity (check 5): held
 
 | Claim | Re-run |
 |---|---|
-| D1 KPI C 1/1, posts(title) 4999 → 1 (#1269) | same, `attach.d1.test.ts` |
-| D1 apply 5000 → 51 | same |
-| D1 KPI A synthetic 117.3 ms | 72.9 ms (58–133) |
-| D1 decided 5/5 from web, MCP (#1276, #1273) | same, `web-door.test.ts`, `dba-door.test.ts` |
-| Spike keep (#1275) | keep at 114.4 h, p95 1.956 ms, CI job 132491111758 |
+| `/solve` literal markdown 0/44 (#1287) | `solve.test.ts` 20/20 pass |
+| DBA `/solve` pages 3/3 (#1288) | 3 slugs in `solve.ts`, 44 total |
+| rateme12 Tier 1 0 proposals (#1284) | CI 11-21 21:04, job 136984006533: 0; KPI A 317 ms |
+| D1 11-18 133.5 M, 11-20 4.39 M (#1289) | same |
 
-#1281's 378.3 ms KPI A on rateme12: CI re-ran it on this PR, 432.6 ms.
+Row 14b said KV 11-21 = 1,000 (100 %), read mid-day; the day closed at
+1,236. Row 22's served share swings with the window (61.2 → 39.9 %).
 
-## Trend (check 1)
+## Inert output (check 3)
 
-- **Engine:** first real-DB KPI B (spike, kept); rateme12 workload read
-  live (~32 k calls/24 h); attach in #1281.
-- **UX:** D1 doors 1/4 → 4/4. **Onboarding:** no change.
-- **Performance:** dark (row 13, 07-27).
-- **SEO lane:** GSC 28 d clicks 22 → 14, position 18.8 → 19.9 (row 7);
-  not a `GLOBAL-025` alert, but the lane ran once. No BIRD/Spider alarm.
+Rows EA, EB and 16 are still run changelogs (flagged 11-15, unfixed);
+14a/14b now list every day. Next run that touches them keeps one value +
+range. Four null PRs each re-printed the same paragraph.
 
 ## Dark metrics (check 4)
 
-Rows 2/3 (users, DBs) carried since 10-16; row 13 since 07-27 (needs
-Grafana `metrics:read`). All measure the hosted `/v1/ask` product that
-`GLOBAL-043` deletes, so none is a focus candidate; no mailbox entry.
+Row 16 (spike pass/fail) is due since 11-19: mailbox #2. Row 15 (E2E
+freshness) 0 since 10-22: agent-dispatchable, but its suites call the
+free LLMs (`daily.md` rule 3). Rows 2/3/13 measure `/v1/ask`, which the
+deletion series removes.
 
 ## Prompt drift (check 6)
 
-Every ID, path and workflow `daily.md` and `weekly.md` cite resolves.
-Last week's retired-draft rule worked: #1179 closed 11-08. No `daily.md`
-change.
+Every ID, path and script in `daily.md` and `weekly.md` resolves.
+`ROADMAP.md` gained §0 fix-first (#1298); `daily.md` step 2 listed only
+phases 1a → 3. This PR adds "0 fix-first". `weekly.md` output 1 still says
+"phases 1 → 2 → 3".
 
 ## README roadmap (check 7)
 
-"Attach product on synthetic databases" ~ → ✓ (last 1a box, #1276; D1
-verify added); "D1 attach on the real rateme12" ◯ → ~ (#1281).
+Spike line: "kept at 72 h" → held at 228 h, 2.0 ms. rateme12 line: "Tier 1
+reads joins next" was done in run 294 and found no missing index;
+rewritten.
 
 ## Free-model roster (check 8)
 
-Plan chain, best first: groq-qwen `qwen3.8-27b` → gemini → cerebras
-`gpt-oss-120b` → groq `gpt-oss-120b` → workers-ai → openrouter → mistral.
+Plan chain: groq-qwen `qwen3.8-27b` → gemini `3.8-flash` → cerebras
+`gpt-oss-120b` → groq `gpt-oss-120b` → workers-ai `llama-3.3-70b` →
+openrouter `nemotron-3-ultra:free` → mistral `codestral`.
 
-- `gemini-2.5-flash` is redirected to `gemini-3.5-flash-lite` on 12-01
-  ([deprecations](https://aistudio.google.com/docs/deprecations),
-  [free-llm.com 11-04](https://free-llm.com/guides/free-llm-apis-november-2026-what-changed)).
-  `gemini-3.8-flash` is stable and free of charge
-  ([pricing](https://aistudio.google.com/docs/pricing)); `models.get`
-  lists it for our key (no generation run). This PR swaps the
-  Gemini leg to it, same chain position. Its free quota is reportedly
-  20 RPD ([forum](https://discuss.ai.google.dev/t/gemini-3-8-flash-free-tier-20-rpd-is-too-limited-for-practical-evaluation/180609)); a 429 falls
-  through (`SK-LLM-030`).
-- Contradiction: `SK-LLM-024` pins Gemini at temperature 0; Google says
-  Gemini 3 below 1.0 may loop
-  ([guide](https://ai.google.dev/gemini-api/docs/gemini-3)). The 12-01
-  redirect hits it too; next llm-router PR settles it.
-- `architecture.md` §7.1 still lists a Gemini 2.5 Pro "hard-plan fallback"
-  no code calls (Pro reportedly left the free tier). Flag for the deletion series.
-- No `blocked-by-human.md` bullet.
+- Workers AI's free catalog lists `@cf/qwen/qwen3.8-27b`, `gpt-oss-120b`
+  and `glm-5.3` (API list, today); each beats `llama-3.3-70b`
+  ([free-llm.com 11-18](https://free-llm.com/guides/free-llm-apis-november-2026-what-changed)).
+  Their schema answers in `choices[]`, which `workers-ai.ts` doesn't
+  parse.
+- `gemini-4-hydrogen` is free from 11-12
+  ([pricing](https://aistudio.google.com/docs/pricing),
+  [apidog](https://apidog.com/blog/gemini-4-hydrogen-free/)), and our key
+  lists it. Its RPD isn't published.
+- Not swapped here: both keys exist, but each needs a parser or leg plus
+  a live walk (`daily.md` rule 3), on `/v1/ask`, whose deletion scope is
+  🔒 (mailbox #7). Check 8 and `GLOBAL-043`'s depth-only rule disagree
+  until that lock. No mailbox bullet.
