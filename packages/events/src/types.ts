@@ -10,7 +10,10 @@
 //
 // Convention: `name` is `<domain>.<verb_noun>` (e.g. `user.first_query`,
 // `billing.subscription_created`, `ask.completed`). Domains today:
-// `user`, `billing`, `ask`, `db`, `feature`, `home`, `pricing`.
+// `user`, `billing`, `ask`, `db`, `feature`, `home`, `pricing`, plus the
+// browser's own (`web-events.ts`).
+
+import type { WebEvent } from "./web-events.ts";
 
 // Originating surface for a request. Single source of truth for both
 // the `nlqdb.surface` OTel attribute (performance.md §3.3) and the
@@ -311,7 +314,8 @@ export type ProductEvent =
   | PricingPageViewedEvent
   | PricingPlanSelectedEvent
   | FeatureEvalWeeklyEvent
-  | FeatureEvalRegressionEvent;
+  | FeatureEvalRegressionEvent
+  | WebEvent;
 
 // Envelope wrapping the event with producer-side metadata. The consumer
 // reads `id` for idempotency keys (passed to LogSnag) and `ts` for late-

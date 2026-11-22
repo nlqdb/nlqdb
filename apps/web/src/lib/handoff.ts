@@ -29,7 +29,7 @@ import {
   loadFirstTouch,
   sanitizeFirstTouch,
 } from "./attribution";
-import { emit } from "./logsnag";
+import { emit } from "./events";
 import { loadDraft, type PendingPrompt, saveDraft, savePending } from "./prompt-storage";
 
 const FRAGMENT_PREFIX = "#nlq=";

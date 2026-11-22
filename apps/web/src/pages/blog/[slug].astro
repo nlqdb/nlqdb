@@ -168,7 +168,7 @@ const displayDate = new Date(`${post.date}T00:00:00Z`).toLocaleDateString("en-US
     // Per-post demand signal on the CTA (GLOBAL-024) — same late-bound
     // LogSnag hook the /vs + /solve "Try this query" buttons use. The
     // click still navigates normally; the emit never blocks it.
-    import { emit } from "../../lib/logsnag";
+    import { emit } from "../../lib/events";
     document.querySelectorAll<HTMLAnchorElement>(".blg__cta-btn").forEach((a) => {
       a.addEventListener("click", () => {
         emit("blog.cta_clicked", { slug: a.dataset["blogSlug"] ?? "" });

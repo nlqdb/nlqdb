@@ -117,7 +117,12 @@ import {
   failUnknown,
   type PipelineError,
 } from "./error-envelope.ts";
-import { recordEvalReport, recordPricingEvent, recordWishlist } from "./events-feature.ts";
+import {
+  recordEvalReport,
+  recordPricingEvent,
+  recordWebEvent,
+  recordWishlist,
+} from "./events-feature.ts";
 import { notifyFirstServerError } from "./first-error-email.ts";
 import { grantedReadIo } from "./grant-ask-wire.ts";
 import {
@@ -2405,6 +2410,42 @@ app.post("/v1/events/pricing", async (c) => {
       }
       span.setAttribute("nlqdb.events.outcome", "accepted");
       span.setAttribute("nlqdb.events.authed", String(identity !== null));
+      c.executionCtx.waitUntil(result.pendingEmit);
+      return c.json({ accepted: true }, 202);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// POST /v1/events/web — the browser's product events (SK-EVENTS-015):
+// marketing + onboarding clicks, validated against `WEB_EVENTS`, queued to
+// PostHog. Public and anonymous (per-day IP bucket); no session lookup, so
+// a click costs no D1 read.
+app.post("/v1/events/web", async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.events.web", async (span) => {
+    try {
+      const body = await parseJsonBody<unknown>(c);
+      if (!body.ok) {
+        span.setAttribute("nlqdb.events.outcome", "invalid_body");
+        return fail(c, "invalid_body");
+      }
+      const result = await recordWebEvent(
+        { limiter: c.env.EVENTS_RATE_LIMIT, events: buildEventEmitter(c.env) },
+        body.body,
+        c.req.header("cf-connecting-ip") ?? null,
+      );
+      if (result.status === 400) {
+        span.setAttribute("nlqdb.events.outcome", result.reason);
+        return fail(c, "invalid_body");
+      }
+      if (result.status === 429) {
+        span.setAttribute("nlqdb.events.outcome", "rate_limited");
+        c.header("Retry-After", "60");
+        return fail(c, "rate_limited");
+      }
+      span.setAttribute("nlqdb.events.outcome", "accepted");
       c.executionCtx.waitUntil(result.pendingEmit);
       return c.json({ accepted: true }, 202);
     } finally {

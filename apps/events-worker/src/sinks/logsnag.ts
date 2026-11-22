@@ -8,7 +8,7 @@
 // passes `EventEnvelope.id` through to that field so per-day dedup
 // works across Cloudflare Queue redeliveries.
 
-import type { ProductEvent } from "@nlqdb/events";
+import { isWebEvent, type ProductEvent } from "@nlqdb/events";
 
 const LOGSNAG_URL = "https://api.logsnag.com/v1/log";
 
@@ -54,6 +54,7 @@ export function isLogSnagRouted(event: ProductEvent): boolean {
 }
 
 function pageBody(event: ProductEvent): Omit<LogSnagPayload, "project"> | null {
+  if (isWebEvent(event)) return null;
   switch (event.name) {
     case "user.first_query":
       return {

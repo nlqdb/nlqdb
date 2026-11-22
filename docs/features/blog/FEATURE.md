@@ -64,7 +64,7 @@ when-to-load:
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)).
 
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
-  - *In this feature:* the post CTA emits `blog.cta_clicked` `{slug}` via `lib/logsnag.ts` (same late-bound hook as `vs.try_query_clicked` / `solve.try_query_clicked`), so per-post funnel yield is measurable per venue.
+  - *In this feature:* the post CTA emits `blog.cta_clicked` `{slug}` via `lib/events.ts` (`SK-EVENTS-015`, same emitter as `vs.try_query_clicked` / `solve.try_query_clicked`), so per-post funnel yield is measurable per venue.
 - **GLOBAL-025** — North-star compass.
   - *In this feature:* the KPI advanced is **onboarding/UX via distribution yield** — every post CTA points at `/app/new` (anonymous mode); posts are the daily loop's released artifact.
 - **GLOBAL-034** — Analytics stack (Cloudflare Web Analytics for public pageviews; PostHog client SDK is scoped to the `/app` product surfaces). No client analytics SDK ships with blog pages.

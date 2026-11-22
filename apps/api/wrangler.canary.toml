@@ -61,6 +61,12 @@ name = "ANON_ASK_RATE_LIMIT"
 namespace_id = "2003"
 simple = { limit = 30, period = 60 }
 
+# Browser product events, `/v1/events/web` (SK-EVENTS-015).
+[[ratelimits]]
+name = "EVENTS_RATE_LIMIT"
+namespace_id = "2004"
+simple = { limit = 60, period = 60 }
+
 # Filled in by `wrangler kv namespace create nlqdb-canary` (H3).
 [[kv_namespaces]]
 binding = "KV"

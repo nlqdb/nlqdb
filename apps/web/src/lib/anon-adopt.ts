@@ -8,8 +8,8 @@
 // are orphaned. Each POST is idempotent server-side (SK-ANON-003).
 // Best-effort by design: the caller's redirect must never block on it.
 
+import { emit } from "./events";
 import { ANON_PREV_KEY } from "./handoff";
-import { emit } from "./logsnag";
 
 const ANON_KEY = "nlqdb_anon";
 const TIMEOUT_MS = 3000;

@@ -8,7 +8,12 @@
 
 import type { EventEmitter } from "@nlqdb/events";
 import { describe, expect, it, vi } from "vitest";
-import { recordEvalReport, recordPricingEvent, recordWishlist } from "../src/events-feature.ts";
+import {
+  recordEvalReport,
+  recordPricingEvent,
+  recordWebEvent,
+  recordWishlist,
+} from "../src/events-feature.ts";
 
 function stubEvents() {
   return { emit: vi.fn().mockResolvedValue(undefined) };
@@ -361,5 +366,56 @@ describe("recordEvalReport — SK-QUAL-002 internal run ingestion", () => {
     expect(result.status).toBe(202);
     if (result.status !== 202) throw new Error("unreachable");
     expect(result.emitted).toBe(1); // weekly only
+  });
+});
+
+describe("recordWebEvent — SK-EVENTS-015", () => {
+  function limiter(success: boolean) {
+    return { limit: vi.fn().mockResolvedValue({ success }) } as unknown as RateLimit;
+  }
+
+  it("emits the validated event under the per-day visitor bucket pricing uses", async () => {
+    const events = stubEvents();
+    const result = await recordWebEvent(
+      { limiter: limiter(true), events },
+      { event: "blog.cta_clicked", props: { slug: "why", junk: true } },
+      "1.2.3.4",
+    );
+    expect(result.status).toBe(202);
+    const sent = events.emit.mock.calls[0]?.[0];
+    expect(sent).toEqual({
+      name: "blog.cta_clicked",
+      slug: "why",
+      principalId: expect.stringMatching(/^pv:[0-9a-f]{16}$/),
+    });
+    const pricing = stubEvents();
+    await recordPricingEvent({ kv: stubKv(), events: pricing }, { event: "view" }, null, "1.2.3.4");
+    expect(pricing.emit.mock.calls[0]?.[0].principalId).toBe(sent.principalId);
+  });
+
+  it("rejects an unknown name without spending the limit", async () => {
+    const events = stubEvents();
+    const l = limiter(true);
+    const result = await recordWebEvent(
+      { limiter: l, events },
+      { event: "user.registered" },
+      "1.2.3.4",
+    );
+    expect(result).toEqual({ status: 400, reason: "invalid_body" });
+    expect(l.limit).not.toHaveBeenCalled();
+    expect(events.emit).not.toHaveBeenCalled();
+  });
+
+  it("429s past the edge limit, keyed on the IP", async () => {
+    const events = stubEvents();
+    const l = limiter(false);
+    const result = await recordWebEvent(
+      { limiter: l, events },
+      { event: "handoff.rejected" },
+      "1.2.3.4",
+    );
+    expect(result).toEqual({ status: 429 });
+    expect(l.limit).toHaveBeenCalledWith({ key: "1.2.3.4" });
+    expect(events.emit).not.toHaveBeenCalled();
   });
 });

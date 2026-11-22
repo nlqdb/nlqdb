@@ -8,10 +8,6 @@ scheduled run takes the first open, unblocked, unclaimed box
 [`END_GOAL.md`](END_GOAL.md) and names its number: KPIs A–C and the love gate
 are defined in `GLOBAL-043` item 9.
 
-## 0 — Fix first
-
-- [ ] The browser LogSnag hook moves to PostHog. `Base.astro`'s inline hook (`lib/logsnag.ts`, `GLOBAL-024`) still posts every marketing / onboarding click (`home.*` landing → TTFV funnel, `solve.*`, `vs.*`, `agents.*`, `blog.*`) to LogSnag as a silent row, with the server's `LOGSNAG_TOKEN` baked into page source, so anyone can drain the quota or push a fake page. Route it through a first-party `/v1/events/*` POST → `EVENTS_QUEUE` → PostHog (the `SK-EVENTS-012` pattern), drop `PUBLIC_LOGSNAG_*` from both deploy workflows. Number: LogSnag rows / month → the pages plus `user.auth_failed` rows; LogSnag tokens in shipped HTML 1 → 0
-
 ## 1b — Real-traffic proof
 
 Postgres spike (market proof, `SPIKE_PG_URL`, `GLOBAL-043` item 10) and the

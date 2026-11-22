@@ -36,6 +36,20 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   `swiss-prices-comparison` to its own free Cloudflare account; (b) have
   that repo's agent cut the query reading 133 M rows/day. Reply in chat.
 
+## Rotate `LOGSNAG_TOKEN` — it shipped in every page until run 306
+
+- **Type:** secret · ⏱ ~3 min · since 2026-11-22
+- **Done so far:** run 306 moved browser events to `POST /v1/events/web` →
+  PostHog (`SK-EVENTS-015`); the token is in 0 / 141 built pages (was
+  141 / 141). The old value stays valid and public in caches and archives:
+  anyone holding it can drain the 2,500/mo quota the pages ride on, or push
+  a fake page.
+- **Ask:**
+  1. <https://app.logsnag.com> → Settings → API Tokens → revoke the current
+     token → create a new one.
+  2. Put it in `.envrc` as `LOGSNAG_TOKEN=…`, then run
+     `./scripts/mirror-secrets-all.sh` (GitHub + Workers).
+
 ## Call the spike pass or fail
 
 - **Type:** decision · ⏱ ~2 min · since 2026-11-13

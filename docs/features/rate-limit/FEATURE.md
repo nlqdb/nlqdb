@@ -28,7 +28,7 @@ when-to-load:
 - `apps/api/src/ask/orchestrate.ts` (rate-limit-first ordering in the `/v1/ask` pipeline)
 - D1 table `rate_limit_buckets` (schema in `apps/api/migrations/`)
 - Workers KV namespace bound as `KV` (also used by Better Auth `secondaryStorage`)
-- `apps/api/src/auth-rate-limit.ts` + the `AUTH_RATE_LIMIT` / `MAGIC_LINK_RATE_LIMIT` / `ANON_ASK_RATE_LIMIT` bindings (`SK-RL-008`)
+- `apps/api/src/auth-rate-limit.ts` + the `AUTH_RATE_LIMIT` / `MAGIC_LINK_RATE_LIMIT` / `ANON_ASK_RATE_LIMIT` / `EVENTS_RATE_LIMIT` (`/v1/events/web`, `SK-EVENTS-015`) bindings (`SK-RL-008`)
 
 ## Decisions
 

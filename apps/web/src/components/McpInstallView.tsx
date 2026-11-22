@@ -14,7 +14,7 @@
 // open at a time keeps the one-motion-moment budget (SK-WEB-015).
 
 import { useState } from "react";
-import { emit } from "../lib/logsnag";
+import { emit } from "../lib/events";
 import {
   buildMcpHosts,
   MCP_ENDPOINT_URL,

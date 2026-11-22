@@ -41,7 +41,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-SOLVE-N
 ## GLOBALs governing this feature
 
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
-  - *In this feature:* the "Try this query →" button calls `emit("solve.try_query_clicked", {slug, goal})` via `lib/logsnag.ts`. The late-bound `window.__nlqdb_logsnag` hook is **wired since 2026-07-29**: `Base.astro` inlines it (gated on build-time `PUBLIC_LOGSNAG_TOKEN`/`PUBLIC_LOGSNAG_PROJECT`, baked by both deploy workflows; channel = the event's dot-prefix), pinned by `lib/logsnag-hook.test.ts`; token verified live against `api.logsnag.com`. Dev/preview builds omit the vars, so emits stay no-ops there by design.
+  - *In this feature:* the "Try this query →" button calls `emit("solve.try_query_clicked", {slug, goal})` from `lib/events.ts`, which POSTs `/v1/events/web` → PostHog (`SK-EVENTS-015`); dev and preview hosts send nothing.
 - **GLOBAL-025** — North-star compass.
   - *In this feature:* the KPI advanced is **onboarding** — an embed page's CTA points at `/app/new` (anonymous mode), an attach page's (`attachCommand`, the DBA searches) at the signed-in `/app/connect`; the solve page is the search-intent on-ramp the homepage can't be. KPI degraded: none.
 - **GLOBAL-028** — Acquisition progress tracker.
