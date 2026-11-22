@@ -13,7 +13,9 @@ export function emit<N extends WebEventName>(event: N, props?: WebEventProps<N>)
     if (!/(^|\.)nlqdb\.com$/.test(window.location.hostname)) return;
     void fetch(`${readApiBase().replace(/\/$/, "")}/v1/events/web`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      // A CORS-safelisted type keeps the cross-origin POST (nlqdb.com →
+      // app.nlqdb.com) preflight-free, so it leaves before the CTA navigates.
+      headers: { "content-type": "text/plain;charset=UTF-8" },
       credentials: "omit",
       keepalive: true,
       body: JSON.stringify({ event, props: props ?? {} }),

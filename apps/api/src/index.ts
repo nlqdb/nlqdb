@@ -2418,6 +2418,8 @@ app.post("/v1/events/pricing", async (c) => {
   });
 });
 
+const WEB_EVENT_BODY_CAP_BYTES = 4096;
+
 // POST /v1/events/web — the browser's product events (SK-EVENTS-015):
 // marketing + onboarding clicks, validated against `WEB_EVENTS`, queued to
 // PostHog. Public and anonymous (per-day IP bucket); no session lookup, so
@@ -2426,7 +2428,12 @@ app.post("/v1/events/web", async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.events.web", async (span) => {
     try {
-      const body = await parseJsonBody<unknown>(c);
+      // A real event is < 1 KB; refuse a bulk body before parsing it.
+      const length = Number(c.req.header("content-length") ?? 0);
+      const body =
+        length > WEB_EVENT_BODY_CAP_BYTES
+          ? { ok: false as const }
+          : await parseJsonBody<unknown>(c);
       if (!body.ok) {
         span.setAttribute("nlqdb.events.outcome", "invalid_body");
         return fail(c, "invalid_body");
