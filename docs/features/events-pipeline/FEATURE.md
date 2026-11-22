@@ -1,6 +1,6 @@
 ---
 name: events-pipeline
-description: EVENTS_QUEUE producer + events-worker consumer that fans out to sinks (LogSnag, etc.).
+description: EVENTS_QUEUE producer + events-worker consumer that fans out to sinks (PostHog, LogSnag pager, Tinybird).
 when-to-load:
   globs:
     - apps/events-worker/**
@@ -10,7 +10,7 @@ when-to-load:
 
 # Feature: Events Pipeline
 
-**One-liner:** EVENTS_QUEUE producer + events-worker consumer that fans out to sinks (LogSnag, etc.).
+**One-liner:** EVENTS_QUEUE producer + events-worker consumer that fans out to sinks (PostHog, LogSnag pager, Tinybird).
 **Status:** implemented (Slice 3 — `packages/events` + queue; Slice 7 wires `billing.*` emissions)
 **Owners (code):** `packages/events/**`, `apps/events-worker/**`
 **Cross-refs:** docs/architecture.md §5.4 · docs/phase-plan.md · docs/runbook.md §6 · docs/performance.md §3.1 + §4 · `apps/events-worker/README.md`
@@ -77,9 +77,9 @@ when-to-load:
 
 ### SK-EVENTS-006 — Canonical event-name schema: `<domain>.<verb_noun>`, snake_dot, lowercase
 
-- **Decision:** Event names follow `<domain>.<verb_noun>` (e.g. `user.registered`, `billing.subscription_created`). Domains today: `user`, `billing`, `ask`, `db`, `feature`, `home`, `pricing`. **No `trial.*`** — the free tier IS the trial (`docs/architecture.md §5`). Sign-ins are not emitted — would dominate the LogSnag 2,500/mo quota with no founder signal. A sign-in that **fails with a 5xx** is: `user.auth_failed` carries the email (recovered without D1 — the sign-in body, or the verify token remembered in KV at send), deduped per email per UTC day and capped at 20 distinct emails a day (the email is unauthenticated input; one person retrying never uses up the cap), LogSnag only — never PostHog; it fires only in an outage and names who to apologise to.
+- **Decision:** Event names follow `<domain>.<verb_noun>` (e.g. `user.registered`, `billing.subscription_created`). Domains today: `user`, `billing`, `ask`, `db`, `feature`, `home`, `pricing`. **No `trial.*`** — the free tier IS the trial (`docs/architecture.md §5`). **LogSnag is the pager only** (2026-11-22): it carries only events worth a push — `user.first_query`, `user.registered`, `billing.*`, a first `db.adopted`, `feature.eval.regression` — and every other event lives in PostHog alone (`SK-EVENTS-013`). Preview versions emit nothing: they share prod's `EVENTS_QUEUE` (`apps/api/src/events-emitter.ts`). Sign-ins are not emitted — no founder signal. A sign-in that **fails with a 5xx** is: `user.auth_failed` carries the email (recovered without D1 — the sign-in body, or the verify token remembered in KV at send), deduped per email per UTC day and capped at 20 distinct emails a day (the email is unauthenticated input; one person retrying never uses up the cap), LogSnag only — never PostHog; it fires only in an outage and names who to apologise to. Only the UTC day's first report pushes (`firstToday`); the rest are silent LogSnag rows — one push per outage, not one per email.
 - **Core value:** Free, Simple, Honest latency
-- **Why:** Consistent naming keeps LogSnag dashboards readable without a translation layer. The 2,500/mo quota is the hard constraint on what's worth routing; high-volume or noisy signals would burn it. Trial events would lie about a funnel that doesn't exist.
+- **Why:** Consistent naming keeps dashboards readable without a translation layer. LogSnag's free 2,500 logs/mo is the hard constraint: on 2026-11-21 aggregate signals had it at 2,023, and at the cap real pages (payment failed, sign-in outage) drop silently — so it carries pages only. One review walk's 30 magic-link 500s on a preview pushed 20 alerts; hence one push per outage and no preview events. Trial events would lie about a funnel that doesn't exist.
 - **Consequence in code:** Reviewers reject `userSignedIn` (camelCase), `signin` (no domain). New events firing more than once per user-lifecycle need an explicit cost analysis. Stripe billing event choices (omitted `subscription_updated`, per-invoice dedup on `payment_failed`) live in `SK-STRIPE-005`/`SK-STRIPE-011`.
 - **Alternatives rejected:** Per-team naming (LogSnag UI fragments); emit-everything (burns quota with no founder signal).
 
@@ -117,7 +117,7 @@ when-to-load:
 - **Consequence in code:**
   - `packages/events/src/types.ts`: the `feature.requested.*` variants plus `NlqSurface = "hero" | "chat" | "embed" | "mcp" | "cli"` — one union is both the event field and the `nlqdb.surface` OTel attribute value (`performance.md §3.3`).
   - `defaultId()` keys the `feature.requested.*` variants by `${name}.${principalId}.${utcDay}`; the LogSnag sink passes `EventEnvelope.id` through to `event_id` (`SK-EVENTS-004`) so the per-day collapse actually happens.
-  - `apps/events-worker/src/sinks/logsnag.ts`: every variant lands on the `demand-signal` channel with `notify: false`.
+  - PostHog only (`SK-EVENTS-006`): `logsnag.ts` routes none of them.
   - `apps/api/src/ask/demand-signal.ts`: `emitFeatureSignal()` fires from `outcome.error` arms of `/v1/ask` (SSE + JSON) and `/v1/chat` — its `rate_limited` arm is the per-account trip, so `larger_account`. The anon per-IP 429 emits `heavier_tier` inline (`/v1/ask` + `/v1/run`); `/v1/run`'s per-account trip emits `larger_account` inline (the helper also fires `ddl_via_ask`, unwanted there). All via `ctx.waitUntil`.
   - `DDL_REJECT_REASONS` lives in `apps/api/src/ask/sql-validate.ts` next to `SqlRejectReason` so the demand-signal set can't drift from the validator.
   - Surface derivation lives in `surfaceFromPrincipal()` (`apps/api/src/principal.ts`) — `anon → hero`, `user → chat`, `pk_live → embed`.
@@ -131,11 +131,10 @@ when-to-load:
 
 - **Decision:** `home.surface_wishlist` carries `principalId` and `surface: WishlistSurface`. `POST /v1/events/wishlist` is public (KV-throttled 10/min/IP), acks 202 + waitUntil per `SK-EVENTS-003`.
 - **Core value:** Bullet-proof, Free, Honest latency
-- **Why:** The wishlist click previously fired a DOM CustomEvent no one listened to. Wiring it into the events pipeline routes it to the `demand-signal` LogSnag channel where the §6 monetization trigger reads off aggregate surface interest. Wishlist stays public so a marketing visitor doesn't need an anon-bearer for one optional click.
+- **Why:** The wishlist click previously fired a DOM CustomEvent no one listened to. Wiring it into the events pipeline routes it to PostHog, where the §6 monetization trigger reads off aggregate surface interest. Wishlist stays public so a marketing visitor doesn't need an anon-bearer for one optional click.
 - **Consequence in code:**
   - `packages/events/src/types.ts`: `HomeSurfaceWishlistEvent` joins `ProductEvent`. `defaultId()` keys per-(principal, surface, day) — preserves distinct-surface signals.
-  - `apps/events-worker/src/sinks/logsnag.ts`: routes to `demand-signal` with `notify: false` (aggregate matters, not per-click).
-  - `apps/api/src/events-feature.ts`: `recordWishlist()` derives `principalId = wl:${sha256(ip:day, 16)}` — distinct prefix from `anon:` so LogSnag's user_id facet doesn't conflate the two.
+  - `apps/api/src/events-feature.ts`: `recordWishlist()` derives `principalId = wl:${sha256(ip:day, 16)}` — distinct prefix from `anon:` so PostHog's `distinct_id` doesn't conflate the two.
   - `apps/api/src/index.ts`: `/v1/events/*` rides the existing credentialed CORS allow-list.
   - `apps/web/src/components/CodePanel.astro`: existing wishlist handler now also fires a `keepalive: true` fetch to `/v1/events/wishlist`. DOM CustomEvent stays for legacy listeners; mailto: still runs.
 - **Alternatives rejected:**
@@ -145,17 +144,17 @@ when-to-load:
 ### SK-EVENTS-012 — `pricing.*` funnel: first-party, identity-bearing pricing-page events
 
 **Body:** [`decisions/SK-EVENTS-012-pricing-funnel.md`](./decisions/SK-EVENTS-012-pricing-funnel.md).
-`pricing.page_viewed` + `pricing.plan_selected` (per-visitor-per-day `defaultId`) carry a **server-derived** `principalId` + `email`; `POST /v1/events/pricing` resolves the session cookie, logged-out visitors fall back to a per-day IP-hash bucket. LogSnag `pricing` channel, `notify: false`. First-party POST instead of the blocker-prone Cloudflare beacon (`GLOBAL-034`).
+`pricing.page_viewed` + `pricing.plan_selected` (per-visitor-per-day `defaultId`) carry a **server-derived** `principalId` + `email`; `POST /v1/events/pricing` resolves the session cookie, logged-out visitors fall back to a per-day IP-hash bucket. PostHog only (`SK-EVENTS-006`). First-party POST instead of the blocker-prone Cloudflare beacon (`GLOBAL-034`).
 
 ### SK-EVENTS-013 — PostHog sink: server-side fan-out of every `ProductEvent`
 
 **Body:** [`decisions/SK-EVENTS-013-posthog-sink.md`](./decisions/SK-EVENTS-013-posthog-sink.md).
-`src/sinks/posthog.ts` drains every `EventEnvelope` to PostHog in one `/batch` POST per queue batch (plain `fetch`, no SDK); envelope `id` → deterministic `uuid` for dedup; env-gated per `SK-EVENTS-005`, best-effort — never touches ack/retry. Client half is [`SK-WEB-024`](../web-app/decisions/SK-WEB-024-posthog-app-surfaces-only.md).
+`src/sinks/posthog.ts` drains every `EventEnvelope` to PostHog in one `/batch` POST per queue batch (plain `fetch`, no SDK); envelope `id` → deterministic `uuid` for dedup; env-gated per `SK-EVENTS-005`; owns ack/retry for the events LogSnag doesn't carry (their only sink), never for a page or `ask.completed`. Client half is [`SK-WEB-024`](../web-app/decisions/SK-WEB-024-posthog-app-surfaces-only.md).
 
 ### SK-EVENTS-014 — `db.*` activation events: close the anon-create → adopt funnel gap
 
 **Body:** [`decisions/SK-EVENTS-014-activation-funnel.md`](./decisions/SK-EVENTS-014-activation-funnel.md).
-`db.created` (from `orchestrateDbCreate`, anon creates included) and `db.adopted` (from the `SK-ANON-012` sign-in hook, `replay`-flagged) make create → ask → adopt measurable. Both use **`dbId` as the PostHog `distinct_id`**, matching `ask.completed`, so the funnel joins without server-side identity. LogSnag `activation` channel.
+`db.created` (from `orchestrateDbCreate`, anon creates included) and `db.adopted` (from the `SK-ANON-012` sign-in hook, `replay`-flagged) make create → ask → adopt measurable. Both use **`dbId` as the PostHog `distinct_id`**, matching `ask.completed`, so the funnel joins without server-side identity. A first `db.adopted` also pages on LogSnag `activation`; `db.created` and replays are PostHog only.
 
 ## GLOBALs governing this feature
 

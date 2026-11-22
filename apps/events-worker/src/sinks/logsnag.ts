@@ -17,7 +17,7 @@ export type LogSnagConfig = {
   project: string;
 };
 
-// Translates a ProductEvent into LogSnag's payload shape. Each event
+// Translates a pager event into LogSnag's payload shape. Each event
 // type owns its channel + display copy here — the rest of the
 // codebase stays presentation-agnostic.
 type LogSnagPayload = {
@@ -34,20 +34,29 @@ type LogSnagPayload = {
   event_id?: string;
 };
 
+/**
+ * LogSnag is the pager only (`SK-EVENTS-006`): an event it carries is a push,
+ * except `user.auth_failed` past the day's first — a silent row, the outage's
+ * apology list (that event never reaches PostHog). null = not LogSnag-routed.
+ */
 export function buildPayload(
   project: string,
   event: ProductEvent,
   eventId?: string,
-): LogSnagPayload {
-  const base = buildPayloadBody(project, event);
-  return eventId ? { ...base, event_id: eventId } : base;
+): LogSnagPayload | null {
+  const body = pageBody(event);
+  if (!body) return null;
+  return { project, ...body, ...(eventId ? { event_id: eventId } : {}) };
 }
 
-function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload {
+export function isLogSnagRouted(event: ProductEvent): boolean {
+  return pageBody(event) !== null;
+}
+
+function pageBody(event: ProductEvent): Omit<LogSnagPayload, "project"> | null {
   switch (event.name) {
     case "user.first_query":
       return {
-        project,
         channel: "users",
         event: "First Query",
         description: `User ran their first /v1/ask query against db ${event.dbId}`,
@@ -58,7 +67,6 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
       };
     case "user.registered":
       return {
-        project,
         channel: "users",
         event: "Registered",
         description: `New account: ${event.email}`,
@@ -69,17 +77,15 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
       };
     case "user.auth_failed":
       return {
-        project,
         channel: "users",
         event: "Sign-in failed",
         description: `${event.status} on ${event.path} for ${event.email}`,
         icon: "🚧",
-        notify: true,
+        notify: event.firstToday,
         tags: { email: event.email, path: event.path, status: String(event.status) },
       };
     case "billing.subscription_created":
       return {
-        project,
         channel: "billing",
         event: "Subscription Created",
         description: `${event.userId} subscribed (price ${event.priceId})`,
@@ -94,7 +100,6 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
       };
     case "billing.subscription_canceled":
       return {
-        project,
         channel: "billing",
         event: "Subscription Canceled",
         description: `${event.userId} canceled (price ${event.priceId})`,
@@ -114,7 +119,6 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
       // dunning retries don't re-page. Amount stays in minor units in the
       // tag — no currency-decimal guessing in an internal alert.
       return {
-        project,
         channel: "billing",
         event: "Payment Failed",
         description: `${event.userId} payment failed (attempt ${event.attemptCount})`,
@@ -130,186 +134,39 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
           ...(event.hostedInvoiceUrl ? { "invoice-url": event.hostedInvoiceUrl } : {}),
         },
       };
-    case "feature.requested.ddl_via_ask":
-      return {
-        project,
-        channel: "demand-signal",
-        event: "DDL via /v1/ask",
-        description: `${event.surface}: LLM emitted ${event.rejectReason} on a query path`,
-        icon: "🧱",
-        notify: false,
-        user_id: event.principalId,
-        tags: { surface: event.surface, "reject-reason": event.rejectReason },
-      };
-    case "feature.requested.heavier_tier":
-      return {
-        project,
-        channel: "demand-signal",
-        event: "Heavier tier requested",
-        description: `${event.surface}: hit the free-tier rate-limit ceiling`,
-        icon: "📈",
-        notify: false,
-        user_id: event.principalId,
-        tags: { surface: event.surface },
-      };
-    case "feature.requested.larger_account":
-      // SK-EVENTS-010 — an authed account hit its per-account 60/min
-      // cap. Highest-intent demand signal (already has an account,
-      // wants more), so kept distinct from the anon `heavier_tier`
-      // trip on the same channel.
-      return {
-        project,
-        channel: "demand-signal",
-        event: "Larger account requested",
-        description: `${event.surface}: authed account hit its per-account rate-limit ceiling`,
-        icon: "🚀",
-        notify: false,
-        user_id: event.principalId,
-        tags: { surface: event.surface },
-      };
-    case "feature.destructive.preview_rendered":
-      // SK-TRUST-004 — the GLOBAL-025 UX pillar's retry-rate instrument.
-      // `#north-star` (KPI cadence, not pager): the dashboard divides
-      // committed by preview_rendered per `tags.surface` over a window.
-      return {
-        project,
-        channel: "north-star",
-        event: "Destructive preview",
-        description: `${event.surface}: rendered a write diff for confirm (SK-TRUST-001 preview hop)`,
-        icon: "🛡️",
-        notify: false,
-        user_id: event.principalId,
-        tags: { surface: event.surface },
-      };
-    case "feature.destructive.committed":
-      return {
-        project,
-        channel: "north-star",
-        event: "Destructive committed",
-        description: `${event.surface}: user confirmed the diff and the write executed`,
-        icon: "✅",
-        notify: false,
-        user_id: event.principalId,
-        tags: { surface: event.surface },
-      };
-    case "home.surface_wishlist":
-      // SK-EVENTS-011: wishlist click from the marketing CodePanel.
-      // `notify: false` — wishlist counts matter in aggregate, not
-      // per-click; the dashboard ranks by `tags.surface` over a window.
-      return {
-        project,
-        channel: "demand-signal",
-        event: "Wishlist click",
-        description: `${event.surface}: clicked the wishlist badge on the homepage`,
-        icon: "⭐",
-        notify: false,
-        user_id: event.principalId,
-        tags: { surface: event.surface },
-      };
-    case "pricing.page_viewed":
-      // SK-EVENTS-012 — dedicated `pricing` channel; aggregate signal,
-      // not a pager (notify: false). `user_id` is the identity facet the
-      // founder groups by to count unique users; `authed` + optional
-      // `email` let them split real visitors from their own account.
-      return {
-        project,
-        channel: "pricing",
-        event: "Pricing viewed",
-        description: `${event.email ?? "anon visitor"} viewed /pricing`,
-        icon: "🏷️",
-        notify: false,
-        user_id: event.principalId,
-        tags: {
-          authed: String(event.email !== null),
-          ...(event.email ? { email: event.email } : {}),
-        },
-      };
-    case "pricing.plan_selected":
-      return {
-        project,
-        channel: "pricing",
-        event: "Plan selected",
-        description: `${event.email ?? "anon visitor"} clicked "Choose ${event.plan}"`,
-        icon: "🧾",
-        notify: false,
-        user_id: event.principalId,
-        tags: {
-          plan: event.plan,
-          authed: String(event.email !== null),
-          ...(event.email ? { email: event.email } : {}),
-        },
-      };
-    case "db.created":
-      // SK-EVENTS-014 — activation funnel entry. `notify: false`: creates
-      // are a rate to read on a dashboard, not a per-event page.
-      return {
-        project,
-        channel: "activation",
-        event: "DB created",
-        description: `${event.anon ? "Anonymous" : "Authed"} ${event.engine} DB ${event.dbId} provisioned with ${event.tableCount} table(s)`,
-        icon: "🗄️",
-        notify: false,
-        user_id: event.principalId,
-        tags: {
-          "db-id": event.dbId,
-          anon: String(event.anon),
-          engine: event.engine,
-          preset: String(event.preset),
-          synthetic: String(event.synthetic),
-        },
-      };
     case "db.adopted":
       // The one moment an anonymous session becomes a retained user —
-      // rare, high-signal, and the founder wants to know. `notify` only
-      // on a first adoption; replays are bookkeeping.
+      // rare, high-signal, and the founder wants to know. Replays are
+      // bookkeeping: PostHog only.
+      if (event.replay) return null;
       return {
-        project,
         channel: "activation",
         event: "DB kept after sign-in",
-        description: `Anonymous db ${event.dbId} adopted by a signed-in user${event.replay ? " (replay)" : ""}`,
+        description: `Anonymous db ${event.dbId} adopted by a signed-in user`,
         icon: "🔐",
-        notify: !event.replay,
+        notify: true,
         user_id: event.userId,
-        tags: { "db-id": event.dbId, replay: String(event.replay) },
+        tags: { "db-id": event.dbId },
       };
-    case "feature.eval.weekly": {
-      // SK-QUAL-002: the eval run summary lands in `#north-star`. Lane EAs
-      // are emitted as separate tags so the LogSnag dashboard can chart
-      // them; `notify: false` because eval snapshots are review-
-      // cadence, not pager-cadence.
-      const laneTags = Object.fromEntries(
-        Object.entries(event.laneExecutionAccuracy).map(([lane, ea]) => [
-          `ea-${lane}`,
-          (ea * 100).toFixed(2),
-        ]),
-      );
-      const fmt = (d: number | null | undefined) =>
-        d === null || d === undefined ? "n/a" : `${(d * 100).toFixed(2)} pts`;
-      const headline = event.freeVsAgenticFrontierDelta ?? null;
-      const tags: Record<string, string> = {
-        dataset: event.dataset,
-        run: event.runId,
-        ...laneTags,
-      };
-      if (headline !== null) tags["delta-agentic"] = (headline * 100).toFixed(2);
-      return {
-        project,
-        channel: "north-star",
-        event: "Eval weekly",
-        // SK-QUAL-009 — surface both deltas. Agentic-frontier is the
-        // GLOBAL-025 headline; single-model frontier is the SK-QUAL-004
-        // informational reference.
-        description: `${event.dataset}: ${event.questionCount} Qs, agentic-Δ ${fmt(headline)}, single-Δ ${fmt(event.freeVsFrontierDelta)}`,
-        icon: "📊",
-        notify: false,
-        tags,
-      };
-    }
+    // Aggregate signals read on a dashboard, never pages: PostHog only,
+    // and PostHog owns their ack/retry (`SK-EVENTS-013`).
+    case "feature.requested.ddl_via_ask":
+    case "feature.requested.heavier_tier":
+    case "feature.requested.larger_account":
+    case "feature.destructive.preview_rendered":
+    case "feature.destructive.committed":
+    case "home.surface_wishlist":
+    case "pricing.page_viewed":
+    case "pricing.plan_selected":
+    case "db.created":
+    case "feature.eval.weekly":
+    // `ask.completed` flows to Tinybird `query_log` (`SK-EVENTS-009`).
+    case "ask.completed":
+      return null;
     case "feature.eval.regression":
       // SK-QUAL-002: regression pages the on-call. `trigger` tag
       // distinguishes McNemar vs threshold without re-parsing.
       return {
-        project,
         channel: "north-star",
         event: "Eval regression",
         description: `${event.dataset} / ${event.lane}: ${(event.deltaPp * 100).toFixed(2)} pts (${event.trigger}${event.pValue === null ? "" : `, p=${event.pValue.toFixed(4)}`})`,
@@ -322,13 +179,6 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
           trigger: event.trigger,
         },
       };
-    case "ask.completed":
-      // Not LogSnag-routed — flows to Tinybird `query_log`
-      // (`SK-EVENTS-009`). The dispatcher in
-      // `apps/events-worker/src/index.ts` filters this before reaching
-      // `buildPayload`; this branch exists so the discriminated-union
-      // exhaustiveness check still passes.
-      throw new Error(`logsnag sink received non-routed event: ${event.name}`);
     default: {
       const _exhaustive: never = event;
       throw new Error(`unhandled event: ${JSON.stringify(_exhaustive)}`);
@@ -343,6 +193,7 @@ export async function publishToLogSnag(
   fetchImpl: typeof fetch = fetch,
 ): Promise<void> {
   const payload = buildPayload(config.project, event, eventId);
+  if (!payload) throw new Error(`logsnag sink received non-routed event: ${event.name}`);
   const res = await fetchImpl(LOGSNAG_URL, {
     method: "POST",
     headers: {

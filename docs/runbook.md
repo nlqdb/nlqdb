@@ -81,7 +81,7 @@ re-enable via Cloudflare later).
 | Resend           | Founder's personal Google | Free (3k emails/mo)               | API key `nlqdb-phase0`; `nlqdb.com` verified (DKIM `resend._domainkey`, SPF on `send.nlqdb.com`) |
 | Stripe           | Founder's personal Google | Live mode                         | Merchant: Switzerland / CHF; descriptor `NLQDB.COM`; live — keys + webhook (5 events) + price IDs set, Tax + portal done; Worker push pending deploy |
 | Grafana Cloud    | Founder's personal Google | Free                              | Stack `nlqdb` on `us-east-2`, instance `1609127`, access policy `nlqdb-phase0-telemetry` |
-| LogSnag          | Founder's personal Google | Free (2,500 events/mo)            | Sole sink for `packages/events`; verified end-to-end (first `/v1/ask` produced an event) |
+| LogSnag          | Founder's personal Google | Free (2,500 events/mo)            | Pager only (`SK-EVENTS-006`): the push-worthy `packages/events` events; aggregates go to PostHog |
 | Tinybird         | Founder's personal Google | Free Forever (10 GB, 1k reads/day)| Workspace `omer` (`us-east-1`, Forward). **Dual role:** the ClickHouse engine (`packages/db/clickhouse-tinybird`) **and** the `query_log` events sink (`SK-EVENTS-009`). `query_log` Data Source **live** — deploy datafiles with `scripts/tinybird-deploy.sh`. Worker token scope `DATASOURCE:APPEND` |
 | PostHog          | Founder's personal Google | Free (EU, 1M events/mo)           | Product analytics (`GLOBAL-034`): server sink for every `ProductEvent` (`SK-EVENTS-013`) + posthog-js on `/app` only (`SK-WEB-024`). Marketing stays SDK-free |
 | Docker Hub       | **SKIPPED**               | —                                 | Using `ghcr.io/nlqdb` instead (paid-only org tier) |
@@ -370,8 +370,9 @@ rotation; idempotent.
 ### `apps/events-worker` (queue-only consumer)
 
 A separate Worker `nlqdb-events-worker` that drains the `nlqdb-events`
-Cloudflare Queue and dispatches each event to its sink(s). Phase 0 has
-one sink: **LogSnag**. The producer side is `@nlqdb/events`, called
+Cloudflare Queue and dispatches each event to its sink(s): **PostHog**
+(every event but `user.auth_failed`), **LogSnag** (the pager only,
+`SK-EVENTS-006`) and Tinybird (`ask.completed`). The producer side is `@nlqdb/events`, called
 from `apps/api`'s orchestrator; this Worker is the only thing that
 talks to external sinks. See [`apps/events-worker/README.md`](../apps/events-worker/README.md)
 for the architecture and "adding a new event/sink" recipe.

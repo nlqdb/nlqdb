@@ -1,6 +1,8 @@
 // nlqdb-events-worker — drains the `nlqdb-events` queue and dispatches
-// each event to its configured sink(s). Phase 0 has two sinks:
-//   • LogSnag — one-shot user/lifecycle events (`SK-EVENTS-006`).
+// each event to its configured sink(s):
+//   • LogSnag — the pager only: events worth a push (`SK-EVENTS-006`).
+//   • PostHog — every event but `user.auth_failed` (`SK-EVENTS-013`); the
+//     only sink, so the ack/retry owner, for the aggregate signals.
 //   • Tinybird `query_log` — batched `ask.completed` fingerprints (W4).
 //
 // The producer side is `@nlqdb/events`; this worker is the only thing
@@ -29,7 +31,7 @@ import type { EventEnvelope } from "@nlqdb/events";
 import { setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { buildDunningEmail, type PaymentFailedEvent } from "./sinks/dunning-email.ts";
-import { publishToLogSnag } from "./sinks/logsnag.ts";
+import { isLogSnagRouted, publishToLogSnag } from "./sinks/logsnag.ts";
 import { publishToPostHog } from "./sinks/posthog.ts";
 import { publishToQueryLog } from "./sinks/query-log.ts";
 
@@ -63,45 +65,47 @@ export default {
   },
 } satisfies ExportedHandler<Cloudflare.Env, EventEnvelope>;
 
-// Split the batch by destination sink, then dispatch each group.
-// `ask.completed` flows to Tinybird in one HTTP call; everything else
-// goes to its sink(s) one-by-one (LogSnag has no bulk submission).
+// Split the batch by the sink that owns each message's ack/retry:
+// `ask.completed` → Tinybird in one HTTP call; pages → LogSnag one-by-one
+// (no bulk submission); the rest → PostHog, their only sink.
 async function drainBatch(env: Cloudflare.Env, batch: MessageBatch<EventEnvelope>): Promise<void> {
   const queryLogMsgs: Message<EventEnvelope>[] = [];
-  const sinkMsgs: Message<EventEnvelope>[] = [];
+  const pageMsgs: Message<EventEnvelope>[] = [];
+  const analyticsMsgs: Message<EventEnvelope>[] = [];
   for (const msg of batch.messages) {
-    if (msg.body.event.name === "ask.completed") {
-      queryLogMsgs.push(msg);
-    } else {
-      sinkMsgs.push(msg);
-    }
+    if (msg.body.event.name === "ask.completed") queryLogMsgs.push(msg);
+    else if (isLogSnagRouted(msg.body.event)) pageMsgs.push(msg);
+    else analyticsMsgs.push(msg);
   }
   await Promise.all([
     drainQueryLog(env, queryLogMsgs),
-    drainToSinks(env, sinkMsgs),
-    drainToPostHog(env, batch.messages),
+    drainToSinks(env, pageMsgs),
+    drainToPostHog(env, batch.messages, analyticsMsgs),
   ]);
 }
 
-// PostHog fan-out (SK-EVENTS-013). Drains EVERY event in the batch (both
-// the LogSnag-bound lifecycle/demand events AND the query-log-bound
-// `ask.completed` fingerprints) into PostHog so funnels / cohorts /
-// retention see the whole product-event stream. Env-gated on
-// `POSTHOG_API_KEY` + `POSTHOG_HOST` (missing → silent return per
-// SK-EVENTS-005). Best-effort: `publishToPostHog` never throws, and this
-// path never touches `msg.ack()` / `msg.retry()` — LogSnag and the
-// query-log sink own delivery semantics, so a PostHog outage can't
-// re-page the operator or re-drive the other sinks.
+// PostHog fan-out (SK-EVENTS-013): every event in the batch, one call, so
+// funnels / cohorts / retention see the whole stream. Acks or retries only
+// `owned` — the events PostHog alone carries; a PostHog outage never
+// re-drives a LogSnag page or the query log. Unconfigured
+// (`POSTHOG_API_KEY` / `POSTHOG_HOST` unset) → ack-and-drop (SK-EVENTS-005).
 async function drainToPostHog(
   env: Cloudflare.Env,
   msgs: readonly Message<EventEnvelope>[],
+  owned: readonly Message<EventEnvelope>[],
 ): Promise<void> {
   if (msgs.length === 0) return;
-  if (!env.POSTHOG_API_KEY || !env.POSTHOG_HOST) return;
-  await publishToPostHog(
-    { apiKey: env.POSTHOG_API_KEY, host: env.POSTHOG_HOST },
-    msgs.map((m) => m.body),
-  );
+  const landed =
+    !env.POSTHOG_API_KEY ||
+    !env.POSTHOG_HOST ||
+    (await publishToPostHog(
+      { apiKey: env.POSTHOG_API_KEY, host: env.POSTHOG_HOST },
+      msgs.map((m) => m.body),
+    ));
+  for (const msg of owned) {
+    if (landed) msg.ack();
+    else msg.retry();
+  }
 }
 
 // Per-message dispatch to the non-query-log sinks. Each event is its own
@@ -112,7 +116,7 @@ async function drainToSinks(env: Cloudflare.Env, msgs: Message<EventEnvelope>[])
   }
 }
 
-// Dispatches one message to its sink(s): the LogSnag operator alert (which
+// Dispatches one page to its sink(s): the LogSnag operator alert (which
 // decides ack vs retry) plus, for billing.payment_failed, the customer
 // dunning email (SK-STRIPE-013). The email is an independent best-effort
 // sink — gated only on its own RESEND_API_KEY and run first, so it still

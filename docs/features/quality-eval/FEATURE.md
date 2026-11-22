@@ -20,7 +20,7 @@ when-to-load:
 
 - `tools/eval/src/` — the runner: `runner.ts` (driver, lanes, baseline + emit, `--throttle-ms` `SK-QUAL-012`, budget-stop `SK-QUAL-013`, outage guard `SK-QUAL-020`, `--self-consistency` `SK-QUAL-017`) · `exec-retry.ts` (`SK-QUAL-009`) · `score.ts` + `csv.ts` + `sql-exec-child.ts` (EX scorers `SK-QUAL-008`/`010`, killable subprocess `SK-QUAL-021`) · `lanes.ts` (`SK-QUAL-004`/`009`/`022`) · `baseline.ts` + `significance.ts` (`SK-QUAL-006`) · `emit.ts` · `analyze-mismatches.ts` (`SK-QUAL-014`) · `column-coverage.ts` (`SK-QUAL-015`) · `self-consistency.ts` (`SK-QUAL-017`) · `datasets/{bird-mini,spider2-lite,persona-bench,memory-quality}.ts` (`SK-QUAL-007`/`008`/`016`/`018`/`023`) · `output.ts` + `checkpoint.ts` (`SK-QUAL-011`); `tools/eval/baseline-*.json` — the pinned baseline the full run diffs (`SK-QUAL-002`)
 - `.github/workflows/quality-eval-{bird-mini,spider2-lite}.yml` — the CI regression alarm (fixed-sample `smoke` after engine-path merges) + the manual `full` dispatch (`SK-QUAL-002`). No persona-bench / memory-quality workflow — those datasets run only via `--dataset` on the manual runner
-- `apps/api/src/events-feature.ts::recordEvalReport` + `apps/api/src/index.ts` — `POST /v1/events/eval` ingestion · `packages/events/src/types.ts` — `FeatureEval{Weekly,Regression}Event` · `apps/events-worker/src/sinks/logsnag.ts` — `#north-star` mappings
+- `apps/api/src/events-feature.ts::recordEvalReport` + `apps/api/src/index.ts` — `POST /v1/events/eval` ingestion · `packages/events/src/types.ts` — `FeatureEval{Weekly,Regression}Event` · `apps/events-worker/src/sinks/logsnag.ts` — `#north-star` regression page (weekly → PostHog only)
 - `packages/llm/src/router.ts` (system under test, `dialect: "sqlite"`) · `apps/api/src/ask/sql-validate.ts` (schema-fit checks the harness exercises)
 
 ## Decisions
@@ -107,7 +107,7 @@ in a bounded loop (`maxAttempts: 3`, exec-error-only, threads
 `PlanRequest.previousAttempt`). Two lanes scaffold (`free` +
 `agentic-frontier`); single-model `frontier` stays the unscaffolded ablation
 reference. `free_vs_agentic_frontier_delta` lands on `EvalReport` +
-`FeatureEvalWeeklyEvent` + the LogSnag card (diagnostic, `SK-QUAL-004`).
+`FeatureEvalWeeklyEvent` in PostHog (diagnostic, `SK-QUAL-004`).
 
 ### SK-QUAL-010 — BIRD scorer compares positional value tuples (column names ignored), matching canonical `evaluation.py`
 

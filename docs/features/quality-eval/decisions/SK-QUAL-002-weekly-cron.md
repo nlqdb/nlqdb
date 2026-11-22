@@ -19,7 +19,8 @@ resumable runner a long run relies on to survive a free-tier daily cap).
      diagnosis after an engine change or to re-pin the baseline; diffs the
      pinned baseline and emits `feature.eval.weekly` / `feature.eval.regression`
      (EA delta ≤ −5 pp **or** McNemar p < 0.05, `SK-QUAL-006`) through
-     `POST /v1/events/eval` → Queues → events-worker → LogSnag.
+     `POST /v1/events/eval` → Queues → events-worker → PostHog; a
+     regression also pages on LogSnag `#north-star` (`SK-EVENTS-006`).
   There is no weekly re-measure, no accuracy floor, no phase gate and no
   scorecard target on either shape. The full run's output still drives two
   product decisions: confidence-floor calibration for

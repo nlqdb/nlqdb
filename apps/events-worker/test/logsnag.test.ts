@@ -1,5 +1,6 @@
+import type { ProductEvent } from "@nlqdb/events";
 import { describe, expect, it, vi } from "vitest";
-import { buildPayload, publishToLogSnag } from "../src/sinks/logsnag.ts";
+import { buildPayload, isLogSnagRouted, publishToLogSnag } from "../src/sinks/logsnag.ts";
 
 describe("buildPayload", () => {
   it("maps user.first_query into the LogSnag shape", () => {
@@ -32,22 +33,6 @@ describe("buildPayload", () => {
     });
   });
 
-  it("maps user.auth_failed into a notifying users-channel event", () => {
-    const out = buildPayload("nlqdb", {
-      name: "user.auth_failed",
-      email: "x@y.com",
-      emailHash: "abc",
-      path: "/api/auth/magic-link/verify",
-      status: 500,
-    });
-    expect(out).toMatchObject({
-      channel: "users",
-      event: "Sign-in failed",
-      notify: true,
-      tags: { email: "x@y.com", path: "/api/auth/magic-link/verify", status: "500" },
-    });
-  });
-
   it("maps billing.subscription_created into the LogSnag shape", () => {
     const out = buildPayload("nlqdb", {
       name: "billing.subscription_created",
@@ -67,152 +52,6 @@ describe("buildPayload", () => {
         "price-id": "price_pro",
       },
     });
-  });
-
-  it("maps feature.requested.ddl_via_ask onto the demand-signal channel (SK-EVENTS-010)", () => {
-    const out = buildPayload("nlqdb", {
-      name: "feature.requested.ddl_via_ask",
-      principalId: "anon:abc",
-      surface: "hero",
-      rejectReason: "drop_statement",
-    });
-    expect(out).toMatchObject({
-      project: "nlqdb",
-      channel: "demand-signal",
-      event: "DDL via /v1/ask",
-      notify: false,
-      user_id: "anon:abc",
-      tags: { surface: "hero", "reject-reason": "drop_statement" },
-    });
-  });
-
-  it("maps feature.requested.heavier_tier onto the demand-signal channel (SK-EVENTS-010)", () => {
-    const out = buildPayload("nlqdb", {
-      name: "feature.requested.heavier_tier",
-      principalId: "u_5",
-      surface: "chat",
-    });
-    expect(out).toMatchObject({
-      project: "nlqdb",
-      channel: "demand-signal",
-      event: "Heavier tier requested",
-      notify: false,
-      user_id: "u_5",
-      tags: { surface: "chat" },
-    });
-  });
-
-  it("maps feature.requested.larger_account onto the demand-signal channel, distinct from heavier_tier (SK-EVENTS-010)", () => {
-    const out = buildPayload("nlqdb", {
-      name: "feature.requested.larger_account",
-      principalId: "u_9",
-      surface: "chat",
-    });
-    expect(out).toMatchObject({
-      project: "nlqdb",
-      channel: "demand-signal",
-      event: "Larger account requested",
-      notify: false,
-      user_id: "u_9",
-      tags: { surface: "chat" },
-    });
-  });
-
-  it("maps home.surface_wishlist onto the demand-signal channel with surface tag (SK-EVENTS-011)", () => {
-    const out = buildPayload("nlqdb", {
-      name: "home.surface_wishlist",
-      principalId: "wl:abcd1234",
-      surface: "vscode",
-    });
-    expect(out).toMatchObject({
-      project: "nlqdb",
-      channel: "demand-signal",
-      event: "Wishlist click",
-      notify: false,
-      user_id: "wl:abcd1234",
-      tags: { surface: "vscode" },
-    });
-  });
-
-  it("maps feature.destructive.preview_rendered onto north-star with surface tag (SK-TRUST-004)", () => {
-    const out = buildPayload("nlqdb", {
-      name: "feature.destructive.preview_rendered",
-      principalId: "u_42",
-      surface: "chat",
-    });
-    expect(out).toMatchObject({
-      project: "nlqdb",
-      channel: "north-star",
-      event: "Destructive preview",
-      notify: false,
-      user_id: "u_42",
-      tags: { surface: "chat" },
-    });
-  });
-
-  it("maps feature.destructive.committed onto north-star, distinct from preview_rendered (SK-TRUST-004)", () => {
-    const out = buildPayload("nlqdb", {
-      name: "feature.destructive.committed",
-      principalId: "u_42",
-      surface: "cli",
-    });
-    expect(out).toMatchObject({
-      project: "nlqdb",
-      channel: "north-star",
-      event: "Destructive committed",
-      notify: false,
-      user_id: "u_42",
-      tags: { surface: "cli" },
-    });
-  });
-
-  it("maps feature.eval.weekly onto north-star with per-lane EA tags (SK-QUAL-002)", () => {
-    const out = buildPayload("nlqdb", {
-      name: "feature.eval.weekly",
-      runId: "2026-05-18T04:00:00Z",
-      dataset: "bird-mini-dev-sqlite",
-      questionCount: 500,
-      laneExecutionAccuracy: { free: 0.42, frontier: 0.66 },
-      freeVsFrontierDelta: 0.24,
-    });
-    expect(out).toMatchObject({
-      project: "nlqdb",
-      channel: "north-star",
-      event: "Eval weekly",
-      notify: false,
-      tags: {
-        dataset: "bird-mini-dev-sqlite",
-        run: "2026-05-18T04:00:00Z",
-        "ea-free": "42.00",
-        "ea-frontier": "66.00",
-      },
-    });
-    // Single-model delta still surfaced; agentic-delta absent because
-    // the agentic lane didn't run on a pre-3c producer.
-    expect(out.description).toContain("24.00 pts");
-    expect((out.tags as Record<string, string>)["delta-agentic"]).toBeUndefined();
-  });
-
-  it("SK-QUAL-009: surfaces the agentic-frontier lane + headline delta tag when the new field is set", () => {
-    const out = buildPayload("nlqdb", {
-      name: "feature.eval.weekly",
-      runId: "2026-05-18T04:00:00Z",
-      dataset: "bird-mini-dev-sqlite",
-      questionCount: 500,
-      laneExecutionAccuracy: { free: 0.42, frontier: 0.66, "agentic-frontier": 0.82 },
-      freeVsFrontierDelta: 0.24,
-      freeVsAgenticFrontierDelta: 0.4,
-    });
-    expect(out).toMatchObject({
-      tags: {
-        "ea-free": "42.00",
-        "ea-frontier": "66.00",
-        "ea-agentic-frontier": "82.00",
-        "delta-agentic": "40.00",
-      },
-    });
-    expect(out.description).toContain("agentic-Δ 40.00 pts");
-    expect(out.description).toContain("single-Δ 24.00 pts");
   });
 
   it("maps feature.eval.regression with notify=true and trigger tag (SK-QUAL-002)", () => {
@@ -249,8 +88,8 @@ describe("buildPayload", () => {
       trigger: "mcnemar",
       pValue: 0.0123,
     });
-    expect(out.description).toContain("mcnemar");
-    expect(out.description).toContain("p=0.0123");
+    expect(out?.description).toContain("mcnemar");
+    expect(out?.description).toContain("p=0.0123");
   });
 
   it("maps billing.subscription_canceled into the LogSnag shape", () => {
@@ -315,90 +154,76 @@ describe("buildPayload", () => {
       attemptCount: 1,
       hostedInvoiceUrl: null,
     });
-    expect(out.tags).not.toHaveProperty("invoice-url");
+    expect(out?.tags).not.toHaveProperty("invoice-url");
   });
 
-  it("maps db.created to the activation channel without notifying — SK-EVENTS-014", () => {
-    const out = buildPayload("nlqdb", {
-      name: "db.created",
-      dbId: "db_sales_ab12cd",
-      principalId: "anon:deadbeef",
-      anon: true,
-      engine: "postgres",
-      preset: false,
-      tableCount: 3,
-      synthetic: false,
+  it("pushes the day's first user.auth_failed and keeps the rest as silent rows (SK-EVENTS-006)", () => {
+    const failed = {
+      name: "user.auth_failed",
+      email: "x@y.com",
+      emailHash: "abc",
+      path: "/api/auth/magic-link/verify",
+      status: 500,
+    } as const;
+    expect(buildPayload("nlqdb", { ...failed, firstToday: true })).toMatchObject({
+      channel: "users",
+      event: "Sign-in failed",
+      notify: true,
+      tags: { email: "x@y.com", path: "/api/auth/magic-link/verify", status: "500" },
     });
-    expect(out).toMatchObject({
+    expect(buildPayload("nlqdb", { ...failed, firstToday: false })).toMatchObject({
+      notify: false,
+    });
+  });
+
+  it("pages a first db.adopted; a replay is not LogSnag-routed (SK-EVENTS-014)", () => {
+    const adopted = { name: "db.adopted", userId: "u_1", dbId: "db_sales_ab12cd" } as const;
+    expect(buildPayload("nlqdb", { ...adopted, replay: false })).toMatchObject({
       channel: "activation",
-      event: "DB created",
-      notify: false,
-      user_id: "anon:deadbeef",
-      tags: { "db-id": "db_sales_ab12cd", anon: "true", engine: "postgres", synthetic: "false" },
+      notify: true,
+      user_id: "u_1",
     });
+    expect(isLogSnagRouted({ ...adopted, replay: true })).toBe(false);
   });
 
-  it("notifies on a first db.adopted but not on a replay — SK-EVENTS-014", () => {
-    const first = buildPayload("nlqdb", {
-      name: "db.adopted",
-      userId: "u_1",
-      dbId: "db_sales_ab12cd",
-      replay: false,
-    });
-    const replay = buildPayload("nlqdb", {
-      name: "db.adopted",
-      userId: "u_1",
-      dbId: "db_sales_ab12cd",
-      replay: true,
-    });
-    expect(first).toMatchObject({ channel: "activation", notify: true, user_id: "u_1" });
-    expect(replay).toMatchObject({ notify: false, tags: { replay: "true" } });
-  });
-
-  it("maps pricing.page_viewed to the pricing channel with email tag (authed) — SK-EVENTS-012", () => {
-    const out = buildPayload("nlqdb", {
-      name: "pricing.page_viewed",
-      principalId: "u_9",
-      email: "omer@nlqdb.com",
-    });
-    expect(out).toMatchObject({
-      project: "nlqdb",
-      channel: "pricing",
-      event: "Pricing viewed",
-      notify: false,
-      user_id: "u_9",
-      tags: { authed: "true", email: "omer@nlqdb.com" },
-    });
-  });
-
-  it("maps an anon pricing.page_viewed with no email tag", () => {
-    const out = buildPayload("nlqdb", {
-      name: "pricing.page_viewed",
-      principalId: "pv:0123456789abcdef",
-      email: null,
-    });
-    expect(out).toMatchObject({
-      channel: "pricing",
-      user_id: "pv:0123456789abcdef",
-      tags: { authed: "false" },
-    });
-    expect(out.tags).not.toHaveProperty("email");
-  });
-
-  it("maps pricing.plan_selected with plan + email tags — SK-EVENTS-012", () => {
-    const out = buildPayload("nlqdb", {
-      name: "pricing.plan_selected",
-      principalId: "u_9",
-      plan: "hobby",
-      email: "omer@nlqdb.com",
-    });
-    expect(out).toMatchObject({
-      channel: "pricing",
-      event: "Plan selected",
-      notify: false,
-      user_id: "u_9",
-      tags: { plan: "hobby", authed: "true", email: "omer@nlqdb.com" },
-    });
+  it("routes only pages to LogSnag: every aggregate signal stays in PostHog (SK-EVENTS-006)", () => {
+    const aggregates: ProductEvent[] = [
+      {
+        name: "feature.requested.ddl_via_ask",
+        principalId: "a",
+        surface: "hero",
+        rejectReason: "drop_statement",
+      },
+      { name: "feature.requested.heavier_tier", principalId: "a", surface: "chat" },
+      { name: "feature.requested.larger_account", principalId: "a", surface: "chat" },
+      { name: "feature.destructive.preview_rendered", principalId: "a", surface: "chat" },
+      { name: "feature.destructive.committed", principalId: "a", surface: "cli" },
+      { name: "home.surface_wishlist", principalId: "wl:a", surface: "vscode" },
+      { name: "pricing.page_viewed", principalId: "a", email: null },
+      { name: "pricing.plan_selected", principalId: "a", plan: "hobby", email: null },
+      {
+        name: "db.created",
+        dbId: "db_1",
+        principalId: "a",
+        anon: true,
+        engine: "postgres",
+        preset: false,
+        tableCount: 3,
+        synthetic: false,
+      },
+      {
+        name: "feature.eval.weekly",
+        runId: "r",
+        dataset: "bird-mini-dev-sqlite",
+        questionCount: 1,
+        laneExecutionAccuracy: { free: 0.5 },
+        freeVsFrontierDelta: null,
+      },
+    ];
+    for (const event of aggregates) {
+      expect(isLogSnagRouted(event)).toBe(false);
+      expect(buildPayload("nlqdb", event)).toBeNull();
+    }
   });
 });
 

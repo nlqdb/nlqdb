@@ -64,6 +64,7 @@ export default defineConfig(async () => {
               "test/first-error-email.test.ts",
               "test/internal-alert.test.ts",
               "test/auth-failure-report.test.ts",
+              "test/events-emitter.test.ts",
               "test/demo.test.ts",
               "test/chat-demo-shortcut.test.ts",
               "test/icp-scrape.test.ts",
