@@ -69,4 +69,4 @@ run. Current state only — no changelog. History: `git log` +
 
 ## Last change
 
-**2026-11-22 (run 305)** — **LogSnag is the pager only (ROADMAP §0): aggregate events go to PostHog alone (it owns their ack/retry), one `user.auth_failed` push per UTC day, no events from preview versions. Replayed pr-1297 walk: LogSnag rows 25 → 21, pushes 21 → 2 (auth-failure pushes per outage 20 → 1); PostHog events unchanged.** Next: every box ⛔ or date-gated again — the founder's spike call, else the SEO brand re-read on 11-25.
+**2026-11-22 (run 305)** — **LogSnag is the pager only (ROADMAP §0): aggregate events go to PostHog alone (it owns their ack/retry), one `user.auth_failed` push per UTC day, no events from preview versions. Replayed pr-1297 walk: LogSnag rows 25 → 21, pushes 21 → 2 (auth-failure pushes per outage 20 → 1); PostHog events unchanged.** Next: ROADMAP §0, the browser LogSnag hook → PostHog (found in review: it still logs every marketing click, token in page source).
