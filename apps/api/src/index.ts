@@ -867,7 +867,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         // Fire-and-forget through ctx.waitUntil so the 429 doesn't
         // wait on the queue enqueue.
         c.executionCtx.waitUntil(
-          buildEventEmitter(c.env.EVENTS_QUEUE).emit({
+          buildEventEmitter(c.env).emit({
             name: "feature.requested.heavier_tier",
             principalId: principal.id,
             surface,
@@ -1773,7 +1773,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
               data: JSON.stringify(errorEnvelope(outcome.error).body),
             });
             emitFeatureSignal(
-              buildEventEmitter(c.env.EVENTS_QUEUE),
+              buildEventEmitter(c.env),
               c.executionCtx,
               principal.id,
               surface,
@@ -1874,7 +1874,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           c.header("Retry-After", String(Math.max(0, resetAt - now)));
         }
         emitFeatureSignal(
-          buildEventEmitter(c.env.EVENTS_QUEUE),
+          buildEventEmitter(c.env),
           c.executionCtx,
           principal.id,
           surface,
@@ -1970,7 +1970,7 @@ app.post("/v1/run", requirePrincipal, async (c) => {
           span.setAttribute("nlqdb.run.outcome", "rate_limited_ip");
           // `SK-EVENTS-010` — same demand-signal class as the `/v1/ask` anon trip.
           c.executionCtx.waitUntil(
-            buildEventEmitter(c.env.EVENTS_QUEUE).emit({
+            buildEventEmitter(c.env).emit({
               name: "feature.requested.heavier_tier",
               principalId: principal.id,
               surface,
@@ -2033,7 +2033,7 @@ app.post("/v1/run", requirePrincipal, async (c) => {
         // per-IP gate above (`checkQuery`) is what fires `heavier_tier`.
         if (outcome.error.code === "rate_limited") {
           c.executionCtx.waitUntil(
-            buildEventEmitter(c.env.EVENTS_QUEUE).emit({
+            buildEventEmitter(c.env).emit({
               name: "feature.requested.larger_account",
               principalId: principal.id,
               surface,
@@ -2339,7 +2339,7 @@ app.post("/v1/events/wishlist", async (c) => {
         return fail(c, "invalid_body");
       }
       const result = await recordWishlist(
-        { kv: c.env.KV, events: buildEventEmitter(c.env.EVENTS_QUEUE) },
+        { kv: c.env.KV, events: buildEventEmitter(c.env) },
         body.body.surface,
         c.req.header("cf-connecting-ip") ?? null,
       );
@@ -2389,7 +2389,7 @@ app.post("/v1/events/pricing", async (c) => {
         identity = null;
       }
       const result = await recordPricingEvent(
-        { kv: c.env.KV, events: buildEventEmitter(c.env.EVENTS_QUEUE) },
+        { kv: c.env.KV, events: buildEventEmitter(c.env) },
         body.body,
         identity,
         c.req.header("cf-connecting-ip") ?? null,
@@ -2435,7 +2435,7 @@ app.post("/v1/events/eval", async (c) => {
         return fail(c, "invalid_body");
       }
       const result = recordEvalReport(
-        buildEventEmitter(c.env.EVENTS_QUEUE),
+        buildEventEmitter(c.env),
         c.req.header("authorization") ?? null,
         expected,
         body.body,
@@ -2506,7 +2506,7 @@ app.post("/v1/stripe/webhook", async (c) => {
       webhookSecret: c.env.STRIPE_WEBHOOK_SECRET ?? "",
       db: c.env.DB,
       r2: c.env.ASSETS,
-      events: buildEventEmitter(c.env.EVENTS_QUEUE),
+      events: buildEventEmitter(c.env),
       bypassSignatureVerification: mockStripe,
       isProd,
     },
@@ -4758,7 +4758,7 @@ app.post("/v1/chat/messages", requireSession, async (c) => {
         c.header("Retry-After", String(Math.max(0, resetAt - now)));
       }
       emitFeatureSignal(
-        buildEventEmitter(c.env.EVENTS_QUEUE),
+        buildEventEmitter(c.env),
         c.executionCtx,
         session.user.id,
         "chat",
@@ -5133,7 +5133,7 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
       c.executionCtx.waitUntil(
         reportAuthServerError({
           env: c.env,
-          events: buildEventEmitter(c.env.EVENTS_QUEUE),
+          events: buildEventEmitter(c.env),
           req: c.req.raw,
           body,
           status,

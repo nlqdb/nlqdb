@@ -25,8 +25,9 @@
   an unknown verb (when CLI ships) emits
   `feature.requested.unknown_cli_verb`. The wishlist row in
   [`progress.md`](../progress.md) §0 continues to fire
-  `home.surface_wishlist`. All events stay in the same LogSnag sink;
-  no client SDK is added. Cost: ≤ 1 ms billed CPU per emit, no
+  `home.surface_wishlist`. All events flow through the one events
+  pipeline to PostHog (LogSnag is the pager only, amended 2026-11-22,
+  `SK-EVENTS-006`); no client SDK is added. Cost: ≤ 1 ms billed CPU per emit, no
   user-facing latency (per the `ctx.waitUntil` pattern in
   [`email-and-marketing.md` §4](../research/email-and-marketing.md)).
 - **Alternatives rejected:**

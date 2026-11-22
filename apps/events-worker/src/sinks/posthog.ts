@@ -17,12 +17,11 @@
 // already carry a random `evt.<uuid>` envelope id, so each stays
 // distinct — exactly what those metrics need.
 //
-// Best-effort fan-out: this sink NEVER flips a message's ack/retry.
-// LogSnag (and the Tinybird query_log path) own delivery semantics; a
-// PostHog outage must not re-page the operator or re-drive LogSnag. So
-// `publishToPostHog` swallows its own errors onto the OTel span
-// (`nlqdb.events.sink.posthog`) — mirrors the dunning-email best-effort
-// posture in `index.ts`.
+// Delivery: for events LogSnag doesn't page on (`SK-EVENTS-006`) PostHog
+// is the only sink, so `publishToPostHog` reports whether the batch landed
+// and the worker acks or retries those on it. It never throws: a PostHog
+// failure lands on the OTel span (`nlqdb.events.sink.posthog`) and never
+// flips a LogSnag page's or the query log's ack/retry.
 
 import type { EventEnvelope, ProductEvent } from "@nlqdb/events";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
@@ -123,19 +122,18 @@ export async function toBatchItem(envelope: EventEnvelope): Promise<PostHogBatch
 }
 
 // Drain the whole batch to PostHog in one `/batch` HTTP call. Never
-// throws — records failures on the span and returns. Callers must NOT
-// gate message ack/retry on this (see file header).
+// throws — records failures on the span and returns whether it landed.
 export async function publishToPostHog(
   config: PostHogConfig,
   envelopes: EventEnvelope[],
   fetchImpl: typeof fetch = fetch,
-): Promise<void> {
+): Promise<boolean> {
   // `user.auth_failed` carries an unverified email: an ops ping for LogSnag, not analytics.
   envelopes = envelopes.filter((e) => e.event.name !== "user.auth_failed");
-  if (envelopes.length === 0) return;
+  if (envelopes.length === 0) return true;
 
   const tracer = trace.getTracer("@nlqdb/events-worker");
-  await tracer.startActiveSpan("nlqdb.events.sink.posthog", async (span) => {
+  return tracer.startActiveSpan("nlqdb.events.sink.posthog", async (span) => {
     span.setAttribute("nlqdb.events.batch_size", envelopes.length);
     try {
       const batch = await Promise.all(envelopes.map(toBatchItem));
@@ -148,14 +146,17 @@ export async function publishToPostHog(
       if (!res.ok) {
         const body = await res.text().catch(() => "<no body>");
         span.setStatus({ code: SpanStatusCode.ERROR, message: `posthog ${res.status}: ${body}` });
+        console.error(`posthog batch failed (${envelopes.length} events): ${res.status}`);
+        return false;
       }
+      return true;
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-      // Swallowed by design — analytics fan-out is best-effort; LogSnag
-      // owns ack/retry. Logged for `wrangler tail` when OTel isn't attached.
+      // Logged for `wrangler tail` when OTel isn't attached.
       console.error(`posthog batch failed (${envelopes.length} events): ${error.message}`);
+      return false;
     } finally {
       span.end();
     }

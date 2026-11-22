@@ -255,7 +255,16 @@ export type ProductEvent =
   // sign-in body or a verify token remembered in KV). One per email per UTC
   // day via the envelope id and capped per day in apps/api, so neither an
   // outage nor invented emails can drain LogSnag's quota. Not sent to PostHog.
-  | { name: "user.auth_failed"; email: string; emailHash: string; path: string; status: number }
+  // `firstToday`: the UTC day's first report, the only one that pushes — the
+  // rest land as silent LogSnag rows, the outage's apology list.
+  | {
+      name: "user.auth_failed";
+      email: string;
+      emailHash: string;
+      path: string;
+      status: number;
+      firstToday: boolean;
+    }
   | {
       name: "billing.subscription_created";
       userId: string;

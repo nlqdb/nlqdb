@@ -87,7 +87,7 @@ export function buildDbCreateDeps(
       // SK-EVENTS-014: activation-funnel emitter. Falls back to the
       // noop emitter when EVENTS_QUEUE is unbound (local wrangler dev),
       // per SK-EVENTS-003.
-      events: buildEventEmitter(envBindings.EVENTS_QUEUE),
+      events: buildEventEmitter(envBindings),
       // SK-APIKEYS-001: mint pk_live_ key for the newly-provisioned DB.
       mintPkLive: (dbId, tenantId) =>
         mintPkLiveKey(envBindings.DB, apiKeyHmacSecret(envBindings), dbId, tenantId),

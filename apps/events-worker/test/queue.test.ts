@@ -393,4 +393,63 @@ describe("events-worker queue consumer", () => {
     expect(msgs[0]?.ack).toHaveBeenCalledTimes(1);
     expect(msgs[0]?.retry).not.toHaveBeenCalled();
   });
+
+  // SK-EVENTS-006 — LogSnag is the pager only: an aggregate signal never
+  // reaches it, and PostHog (its only sink) owns its ack/retry.
+  const wishlist: EventEnvelope = {
+    id: "home.surface_wishlist.wl:a.vscode.2026-11-22",
+    ts: Date.now(),
+    event: { name: "home.surface_wishlist", principalId: "wl:a", surface: "vscode" },
+  };
+  const fullEnv = {
+    LOGSNAG_TOKEN: "tok_abc",
+    LOGSNAG_PROJECT: "nlqdb",
+    POSTHOG_API_KEY: "phc_test",
+    POSTHOG_HOST: "https://eu.i.posthog.com",
+  } as Cloudflare.Env;
+
+  it("sends an aggregate signal to PostHog only, and acks once it lands", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { batch, msgs } = makeBatch([wishlist]);
+    if (!handler.queue) throw new Error("expected default export to define a queue handler");
+    await handler.queue(batch, fullEnv, ctx);
+
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][];
+    expect(calls.map(([u]) => u)).toEqual(["https://eu.i.posthog.com/batch/"]);
+    expect(msgs[0]?.ack).toHaveBeenCalledTimes(1);
+    expect(msgs[0]?.retry).not.toHaveBeenCalled();
+  });
+
+  it("retries an aggregate signal when PostHog fails, without re-driving the page beside it", async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      url.includes("posthog.com")
+        ? new Response("boom", { status: 500 })
+        : new Response("{}", { status: 200 }),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { batch, msgs } = makeBatch([envelope, wishlist]);
+    if (!handler.queue) throw new Error("expected default export to define a queue handler");
+    await handler.queue(batch, fullEnv, ctx);
+
+    expect(msgs[0]?.ack).toHaveBeenCalledTimes(1);
+    expect(msgs[0]?.retry).not.toHaveBeenCalled();
+    expect(msgs[1]?.retry).toHaveBeenCalledTimes(1);
+    expect(msgs[1]?.ack).not.toHaveBeenCalled();
+  });
+
+  it("acks-and-drops an aggregate signal when PostHog is unconfigured", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { batch, msgs } = makeBatch([wishlist]);
+    const env = { LOGSNAG_TOKEN: "tok_abc", LOGSNAG_PROJECT: "nlqdb" } as Cloudflare.Env;
+    if (!handler.queue) throw new Error("expected default export to define a queue handler");
+    await handler.queue(batch, env, ctx);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(msgs[0]?.ack).toHaveBeenCalledTimes(1);
+  });
 });

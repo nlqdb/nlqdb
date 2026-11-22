@@ -135,6 +135,7 @@ describe("publishToPostHog", () => {
       emailHash: "h",
       path: "/api/auth/sign-in/magic-link",
       status: 500,
+      firstToday: true,
     });
     await publishToPostHog(
       { apiKey: "phc_test", host: "https://eu.i.posthog.com" },
@@ -154,7 +155,7 @@ describe("publishToPostHog", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("swallows a non-2xx response (best-effort — never throws)", async () => {
+  it("reports a non-2xx response as not landed, never throws", async () => {
     const fetchMock = vi.fn(async () => new Response("rate limited", { status: 429 }));
     await expect(
       publishToPostHog(
@@ -162,10 +163,10 @@ describe("publishToPostHog", () => {
         [env],
         fetchMock as unknown as typeof fetch,
       ),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe(false);
   });
 
-  it("swallows a transport throw (best-effort — never throws)", async () => {
+  it("reports a transport throw as not landed, never throws", async () => {
     const fetchMock = vi.fn(async () => {
       throw new Error("network down");
     });
@@ -175,6 +176,6 @@ describe("publishToPostHog", () => {
         [env],
         fetchMock as unknown as typeof fetch,
       ),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe(false);
   });
 });

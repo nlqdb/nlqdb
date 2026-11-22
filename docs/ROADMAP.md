@@ -10,11 +10,7 @@ are defined in `GLOBAL-043` item 9.
 
 ## 0 — Fix first
 
-- [ ] LogSnag is the pager only, and pages once per outage. On 2026-11-21 the free quota hit 2,023 / 2,500 logs (≥ 80 %, emailed to the founder); at the cap, real pages (payment failed, sign-in outage) drop silently. Founder OK'd (2026-11-21), amending in the same PR `GLOBAL-024` ("all events stay in the same LogSnag sink"), `SK-EVENTS-006` / `-010` / `-011` / `-012` / `-013` / `-014`, `SK-TRUST-004` and `SK-QUAL-002` (`#north-star`) and the runbook's "sole sink" rows:
-  - send LogSnag only `notify: true` events; every `notify: false` event (demand-signal, pricing, `db.created`, the `#north-star` KPIs) stays in PostHog, which already receives them and, as their only sink, takes over their ack/retry from LogSnag
-  - push only the day's first `user.auth_failed` and keep the rest as silent LogSnag rows — the one `notify: false` exception, since that event never goes to PostHog and its rows are the apology list. One review walk's 30 magic-link 500s on the `pr-1297` preview pushed 20 alerts (`AUTH_FAILED_DAILY_CAP`, `SK-EVENTS-006`)
-  - preview versions emit no events: they share prod's `EVENTS_QUEUE`
-  - Number: LogSnag logs / month, ~2,000 → the pages plus `user.auth_failed` rows; alert pushes per outage, 20 → 1
+- [ ] The browser LogSnag hook moves to PostHog. `Base.astro`'s inline hook (`lib/logsnag.ts`, `GLOBAL-024`) still posts every marketing / onboarding click (`home.*` landing → TTFV funnel, `solve.*`, `vs.*`, `agents.*`, `blog.*`) to LogSnag as a silent row, with the server's `LOGSNAG_TOKEN` baked into page source, so anyone can drain the quota or push a fake page. Route it through a first-party `/v1/events/*` POST → `EVENTS_QUEUE` → PostHog (the `SK-EVENTS-012` pattern), drop `PUBLIC_LOGSNAG_*` from both deploy workflows. Number: LogSnag rows / month → the pages plus `user.auth_failed` rows; LogSnag tokens in shipped HTML 1 → 0
 
 ## 1b — Real-traffic proof
 

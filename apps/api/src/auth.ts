@@ -233,7 +233,7 @@ export const auth = betterAuth({
             // this stays an activation event and never degenerates into
             // the sign-in stream `SK-EVENTS-006` bars.
             if (result.dbId) {
-              await buildEventEmitter(env.EVENTS_QUEUE).emit({
+              await buildEventEmitter(env).emit({
                 name: "db.adopted",
                 userId: newSession.user.id,
                 dbId: result.dbId,

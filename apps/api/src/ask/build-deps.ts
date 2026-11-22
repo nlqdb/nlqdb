@@ -72,7 +72,7 @@ export function buildAskDeps(
     exec: (db, sql, signal, params) => buildExec(db, sql, signal, scope, params),
     rateLimiter: makeRateLimiter(envBindings.DB),
     firstQuery: makeFirstQueryTracker(envBindings.KV),
-    events: buildEventEmitter(envBindings.EVENTS_QUEUE),
+    events: buildEventEmitter(envBindings),
     recentTables: makeRecentTablesStore(envBindings.KV),
     // SK-ASK-023 — NODE_ENV distinguishes preview rows (e2e staging)
     // from production rows at pull time.

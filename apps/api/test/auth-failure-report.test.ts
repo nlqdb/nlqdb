@@ -185,8 +185,28 @@ describe("reportAuthServerError", () => {
     for (let i = 0; i < AUTH_FAILED_DAILY_CAP + 5; i++) await send("retry@ex.am");
     await send("other@ex.am");
     expect(emit.mock.calls.map((c) => (c as unknown[])[0])).toEqual([
-      expect.objectContaining({ email: "retry@ex.am" }),
-      expect.objectContaining({ email: "other@ex.am" }),
+      expect.objectContaining({ email: "retry@ex.am", firstToday: true }),
+      expect.objectContaining({ email: "other@ex.am", firstToday: false }),
     ]);
+  });
+
+  it("marks only the UTC day's first report to push: one page per outage (SK-EVENTS-006)", async () => {
+    const { kv } = fakeKv();
+    const emitted: ProductEvent[] = [];
+    const send = (i: number, utcDay: string) =>
+      reportAuthServerError({
+        env: { MOCK_IDP: "1", KV: kv },
+        events: { emit: async (e) => void emitted.push(e) },
+        req: new Request("https://app.nlqdb.com/api/auth/sign-in/magic-link", { method: "POST" }),
+        body: `{"email":"u${i}@ex.am"}`,
+        status: 500,
+        utcDay,
+        thrown: true,
+      });
+    for (let i = 0; i < 30; i++) await send(i, "2026-11-21");
+    await send(0, "2026-11-22");
+    const pushes = emitted.filter((e) => e.name === "user.auth_failed" && e.firstToday);
+    expect(emitted).toHaveLength(AUTH_FAILED_DAILY_CAP + 1);
+    expect(pushes.map((e) => (e as { email: string }).email)).toEqual(["u0@ex.am", "u0@ex.am"]);
   });
 });
