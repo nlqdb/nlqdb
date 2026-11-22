@@ -66,7 +66,7 @@ watching. Human-only needs go to `blocked-by-human.md`; notify only per
    agent-movable number + a one-line why, chosen from the audit. If the
    founder wrote one this week, keep theirs — never overwrite a founder
    edit. **Default: the number of the first unfinished step in `daily.md`
-   step 2's fixed sequence** (`docs/ROADMAP.md` phases 1 → 2 → 3); once the
+   step 2's fixed sequence** (`docs/ROADMAP.md` phases 0 → 1 → 2 → 3); once the
    founder's builders are recruited, **returning builders in week 2 (n/10)** —
    the love gate (`GLOBAL-043`).
    Agent-movable means **movable at $0** (`docs/cost-ladder.md` — no spend

@@ -175,7 +175,7 @@ scorecard update into the scorecard, and every MISS is inspected this run.
 **No lever picker — the run takes the first open, unblocked box of
 [`docs/ROADMAP.md`](../../docs/ROADMAP.md)** (founder steer 2026-10-22,
 [`GLOBAL-043`](../../docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md);
-rule 6 and a met draft still come first). Its phases are 1a attach build on
+rule 6 and a met draft still come first). Its phases are 0 fix-first → 1a attach build on
 synthetic DBs → 1b spike + rateme12 D1 attach → 2 deletion series → 3
 playbook kinds; each phase names its number, and its sequencing rationale
 says when 1b outranks 1a. A box spanning runs takes the next run too; a
