@@ -11,12 +11,12 @@ PRs. Focus set: **LogSnag logs this month, 2,023 / 2,500 → pages only.**
 (a scanner, one Better Auth KV write per request). Each took signed-in
 `app.nlqdb.com` down until 00:00 UTC. #1297 moved per-IP limits to the
 edge binding; the D1 hog is mailbox #1 (4 d). rateme12 alone read 2.82 M
-(56 %) on 11-20. LogSnag hit 81 % of its cap the same day: the focus.
+(56 %) on 11-20. LogSnag hit 81 % of its cap on 11-21: the focus.
 
 ## Monoculture (check 2): the sequence ran dry
 
-2 runs engine (293–294), 4 SEO (295–298), 1 instrument (299–300), 4
-nulls (301–304). Last focus, KPI B on rateme12's D1, stayed **0**: Tier 1
+2 runs engine (293–294), 4 SEO (295–298), 2 instrument (299–300, one
+PR), 4 nulls (301–304). Last focus, KPI B on rateme12's D1, stayed **0**: Tier 1
 finds no missing index, and the box is ⛔ on the founder (#2 spike call,
 3 d overdue; #3 recruit re-gate). The null rule worked: no busywork.
 
@@ -49,8 +49,8 @@ deletion series removes.
 
 Every ID, path and script in `daily.md` and `weekly.md` resolves.
 `ROADMAP.md` gained §0 fix-first (#1298); `daily.md` step 2 listed only
-phases 1a → 3. This PR adds "0 fix-first". `weekly.md` output 1 still says
-"phases 1 → 2 → 3".
+phases 1a → 3, `weekly.md` output 1 "1 → 2 → 3". This PR adds phase 0 to
+both.
 
 ## README roadmap (check 7)
 
