@@ -196,11 +196,12 @@ One loop — observe → propose → apply → verify → revert — on your Pos
 - ~ Postgres spike — one index proposed, applied and measured (before/after
   p95) on a real-traffic database (the spike DB attaches read-only in CI,
   first proposal in 2.2–3.7 s; its one applied index kept at the 72 h
-  verify, hot-fingerprint p95 est. 65.2 → 1.7 ms; pass/fail is the
-  founder's call)
+  verify and still holding at 228 h, hot-fingerprint p95 est. 65.2 → 2.0 ms;
+  pass/fail is the founder's call)
 - ~ D1 attach on the real rateme12 — the dogfood (attached read-only in
-  CI, 11 catalog proposals in ~0.4 s; one applied index with rows read
-  before/after is next — its heavy reads are joins, so Tier 1 reads those next)
+  CI, 11 catalog proposals in ~0.4 s; Tier 1 now plans its joins too and
+  finds no missing index, so its first applied change waits on a workload
+  change or a new proposal kind)
 - ◯ The playbook — unused-index drops, bloat, retypes, partitioning,
   retention, placement
 
