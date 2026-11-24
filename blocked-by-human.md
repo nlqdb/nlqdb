@@ -78,7 +78,7 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   loop targets. `bun scripts/cf-quota.ts` already reads their rows-read totals.
   Run 310's four-null proposal (`daily.md` step 2); not self-executed.
 - **Ask:** recommended (a) — heavy reads, read-only · KPI B, outage root ·
-  another repo's prod DB · wait for builders. Options: (a) attach both
+  another repo's prod DB · wait for builders. Options: (a) attach those two
   read-only like rateme12 (002 brief), proposals only, an apply waits on that
   repo's PR; (b) also let the loop apply and revert on them; (c) no. Reply
   in chat.
