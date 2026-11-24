@@ -65,6 +65,24 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   p95 est. over 4,627 calls; (b) **fail** — evidence kept, nothing deleted.
   Reply in chat; the agent records it in [`docs/ROADMAP.md`](docs/ROADMAP.md) §2.
 
+## Attach the shared account's other D1 apps as dogfood workloads
+
+- **Type:** decision · ⏱ ~2 min · since 2026-11-24
+- **Done so far:** four null runs (307–310): every `ROADMAP.md` box is ⛔ or
+  date-gated, and rateme12 has no missing index, so KPI B on a real D1 is 0.
+  The same Cloudflare account holds D1 apps nlqdb doesn't watch (`omer-board`
+  a steady 0.7–0.85 M a day); two have a spike day past rateme12:
+  `swiss-prices-comparison` (**132.9 M rows** on 11-18, the outage; 0.3–0.6 M
+  a day since 11-17, ≤ 0.02 M before) and `successful` (0.96 M on 11-23, top
+  reader; ≤ 0.31 M other days) — the heavy reads the
+  loop targets. `bun scripts/cf-quota.ts` already reads their rows-read totals.
+  Run 310's four-null proposal (`daily.md` step 2); not self-executed.
+- **Ask:** recommended (a) — heavy reads, read-only · KPI B, outage root ·
+  another repo's prod DB · wait for builders. Options: (a) attach those two
+  read-only like rateme12 (002 brief), proposals only, an apply waits on that
+  repo's PR; (b) also let the loop apply and revert on them; (c) no. Reply
+  in chat.
+
 ## Re-gate recruiting 10 builders: rateme12 has no missing index
 
 - **Type:** decision · ⏱ ~2 min · since 2026-11-16
