@@ -70,10 +70,11 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
 - **Type:** decision · ⏱ ~2 min · since 2026-11-24
 - **Done so far:** four null runs (307–310): every `ROADMAP.md` box is ⛔ or
   date-gated, and rateme12 has no missing index, so KPI B on a real D1 is 0.
-  The same Cloudflare account holds two busier D1 apps nlqdb doesn't watch:
-  `swiss-prices-comparison` (one day at **132.9 M rows**, the 11-18 outage)
-  and `successful` (top reader 11-23, 0.96 M) — the heavy reads the loop
-  targets. `bun scripts/cf-quota.ts` already reads their rows-read totals.
+  The same Cloudflare account holds two D1 apps nlqdb doesn't watch, each
+  with a spike day past rateme12: `swiss-prices-comparison` (**132.9 M
+  rows** on 11-18, the outage; 0.3–0.6 M other days) and `successful`
+  (0.96 M on 11-23, top reader; ≤ 0.31 M other days) — the heavy reads the
+  loop targets. `bun scripts/cf-quota.ts` already reads their rows-read totals.
   Run 310's four-null proposal (`daily.md` step 2); not self-executed.
 - **Ask:** recommended (a) — heavy reads, read-only · KPI B, outage root ·
   another repo's prod DB · wait for builders. Options: (a) attach both
