@@ -72,13 +72,14 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   date-gated, and rateme12 has no missing index, so KPI B on a real D1 is 0.
   The same Cloudflare account holds two busier D1 apps nlqdb doesn't watch:
   `swiss-prices-comparison` (one day at **132.9 M rows**, the 11-18 outage)
-  and `successful` (top reader 11-23, 0.96 M). That is the loop's exact case.
-  `bun scripts/cf-quota.ts` already reads their rows-read totals. Run 310's
-  four-null proposal (`daily.md` step 2); not self-executed.
-- **Ask:** recommended (a) — real scans, read-only · KPI B, outage root ·
+  and `successful` (top reader 11-23, 0.96 M) — the heavy reads the loop
+  targets. `bun scripts/cf-quota.ts` already reads their rows-read totals.
+  Run 310's four-null proposal (`daily.md` step 2); not self-executed.
+- **Ask:** recommended (a) — heavy reads, read-only · KPI B, outage root ·
   another repo's prod DB · wait for builders. Options: (a) attach both
   read-only like rateme12 (002 brief), proposals only, an apply waits on that
-  repo's PR; (b) also apply the index here; (c) no. Reply in chat.
+  repo's PR; (b) also let the loop apply and revert on them; (c) no. Reply
+  in chat.
 
 ## Re-gate recruiting 10 builders: rateme12 has no missing index
 
