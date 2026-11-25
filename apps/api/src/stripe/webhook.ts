@@ -394,10 +394,15 @@ async function handleSubscriptionDeleted(
   const resolved = await resolveSubUser(deps.db, sub);
   if (!resolved) return;
 
-  await deps.db
-    .prepare("UPDATE customers SET status = 'canceled', updated_at = unixepoch() WHERE user_id = ?")
-    .bind(resolved.userId)
-    .run();
+  // Through the same guarded write as created/updated (SK-STRIPE-016), so a
+  // late `deleted` for a superseded subscription can't cancel the live one.
+  await syncSubscriptionFields(
+    deps.db,
+    sub,
+    extractSubscriptionFields(sub),
+    resolved.userId,
+    "canceled",
+  );
 
   const priceId = sub.items.data[0]?.price.id ?? null;
   if (!priceId) {
@@ -494,8 +499,11 @@ async function resolveSubUser(
 // Idempotent `user_id → (stripe_customer_id, stripe_subscription_id)` link.
 // Shared by checkout.session.completed (the normal row creator) and the
 // out-of-order subscription.created fallback. Defaults status to
-// 'incomplete'; ON CONFLICT touches only the Stripe ids so a re-run can't
-// clobber a status the subscription.* handlers already synced.
+// 'incomplete'; ON CONFLICT keeps the status while the subscription id is
+// unchanged, so a re-run can't clobber a status the subscription.* handlers
+// already synced, and resets it to 'incomplete' when a re-subscribe links a
+// new subscription, so the old one's terminal status doesn't lock it out
+// (SK-STRIPE-016).
 async function upsertCustomerLink(
   db: D1Database,
   userId: string,
@@ -508,6 +516,8 @@ async function upsertCustomerLink(
         "VALUES (?, ?, ?, 'incomplete') " +
         "ON CONFLICT(user_id) DO UPDATE SET " +
         "stripe_customer_id = excluded.stripe_customer_id, " +
+        "status = CASE WHEN stripe_subscription_id IS excluded.stripe_subscription_id " +
+        "THEN status ELSE 'incomplete' END, " +
         "stripe_subscription_id = excluded.stripe_subscription_id, " +
         "updated_at = unixepoch()",
     )
@@ -535,17 +545,30 @@ async function lookupUserByCustomer(db: D1Database, customerId: string): Promise
   return row?.user_id ?? null;
 }
 
+// SK-STRIPE-016 — Stripe doesn't order webhooks, so a subscription event
+// writes the row only when it is for the row's current subscription and that
+// one isn't terminal yet, or it brings a new subscription to a row whose
+// subscription is absent or terminal. A late `updated` can't revive a
+// `canceled` subscription, and an old subscription's events can't overwrite
+// the live one. Both binds are `sub.id`.
+const TERMINAL_STATUSES = "('canceled', 'incomplete_expired')";
+const SUBSCRIPTION_WRITE_GUARD =
+  `((stripe_subscription_id = ? AND status NOT IN ${TERMINAL_STATUSES}) OR ` +
+  `(stripe_subscription_id IS NOT ? AND ` +
+  `(stripe_subscription_id IS NULL OR status IN ${TERMINAL_STATUSES})))`;
+
 async function syncSubscriptionFields(
   db: D1Database,
   sub: Stripe.Subscription,
   fields: SubscriptionFields,
   userId: string,
+  status: string = sub.status,
 ): Promise<void> {
   // SK-GTM-009 — `converted_at` stamps the FIRST transition into a
   // paying status and is never overwritten (COALESCE keeps the
   // original moment across renewals and status churn). This is the
   // only write site.
-  await db
+  const result = await db
     .prepare(
       "UPDATE customers SET " +
         "stripe_subscription_id = ?, status = ?, current_period_end = ?, " +
@@ -553,18 +576,30 @@ async function syncSubscriptionFields(
         "converted_at = CASE WHEN ? IN ('active', 'trialing') " +
         "THEN COALESCE(converted_at, unixepoch()) ELSE converted_at END, " +
         "updated_at = unixepoch() " +
-        "WHERE user_id = ?",
+        `WHERE user_id = ? AND ${SUBSCRIPTION_WRITE_GUARD}`,
     )
     .bind(
       sub.id,
-      sub.status,
+      status,
       fields.currentPeriodEnd,
       fields.cancelAtPeriodEnd,
       fields.priceId,
-      sub.status,
+      status,
       userId,
+      sub.id,
+      sub.id,
     )
     .run();
+  if (result.meta?.changes === 0) {
+    console.info(
+      JSON.stringify({
+        level: "info",
+        msg: "subscription_event_superseded",
+        subscription_id: sub.id,
+        status,
+      }),
+    );
+  }
 }
 
 function warnMissingPriceId(msg: string, sub: Stripe.Subscription): void {

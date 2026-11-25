@@ -96,6 +96,9 @@ function makeFakeD1(seed?: { customers?: CustomerRow[] }): FakeD1 {
           ];
           const existing = customers.get(user_id);
           if (existing) {
+            if (existing.stripe_subscription_id !== stripe_subscription_id) {
+              existing.status = "incomplete";
+            }
             existing.stripe_customer_id = stripe_customer_id;
             existing.stripe_subscription_id = stripe_subscription_id;
           } else {
@@ -114,7 +117,8 @@ function makeFakeD1(seed?: { customers?: CustomerRow[] }): FakeD1 {
         if (/UPDATE customers SET[\s\S]*stripe_subscription_id/i.test(sql)) {
           // Mirrors syncSubscriptionFields' bind order — status is bound
           // twice (once for the SET, once for the SK-GTM-009 converted_at
-          // CASE guard).
+          // CASE guard). The SK-STRIPE-016 ordering guard is not modelled
+          // here; stripe-webhook-order.test.ts runs it on real SQLite.
           const [
             stripe_subscription_id,
             status,
@@ -135,12 +139,6 @@ function makeFakeD1(seed?: { customers?: CustomerRow[] }): FakeD1 {
               existing.converted_at = existing.converted_at ?? Math.floor(Date.now() / 1000);
             }
           }
-          return makeRunResult();
-        }
-        if (/UPDATE customers SET status = 'canceled'/i.test(sql)) {
-          const [user_id] = bound as [string];
-          const existing = customers.get(user_id);
-          if (existing) existing.status = "canceled";
           return makeRunResult();
         }
         if (/UPDATE stripe_events SET processed_at/i.test(sql)) {
@@ -168,7 +166,7 @@ function makeRunResult<T>(): D1Result<T> {
   return {
     success: true,
     results: [] as T[],
-    meta: { duration: 0, last_row_id: 0, changes: 0, served_by: "test", internal_stats: null },
+    meta: { duration: 0, last_row_id: 0, changes: 1, served_by: "test", internal_stats: null },
   } as unknown as D1Result<T>;
 }
 
