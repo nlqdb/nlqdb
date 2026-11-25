@@ -17,14 +17,15 @@ const CLI_DESCRIPTION =
   "nlqdb from the terminal with nlq: create a database from a goal, ask it questions in English, run raw SQL, manage API keys, and install the MCP server.";
 
 // Not in `help --json` (a binary can't tell you how to install it), yet the page
-// must: it is the one page titled with the brand query `nlq`. Both channels
-// walked 2026-11-25; the brew tap is unverified, so it stays off.
+// must: it is the one page titled with the brand query `nlq`. Only channels that
+// ship the latest release: the `@nlqdb/cli` npm shim pins binary 0.1.1, which
+// predates `nlq attach` (cli FEATURE.md gap), so it stays off until it is re-published.
 const INSTALL = [
   "## Install",
   "",
   "```sh",
   "curl -fsSL https://nlqdb.com/install | sh   # macOS / Linux → ~/.local/bin/nlq",
-  "npm i -g @nlqdb/cli                         # Node toolchain",
+  "brew install nlqdb/tap/nlq                  # Homebrew",
   "```",
 ].join("\n");
 
