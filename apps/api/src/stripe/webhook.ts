@@ -38,6 +38,7 @@ import {
 } from "@nlqdb/otel";
 import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import type Stripe from "stripe";
+import { CHECKOUT_REOPEN_STATUSES } from "./billing-status.ts";
 
 // Narrowed stand-in for `Stripe.WebhookSignature`. We only call
 // `constructEventAsync`; tests stub a single function, production
@@ -394,10 +395,15 @@ async function handleSubscriptionDeleted(
   const resolved = await resolveSubUser(deps.db, sub);
   if (!resolved) return;
 
-  await deps.db
-    .prepare("UPDATE customers SET status = 'canceled', updated_at = unixepoch() WHERE user_id = ?")
-    .bind(resolved.userId)
-    .run();
+  // Through the same guarded write as created/updated (SK-STRIPE-016), so a
+  // late `deleted` for a superseded subscription can't cancel the live one.
+  await syncSubscriptionFields(
+    deps.db,
+    sub,
+    extractSubscriptionFields(sub),
+    resolved.userId,
+    "canceled",
+  );
 
   const priceId = sub.items.data[0]?.price.id ?? null;
   if (!priceId) {
@@ -491,28 +497,55 @@ async function resolveSubUser(
   return { userId, customerId };
 }
 
+// SK-STRIPE-016 — Stripe doesn't order webhooks, so a subscription event
+// writes the row only when it is for the row's current subscription and that
+// one isn't terminal yet, or it brings a new subscription to a row whose
+// subscription is absent or terminal. A late `updated` can't revive a
+// `canceled` subscription, and an old subscription's events can't overwrite
+// the live one. Both binds are `sub.id`.
+const TERMINAL_STATUSES = `(${[...CHECKOUT_REOPEN_STATUSES].map((s) => `'${s}'`).join(", ")})`;
+const SUBSCRIPTION_WRITE_GUARD =
+  `((stripe_subscription_id = ? AND status NOT IN ${TERMINAL_STATUSES}) OR ` +
+  `(stripe_subscription_id IS NOT ? AND ` +
+  `(stripe_subscription_id IS NULL OR status IN ${TERMINAL_STATUSES})))`;
+
 // Idempotent `user_id → (stripe_customer_id, stripe_subscription_id)` link.
 // Shared by checkout.session.completed (the normal row creator) and the
 // out-of-order subscription.created fallback. Defaults status to
-// 'incomplete'; ON CONFLICT touches only the Stripe ids so a re-run can't
-// clobber a status the subscription.* handlers already synced.
+// 'incomplete'; ON CONFLICT keeps the status while the subscription id is
+// unchanged, resets it to 'incomplete' when a re-subscribe links a new id,
+// and leaves the row alone when that new id would replace a live
+// subscription (a late checkout for an old one) — SK-STRIPE-016.
 async function upsertCustomerLink(
   db: D1Database,
   userId: string,
   customerId: string,
   subscriptionId: string | null,
 ): Promise<void> {
-  await db
+  const result = await db
     .prepare(
       "INSERT INTO customers (user_id, stripe_customer_id, stripe_subscription_id, status) " +
         "VALUES (?, ?, ?, 'incomplete') " +
         "ON CONFLICT(user_id) DO UPDATE SET " +
         "stripe_customer_id = excluded.stripe_customer_id, " +
+        "status = CASE WHEN stripe_subscription_id IS excluded.stripe_subscription_id " +
+        "THEN status ELSE 'incomplete' END, " +
         "stripe_subscription_id = excluded.stripe_subscription_id, " +
-        "updated_at = unixepoch()",
+        "updated_at = unixepoch() " +
+        "WHERE stripe_subscription_id IS excluded.stripe_subscription_id " +
+        `OR stripe_subscription_id IS NULL OR status IN ${TERMINAL_STATUSES}`,
     )
     .bind(userId, customerId, subscriptionId)
     .run();
+  if (result.meta?.changes === 0) {
+    console.info(
+      JSON.stringify({
+        level: "info",
+        msg: "customer_link_superseded",
+        subscription_id: subscriptionId,
+      }),
+    );
+  }
 }
 
 // Reads the nlqdb user id off `subscription_data.metadata` (set at
@@ -540,12 +573,13 @@ async function syncSubscriptionFields(
   sub: Stripe.Subscription,
   fields: SubscriptionFields,
   userId: string,
+  status: string = sub.status,
 ): Promise<void> {
   // SK-GTM-009 — `converted_at` stamps the FIRST transition into a
   // paying status and is never overwritten (COALESCE keeps the
   // original moment across renewals and status churn). This is the
   // only write site.
-  await db
+  const result = await db
     .prepare(
       "UPDATE customers SET " +
         "stripe_subscription_id = ?, status = ?, current_period_end = ?, " +
@@ -553,18 +587,30 @@ async function syncSubscriptionFields(
         "converted_at = CASE WHEN ? IN ('active', 'trialing') " +
         "THEN COALESCE(converted_at, unixepoch()) ELSE converted_at END, " +
         "updated_at = unixepoch() " +
-        "WHERE user_id = ?",
+        `WHERE user_id = ? AND ${SUBSCRIPTION_WRITE_GUARD}`,
     )
     .bind(
       sub.id,
-      sub.status,
+      status,
       fields.currentPeriodEnd,
       fields.cancelAtPeriodEnd,
       fields.priceId,
-      sub.status,
+      status,
       userId,
+      sub.id,
+      sub.id,
     )
     .run();
+  if (result.meta?.changes === 0) {
+    console.info(
+      JSON.stringify({
+        level: "info",
+        msg: "subscription_event_superseded",
+        subscription_id: sub.id,
+        status,
+      }),
+    );
+  }
 }
 
 function warnMissingPriceId(msg: string, sub: Stripe.Subscription): void {

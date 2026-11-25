@@ -54,6 +54,7 @@ export default defineConfig(async () => {
               "test/anon-global-cap.test.ts",
               "test/first-query.test.ts",
               "test/stripe-webhook.test.ts",
+              "test/stripe-webhook-order.test.ts",
               "test/stripe-checkout.test.ts",
               "test/stripe-portal.test.ts",
               "test/stripe-plan-switch.test.ts",
