@@ -38,6 +38,7 @@ import {
 } from "@nlqdb/otel";
 import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import type Stripe from "stripe";
+import { CHECKOUT_REOPEN_STATUSES } from "./billing-status.ts";
 
 // Narrowed stand-in for `Stripe.WebhookSignature`. We only call
 // `constructEventAsync`; tests stub a single function, production
@@ -496,21 +497,32 @@ async function resolveSubUser(
   return { userId, customerId };
 }
 
+// SK-STRIPE-016 — Stripe doesn't order webhooks, so a subscription event
+// writes the row only when it is for the row's current subscription and that
+// one isn't terminal yet, or it brings a new subscription to a row whose
+// subscription is absent or terminal. A late `updated` can't revive a
+// `canceled` subscription, and an old subscription's events can't overwrite
+// the live one. Both binds are `sub.id`.
+const TERMINAL_STATUSES = `(${[...CHECKOUT_REOPEN_STATUSES].map((s) => `'${s}'`).join(", ")})`;
+const SUBSCRIPTION_WRITE_GUARD =
+  `((stripe_subscription_id = ? AND status NOT IN ${TERMINAL_STATUSES}) OR ` +
+  `(stripe_subscription_id IS NOT ? AND ` +
+  `(stripe_subscription_id IS NULL OR status IN ${TERMINAL_STATUSES})))`;
+
 // Idempotent `user_id → (stripe_customer_id, stripe_subscription_id)` link.
 // Shared by checkout.session.completed (the normal row creator) and the
 // out-of-order subscription.created fallback. Defaults status to
 // 'incomplete'; ON CONFLICT keeps the status while the subscription id is
-// unchanged, so a re-run can't clobber a status the subscription.* handlers
-// already synced, and resets it to 'incomplete' when a re-subscribe links a
-// new subscription, so the old one's terminal status doesn't lock it out
-// (SK-STRIPE-016).
+// unchanged, resets it to 'incomplete' when a re-subscribe links a new id,
+// and leaves the row alone when that new id would replace a live
+// subscription (a late checkout for an old one) — SK-STRIPE-016.
 async function upsertCustomerLink(
   db: D1Database,
   userId: string,
   customerId: string,
   subscriptionId: string | null,
 ): Promise<void> {
-  await db
+  const result = await db
     .prepare(
       "INSERT INTO customers (user_id, stripe_customer_id, stripe_subscription_id, status) " +
         "VALUES (?, ?, ?, 'incomplete') " +
@@ -519,10 +531,21 @@ async function upsertCustomerLink(
         "status = CASE WHEN stripe_subscription_id IS excluded.stripe_subscription_id " +
         "THEN status ELSE 'incomplete' END, " +
         "stripe_subscription_id = excluded.stripe_subscription_id, " +
-        "updated_at = unixepoch()",
+        "updated_at = unixepoch() " +
+        "WHERE stripe_subscription_id IS excluded.stripe_subscription_id " +
+        `OR stripe_subscription_id IS NULL OR status IN ${TERMINAL_STATUSES}`,
     )
     .bind(userId, customerId, subscriptionId)
     .run();
+  if (result.meta?.changes === 0) {
+    console.info(
+      JSON.stringify({
+        level: "info",
+        msg: "customer_link_superseded",
+        subscription_id: subscriptionId,
+      }),
+    );
+  }
 }
 
 // Reads the nlqdb user id off `subscription_data.metadata` (set at
@@ -544,18 +567,6 @@ async function lookupUserByCustomer(db: D1Database, customerId: string): Promise
     .first<{ user_id: string }>();
   return row?.user_id ?? null;
 }
-
-// SK-STRIPE-016 — Stripe doesn't order webhooks, so a subscription event
-// writes the row only when it is for the row's current subscription and that
-// one isn't terminal yet, or it brings a new subscription to a row whose
-// subscription is absent or terminal. A late `updated` can't revive a
-// `canceled` subscription, and an old subscription's events can't overwrite
-// the live one. Both binds are `sub.id`.
-const TERMINAL_STATUSES = "('canceled', 'incomplete_expired')";
-const SUBSCRIPTION_WRITE_GUARD =
-  `((stripe_subscription_id = ? AND status NOT IN ${TERMINAL_STATUSES}) OR ` +
-  `(stripe_subscription_id IS NOT ? AND ` +
-  `(stripe_subscription_id IS NULL OR status IN ${TERMINAL_STATUSES})))`;
 
 async function syncSubscriptionFields(
   db: D1Database,

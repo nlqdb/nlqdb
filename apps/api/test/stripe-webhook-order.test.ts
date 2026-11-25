@@ -104,6 +104,16 @@ describe("subscription webhook ordering (SK-STRIPE-016)", () => {
     expect(await row()).toEqual({ stripe_subscription_id: "sub_b", status: "active" });
   });
 
+  it("a late checkout for the old subscription does not unlink the new live one", async () => {
+    await deliver("customer.subscription.deleted", sub("sub_a", "canceled"));
+    await deliver("checkout.session.completed", checkout("sub_b"));
+    await deliver("customer.subscription.created", sub("sub_b", "active"));
+    await deliver("checkout.session.completed", checkout("sub_a"));
+    expect(await row()).toEqual({ stripe_subscription_id: "sub_b", status: "active" });
+    await deliver("customer.subscription.updated", sub("sub_b", "past_due"));
+    expect(await row()).toEqual({ stripe_subscription_id: "sub_b", status: "past_due" });
+  });
+
   it("deleted before the subscription's created leaves it canceled", async () => {
     await deliver("customer.subscription.deleted", sub("sub_a", "canceled"));
     await deliver("customer.subscription.created", sub("sub_a", "active"));

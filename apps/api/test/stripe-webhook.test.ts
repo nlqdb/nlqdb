@@ -96,7 +96,13 @@ function makeFakeD1(seed?: { customers?: CustomerRow[] }): FakeD1 {
           ];
           const existing = customers.get(user_id);
           if (existing) {
+            // Mirrors the SK-STRIPE-016 ON CONFLICT guard: a new id resets the
+            // status, but never replaces a live subscription.
             if (existing.stripe_subscription_id !== stripe_subscription_id) {
+              const replaceable =
+                existing.stripe_subscription_id === null ||
+                ["canceled", "incomplete_expired"].includes(existing.status);
+              if (!replaceable) return makeRunResult();
               existing.status = "incomplete";
             }
             existing.stripe_customer_id = stripe_customer_id;

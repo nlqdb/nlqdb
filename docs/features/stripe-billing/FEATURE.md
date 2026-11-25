@@ -132,7 +132,7 @@ On the re-subscribe path (a terminal `customers` row that survived the SK-STRIPE
 ### SK-STRIPE-016 — Subscription events write only to the current subscription; `canceled` is final
 
 **Body:** [`decisions/SK-STRIPE-016-subscription-write-guard.md`](./decisions/SK-STRIPE-016-subscription-write-guard.md).
-Every `customer.subscription.*` write carries one SQL guard: the event's subscription must be the row's current, non-terminal one, or a new one replacing an absent or terminal (`canceled` / `incomplete_expired`) one. A late `updated` can't revive a canceled customer, and an old subscription's `deleted` can't cancel the new one. A re-subscribe's `checkout.session.completed` resets the status to `incomplete` for the new id.
+Every `customer.subscription.*` write carries one SQL guard: the event's subscription must be the row's current, non-terminal one, or a new one replacing an absent or terminal (`canceled` / `incomplete_expired`) one. A late `updated` can't revive a canceled customer, and an old subscription's `deleted` can't cancel the new one. A re-subscribe's `checkout.session.completed` resets the status to `incomplete` for the new id, and never replaces a live subscription.
 
 ## GLOBALs governing this feature
 
