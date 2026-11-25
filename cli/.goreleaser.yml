@@ -12,8 +12,10 @@ before:
     # Repo LICENSE lives at the root; stage a copy next to .goreleaser.yml so the archive picks it up.
     - sh -c 'cp ../LICENSE LICENSE.txt'
 
+# One build per install channel: `InstallMethod` picks the upgrade hint
+# (SK-CLI-015) and the User-Agent's channel field.
 builds:
-  - id: nlq
+  - id: curl-sh
     binary: nlq
     main: ./cmd/nlq
     env:
@@ -21,10 +23,30 @@ builds:
     goos: [linux, darwin]
     goarch: [amd64, arm64]
     flags: [-trimpath]
-    ldflags: [-s -w]
+    ldflags:
+      - -s -w
+      - -X github.com/nlqdb/nlqdb/cli/internal/version.Version={{ .Version }}
+      - -X github.com/nlqdb/nlqdb/cli/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/nlqdb/nlqdb/cli/internal/version.InstallMethod=curl-sh
+  - id: homebrew
+    binary: nlq
+    main: ./cmd/nlq
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w
+      - -X github.com/nlqdb/nlqdb/cli/internal/version.Version={{ .Version }}
+      - -X github.com/nlqdb/nlqdb/cli/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/nlqdb/nlqdb/cli/internal/version.InstallMethod=homebrew
 
+# The curl-sh archive keeps the unsuffixed name that apps/web/public/install
+# and the npm shim's postinstall download.
 archives:
-  - id: nlq
+  - id: curl-sh
+    ids: [curl-sh]
     name_template: >-
       {{- .ProjectName }}_
       {{- .Version }}_
@@ -32,10 +54,20 @@ archives:
       {{- else }}{{ .Os }}{{ end }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else }}{{ .Arch }}{{ end }}
-    files:
+    files: &archive_files
       - src: LICENSE.txt
         dst: LICENSE
       - README.md
+  - id: homebrew
+    ids: [homebrew]
+    name_template: >-
+      {{- .ProjectName }}_
+      {{- .Version }}_
+      {{- if eq .Os "darwin" }}macOS
+      {{- else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}_homebrew
+    files: *archive_files
 
 checksum:
   name_template: "checksums.txt"
@@ -57,6 +89,7 @@ changelog:
 
 brews:
   - name: nlq
+    ids: [homebrew]
     # Skip (not 401-fail) the tap push when HOMEBREW_TAP_GITHUB_TOKEN is
     # unset/empty; `index` avoids the missing-key template error (SK-CLI-002).
     skip_upload: '{{ if index .Env "HOMEBREW_TAP_GITHUB_TOKEN" }}false{{ else }}true{{ end }}'
@@ -73,7 +106,7 @@ brews:
     install: |
       bin.install "nlq"
     test: |
-      system "#{bin}/nlq", "--version"
+      assert_match "nlq #{version} (homebrew", shell_output("#{bin}/nlq --version")
 
 release:
   github:
