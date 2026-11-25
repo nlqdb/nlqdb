@@ -8,6 +8,10 @@ scheduled run takes the first open, unblocked, unclaimed box
 [`END_GOAL.md`](END_GOAL.md) and names its number: KPIs A–C and the love gate
 are defined in `GLOBAL-043` item 9.
 
+## 0 — Fix first
+
+- [ ] Released `nlq` binaries report `0.0.0-dev` (`nlq --version`, User-Agent): `cli/.goreleaser.yml` sets `ldflags: [-s -w]` only, so `version.{Version,Commit,InstallMethod}` keep their dev defaults (`cli/AGENTS.md` names the `-X` flags). Every installed user gets the daily upgrade hint (`isNewer(latest, "0.0.0-dev")`), and `nlq update` answers "Dev build — build from source". Number: released binaries stamped with their version 0 → 1 (walk: `curl -fsSL https://nlqdb.com/install | sh` then `nlq --version`); `InstallMethod` per channel (`SK-CLI-015`) needs one build per channel
+
 ## 1b — Real-traffic proof
 
 Postgres spike (market proof, `SPIKE_PG_URL`, `GLOBAL-043` item 10) and the
@@ -62,7 +66,7 @@ above is open and unblocked. Goal by 2027-05-07: **1,000 Google clicks /
 impressions / position re-read ≥ 14 d later (`bun scripts/gsc-pull.ts`,
 `bun scripts/ahrefs-dr.ts`).
 
-- [ ] Brand: from 2026-11-25, re-read `nlq` / `nlqdb` positions (`nlq` pos 72.9 before run 287 shipped `sameAs` 1 → 4 + `alternateName` `nlq`; titles already carry the brand) — top 3 deletes the box, else the next brand input
+- [ ] Brand: from 2026-12-09, re-read `docs.nlqdb.com/cli/` (title `nlq — CLI reference`; Crawled – not indexed, last crawl 09-30) and `nlq`'s position (75.9 → 77.0 after run 287's JSON-LD, 62–64 on 11-17→11-23; `nlqdb` 0 impr). Run 311 gave that page install commands 0 → 2. Indexed and `nlq` top 3 deletes the box, else the next brand input
 - [ ] Submit `docs.nlqdb.com/sitemap-index.xml` in GSC (only `nlqdb.com/sitemap.xml` is submitted) ⛔ see blocked-by-human.md — the service account is a Restricted user, which can't submit sitemaps (run 295)
 - [ ] Page-1 CTR: from 2026-11-30, re-read the 5 page-1 `/solve` pages run 295 made answer-first (lede opens with the SQL, not the pitch; `FAQPage` + hand-written meta were already on all 7 `/solve` + `/vs` targets) — baseline **3 clicks / 187 impr = 1.6 %** (28 d to 11-14); a gain extends answer-first ledes to every `/solve` page, else the box is deleted
 - [ ] Referring domains: every free listing and README backlink an agent can file (MCP registries, awesome-lists, GitHub topics) — number: referring domains, DR4. Run 299 audit: of the live listings, GitHub, RubyGems and Glama link `nlqdb.com` `nofollow` (no DR); docs.rs is the one followed link; Smithery's page 404s though its registry entry is live. The rest are account-walled, other-repo PRs or 🔒 public-copy-gated (`blocked-by-human.md`). Run 301: pkg.go.dev (the `cli` module, unlisted) renders README links `nofollow` too — no agent-fileable followed listing is left ⛔ see blocked-by-human.md (mcp.directory, Anthropic connector)
