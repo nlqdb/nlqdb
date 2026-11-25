@@ -16,6 +16,18 @@ const BANNER =
 const CLI_DESCRIPTION =
   "nlqdb from the terminal with nlq: create a database from a goal, ask it questions in English, run raw SQL, manage API keys, and install the MCP server.";
 
+// Not in `help --json` (a binary can't tell you how to install it), yet the page
+// must: it is the one page titled with the brand query `nlq`. Both channels
+// walked 2026-11-25; the brew tap is unverified, so it stays off.
+const INSTALL = [
+  "## Install",
+  "",
+  "```sh",
+  "curl -fsSL https://nlqdb.com/install | sh   # macOS / Linux → ~/.local/bin/nlq",
+  "npm i -g @nlqdb/cli                         # Node toolchain",
+  "```",
+].join("\n");
+
 type FlagNode = {
   name: string;
   shorthand?: string;
@@ -125,6 +137,8 @@ function render(root: CmdNode): string {
     BANNER,
     "",
     top,
+    "",
+    INSTALL,
     "",
     renderFlags(root.flags ?? [], "## Global flags"),
     "## Commands",
