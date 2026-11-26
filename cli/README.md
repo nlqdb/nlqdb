@@ -42,5 +42,5 @@ go -C cli build -trimpath -ldflags='-s -w \
 ./nlq --version
 ```
 
-See [`AGENTS.md`](AGENTS.md) for the full layout and per-platform
+See [`AGENTS.md`](AGENTS.md) for the full layout and the goreleaser
 cross-compile recipe.

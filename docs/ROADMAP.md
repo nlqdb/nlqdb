@@ -10,7 +10,7 @@ are defined in `GLOBAL-043` item 9.
 
 ## 0 — Fix first
 
-- [ ] `npm i -g @nlqdb/cli` installs the v0.1.1 binary for good: the shim (`packages/cli-shim`, changesets-versioned, npm latest 0.1.1) downloads the release tagged with its own version, while the CLI auto-tags `v0.1.N` per merge (`deploy-cli.yml`, v0.1.9 now). Pin the shim to the latest CLI release and add an `npm-shim` build to `cli/.goreleaser.yml` (`SK-CLI-015`). Number: npm-installed `nlq --version` matches the latest release, 0 → 1
+- [ ] `npm i -g @nlqdb/cli` installs the v0.1.1 binary for good: the shim (`packages/cli-shim`, changesets-versioned, npm latest 0.1.1) downloads the release tagged with its own version, while the CLI auto-tags `v0.1.N` per merge (`deploy-cli.yml`, v0.1.30 now). Pin the shim to the latest CLI release and add an `npm-shim` build to `cli/.goreleaser.yml` (`SK-CLI-015`). Number: npm-installed `nlq --version` matches the latest release, 0 → 1
 
 ## 1b — Real-traffic proof
 
