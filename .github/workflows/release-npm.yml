@@ -20,10 +20,6 @@ on:
     workflows: ["Deploy CLI", "Release CLI"]
     types: [completed]
 
-concurrency:
-  group: release-npm
-  cancel-in-progress: false
-
 permissions:
   contents: write
   pull-requests: write
@@ -33,6 +29,10 @@ jobs:
   release:
     name: changesets version + publish
     if: github.event_name != 'workflow_run'
+    # Per-job groups: a CLI `workflow_run` run never replaces a pending push run's publish.
+    concurrency:
+      group: release-npm
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -72,6 +72,9 @@ jobs:
   cli-shim:
     name: publish @nlqdb/cli for the latest CLI release
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    concurrency:
+      group: release-npm-cli-shim
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
