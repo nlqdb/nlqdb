@@ -41,9 +41,22 @@ builds:
       - -X github.com/nlqdb/nlqdb/cli/internal/version.Version={{ .Version }}
       - -X github.com/nlqdb/nlqdb/cli/internal/version.Commit={{ .ShortCommit }}
       - -X github.com/nlqdb/nlqdb/cli/internal/version.InstallMethod=homebrew
+  - id: npm-shim
+    binary: nlq
+    main: ./cmd/nlq
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w
+      - -X github.com/nlqdb/nlqdb/cli/internal/version.Version={{ .Version }}
+      - -X github.com/nlqdb/nlqdb/cli/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/nlqdb/nlqdb/cli/internal/version.InstallMethod=npm-shim
 
-# The curl-sh archive keeps the unsuffixed name that apps/web/public/install
-# and the npm shim's postinstall download.
+# The curl-sh archive keeps the unsuffixed name apps/web/public/install
+# downloads; the others carry their channel as a suffix.
 archives:
   - id: curl-sh
     ids: [curl-sh]
@@ -67,6 +80,16 @@ archives:
       {{- else }}{{ .Os }}{{ end }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else }}{{ .Arch }}{{ end }}_homebrew
+    files: *archive_files
+  - id: npm-shim
+    ids: [npm-shim]
+    name_template: >-
+      {{- .ProjectName }}_
+      {{- .Version }}_
+      {{- if eq .Os "darwin" }}macOS
+      {{- else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}_npm-shim
     files: *archive_files
 
 checksum:

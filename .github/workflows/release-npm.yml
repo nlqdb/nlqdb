@@ -2,6 +2,12 @@
 # `"private": true`; un-gated packages emit `dist/` and ship.
 # Auth path: OIDC trusted publishing (SK-CIPERM-003) — no NPM_TOKEN.
 # Trusted Publisher config per package: see .changeset/README.md.
+#
+# The `cli-shim` job publishes `@nlqdb/cli` outside changesets (the package
+# is `private` in-repo): one shim per CLI release, versioned from its `v*`
+# tag (SK-CLI-002). It runs here, not in release-cli.yml, because npm's
+# Trusted Publisher for `@nlqdb/cli` names this file — a reusable-workflow
+# call would be validated against the caller instead.
 
 name: Release npm
 
@@ -9,6 +15,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # deploy-cli.yml auto-tags + releases; a manual `v*` push runs Release CLI.
+  workflow_run:
+    workflows: ["Deploy CLI", "Release CLI"]
+    types: [completed]
 
 concurrency:
   group: release-npm
@@ -22,6 +32,7 @@ permissions:
 jobs:
   release:
     name: changesets version + publish
+    if: github.event_name != 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -57,3 +68,47 @@ jobs:
           title: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  cli-shim:
+    name: publish @nlqdb/cli for the latest CLI release
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Node 24 bundles npm >= 11.5.1, the OIDC trusted-publishing floor.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      # Publishes only a version npm lacks, and only once its release carries
+      # the npm-shim archive the postinstall fetches — so a run racing the
+      # goreleaser upload, or a pre-npm-shim tag, is a no-op, never a broken
+      # package.
+      - name: Pin the shim to the latest v* tag and publish
+        working-directory: packages/cli-shim
+        run: |
+          set -euo pipefail
+          tag=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | head -n1 || true)
+          if [ -z "$tag" ]; then echo "no v* tag" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          ver=${tag#v}
+          if [ -n "$(npm view "@nlqdb/cli@$ver" version 2>/dev/null || true)" ]; then
+            echo "@nlqdb/cli@$ver already published" >> "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+          sums=$(curl -fsSL "https://github.com/nlqdb/nlqdb/releases/download/$tag/checksums.txt" || true)
+          if ! grep -q '_npm-shim\.tar\.gz$' <<<"$sums"; then
+            echo "$tag has no npm-shim archive yet — skipped" >> "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+          npm pkg delete private
+          npm pkg set "version=$ver"
+          npm publish
+          echo "published @nlqdb/cli@$ver" >> "$GITHUB_STEP_SUMMARY"

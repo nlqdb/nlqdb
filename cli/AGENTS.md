@@ -59,10 +59,10 @@ golangci-lint -C cli run ./...               # the lint set the CI job uses
 
 Release builds come from [`.goreleaser.yml`](.goreleaser.yml) (`SK-CLI-002`):
 one build per install channel — `curl-sh` (unsuffixed archive: the install
-script and the npm shim) and `homebrew` (`_homebrew` archive: the tap) — each
+script), `homebrew` (`_homebrew` archive: the tap) and `npm-shim`
+(`_npm-shim` archive: `@nlqdb/cli`'s postinstall) — each
 stamping `version.{Version,Commit,InstallMethod}` via `-X`, which
 `User-Agent` and the `nlq update` hint read (`SK-CLI-014`, `SK-CLI-015`).
-The npm shim has no `npm-shim` build yet: it fetches the curl-sh archive.
 Local dry-run, then `./dist/curl-sh_linux_amd64_v1/nlq --version`:
 
 ```bash
