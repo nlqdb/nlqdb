@@ -490,9 +490,6 @@ Per-package un-gating steps + Trusted Publisher field values live in
 [`.changeset/README.md`](../.changeset/README.md) — the canonical
 operator runbook for npm releases.
 
-Current state: `@nlqdb/sdk` + `@nlqdb/cli` un-gated and published;
-everything else in `packages/*` still `"private": true`.
-
 ### CLI releases (`cli/` → GitHub Releases + Homebrew)
 
 The `nlq` Go binary releases via goreleaser. Three paths reach it:
