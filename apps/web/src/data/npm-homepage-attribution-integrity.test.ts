@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { servedByNpm } from "../../../../scripts/npm-published.mjs";
 
 // SK-GTM-007 — npm is a *live* acquisition channel only because every
 // published `@nlqdb/*` package's `homepage` is the bare marketing host tagged
@@ -31,9 +32,8 @@ const ATTRIBUTABLE_HOMEPAGES = new Set([
   "https://nlqdb.com/agents/?utm_source=npm", // @nlqdb/mcp — the memory wedge landing
 ]);
 
-// Every workspace package manifest. `private: true` is npm's own "never
-// publish" flag, so those never render a Homepage link — the wrappers are all
-// private today (only @nlqdb/sdk, @nlqdb/cli and @nlqdb/mcp publish).
+// Every workspace package manifest npm serves (`servedByNpm`) — the wrappers
+// are all private today (only @nlqdb/sdk, @nlqdb/cli and @nlqdb/mcp publish).
 function publishedManifests(): { name: string; homepage?: string; file: string }[] {
   const pkgDir = join(REPO_ROOT, "packages");
   const out: { name: string; homepage?: string; file: string }[] = [];
@@ -45,7 +45,7 @@ function publishedManifests(): { name: string; homepage?: string; file: string }
     } catch {
       continue; // no manifest in this dir
     }
-    if (json.private === true) continue;
+    if (!servedByNpm(json)) continue;
     out.push({ name: json.name ?? name, homepage: json.homepage, file });
   }
   return out;

@@ -138,8 +138,9 @@ Published to the public npm registry with build provenance
 ([`SK-CIPERM-003`](./docs/features/ci-permissions/FEATURE.md)). Version badges
 are live from npm; the table itself is generated from the workspace by
 [`scripts/sync-readme-packages.mjs`](./scripts/sync-readme-packages.mjs), so it
-lists exactly the packages that are un-gated (`"private"` removed) and nothing
-that isn't.
+lists exactly the packages npm serves
+([`scripts/npm-published.mjs`](./scripts/npm-published.mjs)) and nothing that
+isn't.
 
 <!-- BEGIN:packages -->
 | Package | Version | What it is | Source |

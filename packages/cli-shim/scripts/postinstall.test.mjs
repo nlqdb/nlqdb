@@ -34,10 +34,10 @@ test("archiveSuffix throws on unsupported targets", () => {
 
 test("buildUrls uses GitHub by default and respects env overrides", () => {
   const def = buildUrls("0.3.2", {}, "linux", "arm64");
-  assert.equal(def.archive, "nlq_0.3.2_linux_arm64.tar.gz");
+  assert.equal(def.archive, "nlq_0.3.2_linux_arm64_npm-shim.tar.gz");
   assert.equal(
     def.archiveUrl,
-    "https://github.com/nlqdb/nlqdb/releases/download/v0.3.2/nlq_0.3.2_linux_arm64.tar.gz",
+    "https://github.com/nlqdb/nlqdb/releases/download/v0.3.2/nlq_0.3.2_linux_arm64_npm-shim.tar.gz",
   );
   assert.equal(
     def.checksumsUrl,

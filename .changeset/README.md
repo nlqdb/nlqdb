@@ -24,9 +24,10 @@ Status:
 - `@nlqdb/sdk` — un-gated; bootstrap published at `0.1.0` from
   maintainer machine on 2026-05-20. Configure Trusted Publisher on
   npmjs.com (see below) so subsequent publishes flow via OIDC.
-- `@nlqdb/cli` — un-gated; bootstrap published at `0.1.0` (npm shim
-  that downloads the `nlq` Go binary on `postinstall`). Configure
-  Trusted Publisher on npmjs.com (see below).
+- `@nlqdb/cli` — not changesets-managed: `private` in-repo, published by
+  `release-npm.yml`'s `cli-shim` job at each CLI release's `v*` version
+  (`docs/runbook.md` § CLI releases). Its Trusted Publisher names
+  `release-npm.yml`, like the others.
 - `@nlqdb/mcp` — un-gated; bootstrap published at `0.1.0` from the
   founder's npm session 2026-07-26, Trusted Publisher configured the same
   sitting; registry-verified end-to-end (clean install → `import` resolves,

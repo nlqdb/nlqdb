@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 /**
- * Downloads the host-matching `nlq` binary from the GitHub Release pinned to
- * this package's version, verifies its sha256 against the release's
- * checksums.txt, and lands it at bin/nlq-bin. The CommonJS wrapper at
- * bin/nlq.cjs is the npm `bin` entry — it execs `nlq-bin` at runtime.
+ * Downloads the host-matching `nlq` binary (the `npm-shim` build, SK-CLI-002)
+ * from the GitHub Release pinned to this package's version — release-npm.yml
+ * publishes one shim per CLI release, versioned from its `v*` tag — verifies
+ * its sha256 against the release's checksums.txt, and lands it at
+ * bin/nlq-bin. The CommonJS wrapper at bin/nlq.cjs is the npm `bin` entry —
+ * it execs `nlq-bin` at runtime.
  *
  * Honored env:
  *   NLQDB_CLI_SKIP_DOWNLOAD=1   → skip download (CI / airgapped / `npm pack`)
@@ -52,7 +54,7 @@ export function buildUrls(
   arch = process.arch,
 ) {
   const { os, arch: a } = archiveSuffix(platform, arch);
-  const archive = `nlq_${version}_${os}_${a}.tar.gz`;
+  const archive = `nlq_${version}_${os}_${a}_npm-shim.tar.gz`;
   const base = `https://github.com/nlqdb/nlqdb/releases/download/v${version}`;
   return {
     archive,

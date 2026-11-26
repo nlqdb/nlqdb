@@ -490,9 +490,6 @@ Per-package un-gating steps + Trusted Publisher field values live in
 [`.changeset/README.md`](../.changeset/README.md) — the canonical
 operator runbook for npm releases.
 
-Current state: `@nlqdb/sdk` + `@nlqdb/cli` un-gated and published;
-everything else in `packages/*` still `"private": true`.
-
 ### CLI releases (`cli/` → GitHub Releases + Homebrew)
 
 The `nlq` Go binary releases via goreleaser. Three paths reach it:
@@ -513,14 +510,21 @@ The `nlq` Go binary releases via goreleaser. Three paths reach it:
 All three paths run `goreleaser release --clean` in `cli/`:
 cross-compiles linux/darwin × amd64/arm64 once per install channel
 (`curl-sh` → `nlq_<ver>_<os>_<arch>.tar.gz`, `homebrew` → the
-`_homebrew` archive the formula points at), attaches archives + SBOM +
+`_homebrew` archive the formula points at, `npm-shim` → the `_npm-shim`
+archive the npm shim fetches), attaches archives + SBOM +
 `checksums.txt` to a GitHub Release with auto-generated changelog,
 and pushes an updated formula to `nlqdb/homebrew-tap`. The installer
 at `https://nlqdb.com/install` (`apps/web/public/install`) resolves
-the latest tag via `/releases/latest` and verifies sha256. The npm
-shim `@nlqdb/cli` (`packages/cli-shim/`) ships via the changesets
-release (separate workflow, `release-npm.yml`) and reuses the same
-archive + checksums on `postinstall`.
+the latest tag via `/releases/latest` and verifies sha256.
+
+The npm shim `@nlqdb/cli` (`packages/cli-shim/`, `private` in-repo so
+changesets skips it) publishes itself: when Deploy CLI or Release CLI
+completes, `release-npm.yml`'s `cli-shim` job stamps the shim with the
+latest `v*` tag's version and `npm publish`es it over OIDC — only if npm
+lacks that version and the release already lists the `_npm-shim` archive.
+The shim's `postinstall.mjs` reads its own version, so
+`npm i -g @nlqdb/cli` lands the binary of the same release. No manual
+step; re-run with `workflow_dispatch` on Release npm.
 
 Required secret to enable the Homebrew step: `HOMEBREW_TAP_GITHUB_TOKEN`
 (fine-grained PAT scoped to `nlqdb/homebrew-tap`, `contents: write`).
@@ -528,19 +532,6 @@ Without it the GitHub Release still creates; only the tap bump
 silently skips.
 
 Local dry-run: `cd cli && goreleaser release --snapshot --clean --skip=publish,sbom`.
-
-Coordinating an npm shim release with the CLI binary release:
-
-1. The CLI binary release ships first via `deploy-cli.yml` (or a
-   manual `v*` tag push). After it completes, the GitHub Release
-   at `v<X.Y.Z>` carries the `nlq_<X.Y.Z>_<os>_<arch>.tar.gz` +
-   `checksums.txt` assets the npm shim's `postinstall` will fetch.
-2. Add a changeset bumping `@nlqdb/cli` to `<X.Y.Z>` (or merge a
-   PR that does so).
-3. Merge the "Version Packages" PR opened by `release-npm.yml` —
-   that publishes `@nlqdb/cli@<X.Y.Z>` to npm. The shim's
-   `postinstall.mjs` reads its own `package.json` version, so the
-   user's `npm i -g @nlqdb/cli` lands the matching binary.
 
 ### Preview environments
 

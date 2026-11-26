@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { servedByNpm } from "../../../../scripts/npm-published.mjs";
 
 // SK-GTM-007 — every externally published, browser-navigable nlqdb URL must
 // carry its ledger `utm_source`, or the acquiring channel's yield can't be
@@ -38,20 +39,20 @@ function githubReadmes(): string[] {
 
 // The other rendered-README surface: npmjs.com renders a published package's
 // README as its package page, so its CTAs acquire through the `npm` key, not
-// `github`. Derived from the manifests (`private: true` is npm's own gate) so
+// `github`. Derived from the manifests (`servedByNpm`) so
 // the next un-gated package can't ship an untagged CTA.
 function npmReadmes(): string[] {
   const pkgDir = join(REPO_ROOT, "packages");
   const out: string[] = [];
   for (const name of readdirSync(pkgDir)) {
-    let manifest: { private?: boolean };
+    let manifest: { name?: string; private?: boolean };
     try {
       manifest = JSON.parse(readFileSync(join(pkgDir, name, "package.json"), "utf8"));
     } catch {
       continue; // no npm manifest here (Swift/Ruby/Rust SDKs)
     }
     const readme = join(pkgDir, name, "README.md");
-    if (manifest.private !== true && existsSync(readme)) out.push(readme);
+    if (servedByNpm(manifest) && existsSync(readme)) out.push(readme);
   }
   return out;
 }

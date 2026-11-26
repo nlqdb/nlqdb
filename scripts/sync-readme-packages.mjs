@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Regenerates the "Packages on npm" table in the root README between the
 // `<!-- BEGIN:packages -->` / `<!-- END:packages -->` markers. A package earns
-// a row when its `package.json` is **not** `"private": true` — the exact gate
-// `release-npm.yml` and changesets publish on, so the table lists whatever is
-// live on npm and nothing that isn't. Version numbers are left to live
+// a row when npm serves it (`servedByNpm`: not `"private": true`, plus the
+// `@nlqdb/cli` shim `release-npm.yml` publishes outside changesets), so the
+// table lists whatever is live on npm and nothing that isn't. Version numbers are left to live
 // shields.io badges, so the only thing that moves this file is a package
 // un-gating (or its description changing) — both of which flow through the
 // Version PR that runs `changeset:version`, beside `sync-source-versions.mjs`:
@@ -15,6 +15,7 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { servedByNpm } from "./npm-published.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PACKAGES = join(ROOT, "packages");
@@ -30,7 +31,7 @@ for (const dir of readdirSync(PACKAGES).sort()) {
   } catch {
     continue; // no npm manifest here (Swift/Ruby/Rust SDKs)
   }
-  if (pkg.private === true || !pkg.name?.startsWith("@nlqdb/")) continue;
+  if (!servedByNpm(pkg) || !pkg.name?.startsWith("@nlqdb/")) continue;
   const npm = `https://www.npmjs.com/package/${pkg.name}`;
   const badge = `https://img.shields.io/npm/v/${pkg.name}?label=npm&color=cb3837`;
   rows.push(

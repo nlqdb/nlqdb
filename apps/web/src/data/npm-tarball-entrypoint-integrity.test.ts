@@ -9,6 +9,7 @@ import {
   BACKUP_FILE,
   effectivePublishedManifest,
 } from "../../../../scripts/apply-publish-config.mjs";
+import { servedByNpm } from "../../../../scripts/npm-published.mjs";
 
 // A published package whose entrypoints are not inside its own `files` allowlist
 // is dead on arrival, and nothing in a normal build says so — `@nlqdb/sdk` 0.1.0
@@ -97,7 +98,7 @@ function isPacked(path: string, files: string[] | undefined): boolean {
   });
 }
 
-/** Manifests npm would actually publish — `private: true` is npm's own gate. */
+/** Manifests npm would actually publish (`servedByNpm`). */
 function publishableManifests(): { manifest: Manifest; file: string }[] {
   const out: { manifest: Manifest; file: string }[] = [];
   for (const dir of readdirSync(join(REPO_ROOT, "packages"))) {
@@ -108,7 +109,7 @@ function publishableManifests(): { manifest: Manifest; file: string }[] {
     } catch {
       continue; // no manifest in this dir (Swift/Ruby/Rust SDKs)
     }
-    if (manifest.private === true) continue;
+    if (!servedByNpm(manifest)) continue;
     out.push({ manifest, file });
   }
   return out;
