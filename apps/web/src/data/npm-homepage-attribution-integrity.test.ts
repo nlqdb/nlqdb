@@ -31,9 +31,12 @@ const ATTRIBUTABLE_HOMEPAGES = new Set([
   "https://nlqdb.com/agents/?utm_source=npm", // @nlqdb/mcp — the memory wedge landing
 ]);
 
-// Every workspace package manifest. `private: true` is npm's own "never
-// publish" flag, so those never render a Homepage link — the wrappers are all
-// private today (only @nlqdb/sdk, @nlqdb/cli and @nlqdb/mcp publish).
+// Every workspace package manifest npm serves. `private: true` is npm's own
+// "never publish" flag, so those never render a Homepage link — the wrappers
+// are all private today (only @nlqdb/sdk, @nlqdb/cli and @nlqdb/mcp publish).
+// @nlqdb/cli is the exception: `private` in-repo so changesets skips it, yet
+// release-npm.yml's `cli-shim` job publishes it per CLI release (SK-CLI-002).
+const PUBLISHED_WHILE_PRIVATE = new Set(["@nlqdb/cli"]);
 function publishedManifests(): { name: string; homepage?: string; file: string }[] {
   const pkgDir = join(REPO_ROOT, "packages");
   const out: { name: string; homepage?: string; file: string }[] = [];
@@ -45,7 +48,7 @@ function publishedManifests(): { name: string; homepage?: string; file: string }
     } catch {
       continue; // no manifest in this dir
     }
-    if (json.private === true) continue;
+    if (json.private === true && !PUBLISHED_WHILE_PRIVATE.has(json.name ?? "")) continue;
     out.push({ name: json.name ?? name, homepage: json.homepage, file });
   }
   return out;

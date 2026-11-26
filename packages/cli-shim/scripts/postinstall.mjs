@@ -2,8 +2,8 @@
 /**
  * Downloads the host-matching `nlq` binary (the `npm-shim` build, SK-CLI-014)
  * from the GitHub Release pinned to this package's version — release-npm.yml
- * publishes one shim per CLI release, versioned from its `v*` tag — verifies its sha256 against the release's
- * checksums.txt, and lands it at bin/nlq-bin. The CommonJS wrapper at
+ * publishes one shim per CLI release, versioned from its `v*` tag — verifies
+ * its sha256 against the release's checksums.txt, and lands it at bin/nlq-bin. The CommonJS wrapper at
  * bin/nlq.cjs is the npm `bin` entry — it execs `nlq-bin` at runtime.
  *
  * Honored env:

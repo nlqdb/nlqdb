@@ -56,7 +56,7 @@ jobs:
 
       # Add a filter entry as each `@nlqdb/*` package un-gates (see .changeset/README.md).
       - name: Build publishable packages
-        run: bun run --filter='@nlqdb/sdk' --filter='@nlqdb/cli' --filter='@nlqdb/mcp' build
+        run: bun run --filter='@nlqdb/sdk' --filter='@nlqdb/mcp' build
 
       - name: Create Version PR or publish
         # Held at v1: action v2 needs @changesets/cli v3 and renamed inputs.
