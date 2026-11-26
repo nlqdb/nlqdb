@@ -57,25 +57,16 @@ gofumpt -w cli                               # format (stricter than gofmt)
 golangci-lint -C cli run ./...               # the lint set the CI job uses
 ```
 
-Cross-compile for distribution (matches `SK-CLI-002`). The release
-pipeline runs this three times — once per install channel — so the
-embedded `InstallMethod` matches how the user obtained the binary,
-which `User-Agent` parsing and the `nlq update` hint depend on
-(`SK-CLI-014`, `SK-CLI-015`).
+Release builds come from [`.goreleaser.yml`](.goreleaser.yml) (`SK-CLI-002`):
+one build per install channel — `curl-sh` (unsuffixed archive: the install
+script and the npm shim) and `homebrew` (`_homebrew` archive: the tap) — each
+stamping `version.{Version,Commit,InstallMethod}` via `-X`, which
+`User-Agent` and the `nlq update` hint read (`SK-CLI-014`, `SK-CLI-015`).
+The npm shim has no `npm-shim` build yet: it fetches the curl-sh archive.
+Local dry-run, then `./dist/curl-sh_linux_amd64_v1/nlq --version`:
 
 ```bash
-for INSTALL in curl-sh homebrew npm-shim; do
-  for OS in linux darwin windows; do
-    for ARCH in amd64 arm64; do
-      CGO_ENABLED=0 GOOS=$OS GOARCH=$ARCH go -C cli build -trimpath \
-        -ldflags="-s -w \
-          -X github.com/nlqdb/nlqdb/cli/internal/version.Version=$TAG \
-          -X github.com/nlqdb/nlqdb/cli/internal/version.Commit=$SHA \
-          -X github.com/nlqdb/nlqdb/cli/internal/version.InstallMethod=$INSTALL" \
-        -o "dist/$INSTALL/nlq-$OS-$ARCH" ./cli/cmd/nlq
-    done
-  done
-done
+cd cli && goreleaser release --snapshot --clean --skip=publish,sbom
 ```
 
 ## Local rules

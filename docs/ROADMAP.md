@@ -10,7 +10,8 @@ are defined in `GLOBAL-043` item 9.
 
 ## 0 — Fix first
 
-- [ ] Released `nlq` binaries report `0.0.0-dev` (`nlq --version`, User-Agent): `cli/.goreleaser.yml` sets `ldflags: [-s -w]` only, so `version.{Version,Commit,InstallMethod}` keep their dev defaults (`cli/AGENTS.md` names the `-X` flags). Every installed user gets the daily upgrade hint (`isNewer(latest, "0.0.0-dev")`), and `nlq update` answers "Dev build — build from source". Number: released binaries stamped with their version 0 → 1 (walk: `curl -fsSL https://nlqdb.com/install | sh` then `nlq --version`); `InstallMethod` per channel (`SK-CLI-015`) needs one build per channel
+- [ ] `npm i -g @nlqdb/cli` installs the v0.1.1 binary for good: the shim (`packages/cli-shim`, changesets-versioned, npm latest 0.1.1) downloads the release tagged with its own version, while the CLI auto-tags `v0.1.N` per `cli/**` merge (`deploy-cli.yml`, v0.1.30 now). Pin the shim to the latest CLI release and add an `npm-shim` build to `cli/.goreleaser.yml` (`SK-CLI-015`). Number: npm-installed `nlq --version` matches the latest release, 0 → 1
+- [ ] No installed `nlq` ever sees an upgrade hint: the update check (`cli/internal/updatecheck`, `SK-CLI-015`) fetches `https://nlqdb.com/install/latest.json`, which 404s (nothing publishes it), and swallows the error. Publish it from the CLI release (version + `url_template`). Number: `curl -sf https://nlqdb.com/install/latest.json` returns the latest release's version, 0 → 1
 
 ## 1b — Real-traffic proof
 

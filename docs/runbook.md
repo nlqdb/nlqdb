@@ -511,7 +511,9 @@ The `nlq` Go binary releases via goreleaser. Three paths reach it:
   existing tag (e.g., to retry a partial release).
 
 All three paths run `goreleaser release --clean` in `cli/`:
-cross-compiles linux/darwin × amd64/arm64, attaches archives + SBOM +
+cross-compiles linux/darwin × amd64/arm64 once per install channel
+(`curl-sh` → `nlq_<ver>_<os>_<arch>.tar.gz`, `homebrew` → the
+`_homebrew` archive the formula points at), attaches archives + SBOM +
 `checksums.txt` to a GitHub Release with auto-generated changelog,
 and pushes an updated formula to `nlqdb/homebrew-tap`. The installer
 at `https://nlqdb.com/install` (`apps/web/public/install`) resolves
@@ -525,7 +527,7 @@ Required secret to enable the Homebrew step: `HOMEBREW_TAP_GITHUB_TOKEN`
 Without it the GitHub Release still creates; only the tap bump
 silently skips.
 
-Local dry-run: `cd cli && goreleaser release --snapshot --clean --skip=publish`.
+Local dry-run: `cd cli && goreleaser release --snapshot --clean --skip=publish,sbom`.
 
 Coordinating an npm shim release with the CLI binary release:
 
