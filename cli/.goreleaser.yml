@@ -1,6 +1,6 @@
 # Release config for the `nlq` CLI. Triggered by release-cli.yml on
 # `v*` tag push. Local dry-run:
-#   cd cli && goreleaser release --snapshot --clean --skip=publish
+#   cd cli && goreleaser release --snapshot --clean --skip=publish,sbom
 
 version: 2
 
