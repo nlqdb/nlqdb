@@ -27,13 +27,21 @@ export function productRedirectTarget(url: URL): string | null {
   return new URL(url.pathname + url.search, PRODUCT_ORIGIN).toString();
 }
 
+// SK-CLI-015: every installed `nlq` polls /install/latest.json once a day. Each
+// CLI release attaches that manifest (cli/.goreleaser.yml), so the URL forwards
+// to the latest release's copy — always current, nothing to redeploy here.
+const LATEST_MANIFEST_PATH = "/install/latest.json";
+const LATEST_MANIFEST_URL = "https://github.com/nlqdb/nlqdb/releases/latest/download/latest.json";
+
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const target = productRedirectTarget(new URL(request.url));
+    const url = new URL(request.url);
+    if (url.pathname === LATEST_MANIFEST_PATH) return Response.redirect(LATEST_MANIFEST_URL, 302);
+    const target = productRedirectTarget(url);
     if (target) return Response.redirect(target, 301);
     return env.ASSETS.fetch(request);
   },

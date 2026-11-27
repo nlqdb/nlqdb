@@ -1,2 +1,4 @@
 # goreleaser stages a copy of the repo-root LICENSE next to .goreleaser.yml.
 LICENSE.txt
+# The update-check manifest a release hook writes (SK-CLI-015).
+latest.json

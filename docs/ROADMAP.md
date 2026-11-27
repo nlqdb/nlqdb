@@ -8,10 +8,6 @@ scheduled run takes the first open, unblocked, unclaimed box
 [`END_GOAL.md`](END_GOAL.md) and names its number: KPIs A–C and the love gate
 are defined in `GLOBAL-043` item 9.
 
-## 0 — Fix first
-
-- [ ] No installed `nlq` ever sees an upgrade hint: the update check (`cli/internal/updatecheck`, `SK-CLI-015`) fetches `https://nlqdb.com/install/latest.json`, which 404s (nothing publishes it), and swallows the error. Publish it from the CLI release (version + `url_template`). Number: `curl -sf https://nlqdb.com/install/latest.json` returns the latest release's version, 0 → 1
-
 ## 1b — Real-traffic proof
 
 Postgres spike (market proof, `SPIKE_PG_URL`, `GLOBAL-043` item 10) and the

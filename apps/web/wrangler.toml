@@ -38,10 +38,11 @@ workers_dev = true
 directory = "./dist"
 not_found_handling = "404-page"
 binding = "ASSETS"
-# Run the Worker before serving assets ONLY for the product routes, so the
-# `/app/*` redirect fires (those paths are real built assets that would
-# otherwise be served directly). Marketing pages keep the zero-cost asset path.
-run_worker_first = ["/app", "/app/*"]
+# Run the Worker before serving assets ONLY for the product routes (real built
+# assets that would otherwise be served directly) and the CLI update manifest
+# (no asset — `not_found_handling` would 404 it before the Worker), so their
+# redirects fire. Marketing pages keep the zero-cost asset path.
+run_worker_first = ["/app", "/app/*", "/install/latest.json"]
 
 [observability]
 enabled = true
