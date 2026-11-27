@@ -1,6 +1,6 @@
 # GLOBAL-020 — No "pick a region", no config files in the first 60s
 
-- **Decision:** First-time use — `npx nlq ask`, opening the web app,
+- **Decision:** First-time use — `npx @nlqdb/cli ask`, opening the web app,
   installing the MCP — completes without any config file, region
   picker, project ID, or environment variable. The path to first
   value is conversational and zero-config.
