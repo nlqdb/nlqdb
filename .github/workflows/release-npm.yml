@@ -59,6 +59,7 @@ jobs:
         run: bun run --filter='@nlqdb/sdk' --filter='@nlqdb/mcp' build
 
       - name: Create Version PR or publish
+        id: changesets
         # Held at v1: action v2 needs @changesets/cli v3 and renamed inputs.
         uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
@@ -68,6 +69,18 @@ jobs:
           title: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # GitHub marks each new `@nlqdb/<pkg>@x` release "latest", but the
+      # installer and nlqdb.com/install/latest.json resolve /releases/latest
+      # to a CLI `v*` release (SK-CLI-002, SK-CLI-015) — hand the mark back.
+      - name: Keep the newest CLI release marked latest
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          id="$(gh api "repos/$REPO/releases?per_page=100" --jq '[.[] | select((.tag_name | startswith("v")) and (.draft | not) and (.prerelease | not))][0].id // empty')"
+          if [ -n "$id" ]; then gh api -X PATCH "repos/$REPO/releases/$id" -f make_latest=true > /dev/null; fi
 
   cli-shim:
     name: publish @nlqdb/cli for the latest CLI release
