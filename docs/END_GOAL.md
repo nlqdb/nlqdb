@@ -54,7 +54,7 @@ call behind the `packages/db` seam, nothing else.
 
 | # | Sees | Does | Latency |
 |---|------|------|---------|
-| 1 | One attach, four doors: the nlqdb.com form, `npx nlqdb attach <connection-string>`, `POST /v1/attach` via `@nlqdb/sdk`, or an MCP tool call. D1 attaches with a Cloudflare API token + account and database id. The permissions it needs are named up front: observe = `pg_read_all_stats` + `SELECT` on the app's tables, apply = membership in the tables' owner role | pastes a connection string, once | seconds |
+| 1 | One attach, four doors: the nlqdb.com form, `npx @nlqdb/cli attach <connection-string>`, `POST /v1/attach` via `@nlqdb/sdk`, or an MCP tool call. D1 attaches with a Cloudflare API token + account and database id. The permissions it needs are named up front: observe = `pg_read_all_stats` + `SELECT` on the app's tables, apply = membership in the tables' owner role | pastes a connection string, once | seconds |
 | 2 | First proposals: catalog findings (FKs without indexes, sizes, settings) at once; workload findings from `pg_stat_statements` after a snapshot window | waits, or leaves — nothing to configure | KPI A < 5 min |
 | 3 | One proposal: the diff, the fingerprint it targets, expected effect (HypoPG what-if, or selectivity heuristics where the host lacks it), the inverse, and its cost — build time, size, write overhead | reads one card | — |
 | 4 | **Apply** queues it for a low-load window and builds it (`CONCURRENTLY` on Postgres); **reject** asks for a reason and records it | one click | the window |

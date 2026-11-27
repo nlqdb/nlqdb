@@ -38,7 +38,7 @@ iterate → retro → cleanup loop stand.
      agent approvals per category in `/app/dba`. A reject records
      the reason given, for the playbook to learn from async.
   6. **Four onboarding doors, one first proposal within minutes:** (a) paste
-     a connection string at nlqdb.com; (b) `npx nlqdb attach <connection-string>`;
+     a connection string at nlqdb.com; (b) `npx @nlqdb/cli attach <connection-string>`;
      (c) `POST /v1/attach` via `@nlqdb/sdk`; (d) MCP — the coding agent
      (Claude Code, Cursor) attaches the DB it just created. D1 attaches with
      a Cloudflare API token + account id + database id instead of a string —

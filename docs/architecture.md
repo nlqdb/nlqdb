@@ -48,7 +48,7 @@ Retired with the hosted wedge ([`GLOBAL-043`](./decisions/GLOBAL-043-attach-firs
 ## 2. System architecture
 
 ```
- nlqdb.com · npx nlqdb · @nlqdb/sdk · MCP        attach · apply · reject
+ nlqdb.com · npx @nlqdb/cli · @nlqdb/sdk · MCP        attach · apply · reject
                  │
  Edge (Cloudflare Workers) — sealed secret + egress guard (GLOBAL-031/035)
                  │
