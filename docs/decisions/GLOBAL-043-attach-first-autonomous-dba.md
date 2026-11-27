@@ -29,7 +29,7 @@ iterate → retro → cleanup loop stand.
      regression is always on and identical for every principal** — an
      agent's bad apply reverts exactly like a human's.
   5. **Two verbs, every door:** `apply` and `reject` — web click; CLI
-     `nlqdb apply <id>` / `nlqdb reject <id>`; API
+     `nlq apply <id>` / `nlq reject <id>`; API
      `POST /v1/proposals/:id/apply|reject` via `@nlqdb/sdk`; MCP
      `nlqdb_list_proposals`, `nlqdb_apply_proposal`,
      `nlqdb_reject_proposal` ([`GLOBAL-003`](./GLOBAL-003-all-surfaces-one-pr.md)).
