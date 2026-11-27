@@ -21,7 +21,7 @@
     "install:browsers": "playwright install chromium --with-deps"
   },
   "devDependencies": {
-    "bun-types": "^1.4.4",
+    "bun-types": "^1.4.5",
     "typescript": "^6.0.3"
   }
 }
