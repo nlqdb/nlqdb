@@ -11,6 +11,10 @@ before:
     - go mod tidy
     # Repo LICENSE lives at the root; stage a copy next to .goreleaser.yml so the archive picks it up.
     - sh -c 'cp ../LICENSE LICENSE.txt'
+    # The update-check manifest (SK-CLI-015): attached to every release, and
+    # nlqdb.com/install/latest.json redirects to the latest release's copy.
+    - >-
+      sh -c 'printf "%s\n" "{\"version\":\"{{ .Version }}\",\"released_at\":\"{{ .Date }}\",\"url_template\":\"https://github.com/nlqdb/nlqdb/releases/download/v{{ .Version }}/nlq_{{ .Version }}_{os}_{arch}.tar.gz\"}" > latest.json'
 
 # One build per install channel: `InstallMethod` picks the upgrade hint
 # (SK-CLI-015) and the User-Agent's channel field.
@@ -142,3 +146,5 @@ release:
   # 422s on the existing assets and aborts before publishing the formula
   # (observed re-seeding the tap once HOMEBREW_TAP_GITHUB_TOKEN was set).
   replace_existing_artifacts: true
+  extra_files:
+    - glob: ./latest.json

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { productRedirectTarget } from "./worker";
+import worker, { productRedirectTarget } from "./worker";
 
 // SK-AUTH-016 — the marketing worker must send the product surface (/app/*) to
 // the merged app so it's first-party with the API, WITHOUT catching /auth/*
@@ -44,5 +44,26 @@ describe("productRedirectTarget", () => {
 
   test("does NOT match lookalike paths like /apple-touch-icon.png", () => {
     expect(productRedirectTarget(new URL("https://nlqdb.com/apple-touch-icon.png"))).toBeNull();
+  });
+});
+
+// SK-CLI-015 — the update check every installed `nlq` runs must reach the
+// latest release's manifest, never the 404 page.
+describe("update manifest", () => {
+  const assets = { fetch: async () => new Response("asset", { status: 404 }) };
+
+  test("redirects /install/latest.json to the latest release's manifest", async () => {
+    const res = await worker.fetch(new Request("https://nlqdb.com/install/latest.json"), {
+      ASSETS: assets,
+    });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe(
+      "https://github.com/nlqdb/nlqdb/releases/latest/download/latest.json",
+    );
+  });
+
+  test("leaves the installer script itself to the assets", async () => {
+    const res = await worker.fetch(new Request("https://nlqdb.com/install"), { ASSETS: assets });
+    expect(await res.text()).toBe("asset");
   });
 });
