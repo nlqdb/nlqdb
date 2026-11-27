@@ -18,14 +18,14 @@ const CLI_DESCRIPTION =
 
 // Not in `help --json` (a binary can't tell you how to install it), yet the page
 // must: it is the one page titled with the brand query `nlq`. Only channels that
-// ship the latest release: the `@nlqdb/cli` npm shim pins binary 0.1.1, which
-// predates `nlq attach` (cli FEATURE.md gap), so it stays off until it is re-published.
+// ship the latest release (`release-npm.yml` republishes the shim on each one).
 const INSTALL = [
   "## Install",
   "",
   "```sh",
   "curl -fsSL https://nlqdb.com/install | sh   # macOS / Linux → ~/.local/bin/nlq",
   "brew install nlqdb/tap/nlq                  # Homebrew",
+  "npm i -g @nlqdb/cli                         # Node; or no install: npx @nlqdb/cli attach",
   "```",
 ].join("\n");
 
