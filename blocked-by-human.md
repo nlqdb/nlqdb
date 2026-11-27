@@ -98,21 +98,6 @@ follow [`GLOBAL-033`](docs/decisions/GLOBAL-033-resolution-defaults.md)
   P1 builders who run a Postgres or D1 app; each attaches it (~5 h). The
   agent amends `GLOBAL-043`.
 
-## Claim the `nlqdb` npm name for the `npx nlqdb attach` door
-
-- **Type:** account action · ⏱ ~5 min · since 2026-10-31
-- **Done so far:** [`END_GOAL.md`](docs/END_GOAL.md) row 1 and
-  [`GLOBAL-043`](docs/decisions/GLOBAL-043-attach-first-autonomous-dba.md)
-  item 6 promise `npx nlqdb attach <connection-string>`, but the npm name
-  `nlqdb` is unclaimed and the shim ships as `@nlqdb/cli`. Until then the CLI
-  door is `nlq attach` (curl or Homebrew install).
-- **Ask:**
-  1. From the npm account that owns the `@nlqdb` org, publish a placeholder
-     `nlqdb` package, then add the trusted publisher `nlqdb/nlqdb` →
-     `release-npm.yml` on <https://www.npmjs.com/package/nlqdb/access>; agents
-     then ship it as the shim's alias. Or instead amend `END_GOAL.md` row 1
-     and `GLOBAL-043` item 6 to `npx @nlqdb/cli attach`.
-
 ## Delete the `rateme12` Worker and its `rateme12.nlqdb.com` domain
 
 - **Type:** account action · ⏱ ~2 min · since 2026-10-27

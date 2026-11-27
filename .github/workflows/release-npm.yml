@@ -117,8 +117,14 @@ jobs:
             | head -n1 || true)
           if [ -z "$tag" ]; then echo "no v* tag" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
           ver=${tag#v}
-          if [ -n "$(npm view "@nlqdb/cli@$ver" version 2>/dev/null || true)" ]; then
-            echo "@nlqdb/cli@$ver already published" >> "$GITHUB_STEP_SUMMARY"; exit 0
+          # `nlqdb` is the same shim under the unscoped name so
+          # `npx nlqdb attach` resolves (GLOBAL-043 item 6).
+          missing=""
+          for name in @nlqdb/cli nlqdb; do
+            [ -n "$(npm view "$name@$ver" version 2>/dev/null || true)" ] || missing="$missing $name"
+          done
+          if [ -z "$missing" ]; then
+            echo "$ver already published" >> "$GITHUB_STEP_SUMMARY"; exit 0
           fi
           sums=$(curl -fsSL "https://github.com/nlqdb/nlqdb/releases/download/$tag/checksums.txt" || true)
           if ! grep -q '_npm-shim\.tar\.gz$' <<<"$sums"; then
@@ -126,5 +132,8 @@ jobs:
           fi
           npm pkg delete private
           npm pkg set "version=$ver"
-          npm publish
-          echo "published @nlqdb/cli@$ver" >> "$GITHUB_STEP_SUMMARY"
+          for name in $missing; do
+            npm pkg set "name=$name"
+            npm publish
+            echo "published $name@$ver" >> "$GITHUB_STEP_SUMMARY"
+          done
