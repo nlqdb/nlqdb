@@ -19,8 +19,8 @@
     "@nlqdb/elements": "workspace:*",
     "@nlqdb/events": "workspace:*",
     "@nlqdb/sdk": "workspace:*",
-    "astro": "^7.4.12",
-    "posthog-js": "^1.450.1",
+    "astro": "^7.4.13",
+    "posthog-js": "^1.454.3",
     "react": "^19",
     "react-dom": "^19",
     "three": "^0.187.0"
@@ -33,6 +33,6 @@
     "@types/three": "^0.187.0",
     "@types/react-dom": "^19",
     "typescript": "^6.0.3",
-    "wrangler": "^4.164.0"
+    "wrangler": "^4.168.0"
   }
 }

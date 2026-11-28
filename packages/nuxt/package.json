@@ -23,9 +23,9 @@
     "@nlqdb/elements": "workspace:*",
     "@nlqdb/sdk": "workspace:*",
     "@nlqdb/vue": "workspace:*",
-    "@nuxt/kit": "^4.6.4",
-    "@nuxt/schema": "^4.6.4",
-    "nuxt": "^4.6.4",
+    "@nuxt/kit": "^4.7.0",
+    "@nuxt/schema": "^4.7.0",
+    "nuxt": "^4.7.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.12",
     "vue": "^3.5.45"

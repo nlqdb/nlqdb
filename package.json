@@ -33,7 +33,7 @@
     "changeset:publish": "changeset publish"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.8",
+    "@biomejs/biome": "^2.6.9",
     "@changesets/cli": "^2.31.1",
     "@playwright/test": "~1.65.1",
     "bun-types": "latest",
