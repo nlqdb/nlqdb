@@ -14,11 +14,11 @@
   },
   "peerDependencies": {
     "@nlqdb/elements": "workspace:*",
-    "solid-js": "^1.9.18"
+    "solid-js": "^1.9.20"
   },
   "devDependencies": {
     "@nlqdb/elements": "workspace:*",
-    "solid-js": "^1.9.18",
+    "solid-js": "^1.9.20",
     "typescript": "^6.0.3"
   }
 }
