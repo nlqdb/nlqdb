@@ -59,6 +59,10 @@ updates:
       # v3 is the other half of the changesets/action v2 migration ignored below.
       - dependency-name: "@changesets/cli"
         versions: [">=3.0.0"]
+      # solid-js 2 drops onMount and moves the JSX runtime to @solidjs/web: a port of
+      # packages/solid, which GLOBAL-043 retired (fixes only), not a bump.
+      - dependency-name: "solid-js"
+        versions: [">=2.0.0"]
   - package-ecosystem: npm
     directory: /tests/opencheck
     schedule:
