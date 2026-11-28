@@ -59,6 +59,10 @@ updates:
       # v3 is the other half of the changesets/action v2 migration ignored below.
       - dependency-name: "@changesets/cli"
         versions: [">=3.0.0"]
+      # solid-js 2 drops onMount and moves the JSX runtime to @solidjs/web: a port of
+      # packages/solid, which GLOBAL-043 retired (fixes only), not a bump.
+      - dependency-name: "solid-js"
+        versions: [">=2.0.0"]
   - package-ecosystem: npm
     directory: /tests/opencheck
     schedule:
@@ -71,6 +75,11 @@ updates:
       npm-major:
         patterns: ["*"]
         update-types: ["major"]
+    ignore:
+      # opencheck@0.3.0 passes --save-trace, which @playwright/mcp dropped after
+      # 0.0.60 (see _e2e-opencheck.yml): lift once opencheck ships a fix.
+      - dependency-name: "@playwright/mcp"
+        versions: [">0.0.60"]
   - package-ecosystem: gomod
     directories: ["/cli", "/tests/e2e/cli"]
     schedule:
